@@ -37,6 +37,11 @@ ENV HELIX_RUNTIME=/usr/local/lib/helix-runtime
 USER agent
 
 RUN mkdir ~/git \
-    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    && mkdir -p ~/.cargo \
+    && printf '[net]\nretry = 5\ngit-fetch-with-cli = true\n\n[http]\ntimeout = 120\n\n[registries.crates-io]\nprotocol = "sparse"\n' > ~/.cargo/config.toml
 
-ENV PATH="/home/agent/.cargo/bin:${PATH}"
+ENV PATH="/home/agent/.cargo/bin:${PATH}" \
+    XDG_CONFIG_HOME=/home/agent/.config \
+    XDG_DATA_HOME=/home/agent/.local/share \
+    XDG_CACHE_HOME=/home/agent/.cache
