@@ -53,6 +53,9 @@ RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/*.sources /etc/apt/sou
 
 ENV HELIX_RUNTIME=/usr/local/lib/helix-runtime
 
+COPY nushell-autoload/ /tmp/nushell-autoload/
+COPY vendor/ /tmp/vendor/
+
 USER agent
 
 RUN mkdir ~/git \
@@ -69,3 +72,16 @@ ENV PATH="/home/agent/.cargo/bin:${PATH}" \
 RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/git/dotfiles \
     && cd ~/git/dotfiles \
     && nu -c 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker'
+
+ARG MODULES_SOURCE=vendor
+RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
+      git clone https://github.com/nushell-prophet/nu-goodies.git ~/git/nu-goodies \
+      && git clone https://github.com/nushell-prophet/nu-kv.git ~/git/nushell-kv \
+      && git clone https://github.com/nushell-prophet/dotnu.git ~/git/dotnu \
+      && git clone https://github.com/nushell-prophet/numd.git ~/git/numd \
+      && git clone https://github.com/nushell-prophet/claude-nu.git ~/git/claude-nu \
+      && git clone https://github.com/nushell-prophet/nu-cmd-stack.git ~/git/nu-cmd-stack; \
+    else \
+      cp -r /tmp/vendor/* ~/git/; \
+    fi \
+    && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/
