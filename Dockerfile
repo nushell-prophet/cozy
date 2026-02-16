@@ -7,6 +7,7 @@ RUN apt-get update \
         curl \
         ca-certificates \
         xz-utils \
+        unzip \
     && curl -fsSL https://apt.fury.io/nushell/gpg.key \
         | gpg --dearmor -o /etc/apt/trusted.gpg.d/fury-nushell.gpg \
     && echo "deb https://apt.fury.io/nushell/ /" \
@@ -37,11 +38,14 @@ RUN apt-get update \
     && install zellij /usr/local/bin/ \
     && rm zellij.tar.gz zellij \
     # broot
-    && curl -Lo /usr/local/bin/broot "https://dystroy.org/broot/download/aarch64-linux/broot" \
+    && BROOT_VERSION=$(curl -s "https://api.github.com/repos/Canop/broot/releases/latest" | grep -Po '"tag_name": *"v\K[^"]*') \
+    && curl -Lo broot.zip "https://github.com/Canop/broot/releases/download/v${BROOT_VERSION}/broot_${BROOT_VERSION}.zip" \
+    && unzip -j broot.zip aarch64-unknown-linux-gnu/broot -d /usr/local/bin/ \
     && chmod +x /usr/local/bin/broot \
+    && rm broot.zip \
     # carapace
     && CARAPACE_VERSION=$(curl -s "https://api.github.com/repos/carapace-sh/carapace-bin/releases/latest" | grep -Po '"tag_name": *"v\K[^"]*') \
-    && curl -Lo carapace.tar.gz "https://github.com/carapace-sh/carapace-bin/releases/download/v${CARAPACE_VERSION}/carapace-bin_linux_arm64.tar.gz" \
+    && curl -Lo carapace.tar.gz "https://github.com/carapace-sh/carapace-bin/releases/download/v${CARAPACE_VERSION}/carapace-bin_${CARAPACE_VERSION}_linux_arm64.tar.gz" \
     && tar xf carapace.tar.gz -C /usr/local/bin carapace \
     && rm carapace.tar.gz
 
@@ -51,6 +55,7 @@ USER agent
 
 RUN mkdir ~/git \
     && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    && sed -i 's/home-path/home-dir/g' ~/.cargo/env.nu \
     && mkdir -p ~/.cargo \
     && printf '[net]\nretry = 5\ngit-fetch-with-cli = true\n\n[http]\ntimeout = 120\n\n[registries.crates-io]\nprotocol = "sparse"\n' > ~/.cargo/config.toml
 
