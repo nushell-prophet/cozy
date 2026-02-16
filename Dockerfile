@@ -8,6 +8,7 @@ RUN apt-get update \
         ca-certificates \
         xz-utils \
         unzip \
+        fzf \
     && curl -fsSL https://apt.fury.io/nushell/gpg.key \
         | gpg --dearmor -o /etc/apt/trusted.gpg.d/fury-nushell.gpg \
     && echo "deb https://apt.fury.io/nushell/ /" \
