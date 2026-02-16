@@ -36,6 +36,10 @@ docker sandbox rm <name>
 
 After Dockerfile changes: rebuild image, then recreate sandbox (delete + run).
 
+## Rules
+
+- Do NOT suggest pushing images or tags to Docker Hub or any registry. All images are local-only.
+
 ## Notes
 
 - Workspace is mounted at its original macOS path (e.g. `/Users/user/temp/docker/`), not at `/workspace` or `/home/agent`
