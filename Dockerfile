@@ -12,6 +12,8 @@ RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/*.sources /etc/apt/sou
         git \
     && rm -rf /var/lib/apt/lists/*
 
+COPY --chmod=755 pbcopy /usr/local/bin/pbcopy
+
 USER agent
 
 RUN NONINTERACTIVE=1 /bin/bash -c \

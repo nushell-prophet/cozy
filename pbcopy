@@ -1,0 +1,3 @@
+#!/bin/sh
+data=$(cat | base64 | tr -d '\n')
+printf '\033]52;c;%s\a' "$data" > /dev/tty
