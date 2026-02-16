@@ -19,17 +19,12 @@ RUN NONINTERACTIVE=1 /bin/bash -c \
 
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
 
-RUN brew install nushell fzf lazygit helix zellij broot \
-    && brew tap carapace-sh/carapace-bin \
-    && brew install carapace-bin
+RUN brew install nushell fzf lazygit helix zellij broot carapace
 
-ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/share/helix/runtime
+ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime
 
-USER root
-COPY nushell-autoload/ /tmp/nushell-autoload/
-COPY vendor/ /tmp/vendor/
-
-USER agent
+COPY --chown=agent:agent nushell-autoload/ /tmp/nushell-autoload/
+COPY --chown=agent:agent vendor/ /tmp/vendor/
 
 RUN mkdir ~/git \
     && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
