@@ -8,9 +8,7 @@ Custom Docker sandbox template for running Claude Code on M1 Macs with extra too
 
 ## Added Tools
 
-- **Nushell** — via Gemfury apt repo
-- **Helix** (`hx`) — from GitHub release binary, runtime at `/usr/local/lib/helix-runtime`
-- **Lazygit** — from GitHub release with sha256 checksum verification
+- **Nushell**, **Helix** (`hx`), **Lazygit**, **Zellij**, **Broot**, **fzf**, **Carapace** — via Homebrew (`brew install`)
 - **Rust** (rustc, cargo, rustup) — installed as `agent` user via rustup
 
 ## Build & Run
@@ -46,4 +44,4 @@ After Dockerfile changes: rebuild image, then recreate sandbox (delete + run).
 - Only the workspace folder from `docker sandbox run` is synced — `exec` from a different folder doesn't mount it
 - Sandbox uses microVMs — won't work inside UTM on M1 (no nested virtualization)
 - Base image CVEs (e.g. in `/usr/bin/docker`) are fixed upstream — pull latest base image periodically
-- lazygit/helix fetch latest release at build time — pin versions in Dockerfile if reproducibility matters
+- Homebrew fetches latest versions at build time — use `brew pin` or specify versions if reproducibility matters
