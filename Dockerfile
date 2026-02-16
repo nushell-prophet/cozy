@@ -2,7 +2,8 @@ FROM docker/sandbox-templates:claude-code
 
 USER root
 
-RUN apt-get update \
+RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/*.sources /etc/apt/sources.list 2>/dev/null || true \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
         ca-certificates \
