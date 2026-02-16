@@ -30,7 +30,20 @@ RUN apt-get update \
     && tar xf helix.tar.xz \
     && mv helix-*/hx /usr/local/bin/ \
     && mv helix-*/runtime /usr/local/lib/helix-runtime \
-    && rm -rf helix.tar.xz helix-*
+    && rm -rf helix.tar.xz helix-* \
+    # zellij
+    && curl -Lo zellij.tar.gz "https://github.com/zellij-org/zellij/releases/latest/download/zellij-aarch64-unknown-linux-musl.tar.gz" \
+    && tar xf zellij.tar.gz zellij \
+    && install zellij /usr/local/bin/ \
+    && rm zellij.tar.gz zellij \
+    # broot
+    && curl -Lo /usr/local/bin/broot "https://dystroy.org/broot/download/aarch64-linux/broot" \
+    && chmod +x /usr/local/bin/broot \
+    # carapace
+    && CARAPACE_VERSION=$(curl -s "https://api.github.com/repos/carapace-sh/carapace-bin/releases/latest" | grep -Po '"tag_name": *"v\K[^"]*') \
+    && curl -Lo carapace.tar.gz "https://github.com/carapace-sh/carapace-bin/releases/download/v${CARAPACE_VERSION}/carapace-bin_linux_arm64.tar.gz" \
+    && tar xf carapace.tar.gz -C /usr/local/bin carapace \
+    && rm carapace.tar.gz
 
 ENV HELIX_RUNTIME=/usr/local/lib/helix-runtime
 
@@ -45,3 +58,7 @@ ENV PATH="/home/agent/.cargo/bin:${PATH}" \
     XDG_CONFIG_HOME=/home/agent/.config \
     XDG_DATA_HOME=/home/agent/.local/share \
     XDG_CACHE_HOME=/home/agent/.cache
+
+RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/git/dotfiles \
+    && cd ~/git/dotfiles \
+    && nu -c 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker'

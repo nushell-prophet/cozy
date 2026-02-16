@@ -38,6 +38,8 @@ After Dockerfile changes: rebuild image, then recreate sandbox (delete + run).
 
 ## Notes
 
+- Workspace is mounted at its original macOS path (e.g. `/Users/user/temp/docker/`), not at `/workspace` or `/home/agent`
+- Only the workspace folder from `docker sandbox run` is synced — `exec` from a different folder doesn't mount it
 - Sandbox uses microVMs — won't work inside UTM on M1 (no nested virtualization)
 - Base image CVEs (e.g. in `/usr/bin/docker`) are fixed upstream — pull latest base image periodically
 - lazygit/helix fetch latest release at build time — pin versions in Dockerfile if reproducibility matters
