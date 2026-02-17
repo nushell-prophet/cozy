@@ -1,4 +1,4 @@
-use /home/agent/git/nu-cmd-stack/cmd-stack
+use ~/git/nu-cmd-stack/cmd-stack
 $env.config.keybindings ++= [
     {
         modifier: control_alt

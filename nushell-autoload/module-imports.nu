@@ -2,12 +2,12 @@
 overlay new others
 
 # Nushell Modules
-overlay use /home/agent/git/nu-goodies/nu-goodies
+overlay use ~/git/nu-goodies/nu-goodies
 
-$env.kv.path = '/home/agent/.local/share/nushell-kv'
-overlay use /home/agent/git/nushell-kv/kv --prefix
+$env.kv.path = ($nu.home-dir | path join .local share nushell-kv)
+overlay use ~/git/nushell-kv/kv --prefix
 
-overlay use /home/agent/git/dotnu/dotnu --prefix
-overlay use /home/agent/git/numd/numd --prefix
+overlay use ~/git/dotnu/dotnu --prefix
+overlay use ~/git/numd/numd --prefix
 
-use /home/agent/git/claude-nu/claude-nu/
+use ~/git/claude-nu/claude-nu/

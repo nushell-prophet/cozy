@@ -23,7 +23,8 @@ ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}
 
 RUN brew install nushell fzf lazygit helix zellij broot carapace git-delta
 
-ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime
+ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime \
+    HOME=/home/agent
 
 COPY --chown=agent:agent nushell-autoload/ /tmp/nushell-autoload/
 COPY --chown=agent:agent vendor/ /tmp/vendor/
@@ -34,10 +35,10 @@ RUN mkdir ~/git \
     && mkdir -p ~/.cargo \
     && printf '[net]\nretry = 5\ngit-fetch-with-cli = true\n\n[http]\ntimeout = 120\n\n[registries.crates-io]\nprotocol = "sparse"\n' > ~/.cargo/config.toml
 
-ENV PATH="/home/agent/.cargo/bin:${PATH}" \
-    XDG_CONFIG_HOME=/home/agent/.config \
-    XDG_DATA_HOME=/home/agent/.local/share \
-    XDG_CACHE_HOME=/home/agent/.cache
+ENV PATH="$HOME/.cargo/bin:${PATH}" \
+    XDG_CONFIG_HOME=$HOME/.config \
+    XDG_DATA_HOME=$HOME/.local/share \
+    XDG_CACHE_HOME=$HOME/.cache
 
 RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/git/dotfiles \
     && cd ~/git/dotfiles \
