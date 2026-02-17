@@ -50,4 +50,6 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
       cp -r /tmp/vendor/* ~/git/; \
     fi \
     && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/ \
-    && printf '{"mcpServers":{"nushell":{"type":"stdio","command":"nu","args":["--mcp"],"env":{}}}}\n' > ~/.claude.json
+    # Register Nushell as an MCP server in settings.json (not ~/.claude.json, which
+    # Claude Code overwrites on first launch, losing the mcpServers config).
+    && nu -c 'open ~/.claude/settings.json | insert mcpServers {nushell: {type: stdio, command: nu, args: [--mcp], env: {}}} | save -f ~/.claude/settings.json'
