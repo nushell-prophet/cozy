@@ -5,7 +5,6 @@ USER root
 RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/*.sources /etc/apt/sources.list 2>/dev/null || true \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
-        build-essential \
         procps \
         curl \
         file \
@@ -29,14 +28,9 @@ ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime \
 COPY --chown=agent:agent nushell-autoload/ /tmp/nushell-autoload/
 COPY --chown=agent:agent vendor/ /tmp/vendor/
 
-RUN mkdir ~/git \
-    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
-    && sed -i 's/home-path/home-dir/g' ~/.cargo/env.nu \
-    && mkdir -p ~/.cargo \
-    && printf '[net]\nretry = 5\ngit-fetch-with-cli = true\n\n[http]\ntimeout = 120\n\n[registries.crates-io]\nprotocol = "sparse"\n' > ~/.cargo/config.toml
+RUN mkdir ~/git
 
-ENV PATH="$HOME/.cargo/bin:${PATH}" \
-    XDG_CONFIG_HOME=$HOME/.config \
+ENV XDG_CONFIG_HOME=$HOME/.config \
     XDG_DATA_HOME=$HOME/.local/share \
     XDG_CACHE_HOME=$HOME/.cache
 
