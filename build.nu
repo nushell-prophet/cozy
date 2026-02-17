@@ -10,9 +10,12 @@ def latest-tag [image: string]: nothing -> string {
     if ($tags | is-empty) { "v1" } else { $"v($tags | first | $in + 1)" }
 }
 
+def sandboxes []: nothing -> table {
+    ^docker sandbox ls --json | from json | get -o vms | default []
+}
+
 def "nu-complete sandbox names" []: nothing -> list<record<value: string, description: string>> {
-    ^docker sandbox ls --json | from json | get vms
-    | each {|x| { value: $x.name, description: $"($x.agent) ($x.status)" }}
+    sandboxes | each {|x| { value: $x.name, description: $"($x.agent) ($x.status)" }}
 }
 
 def "main sandbox" [] { help main sandbox }
@@ -26,8 +29,7 @@ def "main sandbox build" [
     let dir = $path | default $env.FILE_PWD
 
     let sandboxes = if $no_recreate { [] } else {
-        ^docker sandbox ls --json | from json | get vms
-        | select name workspaces
+        sandboxes | select name workspaces
     }
 
     let tag = latest-tag $image
@@ -40,12 +42,10 @@ def "main sandbox build" [
         ^docker sandbox rm $sb.name
     }
 
-    if ($sandboxes | is-not-empty) {
-        print "\nTo recreate:"
-        for sb in $sandboxes {
-            for ws in $sb.workspaces {
-                print $"  nu build.nu sandbox run ($ws)"
-            }
+    for sb in $sandboxes {
+        for ws in $sb.workspaces {
+            print $"Creating sandbox for ($ws)..."
+            ^docker sandbox create --load-local-template -t $"($image):($tag)" claude $ws
         }
     }
 }
@@ -72,9 +72,7 @@ def "main sandbox run" [
 }
 
 # List sandboxes as a table
-def "main sandbox ls" [] {
-    ^docker sandbox ls --json | from json | get vms
-}
+def "main sandbox ls" [] { sandboxes }
 
 # Stop sandbox(es)
 def "main sandbox stop" [
