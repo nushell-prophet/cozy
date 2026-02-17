@@ -21,7 +21,7 @@ RUN NONINTERACTIVE=1 /bin/bash -c \
 
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
 
-RUN brew install nushell fzf lazygit helix zellij broot carapace
+RUN brew install nushell fzf lazygit helix zellij broot carapace git-delta
 
 ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime
 
@@ -54,4 +54,5 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
     else \
       cp -r /tmp/vendor/* ~/git/; \
     fi \
-    && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/
+    && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/ \
+    && printf '{"mcpServers":{"nushell":{"type":"stdio","command":"nu","args":["--mcp"],"env":{}}}}\n' > ~/.claude.json
