@@ -1,3 +1,5 @@
+if $env.WORKSPACE_DIR? != null { ^ln -sfn $env.WORKSPACE_DIR ~/ws }
+
 # Create isolated overlay for external tools
 overlay new others
 
