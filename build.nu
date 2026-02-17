@@ -17,15 +17,37 @@ def "nu-complete sandbox names" []: nothing -> list<record<value: string, descri
 
 def "main sandbox" [] { help main sandbox }
 
-# Build Docker image with auto-incremented vN tag
+# Build Docker image with auto-incremented vN tag, recreate existing sandboxes
 def "main sandbox build" [
     --image (-i): string = "claude-nushell" # image name
     --path (-p): path                       # Dockerfile directory
+    --no-recreate                           # skip sandbox recreation
 ] {
     let dir = $path | default $env.FILE_PWD
+
+    let sandboxes = if $no_recreate { [] } else {
+        ^docker sandbox ls --json | from json | get vms
+        | select name workspaces
+    }
+
     let tag = latest-tag $image
     ^docker build -t $"($image):($tag)" -t $"($image):latest" $dir
     print $"($image):($tag)"
+
+    for sb in $sandboxes {
+        print $"Removing sandbox ($sb.name)..."
+        ^docker sandbox stop $sb.name
+        ^docker sandbox rm $sb.name
+    }
+
+    if ($sandboxes | is-not-empty) {
+        print "\nTo recreate:"
+        for sb in $sandboxes {
+            for ws in $sb.workspaces {
+                print $"  nu build.nu sandbox run ($ws)"
+            }
+        }
+    }
 }
 
 # Run sandbox with latest image tag
