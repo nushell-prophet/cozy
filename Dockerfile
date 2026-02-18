@@ -34,6 +34,8 @@ ENV XDG_CONFIG_HOME=$HOME/.config \
     XDG_DATA_HOME=$HOME/.local/share \
     XDG_CACHE_HOME=$HOME/.cache
 
+RUN broot --write-default-conf $XDG_CONFIG_HOME/broot
+
 RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/git/dotfiles \
     && cd ~/git/dotfiles \
     && nu -c 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker'
