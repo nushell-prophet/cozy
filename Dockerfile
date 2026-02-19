@@ -27,6 +27,7 @@ ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime \
 
 COPY --chown=agent:agent nushell-autoload/ /tmp/nushell-autoload/
 COPY --chown=agent:agent vendor/ /tmp/vendor/
+COPY --chown=agent:agent toolkit.nu /home/agent/toolkit.nu
 
 RUN mkdir ~/git
 
