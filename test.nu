@@ -19,6 +19,7 @@ const tools = [
     ["brew: broot" broot "--version"]
     ["brew: carapace" carapace "--version"]
     ["brew: delta" delta "--version"]
+    ["brew: jj" jj version]
     ["base: git" git "--version"]
     ["base: curl" curl "--version"]
     ["base: python3" python3 "--version"]

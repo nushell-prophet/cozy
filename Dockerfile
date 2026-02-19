@@ -6,9 +6,7 @@ RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/*.sources /etc/apt/sou
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         procps \
-        curl \
         file \
-        git \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=755 pbcopy /usr/local/bin/pbcopy
@@ -20,7 +18,11 @@ RUN NONINTERACTIVE=1 /bin/bash -c \
 
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
 
-RUN brew install nushell fzf lazygit helix zellij broot carapace git-delta visidata jj
+RUN brew install nushell fzf lazygit helix zellij broot carapace git-delta visidata \
+    && brew cleanup --prune=all
+
+RUN brew install jj \
+    && brew cleanup --prune=all
 
 ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime \
     HOME=/home/agent
@@ -37,6 +39,7 @@ ENV XDG_CONFIG_HOME=$HOME/.config \
 
 RUN broot --write-default-conf $XDG_CONFIG_HOME/broot
 
+ARG DOTFILES_CACHE_BUST
 RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/git/dotfiles \
     && cd ~/git/dotfiles \
     && nu -c 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker'
@@ -52,6 +55,7 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
     else \
       cp -r /tmp/vendor/* ~/git/; \
     fi \
-    && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/
+    && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/ \
+    && rm -rf /tmp/vendor/ /tmp/nushell-autoload/
     # MCP server config: autoload/mcp-server.nu patches settings.json on first interactive nu
     # (sandbox create overwrites ~/.claude/settings.json with defaults)
