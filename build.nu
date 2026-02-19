@@ -45,7 +45,7 @@ def "main sandbox build" [
     for sb in $sandboxes {
         for ws in $sb.workspaces {
             print $"Creating sandbox for ($ws)..."
-            ^docker sandbox create --load-local-template -t $"($image):($tag)" claude $ws
+            ^docker sandbox create --debug --load-local-template -t $"($image):($tag)" --name $sb.name claude $ws
         }
     }
 }
