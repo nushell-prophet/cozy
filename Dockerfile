@@ -20,7 +20,7 @@ RUN NONINTERACTIVE=1 /bin/bash -c \
 
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
 
-RUN brew install nushell fzf lazygit helix zellij broot carapace git-delta visidata
+RUN brew install nushell fzf lazygit helix zellij broot carapace git-delta visidata jj
 
 ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime \
     HOME=/home/agent
