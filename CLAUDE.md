@@ -1,6 +1,6 @@
-# Claude Code Docker Sandbox
+# ai-sandbox
 
-Custom Docker sandbox template for running Claude Code on M1 Macs with extra tools.
+Modern, beginner-friendly terminal environment for AI-assisted development, running inside `docker sandbox`. Includes Nushell, Zellij, Helix, Lazygit, Broot, and Claude Code — all configured to work out of the box.
 
 ## Base Image
 
@@ -14,8 +14,8 @@ Custom Docker sandbox template for running Claude Code on M1 Macs with extra too
 ## Build & Run
 
 ```sh
-docker build -t claude-nushell:v1 ~/temp/docker
-docker sandbox run --load-local-template -t claude-nushell:v1 claude ~/path/to/project
+docker build -t nushell-ai-sandbox:v1 ~/git/ai-sandbox
+docker sandbox run --load-local-template -t nushell-ai-sandbox:v1 claude ~/path/to/project
 ```
 
 Requires Docker Desktop 4.58+ on macOS.

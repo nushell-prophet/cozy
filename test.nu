@@ -6,7 +6,7 @@
 #   nu test.nu test --keep       # keep sandbox for debugging
 #   nu test.nu clean             # remove leftover test sandbox
 
-const image = "claude-nushell"
+const image = "nushell-ai-sandbox"
 const sandbox = "claude-test"
 
 # Each tool: [label, command, ...args] — runs the command to verify it launches
