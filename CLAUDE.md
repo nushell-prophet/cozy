@@ -1,6 +1,6 @@
 # ai-sandbox
 
-Modern, beginner-friendly terminal environment for AI-assisted development, running inside `docker sandbox`. Includes Nushell, Zellij, Helix, Lazygit, Broot, and Claude Code — all configured to work out of the box.
+Modern, beginner-friendly terminal environment for AI agents, running inside `docker sandbox`. Tested with Claude Code; other agents can be configured via `docker sandbox`.
 
 ## Base Image
 
@@ -8,13 +8,12 @@ Modern, beginner-friendly terminal environment for AI-assisted development, runn
 
 ## Added Tools
 
-- **Nushell**, **Helix** (`hx`), **Lazygit**, **Zellij**, **Broot**, **fzf**, **Carapace** — via Homebrew (`brew install`)
-- **Rust** (rustc, cargo, rustup) — installed as `agent` user via rustup
+- **Nushell**, **Helix** (`hx`), **Lazygit**, **Zellij**, **Broot**, **fzf**, **Carapace**, **git-delta**, **jj**, **visidata** — via Homebrew (`brew install`)
 
 ## Build & Run
 
 ```sh
-docker build -t nushell-ai-sandbox:v1 ~/git/ai-sandbox
+docker build -t nushell-ai-sandbox:v1 .
 docker sandbox run --load-local-template -t nushell-ai-sandbox:v1 claude ~/path/to/project
 ```
 

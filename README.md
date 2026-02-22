@@ -1,60 +1,60 @@
-# Nushell-prophet's ai-sandbox (docker based convenient terminal environment)
+# Nushell-prophet's ai-sandbox (Docker-based convenient terminal environment)
 
-I spent a huge amount of time tuneing my terminal setup to make it convenient and powerful. I believe terminal newbies can use it as an inspiration or as a tool that works out of the box.
+I spent a huge amount of time tuning my terminal setup to make it convenient and powerful. I believe terminal newbies can use it as an inspiration or as a tool that works out of the box.
 
-## Preambule
+## Preamble
 
-That's work-in-progress education project with video demos on the way.
+This is a work-in-progress educational project with video demos on the way.
 
 ## Technologies
 
 ### Docker sandbox
 
 My ai-sandbox is based on `docker sandbox`, so it is:
-- MacOS and Windows compatible
+- macOS and Windows compatible
 - isolated
 - convenient
-- with builtin ai agents (I personally tested it on `claude code`)
+- with built-in AI agents (I personally tested it with `claude code`)
 
 ### Nushell
 
-A modern shell for AI era: Nushell 0.110.0 with sensible settings, that I've choosen over 3 years of Nushell experience.
+A modern shell for the AI era: Nushell 0.110.0 with sensible settings that I've chosen over 3 years of Nushell experience.
 
-Nushell has built-in MCP functionality that allows ai agents to use all of it's reach functionality. The functionality is activated for `claude code` out of the box.
+Nushell has built-in MCP functionality that allows AI agents to use all of its rich functionality. The MCP server is activated for `claude code` out of the box.
 
 ### Zellij
 
-Zellij is extremely convenient and powerful terminal multiplexer.
+Zellij is an extremely convenient and powerful terminal multiplexer.
 
-### Helix-editor
+### Helix editor
 
-Helix is my terminal text editor. It plays nicely with Nushell, and quite newbie-friendly. It is used in my environment, so hitting `cmd+shift+e` will open the current pane's scroollback for editing in helix. So it becomes a breaze to copy the contents.
+Helix is my terminal text editor. It plays nicely with Nushell and is quite newbie-friendly. In my environment, hitting `cmd+shift+e` opens the current pane's scrollback for editing in Helix, making it a breeze to copy contents.
 
 ### Lazygit
 
-Lazygit - is a god-sent interface for git. It simplifies a lot my everyday git operations, and I would like to demo it. Lazygit is integrated into zellij, so wherever user will hit `cmd+alt+l`, lazygit will jump in a floating window to stage files and do other git staff.
+Lazygit is a godsend interface for git. It greatly simplifies my everyday git operations, and I would like to demo it. Lazygit is integrated into Zellij, so wherever user hits `cmd+alt+l`, Lazygit will jump in a floating window to stage files and do other git stuff.
 
 ### Broot
 
-Broot is a file manager with a tree like structure and fuzzy-search. It can be called by using the command `cmd+shift+b`. And the can be quit with copied relative to git repo path with `:pbq` or a full path `:pbfq`. The path will be copied into clipboard and can be pasted anywhere.
+Broot is a file manager with a tree-like structure and fuzzy search. It can be called with `cmd+shift+b`. It can be quit with a copied path relative to the git repo root using `:pbq`, or a full path using `:pbfq`. The path will be copied into the clipboard and can be pasted anywhere.
 
 ### FZF
 
 I use fzf for navigating Nushell history.
 
 In Nushell there are keybindings:
-- `ctrl+f` to spawn fzf with Nushell history, to insert after selecting the command into commandline.
-- `alt+f` to spawn fzf with `^currently-entered-commandline`, to replace the current commandline with the selection.
+- `ctrl+f` to spawn fzf with Nushell history; after selecting, the command is inserted into the command line.
+- `alt+f` to spawn fzf with `^currently-entered-commandline`; the current command line is replaced with the selection.
 
-In fzf `tab` and `shift-tab` select several commands. When several commands selected, they, after hitting enter they will be placed delimeted by `;\n`
+In fzf, `tab` and `shift-tab` select multiple commands. When multiple commands are selected, after hitting enter they will be placed delimited by `;\n`.
 
 ### Wezterm
 
 I use Wezterm for connecting to this environment. The settings can be found here.
 
-The killer feature of Wezterm is a `ctrl+shift+space` shortcut, to highlight paths and nushell's structured output elements, for quick copying.
+The killer feature of Wezterm is the `ctrl+shift+space` shortcut to highlight paths and Nushell's structured output elements for quick copying.
 
-I spawn wezterm with this command:
+I spawn Wezterm with this command:
 
 `wezterm start -- docker sandbox exec -it -w /Users/user/git/container nushell-ai-container nu -l --commands 'print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\"; zellij attach -c sandbox'`
 
@@ -62,12 +62,12 @@ I spawn wezterm with this command:
 
 ### numd
 
-`numd` is a module for literate programming, it parses .md files with code nushell code blocks, executes them, captures output and uptates the .md files.
+`numd` is a module for literate programming. It parses .md files with Nushell code blocks, executes them, captures the output, and updates the .md files.
 
 ### dotnu
 
-`dotnu embeds` is another tool for literate programming. It executes parses nushell scripts for '| print $in' lines, executes the whole script, captures output and pastes the results of execution back to the `.nu` file with results commented `# =>` just after the line that ouputed them into console. 
+`dotnu embeds` is another tool for literate programming. It parses Nushell scripts for `| print $in` lines, executes the whole script, captures the output, and pastes the results back into the `.nu` file with results commented as `# =>` just after the line that outputted them to the console.
 
 ### claude-nu
 
-That's my friesh claude's convenience nushell toolbox for parsing `claude` sessions and outputting their results into nushell structured format. 
+A fresh Claude convenience Nushell toolbox for parsing `claude` sessions and outputting their results in Nushell structured format.
