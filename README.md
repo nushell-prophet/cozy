@@ -75,10 +75,10 @@ First, build the image and create a sandbox (run from the repo root):
 
 ```sh
 docker build -t nushell-ai-sandbox:v1 .
-docker sandbox run --name nushell-ai-container --load-local-template -t nushell-ai-sandbox:v1 claude $PWD/example/ws
+docker sandbox run --name nushell-ai-container --load-local-template -t nushell-ai-sandbox:v1 claude example/ws
 ```
 
-The last argument is the workspace directory. Files in it are synced bidirectionally between the host and the VM as changes happen. Replace `$PWD/example/ws` with your own project path. Inside the sandbox, the workspace is symlinked to `~/ws/` for convenience (see `nushell-autoload/module-imports.nu`).
+The last argument is the workspace directory. Files in it are synced bidirectionally between the host and the VM as changes happen. Replace `example/ws` with your own project path. Inside the sandbox, the workspace is symlinked to `~/ws/` for convenience (see `nushell-autoload/module-imports.nu`).
 
 Then connect to the sandbox with Wezterm (the `-w` flag sets the working directory to the same workspace path):
 
