@@ -2,13 +2,19 @@
 
 Modern, beginner-friendly terminal environment for AI agents, running inside `docker sandbox`. Tested with Claude Code; other agents can be configured via `docker sandbox`.
 
-## Base Image
+## Architecture
 
-`docker/sandbox-templates:claude-code` — Ubuntu-based, includes git, curl, Python, Node.js, Go, ripgrep, jq, gh CLI.
-
-## Added Tools
-
-- **Nushell**, **Helix** (`hx`), **Lazygit**, **Zellij**, **Broot**, **fzf**, **Carapace**, **git-delta**, **jj**, **visidata** — via Homebrew (`brew install`)
+```
+Dockerfile
+├── Base: docker/sandbox-templates:claude-code (Ubuntu, git, curl, Python, Node.js, Go, rg, jq, gh)
+├── apt: procps, file
+├── Homebrew tools: nushell, helix, lazygit, zellij, broot, fzf, carapace, git-delta, jj, visidata
+├── Dotfiles: cloned from github.com/nushell-prophet/my-dotfiles at build time
+│   └── toolkit push-to-machine deploys configs for helix, lazygit, zellij, broot, nushell, claude
+├── Vendored Nushell modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nushell-kv
+│   └── vendor/ dir (default) or git clone (with --build-arg MODULES_SOURCE=clone)
+└── Nushell autoload scripts: copied into ~/.config/nushell/autoload/
+```
 
 ## Build & Run
 
