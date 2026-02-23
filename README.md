@@ -49,7 +49,7 @@ In Helix, `+ s` (custom `+` menu, then `s`) copies the selected lines and wraps 
 
 ### Lazygit
 
-Lazygit is a godsend interface for git that greatly simplifies everyday operations. Integrated into Zellij — `cmd+alt+l` opens it in a floating window for staging files and other git tasks.
+Lazygit is a godsend interface for git that greatly simplifies everyday operations. Integrated into Zellij — `cmd+alt+l` opens it in a floating window for staging files and other git tasks. Uses git-delta for side-by-side diffs.
 
 ### Broot
 
