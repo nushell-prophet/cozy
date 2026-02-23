@@ -40,6 +40,13 @@ Shortcuts:
 
 Helix is my terminal text editor. It plays nicely with Nushell and is quite newbie-friendly. In my environment, hitting `cmd+shift+e` opens the current pane's scrollback for editing in Helix, making it a breeze to copy contents.
 
+In Helix, `+ s` (custom `+` menu, then `s`) copies the selected lines and wraps them into an XML tag for pasting into AI agents:
+
+```xml
+<selected-text file="README.md" lines="43-43">selected content here
+</selected-text>
+```
+
 ### Lazygit
 
 Lazygit is a godsend interface for git. It greatly simplifies my everyday git operations, and I would like to demo it. Lazygit is integrated into Zellij, so wherever user hits `cmd+alt+l`, Lazygit will jump in a floating window to stage files and do other git stuff.
