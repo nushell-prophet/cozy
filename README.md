@@ -38,7 +38,7 @@ Shortcuts:
 
 ### Helix editor
 
-Helix is my terminal text editor. It plays nicely with Nushell and is quite newbie-friendly. In my environment, hitting `cmd+shift+e` opens the current pane's scrollback for editing in Helix, making it a breeze to copy contents.
+Helix is my terminal text editor. It plays nicely with Nushell and is quite newbie-friendly. `cmd+shift+e` opens the current pane's scrollback in Helix for easy copying.
 
 In Helix, `+ s` (custom `+` menu, then `s`) copies the selected lines and wraps them into an XML tag for pasting into AI agents:
 
@@ -49,11 +49,11 @@ In Helix, `+ s` (custom `+` menu, then `s`) copies the selected lines and wraps 
 
 ### Lazygit
 
-Lazygit is a godsend interface for git. It greatly simplifies my everyday git operations, and I would like to demo it. Lazygit is integrated into Zellij, so wherever user hits `cmd+alt+l`, Lazygit will jump in a floating window to stage files and do other git stuff.
+Lazygit is a godsend interface for git that greatly simplifies everyday operations. Integrated into Zellij — `cmd+alt+l` opens it in a floating window for staging files and other git tasks.
 
 ### Broot
 
-Broot is a file manager with a tree-like structure and fuzzy search. It can be called with `cmd+shift+b`. It can be quit with a copied path relative to the git repo root using `:pbq`, or a full path using `:pbfq`. The path will be copied into the clipboard and can be pasted anywhere.
+Broot is a file manager with a tree-like structure and fuzzy search. `cmd+shift+b` opens it. `:pbq` quits and copies the selected path (relative to repo root) to the clipboard; `:pbfq` copies the full path instead.
 
 ### FZF
 
@@ -63,13 +63,13 @@ In Nushell there are keybindings:
 - `ctrl+f` to spawn fzf with Nushell history; after selecting, the command is inserted into the command line.
 - `alt+f` to spawn fzf with `^currently-entered-commandline`; the current command line is replaced with the selection.
 
-In fzf, `tab` and `shift-tab` select multiple commands. When multiple commands are selected, after hitting enter they will be placed delimited by `;\n`.
+In fzf, `tab` and `shift-tab` select multiple commands. On enter, selected commands are joined with `;\n`.
 
 ### Wezterm
 
 I use Wezterm for connecting to this environment. The settings can be found here.
 
-The killer feature of Wezterm is the `ctrl+shift+space` shortcut to highlight paths and Nushell's structured output elements for quick copying.
+Its killer feature is `ctrl+shift+space` — it highlights paths and Nushell's structured output elements for quick copying.
 
 I spawn Wezterm with this command:
 
@@ -79,11 +79,11 @@ I spawn Wezterm with this command:
 
 ### numd
 
-`numd` is a module for literate programming. It parses .md files with Nushell code blocks, executes them, captures the output, and updates the .md files.
+`numd` is a module for literate programming. `numd run <file>` parses Nushell code blocks in an `.md` file, executes them, and updates the file with captured output.
 
 ### dotnu
 
-`dotnu embeds` is another tool for literate programming. It parses Nushell scripts for `| print $in` lines, executes the whole script, captures the output, and pastes the results back into the `.nu` file with results commented as `# =>` just after the line that outputted them to the console.
+`dotnu embeds` is another module for literate programming. It executes a Nushell script, captures output from `| print $in` lines, and injects the results back into the `.nu` file as `# =>` comments after each corresponding line.
 
 ### claude-nu
 
