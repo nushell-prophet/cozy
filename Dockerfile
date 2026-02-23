@@ -27,6 +27,7 @@ RUN brew install jj \
 ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime \
     HOME=/home/agent
 
+COPY --chown=agent:agent .visidatarc /home/agent/.visidatarc
 COPY --chown=agent:agent nushell-autoload/ /tmp/nushell-autoload/
 COPY --chown=agent:agent vendor/ /tmp/vendor/
 COPY --chown=agent:agent toolkit.nu /home/agent/toolkit.nu
@@ -37,7 +38,8 @@ ENV XDG_CONFIG_HOME=$HOME/.config \
     XDG_DATA_HOME=$HOME/.local/share \
     XDG_CACHE_HOME=$HOME/.cache
 
-RUN broot --write-default-conf $XDG_CONFIG_HOME/broot
+RUN broot --write-default-conf $XDG_CONFIG_HOME/broot \
+    && broot --set-install-state installed
 
 ARG DOTFILES_CACHE_BUST
 RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/git/dotfiles \
