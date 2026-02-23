@@ -61,3 +61,5 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
     && rm -rf /tmp/vendor/ /tmp/nushell-autoload/
     # MCP server config: autoload/mcp-server.nu patches settings.json on first interactive nu
     # (sandbox create overwrites ~/.claude/settings.json with defaults)
+
+COPY --chown=agent:agent global-claude.md /home/agent/.claude/CLAUDE.md
