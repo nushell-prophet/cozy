@@ -62,4 +62,9 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
     # MCP server config: autoload/mcp-server.nu patches settings.json on first interactive nu
     # (sandbox create overwrites ~/.claude/settings.json with defaults)
 
+RUN echo 'export GIT_AUTHOR_NAME="Claude"' >> /etc/sandbox-persistent.sh \
+    && echo 'export GIT_AUTHOR_EMAIL="claude@anthropic.com"' >> /etc/sandbox-persistent.sh \
+    && echo 'export GIT_COMMITTER_NAME="Claude"' >> /etc/sandbox-persistent.sh \
+    && echo 'export GIT_COMMITTER_EMAIL="claude@anthropic.com"' >> /etc/sandbox-persistent.sh
+
 COPY --chown=agent:agent global-claude.md /home/agent/.claude/CLAUDE.md

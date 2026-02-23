@@ -50,6 +50,10 @@ In Helix, `+ s` (custom `+` menu, then `s`) copies the selected lines and wraps 
 </selected-text>
 ```
 
+### Git attribution
+
+Git environment variables (`GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL`) are set in `CLAUDE_ENV_FILE` (`/etc/sandbox-persistent.sh`), which is sourced only by Claude Code's bash tool. Commits made by Claude are attributed to `claude@anthropic.com`. These variables do not affect the user's interactive Nushell shell — if you configure your own git identity (via `git config user.name` / `git config user.email`), commands you run directly from the shell use your credentials.
+
 ### Lazygit
 
 Lazygit is a godsend interface for git that greatly simplifies everyday operations. Integrated into Zellij — `cmd+alt+l` opens it in a floating window for staging files and other git tasks. Uses git-delta for side-by-side diffs.
