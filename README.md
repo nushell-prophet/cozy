@@ -106,3 +106,11 @@ A Nushell toolbox for working with Claude Code sessions. Main commands:
 - `claude-nu download-documentation` — download Claude Code docs and Nushell docs (from the Nushell book) for offline use
 
 The environment also includes Claude Code skills for building Nushell completions and writing opinionated Nushell code.
+
+### nu-goodies
+
+A personal collection of everyday Nushell commands developed over time. In the AI context, two commands may be especially useful:
+
+- `example` — captures the last pipeline from history, runs it, and formats command + output as a copyable snippet (wraps output in `# =>` comments and the command in `nu -c '...'`)
+- `copy-out` — grabs commands with their output from Zellij pane scrollback and copies them to the clipboard (output lines are prefixed with `# =>`)
+
