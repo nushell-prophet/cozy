@@ -67,13 +67,22 @@ In fzf, `tab` and `shift-tab` select multiple commands. On enter, selected comma
 
 ### Wezterm
 
-I use Wezterm for connecting to this environment. The settings can be found here.
+I use Wezterm for connecting to this environment. The config is vendored at [vendor/dotfiles/wezterm/wezterm.lua](vendor/dotfiles/wezterm/wezterm.lua).
 
 Its killer feature is `ctrl+shift+space` — it highlights paths and Nushell's structured output elements for quick copying.
 
-I spawn Wezterm with this command:
+First, build the image and create a sandbox (run from the repo root):
 
-`wezterm start -- docker sandbox exec -it -w /Users/user/git/container nushell-ai-container nu -l --commands 'print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\"; zellij attach -c sandbox'`
+```sh
+docker build -t nushell-ai-sandbox:v1 .
+docker sandbox run --name nushell-ai-container --load-local-template -t nushell-ai-sandbox:v1 claude $PWD/example/ws
+```
+
+The last argument is the workspace directory. Files in it are synced bidirectionally between the host and the VM as changes happen. Replace `$PWD/example/ws` with your own project path. Inside the sandbox, the workspace is symlinked to `~/ws/` for convenience (see `nushell-autoload/module-imports.nu`).
+
+Then connect to the sandbox with Wezterm (the `-w` flag sets the working directory to the same workspace path):
+
+`wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua start -- docker sandbox exec -it -w $PWD/example/ws nushell-ai-container nu -l --commands 'print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\"; zellij attach -c sandbox'`
 
 ## Nushell modules
 

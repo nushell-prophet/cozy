@@ -1,4 +1,4 @@
-# Refresh vendored nushell modules from local ~/git/ repos into docker/vendor/
+# Refresh vendored modules and configs from local ~/git/ repos into vendor/
 # Run before `docker build` to update vendored copies.
 
 let docker_dir = $env.FILE_PWD
@@ -13,6 +13,7 @@ let modules = [
     [numd numd]
     [claude-nu claude-nu]
     [nu-cmd-stack cmd-stack]
+    [dotfiles wezterm]
 ]
 
 # Clean and recreate vendor dir
