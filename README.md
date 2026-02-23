@@ -28,8 +28,11 @@ Zellij is an extremely convenient and powerful terminal multiplexer.
 
 A new tab can be spawned via `cmd+t` and a new pane within the current tab via `cmd+n`.
 
+The default mode is locked — all keys pass through to the running application. `ctrl+shift+g` toggles between locked and normal mode (the standard `ctrl+g` is left free for applications like Claude Code).
+
 Shortcuts:
 
+- `ctrl+shift+g` — toggle Zellij locked/normal mode
 - `cmd+t` — new tab
 - `cmd+n` — new pane within current tab
 - `cmd+w` — close the currently selected pane (or a floating window like Helix and Broot, described below)
