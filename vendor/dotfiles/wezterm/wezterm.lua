@@ -169,6 +169,9 @@ config.keys = {
   { key = '0', mods = 'CMD',        action = wezterm.action.ResetFontSize },
   { key = 'q', mods = 'CMD',        action = wezterm.action.QuitApplication },
 
+  -- Shift+Enter: send kitty-encoded sequence so apps (Claude Code) can distinguish it from plain Enter
+  { key = 'Enter', mods = 'SHIFT',  action = wezterm.action.SendString '\x1b[13;2u' },
+
   -- cmd+shift+a
   { key = 'a', mods = 'CMD|SHIFT',  action = wezterm.action.SendString '\x1b[97;10u' },
   -- cmd+shift+b
