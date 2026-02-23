@@ -81,3 +81,7 @@ I spawn Wezterm with this command:
 ### claude-nu
 
 A fresh Claude convenience Nushell toolbox for parsing `claude` sessions and outputting their results in Nushell structured format.
+
+There are skills for building nushell completions and writing nushell code.
+
+There is a command for downloading `claude-code-docs` and `nushell-docs` (from Nushell book) for later use.
