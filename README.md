@@ -11,7 +11,7 @@ This is a work-in-progress educational project with video demos on the way.
 ### Docker sandbox
 
 My ai-sandbox is based on `docker sandbox`, so it is:
-- macOS and Windows compatible
+- macOS and Windows (experimental) compatible — the image provides both `arm64` and `amd64` architectures
 - isolated
 - convenient
 - with built-in AI agents (I personally tested it with `claude code`)
