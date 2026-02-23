@@ -58,47 +58,62 @@ export def "main ws init" []: nothing -> nothing {
     ^git config --global safe.directory '*'
 
     let repos = git-subdirs
-    let ignored = non-git-subdirs
-    let had_git = ('.git' | path exists)
+    if ($repos | is-empty) {
+        error make { msg: 'no git repos found in subdirectories' }
+    }
 
-    if not $had_git { ^git init }
+    let fresh = not ('.git' | path exists)
 
-    # .gitignore — regenerated from current state
-    [.DS_Store ...$ignored]
+    if $fresh {
+        ^git init
+    }
+
+    # find repos not yet registered as submodules
+    let existing = if $fresh { [] } else {
+        ^git submodule status
+        | lines
+        | each { $in | str trim | split row ' ' | get 1 }
+    }
+
+    let new_repos = $repos | where { $in not-in $existing }
+
+    if ($new_repos | is-empty) and (not $fresh) {
+        print 'Workspace up to date'
+        return
+    }
+
+    # .gitmodules — rebuild from all repos
+    $repos
+    | each {|name|
+        $'[submodule "($name)"]
+	path = ($name)
+	url = ./($name)'
+    }
+    | str join (char nl)
+    | save -f .gitmodules
+
+    # register new submodules
+    $new_repos | each {|name|
+        ^git config -f .git/config $'submodule.($name).url' $'./($name)'
+        ^git config -f .git/config $'submodule.($name).active' true
+        let commit = ^git -C $name rev-parse HEAD | str trim
+        ^git update-index --add --cacheinfo $'160000,($commit),($name)'
+    }
+
+    # .gitignore
+    [.DS_Store ...(non-git-subdirs)]
     | str join (char nl)
     | save -f .gitignore
 
-    if ($repos | is-not-empty) {
-        # .gitmodules — regenerated
-        $repos
-        | each {|name|
-            $'[submodule "($name)"]
-	path = ($name)
-	url = ./($name)'
-        }
-        | str join (char nl)
-        | save -f .gitmodules
-
-        # register each submodule
-        for name in $repos {
-            ^git config -f .git/config $'submodule.($name).url' $'./($name)'
-            ^git config -f .git/config $'submodule.($name).active' true
-            let commit = ^git -C $name rev-parse HEAD | str trim
-            ^git update-index --add --cacheinfo $'160000,($commit),($name)'
-        }
-
-        ^git add .gitmodules
-    }
-
-    ^git add .gitignore
+    ^git add .gitmodules .gitignore
     glob *.md | each { ^git add $in }
 
-    let staged = ^git diff --cached --name-only | str trim
-    if ($staged | is-not-empty) {
-        let msg = if $had_git { 'Update workspace' } else { 'Init workspace' }
-        ^git commit -m $msg
-        print $"($msg): ($repos | length) submodules, ($ignored | length) ignored dirs"
+    let msg = if $fresh {
+        'Init workspace'
     } else {
-        print "Workspace up to date"
+        $'Register submodules: ($new_repos | str join ", ")'
     }
+    ^git commit -m $msg
+
+    print $'Registered ($new_repos | length) submodules: ($new_repos | str join ", ")'
 }
