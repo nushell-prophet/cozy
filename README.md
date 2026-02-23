@@ -26,6 +26,16 @@ Nushell has built-in MCP functionality that allows AI agents to use all of its r
 
 Zellij is an extremely convenient and powerful terminal multiplexer.
 
+New tab can be spawned via `cmd+t` and a new pane within the current tab via `cmd+n`. New pane can be closed v
+
+Shortcuts:
+
+- `cmd+t` - new tab
+- `cmd+n` - new pane within current tab
+- `cmd+w` - close the currently selected pane (and a floating window like for heilx and broot, that are described below)
+- `cmd+h/j/k/l` - are used for navigating panes
+- `cmd+shift+j/k` - are used for navigating tabs
+
 ### Helix editor
 
 Helix is my terminal text editor. It plays nicely with Nushell and is quite newbie-friendly. In my environment, hitting `cmd+shift+e` opens the current pane's scrollback for editing in Helix, making it a breeze to copy contents.
