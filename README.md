@@ -80,8 +80,13 @@ I spawn Wezterm with this command:
 
 ### claude-nu
 
-A fresh Claude convenience Nushell toolbox for parsing `claude` sessions and outputting their results in Nushell structured format.
+A Nushell toolbox for working with Claude Code sessions. Main commands:
 
-There are skills for building nushell completions and writing nushell code.
+- `claude-nu messages` — extract user messages from sessions (supports filtering, multi-session search, and assistant responses)
+- `claude-nu sessions` — parse session files into structured summaries
+- `claude-nu parse-session` — detailed session analysis with selectable columns (file ops, tool stats, agents, etc.)
+- `claude-nu export-session` — export session dialogue as markdown
+- `claude-nu save-markdown` — save exported sessions to files
+- `claude-nu download-documentation` — download Claude Code docs and Nushell docs (from the Nushell book) for offline use
 
-There is a command for downloading `claude-code-docs` and `nushell-docs` (from Nushell book) for later use.
+The environment also includes Claude Code skills for building Nushell completions and writing opinionated Nushell code.
