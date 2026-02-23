@@ -1349,6 +1349,16 @@ export def 'escape-nushell-escapes' []: string -> string {
     str replace --all --regex '(\\|\"|\/|\(|\)|\{|\}|\$|\^|\#|\||\~)' '\$1'
 }
 
+# checks for toolkit.nu file in the dir, and puts into commandline `overlay use as tk`
+export def 'tt' --env [] {
+    if ('toolkit.nu' | path exists) {
+        commandline edit "overlay use 'toolkit.nu' --prefix as tk; commandline edit 'tk'"
+    } else {
+        print 'No toolkit.nu in the current folder. Here are the first 3 files:'
+        ls | first 3
+    }
+}
+
 ###file testcd.nu
 # Test helper for cd command
 export def --env 'testcd' [destination: path]: nothing -> nothing { cd $destination }
@@ -1529,6 +1539,91 @@ def 'last-commands' [
     | get command
     | str trim
     | str join '_'
+}
+
+###file copy-out.nu
+def 'completions-copy-out' []: nothing -> list<record<value: int, description: string>> {
+    let session = history session
+    let width = term size | get columns | $in - 5
+
+    open $nu.history-path
+    | query db "SELECT command_line FROM history WHERE session_id = ? ORDER BY id DESC LIMIT 20" -p [$session]
+    | get command_line
+    | enumerate
+    | each {|i|
+        {
+            value: ($i.index + 1)
+            description: ($i.item | str replace -a (char nl) '·' | str substring --grapheme-clusters 0..$width)
+        }
+    }
+}
+
+# Copy command(s) with output to clipboard from Zellij pane scrollback
+#
+# > copy-out 3     # from 3rd-to-last command through the last
+# > copy-out 3 1   # 3rd-to-last and last, separately
+export def 'copy-out' [
+    ...rest: int@completions-copy-out # Command indices (1 = last)
+    --echo (-e) # Return text instead of copying
+    --ansi (-a) # Keep ANSI escape codes
+    --no-comment (-C) # Don't comment output with # =>
+]: nothing -> any {
+    let indices = $rest | if ($in | is-empty) { [1] } else { }
+
+    let tmp = $nu.temp-dir | path join 'copy-out.txt'
+    zellij action dump-screen $tmp --full
+
+    let raw_lines = open $tmp | lines
+    let stripped = $raw_lines | each { ansi strip }
+
+    let prompts = $stripped
+    | enumerate
+    | where { $in.item =~ '^> ' }
+    | get index
+
+    let max_n = $indices | math max
+    if ($prompts | length) < ($max_n + 1) {
+        error make --unspanned {msg: $'Not enough commands in scrollback \(need ($max_n + 1) prompts\)'}
+    }
+
+    let reversed = $prompts | reverse
+    let output_lines = $raw_lines
+    | if $ansi { } else { each { ansi strip } }
+
+    if ($indices | length) == 1 {
+        # Single index: from that command through the current prompt
+        let start = $reversed | get ($indices | first)
+        let end = $reversed | get 0
+
+        $output_lines
+        | skip $start
+        | first ($end - $start)
+    } else {
+        # Multiple indices: each command separately, in given order
+        $indices
+        | each {|n|
+            let start = $reversed | get $n
+            let end = $reversed | get ($n - 1)
+
+            $output_lines
+            | skip $start
+            | first ($end - $start)
+            | str join (char nl)
+        }
+        | str join "\n\n"
+        | lines
+    }
+    | if $no_comment { } else {
+        each {
+            if ($in =~ '^> ') {
+                str replace -r '^> ' ''
+            } else if ($in | is-empty) {
+            } else { str c '# => ' $in }
+        }
+    }
+    | str join (char nl)
+    | str replace -ra '\n+$' ''
+    | if $echo { } else { pbcopy }
 }
 
 # Helper function to get all unique directories from command history
@@ -2011,7 +2106,6 @@ export def find-root [dir?: path]: [nothing -> path nothing -> nothing] {
 export def --env cd-root [dir?: path]: [nothing -> nothing] {
     cd (find-root)
 }
-
 
 # Rename Zellij tab, auto-incrementing duplicates
 export def rename-tab [name: string = '']: nothing -> nothing {
