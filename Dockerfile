@@ -26,6 +26,8 @@ RUN brew install jj \
 
 ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime \
     HOME=/home/agent \
+    TERM=xterm-256color \
+    COLORTERM=truecolor \
     TERM_PROGRAM=WezTerm
 
 COPY --chown=agent:agent .visidatarc /home/agent/.visidatarc
