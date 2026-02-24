@@ -32,7 +32,7 @@ Sets `git config --global safe.directory '*'` — intentional for sandboxed envi
 Exports Nushell's SQLite history database to a timestamped `.nuon` file. Reads the database directly, so it works from any context (interactive shell, scripts, `nu -c`).
 
 ```nushell
-use toolkit.nu; toolkit history export                    # default: ~/mounted/sandbox-state/history-<timestamp>.nuon
+use toolkit.nu; toolkit history export                    # default: ~/workspace/mounted/sandbox-state/history-<timestamp>.nuon
 use toolkit.nu; toolkit history export ./my-history.nuon  # custom path
 ```
 

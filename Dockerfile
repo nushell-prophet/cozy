@@ -74,3 +74,4 @@ RUN echo 'export GIT_AUTHOR_NAME="Claude"' >> /etc/sandbox-persistent.sh \
     && echo 'export JJ_CONFIG="$HOME/.config/jj/jj-config-claude-ai.toml"' >> /etc/sandbox-persistent.sh
 
 COPY --chown=agent:agent global-claude.md /home/agent/.claude/CLAUDE.md
+COPY --chown=agent:agent README.md /home/agent/workspace/README.md

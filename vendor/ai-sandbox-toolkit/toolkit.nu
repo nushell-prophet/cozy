@@ -160,7 +160,7 @@ export def "main history" [] { help "main history" }
 
 const history_db = '~/.config/nushell/history.sqlite3'
 const history_columns = "command_line, cwd, start_timestamp, duration_ms, exit_status"
-const sandbox_state_dir = '~/mounted/sandbox-state'
+const sandbox_state_dir = '~/workspace/mounted/sandbox-state'
 
 def sandbox-state-path [filename: string]: nothing -> path {
     let dir = $sandbox_state_dir | path expand
@@ -175,7 +175,7 @@ def sandbox-state-path [filename: string]: nothing -> path {
 # No login shell (`nu -l`) required.
 # Each export gets a timestamped filename; latest symlink always points to the most recent.
 export def "main history export" [
-    path?: path  # Output file (default: ~/mounted/sandbox-state/history-<timestamp>.nuon)
+    path?: path  # Output file (default: ~/workspace/mounted/sandbox-state/history-<timestamp>.nuon)
 ]: nothing -> nothing {
     let out = $path | default (sandbox-state-path $"history-(date now | format date '%Y%m%d-%H%M%S').nuon")
     let db = $history_db | path expand
@@ -202,7 +202,7 @@ export def "main history export" [
 # command_line, cwd, start_timestamp, duration_ms, exit_status.
 # Without a path, imports from the latest export via the history-latest.nuon symlink.
 export def "main history import" [
-    path?: path  # Input file (default: ~/mounted/sandbox-state/history-latest.nuon)
+    path?: path  # Input file (default: ~/workspace/mounted/sandbox-state/history-latest.nuon)
 ]: nothing -> nothing {
     let src = $path | default (sandbox-state-path 'history-latest.nuon')
     if not ($src | path exists) {

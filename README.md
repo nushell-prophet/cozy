@@ -92,11 +92,11 @@ docker build -t nushell-ai-sandbox:v1 .
 docker sandbox run --name nushell-ai-container --load-local-template -t nushell-ai-sandbox:v1 claude example/ws
 ```
 
-The last argument is the workspace directory. Files in it are synced bidirectionally between the host and the VM as changes happen. Replace `example/ws` with your own project path. Inside the sandbox, the workspace is symlinked to `~/mounted/` for convenience (see `nushell-autoload/module-imports.nu`).
+The last argument is the workspace directory. Files in it are synced bidirectionally between the host and the VM as changes happen. Replace `example/ws` with your own project path. Inside the sandbox, the workspace is symlinked to `~/workspace/mounted/` for convenience (see `nushell-autoload/module-imports.nu`).
 
-Then connect to the sandbox with Wezterm (`/home/agent/mounted` is a symlink to whichever workspace you mounted):
+Then connect to the sandbox with Wezterm (`/home/agent/workspace/mounted` is a symlink to whichever workspace you mounted):
 
-`wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua start -- docker sandbox exec -it -w /home/agent/mounted nushell-ai-container nu -l --commands 'print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\"; zellij attach -c sandbox'`
+`wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua start -- docker sandbox exec -it -w /home/agent/workspace/mounted nushell-ai-container nu -l --commands 'print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\"; zellij attach -c sandbox'`
 
 ## Nushell modules
 
