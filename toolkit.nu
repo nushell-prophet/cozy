@@ -21,16 +21,29 @@ export def "main sync-repos" [] {
         }
 
         if ($dir | path join '.git' | path exists) {
-            print $"  (ansi green)($name)(ansi reset): pulling"
-            cd $dir; ^git pull --ff-only
+            cd $dir
+            let branch = ^git remote show origin | lines | where { $in =~ 'HEAD branch:' } | first | str replace -r '.*HEAD branch:\s*' ''
+            let current = ^git branch --show-current | str trim
+            if $current != $branch {
+                print $"  (ansi cyan)($name)(ansi reset): switching ($current) → ($branch)"
+                ^git fetch origin
+                ^git clean -fd
+                ^git checkout -f -B $branch $"origin/($branch)"
+                ^git branch -u $"origin/($branch)"
+            } else {
+                print $"  (ansi green)($name)(ansi reset): pulling"
+                ^git pull --ff-only
+            }
         } else {
             print $"  (ansi cyan)($name)(ansi reset): init + fetch"
             cd $dir
             ^git init -b main
             ^git remote add origin $url
             ^git fetch origin
-            ^git reset --hard origin/main
-            ^git branch -u origin/main
+            let branch = ^git remote show origin | lines | where { $in =~ 'HEAD branch:' } | first | str replace -r '.*HEAD branch:\s*' ''
+            ^git reset --hard $"origin/($branch)"
+            ^git branch -M $branch
+            ^git branch -u $"origin/($branch)"
         }
     }
     | ignore
