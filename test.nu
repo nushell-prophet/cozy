@@ -40,7 +40,7 @@ const files = [
     "/home/agent/.config/nushell/autoload/my_nu_completions.nu"
     "/home/agent/.config/nushell/autoload/standard_4002_aliasses.nu"
     "/home/agent/.config/nushell/autoload/mcp-server.nu"
-    "/home/agent/.claude/settings.json"
+    "/home/agent/.claude.json"
     "/home/agent/toolkit.nu"
 ]
 
@@ -200,9 +200,9 @@ def check-config []: nothing -> list {
     # Run the autoload script explicitly (nu -c doesn't process autoload), then verify
     let mcp = try {
         exec nu /home/agent/.config/nushell/autoload/mcp-server.nu | ignore
-        let json = exec cat /home/agent/.claude/settings.json | from json
+        let json = exec cat /home/agent/.claude.json | from json
         let cmd = $json | get --optional mcpServers.nushell.command
-        if $cmd == "nu" {
+        if ($cmd | default "" | str ends-with "nu") {
             ok "mcp: nushell" "autoload patched"
         } else if $cmd == null {
             fail "mcp: nushell" "autoload script did not patch settings.json"

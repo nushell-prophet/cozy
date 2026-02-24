@@ -9,7 +9,7 @@ $env.config.hooks = {
                 # code: "overlay hide --keep-env [ PWD ] toolkit"
             }
             {
-                # seems like the hook below is reducndant as env_change presupposes change
+                # seems like the hook below is redundant as env_change presupposes change
                 # condition: {|_, after| $_ != null}
                 code: "if $env.ZELLIJ_SESSION_NAME? != null {
                             let pwd = pwd | path basename;
