@@ -14,6 +14,7 @@ let modules = [
     [claude-nu claude-nu]
     [nu-cmd-stack cmd-stack]
     [dotfiles wezterm]
+    [dotfiles "zellij/todo-nu"]
 ]
 
 # Clean and recreate vendor dir
@@ -29,7 +30,7 @@ for $m in $modules {
         continue
     }
 
-    mkdir ($vendor_dir | path join $m.repo)
+    mkdir ($dst | path dirname)
     ^rsync -a --exclude='.git' --exclude='.DS_Store' --exclude='lazytests' --exclude='md_backups' --exclude='zzz_md_backups' $"($src)/" $"($dst)/"
     print $"(ansi green)Copied:(ansi reset) ($m.repo)/($m.module)"
 }

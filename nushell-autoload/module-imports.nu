@@ -13,3 +13,5 @@ overlay use ~/git/dotnu/dotnu --prefix
 overlay use ~/git/numd/numd --prefix
 
 use ~/git/claude-nu/claude-nu/
+
+use ~/.config/zellij/todo-nu/todo.nu lstd
