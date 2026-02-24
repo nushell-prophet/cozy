@@ -78,6 +78,13 @@ I use Wezterm for connecting to this environment. The config is vendored at [ven
 
 Its killer feature is `ctrl+shift+space` — it highlights paths and Nushell's structured output elements for quick copying.
 
+Changes from WezTerm defaults:
+
+- **Shell**: launches Nushell with Zellij instead of the system default shell
+- **Keybindings**: all defaults disabled; CMD+SHIFT+letter sends kitty-protocol escape sequences so Zellij and apps behind it can distinguish them
+- **QuickSelect patterns**: custom regexes for jj change IDs, Nushell error paths (`╭─[file:line:col]`), Nushell table headers/values, and filesystem paths
+- **Dynamic modes**: `ZEN_MODE` / `SANDBOX_MODE` user variables adjust font size and background at runtime
+
 First, build the image and create a sandbox (run from the repo root):
 
 ```sh
