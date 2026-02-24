@@ -9,6 +9,14 @@ const repos = {
     nu-cmd-stack: "https://github.com/nushell-prophet/nu-cmd-stack.git"
 }
 
+def remote-head-branch []: nothing -> string {
+    ^git remote show origin
+    | lines
+    | where { $in =~ 'HEAD branch:' }
+    | first
+    | str replace -r '.*HEAD branch:\s*' ''
+}
+
 # Convert vendor directories to git repos if needed, pull latest from all
 export def "main sync-repos" [--force (-f)] {
     let base = $nu.home-dir | path join git
@@ -22,7 +30,10 @@ export def "main sync-repos" [--force (-f)] {
 
         if ($dir | path join '.git' | path exists) {
             cd $dir
-            let branch = ^git remote show origin | lines | where { $in =~ 'HEAD branch:' } | first | str replace -r '.*HEAD branch:\s*' ''
+            let branch = try { remote-head-branch } catch {
+                print $"  (ansi yellow)($name)(ansi reset): cannot reach remote, skipping"
+                return
+            }
             let current = ^git branch --show-current | str trim
             if $current != $branch {
                 let dirty = (^git status --porcelain | str trim) != ''
@@ -45,7 +56,10 @@ export def "main sync-repos" [--force (-f)] {
             ^git init -b main
             ^git remote add origin $url
             ^git fetch origin
-            let branch = ^git remote show origin | lines | where { $in =~ 'HEAD branch:' } | first | str replace -r '.*HEAD branch:\s*' ''
+            let branch = try { remote-head-branch } catch {
+                print $"  (ansi yellow)($name)(ansi reset): cannot detect remote HEAD branch, skipping"
+                return
+            }
             ^git reset --hard $"origin/($branch)"
             ^git branch -M $branch
             ^git branch -u $"origin/($branch)"
