@@ -25,7 +25,8 @@ RUN brew install jj \
     && brew cleanup --prune=all
 
 ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime \
-    HOME=/home/agent
+    HOME=/home/agent \
+    TERM_PROGRAM=WezTerm
 
 COPY --chown=agent:agent .visidatarc /home/agent/.visidatarc
 COPY --chown=agent:agent nushell-autoload/ /tmp/nushell-autoload/
@@ -65,6 +66,6 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
 RUN echo 'export GIT_AUTHOR_NAME="Claude"' >> /etc/sandbox-persistent.sh \
     && echo 'export GIT_AUTHOR_EMAIL="claude@anthropic.com"' >> /etc/sandbox-persistent.sh \
     && echo 'export GIT_COMMITTER_NAME="Claude"' >> /etc/sandbox-persistent.sh \
-    && echo 'export GIT_COMMITTER_EMAIL="claude@anthropic.com"' >> /etc/sandbox-persistent.sh
+    && echo 'export GIT_COMMITTER_EMAIL="claude@anthropic.com"' >> /etc/sandbox-persistent.sh \
 
 COPY --chown=agent:agent global-claude.md /home/agent/.claude/CLAUDE.md
