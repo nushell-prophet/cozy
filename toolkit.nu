@@ -10,7 +10,7 @@ const repos = {
 }
 
 # Convert vendor directories to git repos if needed, pull latest from all
-export def "main sync-repos" [] {
+export def "main sync-repos" [--force (-f)] {
     let base = $nu.home-dir | path join git
 
     $repos | items {|name url|
@@ -25,6 +25,11 @@ export def "main sync-repos" [] {
             let branch = ^git remote show origin | lines | where { $in =~ 'HEAD branch:' } | first | str replace -r '.*HEAD branch:\s*' ''
             let current = ^git branch --show-current | str trim
             if $current != $branch {
+                let dirty = (^git status --porcelain | str trim) != ''
+                if $dirty and not $force {
+                    print $"  (ansi red)($name)(ansi reset): has local changes, skipping branch switch ($current) → ($branch) \(use --force to override)"
+                    return
+                }
                 print $"  (ansi cyan)($name)(ansi reset): switching ($current) → ($branch)"
                 ^git fetch origin
                 ^git clean -fd
