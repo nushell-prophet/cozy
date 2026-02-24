@@ -47,6 +47,11 @@ export def "main sync-repos" [--force (-f)] {
                 ^git checkout -f -B $branch $"origin/($branch)"
                 ^git branch -u $"origin/($branch)"
             } else {
+                let dirty = (^git status --porcelain | str trim) != ''
+                if $dirty {
+                    print $"  (ansi yellow)($name)(ansi reset): has local changes, skipping pull"
+                    return
+                }
                 print $"  (ansi green)($name)(ansi reset): pulling"
                 ^git pull --ff-only
             }
