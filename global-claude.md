@@ -51,4 +51,4 @@ A Nushell MCP server is registered in `~/.claude.json`. It provides `eval`, `lis
 
 - Outbound network is firewalled — request domain access if needed
 - Docker socket is available for container operations
-- Home directory is at `/home/agent`; symlink `~/ws` points to the workspace
+- Home directory is at `/home/agent`; symlink `~/mounted` points to the workspace
