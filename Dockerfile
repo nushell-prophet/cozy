@@ -60,8 +60,11 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
     fi \
     && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/ \
     && rm -rf /tmp/vendor/ /tmp/nushell-autoload/
-    # MCP server config: autoload/mcp-server.nu patches settings.json on first interactive nu
-    # (sandbox create overwrites ~/.claude/settings.json with defaults)
+
+# Register nushell MCP server in Claude Code user config (~/.claude.json).
+# autoload/mcp-server.nu self-heals if sandbox create overwrites the file.
+RUN claude mcp add --scope user --transport stdio nushell -- \
+        /home/linuxbrew/.linuxbrew/bin/nu --mcp
 
 RUN echo 'export GIT_AUTHOR_NAME="Claude"' >> /etc/sandbox-persistent.sh \
     && echo 'export GIT_AUTHOR_EMAIL="claude@anthropic.com"' >> /etc/sandbox-persistent.sh \
