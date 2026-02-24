@@ -154,3 +154,64 @@ export def "main ws init" []: nothing -> nothing {
 
     print $'Registered ($new_repos | length) submodules: ($new_repos | str join ", ")'
 }
+
+export def "main history" [] { help "main history" }
+
+const history_db = '~/.config/nushell/history.sqlite3'
+const history_columns = "command_line, cwd, start_timestamp, duration_ms, exit_status"
+
+# Export nushell history to a nuon file.
+#
+# Reads the sqlite database directly, so it works from any context:
+# interactive shell, `nu -c`, scripts, or the Bash tool.
+# No login shell (`nu -l`) required.
+export def "main history export" [
+    path?: path  # Output file (default: history.nuon in current dir)
+]: nothing -> nothing {
+    let out = $path | default 'history.nuon'
+    let db = $history_db | path expand
+    if not ($db | path exists) {
+        error make { msg: $"history database not found: ($db)" }
+    }
+    let items = open $db | query db $"SELECT ($history_columns) FROM history ORDER BY id"
+    if ($items | is-empty) {
+        print 'No history items to export'
+        return
+    }
+    $items | save --force $out
+    print $"Exported ($items | length) history items to ($out)"
+}
+
+# Import nushell history from a nuon file.
+#
+# Inserts directly into the sqlite database, so it works from any context.
+# The file should contain a table with columns:
+# command_line, cwd, start_timestamp, duration_ms, exit_status.
+export def "main history import" [
+    path?: path  # Input file (default: history.nuon in current dir)
+]: nothing -> nothing {
+    let src = $path | default 'history.nuon'
+    if not ($src | path exists) {
+        error make { msg: $"file not found: ($src)" }
+    }
+    let db = $history_db | path expand
+    if not ($db | path exists) {
+        error make { msg: $"history database not found: ($db)" }
+    }
+    let items = open $src
+    if ($items | is-empty) {
+        print 'No history items to import'
+        return
+    }
+    $items | each {|row|
+        open $db
+        | query db $"INSERT INTO history \(($history_columns)\) VALUES \(?, ?, ?, ?, ?)" --params [
+            $row.command_line
+            $row.cwd
+            $row.start_timestamp
+            $row.duration_ms
+            $row.exit_status
+        ]
+    } | ignore
+    print $"Imported ($items | length) history items"
+}
