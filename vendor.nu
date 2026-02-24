@@ -7,6 +7,7 @@ let git_dir = $nu.home-dir | path join git
 
 let modules = [
     [repo module];
+    [ai-sandbox-toolkit .]
     [nu-goodies nu-goodies]
     [nushell-kv kv]
     [dotnu dotnu]
@@ -30,7 +31,7 @@ for $m in $modules {
         continue
     }
 
-    mkdir ($dst | path dirname)
+    mkdir $dst
     ^rsync -a --exclude='.git' --exclude='.DS_Store' --exclude='lazytests' --exclude='md_backups' --exclude='zzz_md_backups' $"($src)/" $"($dst)/"
     print $"(ansi green)Copied:(ansi reset) ($m.repo)/($m.module)"
 }

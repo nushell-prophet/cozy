@@ -31,7 +31,6 @@ ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime \
 COPY --chown=agent:agent .visidatarc /home/agent/.visidatarc
 COPY --chown=agent:agent nushell-autoload/ /tmp/nushell-autoload/
 COPY --chown=agent:agent vendor/ /tmp/vendor/
-COPY --chown=agent:agent toolkit.nu /home/agent/toolkit.nu
 
 RUN mkdir ~/git
 
@@ -49,7 +48,8 @@ RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/git/dotfiles 
 
 ARG MODULES_SOURCE=vendor
 RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
-      git clone https://github.com/nushell-prophet/nu-goodies.git ~/git/nu-goodies \
+      git clone https://github.com/nushell-prophet/ai-sandbox-toolkit.git ~/git/ai-sandbox-toolkit \
+      && git clone https://github.com/nushell-prophet/nu-goodies.git ~/git/nu-goodies \
       && git clone https://github.com/nushell-prophet/nu-kv.git ~/git/nushell-kv \
       && git clone https://github.com/nushell-prophet/dotnu.git ~/git/dotnu \
       && git clone https://github.com/nushell-prophet/numd.git ~/git/numd \
@@ -58,6 +58,7 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
     else \
       cp -r /tmp/vendor/* ~/git/; \
     fi \
+    && ln -s ~/git/ai-sandbox-toolkit/toolkit.nu ~/toolkit.nu \
     && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/ \
     && rm -rf /tmp/vendor/ /tmp/nushell-autoload/
 

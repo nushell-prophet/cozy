@@ -45,6 +45,7 @@ const files = [
 ]
 
 const dirs = [
+    "/home/agent/git/ai-sandbox-toolkit"
     "/home/agent/git/nu-goodies"
     "/home/agent/git/nushell-kv"
     "/home/agent/git/dotnu"
