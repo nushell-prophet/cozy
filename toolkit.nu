@@ -85,12 +85,12 @@ def non-git-subdirs []: nothing -> list<string> {
     | get name
 }
 
-export def "main ws" [] { help "main ws" }
+export def "main mount" [] { help "main mount" }
 
 # Idempotent git init for multi-repo workspaces.
 # Registers git subdirs as submodules, ignores non-git subdirs.
 # Safe to re-run after adding new dirs.
-export def "main ws init" []: nothing -> nothing {
+export def "main mount init" []: nothing -> nothing {
     # sandbox mounts have different ownership — trust all dirs
     ^git config --global safe.directory '*'
 
