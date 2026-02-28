@@ -15,7 +15,7 @@ let modules = [
     [claude-nu claude-nu]
     [nu-cmd-stack cmd-stack]
     [dotfiles wezterm]
-    [dotfiles "zellij/todo-nu"]
+    [dotfiles zellij]
 ]
 
 # Clean and recreate vendor dir
