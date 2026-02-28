@@ -1421,29 +1421,8 @@ export def 'transcribe' [file: path]: nothing -> nothing {
 
 ###file wez-to-ansi.nu
 # Capture recent commands from Wezterm scrollback with ANSI codes
-export def 'wez-to-ansi' [
-    n_last_commands: int = 2 # Number of recent commands (and outputs) to capture.
-    --regex: string = '^>' # Regex to separate prompts from outputs. Default is ''.
-    --lines-before-top-of-term: int = 100 # Lines from top of scrollback in Wezterm to capture.
-    --min-term-width: int = 0 # Minimum output width (pads with spaces)
-]: nothing -> string {
-
-    # let regex = '^' + (ansi green_italic) + '>'
-
-    ^wezterm cli get-text --escapes --start-line ($lines_before_top_of_term * -1)
-    | str replace -a $"\n(ansi blue_bold)> " "\n>"
-    | str replace -ra '(\r|\n)+$' ''
-    | inspect
-    | lines
-    | skip until {|i| $i =~ $regex }
-    | split list --regex $regex
-    | drop
-    | last $n_last_commands
-    | flatten
-    | if $min_term_width == 0 { } else {
-        prepend (seq 1 $min_term_width | each { ' ' } | str join)
-    }
-    | str join (char nl)
+export def 'wez-to-ansi' []: nothing -> string {
+    ^wezterm cli get-text --escapes
 }
 
 # Record Wezterm session to asciicast format
@@ -1515,13 +1494,10 @@ export def 'wez-to-png' [
         | path join $filename
     }
 
-    let out = wez-to-ansi $n_last_commands
+    let out = wez-to-ansi
 
-    $out | freeze --config user -o ($output_path | str replace -a '.png' '.svg')
-    $out | freeze --config user -o ($output_path | str replace -a '.png' '.webp')
-    $out | freeze --config user -o $output_path
     $out | save -f ($output_path | str replace -a '.png' '.ans')
-    # | to png $output_path
+    ($out | to png $output_path --font IosevkaFont)
 
     ^open -R $output_path
 }
@@ -1624,6 +1600,72 @@ export def 'copy-out' [
     | str join (char nl)
     | str replace -ra '\n+$' ''
     | if $echo { } else { pbcopy }
+}
+
+# Capture commands from Zellij pane scrollback and render to PNG
+#
+# > zellij-to-png 3     # from 3rd-to-last command through the last
+# > zellij-to-png 3 1   # 3rd-to-last and last, separately
+export def 'zellij-to-png' [
+    ...rest: int@completions-copy-out # Command indices (1 = last)
+    --output-path: path = '' # Path for saving output image
+]: nothing -> nothing {
+    let indices = $rest | if ($in | is-empty) { [1] } else { }
+
+    let tmp = $nu.temp-dir | path join 'zellij-to-png.txt'
+    zellij action dump-screen $tmp --full
+
+    let raw_lines = open $tmp | lines
+    let stripped = $raw_lines | each { ansi strip }
+
+    let prompts = $stripped
+    | enumerate
+    | where { $in.item =~ '^> ' }
+    | get index
+
+    let max_n = $indices | math max
+    if ($prompts | length) < ($max_n + 1) {
+        error make --unspanned {msg: $'Not enough commands in scrollback \(need ($max_n + 1) prompts\)'}
+    }
+
+    let reversed = $prompts | reverse
+
+    let out = if ($indices | length) == 1 {
+        let start = $reversed | get ($indices | first)
+        let end = $reversed | get 0
+
+        $raw_lines
+        | skip $start
+        | first ($end - $start)
+    } else {
+        $indices
+        | each {|n|
+            let start = $reversed | get $n
+            let end = $reversed | get ($n - 1)
+
+            $raw_lines
+            | skip $start
+            | first ($end - $start)
+        }
+        | flatten
+    }
+    | str join (char nl)
+
+    let output_path = $output_path
+    | if $in != '' { } else {
+        let filename = last-commands ($indices | math max)
+        | to-safe-filename --prefix 'zel-out-' --suffix '.png' --date
+
+        ['/Users/user/temp/freeze_images/' (pwd | path split | last)]
+        | path join
+        | $'($in)(mkdir $in)'
+        | path join $filename
+    }
+
+    $out | save -f ($output_path | str replace -a '.png' '.ans')
+    ($out | to png $output_path --font IosevkaFont)
+
+    ^open -R $output_path
 }
 
 # Helper function to get all unique directories from command history
@@ -2022,55 +2064,6 @@ export def 'fs' [...files: path@completions-files-modified]: nothing -> any {
     | if ($in | length) == 1 {
         first
     } else { }
-}
-
-# Retrieve LLM conversation messages by hash suffix
-export def 'llm message' [
-    ...rest: string@completions-llm-message
-]: nothing -> string {
-    let dict = llm-open-log
-
-    $rest
-    | parse -r '(.{4})$'
-    | get capture0
-    | each {|i|
-        $dict
-        | where 'content-hash' == $i
-        | last | get content
-    }
-    | str join "\n\n---\n\n"
-}
-
-# Load and deduplicate LLM conversation log
-export def 'llm-open-log' []: nothing -> table {
-    open ~/short_log.yaml
-    | uniq-by content-hash
-    | sort-by timestamp -r
-}
-
-# Generate completions for llm message command
-export def 'completions-llm-message' [
-    --first: int = 200
-]: nothing -> record {
-    llm-open-log
-    | each {|i|
-        $i.content
-        | str replace -ar (char nl) '·' | str substring --grapheme-clusters 0..(
-            term size | get columns | $in - 19
-        )
-        | str c $in $i.content-hash
-        | str replace -a '"' "'"
-        | to nuon
-    }
-    | {
-        options: {
-            case_sensitive: false
-            completion_algorithm: fuzzy
-            positional: false
-            sort: false
-        }
-        completions: $in
-    }
 }
 
 # Concatenate rest parameters into a string

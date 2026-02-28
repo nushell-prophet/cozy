@@ -256,7 +256,7 @@ export def decorate-original-code-blocks [
     | insert code {|i|
         $i.line
         | process-code-block-content ($i.row_type | extract-fence-options)
-        | generate-block-markers $i.block_index ($i.row_type | str replace 'run-once' 'no-run' | str replace -r '\b1\b' 'no-run')
+        | generate-block-markers $i.block_index $i.row_type
     }
 }
 
@@ -422,7 +422,6 @@ const fence_options = [
     [t try "execute block inside `try {}` for error handling"]
     [n new-instance "execute block in new Nushell instance (useful with `try` block)"]
     [s separate-block "output results in a separate code block instead of inline `# =>`"]
-    [1 run-once "execute code block once, then set to no-run"]
 ]
 
 # List fence options for execution and output customization.
@@ -649,7 +648,7 @@ export def generate-block-markers [
 }
 
 # Parse options from a code fence and return them as a list.
-@example "parse fence options with short forms" { '```nu no-run, t' | extract-fence-options } --result [no-run try]
+@example "parse fence options with short forms" { '```nu no-run, t' | extract-fence-options } --result [no-run, try]
 export def extract-fence-options []: string -> list<string> {
     str replace -r '```nu(shell)?\s*' ''
     | split row ','
