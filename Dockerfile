@@ -61,7 +61,7 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
       cp -r /tmp/vendor/* ~/git/; \
     fi \
     && mkdir -p ~/workspace \
-    && ln -s ~/git/ai-sandbox-toolkit/toolkit.nu ~/workspace/toolkit.nu \
+    && ln -s ~/git/ai-sandbox-toolkit ~/workspace/ai-sandbox-toolkit \
     && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/ \
     && rm -rf /tmp/vendor/ /tmp/nushell-autoload/
 
