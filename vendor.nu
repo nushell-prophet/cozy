@@ -1,11 +1,7 @@
 # Refresh vendored modules and configs from local ~/git/ repos into vendor/
 # Run before `docker build` to update vendored copies.
 
-let docker_dir = $env.FILE_PWD
-let vendor_dir = $docker_dir | path join vendor
-let git_dir = $nu.home-dir | path join git
-
-let modules = [
+const modules = [
     [repo module];
     [ai-sandbox-toolkit .]
     [nu-goodies nu-goodies]
@@ -18,20 +14,25 @@ let modules = [
     [dotfiles zellij]
 ]
 
-# Clean and recreate vendor dir
-rm -rf $vendor_dir
-mkdir $vendor_dir
+export def main [] {
+    let vendor_dir = pwd | path join vendor
+    let git_dir = $nu.home-dir | path join git
 
-for $m in $modules {
-    let src = $git_dir | path join $m.repo $m.module
-    let dst = $vendor_dir | path join $m.repo $m.module
+    # Clean and recreate vendor dir
+    rm -rf $vendor_dir
+    mkdir $vendor_dir
 
-    if not ($src | path exists) {
-        print $"(ansi red)Missing:(ansi reset) ($src)"
-        continue
+    for $m in $modules {
+        let src = $git_dir | path join $m.repo $m.module
+        let dst = $vendor_dir | path join $m.repo $m.module
+
+        if not ($src | path exists) {
+            print $"(ansi red)Missing:(ansi reset) ($src)"
+            continue
+        }
+
+        mkdir $dst
+        ^rsync -a --exclude='.git' --exclude='.DS_Store' --exclude='lazytests' --exclude='md_backups' --exclude='zzz_md_backups' $"($src)/" $"($dst)/"
+        print $"(ansi green)Copied:(ansi reset) ($m.repo)/($m.module)"
     }
-
-    mkdir $dst
-    ^rsync -a --exclude='.git' --exclude='.DS_Store' --exclude='lazytests' --exclude='md_backups' --exclude='zzz_md_backups' $"($src)/" $"($dst)/"
-    print $"(ansi green)Copied:(ansi reset) ($m.repo)/($m.module)"
 }
