@@ -24,11 +24,14 @@ def "main sandbox" [] { help main sandbox }
 def "main sandbox build" [
     --image (-i): string = "nushell-ai-sandbox" # image name
     --path (-p): path # Dockerfile directory
-    --recreate # skip sandbox recreation
+    --recreate: string@"nu-complete sandbox names" # recreate a specific sandbox
+    --recreate-all # recreate all sandboxes
 ] {
     let dir = $path | default $env.FILE_PWD
 
-    let sandboxes = if $recreate {
+    let sandboxes = if $recreate != null {
+        sandboxes | where name == $recreate | select name workspaces
+    } else if $recreate_all {
         sandboxes | select name workspaces
     } else { [] }
 
