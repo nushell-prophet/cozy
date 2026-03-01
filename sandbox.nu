@@ -18,10 +18,10 @@ def "nu-complete sandbox names" []: nothing -> list<record<value: string, descri
     sandboxes | each {|x| {value: $x.name description: $"($x.agent) ($x.status)"} }
 }
 
-def "main sandbox" [] { help main sandbox }
+export def main [] { help sandbox }
 
 # Build Docker image with auto-incremented vN tag, recreate existing sandboxes
-def "main sandbox build" [
+export def build [
     --image (-i): string = "nushell-ai-sandbox" # image name
     --path (-p): path # Dockerfile directory
     --recreate: string@"nu-complete sandbox names" # recreate a specific sandbox
@@ -54,7 +54,7 @@ def "main sandbox build" [
 }
 
 # Run sandbox with latest image tag
-def "main sandbox run" [
+export def run [
     project_path?: path # project to mount (default: $PWD)
     --image (-i): string = "nushell-ai-sandbox" # image name
 ] {
@@ -75,20 +75,18 @@ def "main sandbox run" [
 }
 
 # List sandboxes as a table
-def "main sandbox ls" [] { sandboxes }
+export def ls [] { sandboxes }
 
 # Stop sandbox(es)
-def "main sandbox stop" [
+export def stop [
     ...name: string@"nu-complete sandbox names"
 ] {
     ^docker sandbox stop ...$name
 }
 
 # Remove sandbox(es)
-def "main sandbox rm" [
+export def rm [
     ...name: string@"nu-complete sandbox names"
 ] {
     ^docker sandbox rm ...$name
 }
-
-def main [] { help main }
