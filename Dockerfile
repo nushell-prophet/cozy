@@ -9,7 +9,7 @@ RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/*.sources /etc/apt/sou
         file \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --chmod=755 pbcopy /usr/local/bin/pbcopy
+COPY --chmod=755 docker-files/pbcopy /usr/local/bin/pbcopy
 
 USER agent
 
@@ -30,7 +30,7 @@ ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime \
     COLORTERM=truecolor \
     TERM_PROGRAM=WezTerm
 
-COPY --chown=agent:agent .visidatarc /home/agent/.visidatarc
+COPY --chown=agent:agent docker-files/.visidatarc /home/agent/.visidatarc
 COPY --chown=agent:agent nushell-autoload/ /tmp/nushell-autoload/
 COPY --chown=agent:agent vendor/ /tmp/vendor/
 
@@ -77,5 +77,5 @@ RUN echo 'export GIT_AUTHOR_NAME="Claude"' >> /etc/sandbox-persistent.sh \
     && echo 'export GIT_COMMITTER_EMAIL="claude@anthropic.com"' >> /etc/sandbox-persistent.sh \
     && echo 'export JJ_CONFIG="$HOME/.config/jj/jj-config-claude-ai.toml"' >> /etc/sandbox-persistent.sh
 
-COPY --chown=agent:agent global-claude.md /home/agent/.claude/CLAUDE.md
+COPY --chown=agent:agent docker-files/global-claude.md /home/agent/.claude/CLAUDE.md
 COPY --chown=agent:agent README.md /home/agent/workspace/README.md
