@@ -10,6 +10,7 @@ const modules = [
     [numd numd]
     [claude-nu claude-nu]
     [nu-cmd-stack cmd-stack]
+    [nutest nutest]
     [dotfiles wezterm]
     [dotfiles zellij]
 ]

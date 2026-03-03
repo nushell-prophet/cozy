@@ -121,6 +121,10 @@ A Nushell toolbox for working with Claude Code sessions. Main commands:
 
 The environment also includes Claude Code skills for building Nushell completions and writing opinionated Nushell code.
 
+### nutest
+
+[nutest](https://github.com/vyadh/nutest) is a Nushell test framework by [vyadh](https://github.com/vyadh). Licensed under MIT.
+
 ### nu-goodies
 
 A personal collection of everyday Nushell commands developed over time. In the AI context, two commands may be especially useful:

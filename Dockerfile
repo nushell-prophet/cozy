@@ -56,7 +56,8 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
       && git clone https://github.com/nushell-prophet/dotnu.git ~/git/dotnu \
       && git clone https://github.com/nushell-prophet/numd.git ~/git/numd \
       && git clone https://github.com/nushell-prophet/claude-nu.git ~/git/claude-nu \
-      && git clone https://github.com/nushell-prophet/nu-cmd-stack.git ~/git/nu-cmd-stack; \
+      && git clone https://github.com/nushell-prophet/nu-cmd-stack.git ~/git/nu-cmd-stack \
+      && git clone https://github.com/vyadh/nutest.git ~/git/nutest; \
     else \
       cp -r /tmp/vendor/* ~/git/; \
     fi \
