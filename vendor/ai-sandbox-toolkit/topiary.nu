@@ -30,21 +30,29 @@ export def install []: nothing -> nothing {
     mkdir $config_dir
     mkdir ($config_dir | path join queries)
 
-    let links = {
-        languages.ncl: ([$repo_dir languages.ncl] | path join)
-        "queries/nu.scm": ([$repo_dir queries nu.scm] | path join)
+    # Copy languages.ncl and override indent to 4 spaces
+    let lang_ncl = $config_dir | path join languages.ncl
+    let lang_src = [$repo_dir languages.ncl] | path join
+    if ($lang_ncl | path exists) {
+        print $"  (ansi green)languages.ncl(ansi reset): exists"
+    } else {
+        open --raw $lang_src
+            | str replace --regex '(grammar\.source\.git\s*=\s*\{[^}]*\},)' '$1
+      indent = "    "'
+            | save -f $lang_ncl
+        print $"  (ansi cyan)languages.ncl(ansi reset): copied with indent override"
     }
 
-    $links | items {|rel target|
-        let link = $config_dir | path join $rel
-        if ($link | path type) == "symlink" {
-            print $"  (ansi green)($rel)(ansi reset): symlink exists"
-        } else {
-            rm -f $link
-            ^ln -s $target $link
-            print $"  (ansi cyan)($rel)(ansi reset): symlinked"
-        }
-    } | ignore
+    # Symlink query file
+    let scm_link = $config_dir | path join queries nu.scm
+    let scm_target = [$repo_dir queries nu.scm] | path join
+    if ($scm_link | path type) == "symlink" {
+        print $"  (ansi green)queries/nu.scm(ansi reset): symlink exists"
+    } else {
+        rm -f $scm_link
+        ^ln -s $scm_target $scm_link
+        print $"  (ansi cyan)queries/nu.scm(ansi reset): symlinked"
+    }
 
     # 4. Build tree-sitter grammar for topiary cache.
     #    topiary prefetch uses its own HTTP client which may fail behind proxies,
