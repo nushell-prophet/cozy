@@ -27,7 +27,7 @@ export def build [
   --recreate: string@"nu-complete sandbox names" # recreate a specific sandbox
   --recreate-all # recreate all sandboxes
 ] {
-  let dir = $path | default $env.FILE_PWD
+  let dir = $path | default (pwd)
 
   let sandboxes = if $recreate != null {
     sandboxes | where name == $recreate | select name workspaces
