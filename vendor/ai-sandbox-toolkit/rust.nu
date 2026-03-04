@@ -11,12 +11,12 @@ export def install []: nothing -> nothing {
     # Rust needs a C linker (cc) for compiling build scripts and native deps
     if (which cc | is-empty) {
         print "  Installing build-essential (C linker)..."
-        ^sudo apt-get update -qq
-        ^sudo apt-get install -y -qq build-essential
+        ^sudo apt-get update
+        ^sudo apt-get install -y build-essential
     }
 
     print "  Installing Rust via rustup..."
-    ^sh -c "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
+    ^sh -c "curl --proto '=https' --tlsv1.2 -Sf https://sh.rustup.rs | sh -s -- -y"
     $env.PATH = ($env.PATH | prepend ($nu.home-dir | path join .cargo bin))
 
     # rustup adds `source $"($nu.home-path)/.cargo/env.nu"` to config.nu,
