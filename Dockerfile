@@ -11,6 +11,9 @@ RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/*.sources /etc/apt/sou
 
 COPY --chmod=755 docker-files/pbcopy /usr/local/bin/pbcopy
 
+RUN printf 'Acquire::http::Proxy "http://host.docker.internal:3128/";\nAcquire::https::Proxy "http://host.docker.internal:3128/";\n' \
+        > /etc/apt/apt.conf.d/90proxy
+
 USER agent
 
 RUN NONINTERACTIVE=1 /bin/bash -c \
