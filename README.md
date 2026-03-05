@@ -110,12 +110,12 @@ The last argument is the workspace directory. Files in it are synced bidirection
 
 ```sh
 # connect to the container
-docker sandbox exec -it -w /home/agent/workspace/mounted nushell-ai-container nu -l --commands 'zellij attach -c sandbox'`
+docker sandbox exec -it -w /home/agent/workspace/mounted nushell-ai-container nu -l --execute 'zellij attach -c sandbox'`
 ```
 
 Then connect to the sandbox with Wezterm (`/home/agent/workspace/mounted` is a symlink to whichever workspace you mounted):
 
-`wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua start -- docker sandbox exec -it -w /home/agent/workspace/mounted nushell-ai-container nu -l --commands 'print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\"; zellij attach -c sandbox'`
+`wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua start -- docker sandbox exec -it -w /home/agent/workspace/mounted nushell-ai-container nu -l --execute 'print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\"; zellij attach -c sandbox'`
 
 ## Nushell modules
 
