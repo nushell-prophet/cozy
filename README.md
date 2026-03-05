@@ -1,4 +1,5 @@
-# Nushell-prophet's ai-sandbox (Docker-based convenient terminal environment)
+# Nushell-prophet's ai-sandbox 
+*Docker-based convenient terminal environment*
 
 I spent a huge amount of time tuning my terminal setup to make it convenient and powerful. I believe terminal newbies can use the setup that I publish as an inspiration or as a tool that works out of the box (though I really encourage everybody to build their own setup by themselves - as I believe it is the only way to mastery).
 
