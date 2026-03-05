@@ -10,11 +10,11 @@ This is a work-in-progress educational project with video demos on the way.
 
 ### Docker sandbox
 
-My ai-sandbox is based on `docker sandbox`, so it is:
+My ai-sandbox is based on [docker sandbox](https://docs.docker.com/ai/sandboxes/), so it is:
 - macOS and Windows (experimental) compatible — the image provides both `arm64` and `amd64` architectures
 - isolated
 - convenient
-- with built-in AI agents (I personally tested it with `claude code`)
+- with built-in AI agent (I personally tested it with `claude code`)
 
 ### Nushell
 
@@ -85,14 +85,33 @@ Changes from WezTerm defaults:
 - **QuickSelect patterns**: custom regexes for jj change IDs, Nushell error paths (`╭─[file:line:col]`), Nushell table headers/values, and filesystem paths
 - **Dynamic modes**: `ZEN_MODE` / `SANDBOX_MODE` user variables adjust font size and background at runtime
 
-First, build the image and create a sandbox (run from the repo root):
+
+### How to use
+Install Docker Desktop https://www.docker.com/products/docker-desktop/
 
 ```sh
+# make sure that `docker` cli is installed
+which docker
+```
+
+Build the image:
+
+```sh
+# execute the command from the root of this repo
 docker build -t nushell-ai-sandbox:v1 .
-docker sandbox run --name nushell-ai-container --load-local-template -t nushell-ai-sandbox:v1 claude example/ws
+```
+
+```sh
+# Agents: claude, codex, copilot, gemini, cagent, kiro, opencode, shell
+docker sandbox run claude example/ws --name nushell-ai-container -t nushell-ai-sandbox:v1 
 ```
 
 The last argument is the workspace directory. Files in it are synced bidirectionally between the host and the VM as changes happen. Replace `example/ws` with your own project path. Inside the sandbox, the workspace is symlinked to `~/workspace/mounted/` for convenience (see `nushell-autoload/module-imports.nu`).
+
+```sh
+# connect to the container
+docker sandbox exec -it -w /home/agent/workspace/mounted nushell-ai-container nu -l --commands 'zellij attach -c sandbox'`
+```
 
 Then connect to the sandbox with Wezterm (`/home/agent/workspace/mounted` is a symlink to whichever workspace you mounted):
 
