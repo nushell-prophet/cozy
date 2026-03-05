@@ -1,10 +1,27 @@
 # Nushell-prophet's ai-sandbox (Docker-based convenient terminal environment)
 
-I spent a huge amount of time tuning my terminal setup to make it convenient and powerful. I believe terminal newbies can use it as an inspiration or as a tool that works out of the box.
+I spent a huge amount of time tuning my terminal setup to make it convenient and powerful. I believe terminal newbies can use the setup that I publish as an inspiration or as a tool that works out of the box (though I really encourage everybody to build their own setup by themselves - as I believe it is the only way to mastery).
 
 ## Preamble
 
 This is a work-in-progress educational project with video demos on the way.
+
+## Quick start
+
+First, install Docker Desktop https://www.docker.com/products/docker-desktop/
+
+```sh
+# Build the image (execute the command from the root of this repo)
+docker build -t nushell-ai-sandbox:latest .
+
+# create local container. Base images for the agents are provided by Docker.
+let agent = 'claude' # Agents: claude, codex, copilot, gemini, cagent, kiro, opencode, shell
+let working_dir = 'example/ws' # Files in the `$working_dir` are synced bidirectionally between the host and the VM as changes happen.
+docker sandbox create --name nu-ai-test -t nushell-ai-sandbox:latest $agent $working_dir
+
+# connect to the container
+docker sandbox exec -it -w /home/agent/workspace/mounted nu-ai-test nu -l --execute 'zellij attach -c sandbox'
+```
 
 ## Technologies
 
@@ -18,7 +35,7 @@ My ai-sandbox is based on [docker sandbox](https://docs.docker.com/ai/sandboxes/
 
 ### Nushell
 
-A modern shell for the AI era: Nushell 0.110.0 with sensible settings that I've chosen over 3 years of Nushell experience.
+A modern shell for the AI era: Nushell with sensible settings that I've chosen over 3 years of Nushell experience.
 
 Nushell has built-in MCP functionality that allows AI agents to use all of its rich functionality. The MCP server is activated for `claude code` out of the box.
 
@@ -75,6 +92,7 @@ In fzf, `tab` and `shift-tab` select multiple commands. On enter, selected comma
 ### Wezterm
 
 I use Wezterm for connecting to this environment. The config is vendored at [vendor/dotfiles/wezterm/wezterm.lua](vendor/dotfiles/wezterm/wezterm.lua).
+Brew users can install it via `brew install wezterm --cask`.
 
 Its killer feature is `ctrl+shift+space` — it highlights paths and Nushell's structured output elements for quick copying.
 
@@ -86,38 +104,11 @@ Changes from WezTerm defaults:
 - **Dynamic modes**: `ZEN_MODE` / `SANDBOX_MODE` user variables adjust font size and background at runtime
 
 
-### How to use
-Install Docker Desktop https://www.docker.com/products/docker-desktop/
-
-```sh
-# make sure that `docker` cli is installed
-which docker
-```
-
-Build the image:
-
-```sh
-# execute the command from the root of this repo
-docker build -t nushell-ai-sandbox:v1 .
-```
-
-```sh
-# Agents: claude, codex, copilot, gemini, cagent, kiro, opencode, shell
-docker sandbox run claude example/ws --name nushell-ai-container -t nushell-ai-sandbox:v1 
-```
-
-The last argument is the workspace directory. Files in it are synced bidirectionally between the host and the VM as changes happen. Replace `example/ws` with your own project path. Inside the sandbox, the workspace is symlinked to `~/workspace/mounted/` for convenience (see `nushell-autoload/module-imports.nu`).
-
-```sh
-# connect to the container
-docker sandbox exec -it -w /home/agent/workspace/mounted nushell-ai-container nu -l --execute 'zellij attach -c sandbox'`
-```
-
-Then connect to the sandbox with Wezterm (`/home/agent/workspace/mounted` is a symlink to whichever workspace you mounted):
+To connect to the sandbox with Wezterm (`/home/agent/workspace/mounted` is a symlink to whichever workspace you mounted) you can use the next command:
 
 `wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua start -- docker sandbox exec -it -w /home/agent/workspace/mounted nushell-ai-container nu -l --execute 'print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\"; zellij attach -c sandbox'`
 
-## Nushell modules
+## Nushell modules loaded by default
 
 ### numd
 
