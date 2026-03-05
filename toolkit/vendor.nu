@@ -17,7 +17,7 @@ const modules = [
 
 export def main [] {
     let vendor_dir = pwd | path join vendor
-    let git_dir = $nu.home-dir | path join git
+    let git_dir = $nu.home-dir | path join git ai-sandbox-dev-container
 
     # Clean and recreate vendor dir
     rm -rf $vendor_dir
