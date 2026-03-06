@@ -21,7 +21,7 @@ let working_dir = 'example/ws' # Files in the `$working_dir` are synced bidirect
 docker sandbox create --name nu-ai-test -t nushell-ai-sandbox:latest $agent $working_dir
 
 # connect to the container
-docker sandbox exec -it -w /home/agent/workspace/mounted nu-ai-test nu -l --execute 'zellij attach -c sandbox'
+docker sandbox exec -it nu-ai-test nu -l --execute 'zellij attach -c sandbox'
 ```
 
 ## Technologies
@@ -107,7 +107,7 @@ Changes from WezTerm defaults:
 
 To connect to the sandbox with Wezterm (`/home/agent/workspace/mounted` is a symlink to whichever workspace you mounted) you can use the next command:
 
-`wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua start -- docker sandbox exec -it -w /home/agent/workspace/mounted nushell-ai-container nu -l --execute 'print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\"; zellij attach -c sandbox'`
+`wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua start -- docker sandbox exec -it nu-ai-test nu -l --execute 'print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\"; zellij attach -c sandbox'`
 
 ## Nushell modules loaded by default
 
