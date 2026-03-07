@@ -49,7 +49,7 @@ RUN broot --write-default-conf $XDG_CONFIG_HOME/broot \
 ARG DOTFILES_CACHE_BUST
 RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/git/dotfiles \
     && cd ~/git/dotfiles \
-    && nu -c 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker'
+    && nu -c 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker --commit-changes'
 
 ARG MODULES_SOURCE=vendor
 RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
