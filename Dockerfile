@@ -47,6 +47,8 @@ ENV XDG_CONFIG_HOME=$HOME/.config \
 RUN broot --write-default-conf $XDG_CONFIG_HOME/broot \
     && broot --set-install-state installed
 
+RUN git config --global user.name "Agent" && git config --global user.email "agent@sandbox"
+
 ARG DOTFILES_CACHE_BUST
 RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/repos/dotfiles \
     && cd ~/repos/dotfiles \
