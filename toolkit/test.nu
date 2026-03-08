@@ -45,14 +45,14 @@ const files = [
 ]
 
 const dirs = [
-    "/home/agent/git/ai-sandbox-toolkit"
-    "/home/agent/git/nu-goodies"
-    "/home/agent/git/nushell-kv"
-    "/home/agent/git/dotnu"
-    "/home/agent/git/numd"
-    "/home/agent/git/claude-nu"
-    "/home/agent/git/nu-cmd-stack"
-    "/home/agent/git/dotfiles"
+    "/home/agent/repos/ai-sandbox-toolkit"
+    "/home/agent/repos/nu-goodies"
+    "/home/agent/repos/nushell-kv"
+    "/home/agent/repos/dotnu"
+    "/home/agent/repos/numd"
+    "/home/agent/repos/claude-nu"
+    "/home/agent/repos/nu-cmd-stack"
+    "/home/agent/repos/dotfiles"
     "/home/agent/.config/broot"
 ]
 

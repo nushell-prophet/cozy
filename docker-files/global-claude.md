@@ -32,7 +32,7 @@ You are running inside a Docker sandbox (Ubuntu, aarch64). The workspace is moun
 
 ## Nushell
 
-Nushell is the primary shell. Modules are in `~/git/`:
+Nushell is the primary shell. Modules are in `~/repos/`:
 
 - `nu-goodies` — data wrangling helpers
 - `dotnu` — module management
@@ -41,7 +41,7 @@ Nushell is the primary shell. Modules are in `~/git/`:
 - `nushell-kv` — key-value store
 - `claude-nu` — Claude Code integration
 
-Use `use ~/git/<module>/<module>` to load a module. Autoload scripts are in `~/.config/nushell/autoload/`.
+Use `use ~/repos/<module>/<module>` to load a module. Autoload scripts are in `~/.config/nushell/autoload/`.
 
 ## Nushell MCP Server
 

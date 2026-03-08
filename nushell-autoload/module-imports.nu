@@ -4,14 +4,14 @@ if $env.WORKSPACE_DIR? != null { ^ln -sfn $env.WORKSPACE_DIR ~/workspace/mounted
 overlay new others
 
 # Nushell Modules
-overlay use ~/git/nu-goodies/nu-goodies
+overlay use ~/repos/nu-goodies/nu-goodies
 
 $env.kv.path = ($nu.home-dir | path join .local share nushell-kv)
-overlay use ~/git/nushell-kv/kv --prefix
+overlay use ~/repos/nushell-kv/kv --prefix
 
-overlay use ~/git/dotnu/dotnu --prefix
-overlay use ~/git/numd/numd --prefix
+overlay use ~/repos/dotnu/dotnu --prefix
+overlay use ~/repos/numd/numd --prefix
 
-use ~/git/claude-nu/claude-nu/
+use ~/repos/claude-nu/claude-nu/
 
 use ~/.config/zellij/todo-nu/todo.nu lstd

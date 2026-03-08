@@ -38,7 +38,7 @@ COPY --chown=agent:agent nushell-autoload/ /tmp/nushell-autoload/
 COPY --chown=agent:agent vendor/ /tmp/vendor/
 COPY --chown=agent:agent docker-files/global-claude.md /tmp/global-claude.md
 
-RUN mkdir ~/git
+RUN mkdir ~/repos
 
 ENV XDG_CONFIG_HOME=$HOME/.config \
     XDG_DATA_HOME=$HOME/.local/share \
@@ -48,27 +48,27 @@ RUN broot --write-default-conf $XDG_CONFIG_HOME/broot \
     && broot --set-install-state installed
 
 ARG DOTFILES_CACHE_BUST
-RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/git/dotfiles \
-    && cd ~/git/dotfiles \
+RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/repos/dotfiles \
+    && cd ~/repos/dotfiles \
     && nu -c 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker --commit-changes' \
     && printf '\n' >> ~/.claude/CLAUDE.md && cat /tmp/global-claude.md >> ~/.claude/CLAUDE.md \
     && rm /tmp/global-claude.md
 
 ARG MODULES_SOURCE=vendor
 RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
-      git clone https://github.com/nushell-prophet/ai-sandbox-toolkit.git ~/git/ai-sandbox-toolkit \
-      && git clone https://github.com/nushell-prophet/nu-goodies.git ~/git/nu-goodies \
-      && git clone https://github.com/nushell-prophet/nu-kv.git ~/git/nushell-kv \
-      && git clone https://github.com/nushell-prophet/dotnu.git ~/git/dotnu \
-      && git clone https://github.com/nushell-prophet/numd.git ~/git/numd \
-      && git clone https://github.com/nushell-prophet/claude-nu.git ~/git/claude-nu \
-      && git clone https://github.com/nushell-prophet/nu-cmd-stack.git ~/git/nu-cmd-stack \
-      && git clone https://github.com/vyadh/nutest.git ~/git/nutest; \
+      git clone https://github.com/nushell-prophet/ai-sandbox-toolkit.git ~/repos/ai-sandbox-toolkit \
+      && git clone https://github.com/nushell-prophet/nu-goodies.git ~/repos/nu-goodies \
+      && git clone https://github.com/nushell-prophet/nu-kv.git ~/repos/nushell-kv \
+      && git clone https://github.com/nushell-prophet/dotnu.git ~/repos/dotnu \
+      && git clone https://github.com/nushell-prophet/numd.git ~/repos/numd \
+      && git clone https://github.com/nushell-prophet/claude-nu.git ~/repos/claude-nu \
+      && git clone https://github.com/nushell-prophet/nu-cmd-stack.git ~/repos/nu-cmd-stack \
+      && git clone https://github.com/vyadh/nutest.git ~/repos/nutest; \
     else \
-      cp -r /tmp/vendor/* ~/git/; \
+      cp -r /tmp/vendor/* ~/repos/; \
     fi \
     && mkdir -p ~/workspace \
-    && ln -s ~/git/ai-sandbox-toolkit ~/workspace/ai-sandbox-toolkit \
+    && ln -s ~/repos/ai-sandbox-toolkit ~/workspace/ai-sandbox-toolkit \
     && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/ \
     && rm -rf /tmp/vendor/ /tmp/nushell-autoload/
 

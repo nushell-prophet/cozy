@@ -1,4 +1,4 @@
-# Refresh vendored modules and configs from local ~/git/ repos into vendor/
+# Refresh vendored modules and configs from local ~/repos/ repos into vendor/
 # Run before `docker build` to update vendored copies.
 
 const modules = [

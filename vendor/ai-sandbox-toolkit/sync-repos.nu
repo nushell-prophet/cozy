@@ -19,7 +19,7 @@ def remote-head-branch []: nothing -> string {
 
 # Convert vendor directories to git repos if needed, pull latest from all
 export def main [--force (-f)] {
-    let base = $nu.home-dir | path join git
+    let base = $nu.home-dir | path join repos
 
     $repos | items {|name url|
         let dir = $base | path join $name
