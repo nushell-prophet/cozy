@@ -1,36 +1,15 @@
 export use commands.nu [
-    # "alignit"
-    # "history-backup"
     "bar"
-    "bye"
     # "cb"
-    "center"
     # "git-check-file-clean"
-    # "colorit"
-    "copy-cmd"
-    "copy-out"
-    "cprint"
     "cd-root"
-    # "dedent"
     # "download-nushell-nightly"
-    # "escape-nushell-escapes"
-    # "escape-regex"
     "example"
     "fs"
     "fill non-exist"
     "find-root"
     "format profile"
-    # "frameit"
-    "gradient-screen"
     "ls-git-modified-date"
-    "hist"
-    "hist-to-script"
-    "in-fx"
-    "in-hx"
-    # "in-vd history"
-    "in-vd"
-    # "indent"
-    # "indentit"
     "L"
     # "launch-downloaded"
     "ln-for-preview"
@@ -38,9 +17,7 @@ export use commands.nu [
     "md"
     "mv1"
     "mygit log"
-    # "newlineit"
     "normalize"
-    # "nu-completions-cwds"
     "nu-format"
     "nu-test install"
     "nu-test launch"
@@ -48,28 +25,75 @@ export use commands.nu [
     "number-format"
     "orbita"
     "print-and-pass"
-    # "remove_single_nls"
     "replace-in-all-files"
     "rename-tab"
     "select-i"
-    "side-by-side"
     # "significant-digits"
+    # "testcd"
+    "tt"
+    "to-temp-file"
+    "transcribe"
+]
+
+export use arrange.nu [
+    "center"
+    "tile-right"
+    "tile-left"
+    "tile-down"
+    "tile-up"
+]
+
+export use capture.nu [
+    "copy-out"
+    "wez-to-ansi"
+    "wez-to-asciicast"
+    "wez-to-gif"
+    "wez-to-png"
+    "zellij-to-png"
+]
+
+export use editors.nu [
+    "in-fx"
+    "in-hx"
+    "in-vd"
+]
+
+export use gradient-screen.nu [
+    "bye"
+    main
+]
+
+export use str.nu [
+    # "dedent"
+    # "escape-nushell-escapes"
+    # "escape-regex"
+    # "indent"
     # "str append"
     "str c"
     # "str prepend"
     # "str repeat"
-    # "testcd"
-    "tt"
     "to-safe-filename"
-    "to-temp-file"
-    "transcribe"
-    "wez-to-asciicast"
-    "wez-to-ansi"
-    "wez-to-gif"
-    "wez-to-png"
-    "zellij-to-png"
+]
+
+export use cprint.nu [
+    main
+    # "alignit"
+    # "colorit"
+    # "frameit"
+    # "indentit"
+    # "newlineit"
+    # "remove-single-nls"
     # "width-safe"
     # "wrapit"
+]
+
+export use history.nu [
+    "copy-cmd"
+    # "completions-cwds"
+    "get-last-commands-from-sql"
+    "hist"
+    "hist-to-script"
+    "in-vd history"
     "z"
 ]
 
