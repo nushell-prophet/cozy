@@ -36,6 +36,7 @@ ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime \
 COPY --chown=agent:agent docker-files/.visidatarc /home/agent/.visidatarc
 COPY --chown=agent:agent nushell-autoload/ /tmp/nushell-autoload/
 COPY --chown=agent:agent vendor/ /tmp/vendor/
+COPY --chown=agent:agent docker-files/global-claude.md /tmp/global-claude.md
 
 RUN mkdir ~/git
 
@@ -49,7 +50,9 @@ RUN broot --write-default-conf $XDG_CONFIG_HOME/broot \
 ARG DOTFILES_CACHE_BUST
 RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/git/dotfiles \
     && cd ~/git/dotfiles \
-    && nu -c 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker --commit-changes'
+    && nu -c 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker --commit-changes' \
+    && printf '\n' >> ~/.claude/CLAUDE.md && cat /tmp/global-claude.md >> ~/.claude/CLAUDE.md \
+    && rm /tmp/global-claude.md
 
 ARG MODULES_SOURCE=vendor
 RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
@@ -80,5 +83,4 @@ RUN echo 'export GIT_AUTHOR_NAME="Claude"' >> /etc/sandbox-persistent.sh \
     && echo 'export GIT_COMMITTER_EMAIL="claude@anthropic.com"' >> /etc/sandbox-persistent.sh \
     && echo 'export JJ_CONFIG="$HOME/.config/jj/jj-config-claude-ai.toml"' >> /etc/sandbox-persistent.sh
 
-COPY --chown=agent:agent docker-files/global-claude.md /home/agent/.claude/CLAUDE.md
 COPY --chown=agent:agent README.md /home/agent/workspace/README.md
