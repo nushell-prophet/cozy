@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Rename project from `ai-sandbox` to `cozy` and Docker image from `nushell-ai-sandbox` to `cozy`
+- Rename companion toolkit from `ai-sandbox-toolkit` to `cozy-docker-sandbox-toolkit`
+
 ## [0.0.1] - 2026-03-08
 
 ### Added
