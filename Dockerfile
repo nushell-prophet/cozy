@@ -58,7 +58,7 @@ RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/repos/dotfile
 
 ARG MODULES_SOURCE=vendor
 RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
-      git clone https://github.com/nushell-prophet/ai-sandbox-toolkit.git ~/repos/ai-sandbox-toolkit \
+      git clone https://github.com/nushell-prophet/cozy-docker-sandbox-toolkit.git ~/repos/cozy-docker-sandbox-toolkit \
       && git clone https://github.com/nushell-prophet/nu-goodies.git ~/repos/nu-goodies \
       && git clone https://github.com/nushell-prophet/nu-kv.git ~/repos/nushell-kv \
       && git clone https://github.com/nushell-prophet/dotnu.git ~/repos/dotnu \
@@ -70,7 +70,7 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
       cp -r /tmp/vendor/* ~/repos/; \
     fi \
     && mkdir -p ~/workspace \
-    && ln -s ~/repos/ai-sandbox-toolkit ~/workspace/ai-sandbox-toolkit \
+    && ln -s ~/repos/cozy-docker-sandbox-toolkit ~/workspace/cozy-docker-sandbox-toolkit \
     && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/ \
     && rm -rf /tmp/vendor/ /tmp/nushell-autoload/
 

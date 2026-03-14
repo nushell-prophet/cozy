@@ -1,5 +1,4 @@
-# Nushell-prophet's ai-sandbox 
-*Docker-based convenient terminal environment*
+# Cozy (Docker-based convenient terminal environment)
 
 I spent a huge amount of time tuning my terminal setup to make it convenient and powerful. I believe terminal newbies can use the setup that I publish as an inspiration or as a tool that works out of the box (though I really encourage everybody to build their own setup by themselves - as I believe it is the only way to mastery).
 
@@ -13,12 +12,12 @@ First, install Docker Desktop https://www.docker.com/products/docker-desktop/
 
 ```sh
 # Build the image (execute the command from the root of this repo)
-docker build -t nushell-ai-sandbox:latest .
+docker build -t cozy:latest .
 
 # create local container. Base images for the agents are provided by Docker.
 let agent = 'claude' # Agents: claude, codex, copilot, gemini, cagent, kiro, opencode, shell
 let working_dir = 'example/ws' # Files in the `$working_dir` are synced bidirectionally between the host and the VM as changes happen.
-docker sandbox create --name nu-ai-test -t nushell-ai-sandbox:latest $agent $working_dir
+docker sandbox create --name nu-ai-test -t cozy:latest $agent $working_dir
 
 # connect to the container
 docker sandbox exec -it nu-ai-test nu -l --execute 'zellij attach -c sandbox'
@@ -28,7 +27,7 @@ docker sandbox exec -it nu-ai-test nu -l --execute 'zellij attach -c sandbox'
 
 ### Docker sandbox
 
-My ai-sandbox is based on [docker sandbox](https://docs.docker.com/ai/sandboxes/), so it is:
+Cozy is based on [docker sandbox](https://docs.docker.com/ai/sandboxes/), so it is:
 - macOS and Windows (experimental) compatible — the image provides both `arm64` and `amd64` architectures
 - isolated
 - convenient

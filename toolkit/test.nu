@@ -6,7 +6,7 @@
 #   nu test.nu test --keep       # keep sandbox for debugging
 #   nu test.nu clean             # remove leftover test sandbox
 
-const image = "nushell-ai-sandbox"
+const image = "cozy"
 const sandbox = "claude-test"
 
 # Each tool: [label, command, ...args] — runs the command to verify it launches
@@ -45,7 +45,7 @@ const files = [
 ]
 
 const dirs = [
-    "/home/agent/repos/ai-sandbox-toolkit"
+    "/home/agent/repos/cozy-docker-sandbox-toolkit"
     "/home/agent/repos/nu-goodies"
     "/home/agent/repos/nushell-kv"
     "/home/agent/repos/dotnu"

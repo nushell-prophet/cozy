@@ -1,4 +1,4 @@
-# ai-sandbox
+# cozy
 
 Modern, beginner-friendly terminal environment for AI agents, running inside `docker sandbox`. Tested with Claude Code; other agents can be configured via `docker sandbox`.
 
@@ -19,8 +19,8 @@ Dockerfile
 ## Build & Run
 
 ```sh
-docker build -t nushell-ai-sandbox:v1 .
-docker sandbox run --load-local-template -t nushell-ai-sandbox:v1 claude ~/path/to/project
+docker build -t cozy:v1 .
+docker sandbox run --load-local-template -t cozy:v1 claude ~/path/to/project
 ```
 
 Requires Docker Desktop 4.58+ on macOS.

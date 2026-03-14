@@ -1,6 +1,6 @@
-# ai-sandbox-toolkit
+# cozy-docker-sandbox-toolkit
 
-Maintain running [ai-sandbox](https://github.com/nushell-prophet/ai-sandbox) containers without recreating them.
+Maintain running [cozy](https://github.com/nushell-prophet/cozy) containers without recreating them.
 
 Rebuilding a sandbox means re-authenticating Claude and losing session state. This toolkit updates modules, syncs repos, and persists shell history inside a live container — so you don't have to rebuild.
 

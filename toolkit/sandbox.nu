@@ -22,7 +22,7 @@ export def main [] { help sandbox }
 
 # Build Docker image with auto-incremented vN tag, recreate existing sandboxes
 export def build [
-  --image (-i): string = "nushell-ai-sandbox" # image name
+  --image (-i): string = "cozy" # image name
   --path (-p): path # Dockerfile directory
   --recreate: string@"nu-complete sandbox names" # recreate a specific sandbox
   --recreate-all # recreate all sandboxes
@@ -58,7 +58,7 @@ export def build [
 # Run sandbox with latest image tag
 export def run [
   project_path?: path # project to mount (default: $PWD)
-  --image (-i): string = "nushell-ai-sandbox" # image name
+  --image (-i): string = "cozy" # image name
 ] {
   let tag = ^docker images --format json
     | lines
