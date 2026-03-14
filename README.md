@@ -17,10 +17,10 @@ docker build -t cozy:latest .
 # create local container. Base images for the agents are provided by Docker.
 let agent = 'claude' # Agents: claude, codex, copilot, gemini, cagent, kiro, opencode, shell
 let working_dir = 'example/ws' # Files in the `$working_dir` are synced bidirectionally between the host and the VM as changes happen.
-docker sandbox create --name nu-ai-test -t cozy:latest $agent $working_dir
+docker sandbox create --name cozy-test -t cozy:latest $agent $working_dir
 
 # connect to the container
-docker sandbox exec -it nu-ai-test nu -l --execute 'zellij attach -c sandbox'
+docker sandbox exec -it -w /home/agent/workspace/mounted cozy-test nu -l --execute 'zellij attach -c cozy-test'
 ```
 
 ## Technologies
@@ -106,7 +106,7 @@ Changes from WezTerm defaults:
 
 To connect to the sandbox with Wezterm (`/home/agent/workspace/mounted` is a symlink to whichever workspace you mounted) you can use the next command:
 
-`wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua start -- docker sandbox exec -it nu-ai-test nu -l --execute 'print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\"; zellij attach -c sandbox'`
+`wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua start -- docker sandbox exec -it cozy-test nu -l --execute 'print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\"; zellij attach -c cozy-test'`
 
 ## Nushell modules loaded by default
 
