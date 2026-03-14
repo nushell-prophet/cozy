@@ -10,6 +10,18 @@ def sandbox-state-path [filename: string]: nothing -> path {
 
 export def main [] { help history }
 
+# Seed nushell history with useful commands from the bundled seed file.
+#
+# Initializes the history database if needed, then imports history-seed.nuon
+# from the toolkit directory.
+export def seed []: nothing -> nothing {
+    let seed_file = ($env.CURRENT_FILE | path dirname | path join 'history-seed.nuon')
+    if not ($seed_file | path exists) {
+        error make { msg: $"seed file not found: ($seed_file)" }
+    }
+    import $seed_file
+}
+
 # Export nushell history to a nuon file.
 #
 # Reads the sqlite database directly, so it works from any context:
@@ -43,6 +55,8 @@ export def export [
 # The file should contain a table with columns:
 # command_line, cwd, start_timestamp, duration_ms, exit_status.
 # Without a path, imports from the latest export via the history-latest.nuon symlink.
+# Deduplicates incoming rows and skips entries already in the DB.
+# Re-sorts the DB by start_timestamp after import.
 export def import [
     path?: path  # Input file (default: ~/mounted/sandbox-state/history-latest.nuon)
 ]: nothing -> nothing {
@@ -59,15 +73,43 @@ export def import [
         print 'No history items to import'
         return
     }
-    $items | each {|row|
+
+    # Deduplicate incoming rows
+    let items = $items | uniq-by start_timestamp command_line
+
+    # Skip rows already present in the DB
+    let existing_ts = open $db
+        | query db "SELECT start_timestamp FROM history"
+        | get start_timestamp
+    let new_items = $items | where { $in.start_timestamp not-in $existing_ts }
+
+    if ($new_items | is-empty) {
+        print $"All ($items | length) entries already in history, nothing to import"
+        return
+    }
+
+    $new_items | each {|row|
         open $db
         | query db $"INSERT INTO history \(($history_columns)\) VALUES \(?, ?, ?, ?, ?)" --params [
             $row.command_line
             $row.cwd
             $row.start_timestamp
-            $row.duration_ms
-            $row.exit_status
+            ($row.duration_ms | default 0)
+            ($row.exit_status | default 0)
         ]
     } | ignore
-    print $"Imported ($items | length) history items"
+
+    # Re-sort: extract all rows sorted, delete, reinsert with sequential IDs
+    let sorted = open $db
+        | query db $"SELECT ($history_columns) FROM history ORDER BY start_timestamp ASC"
+    open $db | query db "DELETE FROM history"
+    $sorted | each {|row|
+        open $db
+        | query db $"INSERT INTO history \(($history_columns)\) VALUES \(?, ?, ?, ?, ?)" --params [
+            $row.command_line $row.cwd $row.start_timestamp $row.duration_ms $row.exit_status
+        ]
+    } | ignore
+
+    let skipped = ($items | length) - ($new_items | length)
+    print $"Imported ($new_items | length) new entries, ($skipped) duplicates skipped. History: ($sorted | length) total, sorted by timestamp"
 }

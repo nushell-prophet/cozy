@@ -29,13 +29,7 @@ export def --env init [
         stack: $commands
     }
 
-    $env.config.keybindings
-    | default null event.cmd
-    | get -o event.cmd
-    | compact
-    | where $it =~ 'cmd-stack'
-    | is-empty
-    | if $in { setup-keybindings }
+    default-keybindings | apply-keybindings
 
     [
         $'(stack-length) items added to cmd-stack.'
@@ -43,6 +37,77 @@ export def --env init [
     ]
     | to text
     | print
+}
+
+# Push a command to the end of cmd-stack
+export def --env push [cmd: string] {
+    cmd-push $cmd
+}
+
+def --env cmd-push [cmd: string] {
+    if ($cmd | str trim | is-empty) { return }
+
+    if $env.cmd-stack? == null {
+        $env.cmd-stack = {index: -1, stack: []}
+    }
+
+    $env.cmd-stack.stack = ($env.cmd-stack.stack | append $cmd)
+    commandline edit -r ''
+}
+
+# Apply keybindings with conflict detection.
+# Pipe a list of keybinding records. Identical existing bindings are skipped.
+# Conflicts are reported — use --force to override them.
+export def --env apply-keybindings [
+    --force  # Override conflicting keybindings
+] {
+    let bindings = $in
+    let normalize_mod = {|m| $m | split row '_' | sort | str join '_' }
+
+    let results = $bindings | each {|binding|
+        let norm_mod = do $normalize_mod $binding.modifier
+        let matches = $env.config.keybindings | where {|kb|
+            (do $normalize_mod $kb.modifier) == $norm_mod and $kb.keycode == $binding.keycode
+        }
+
+        if ($matches | is-empty) {
+            {status: new, binding: $binding, conflict: null}
+        } else {
+            let identical = $matches | where {|kb| $kb.event == $binding.event }
+            if ($identical | is-not-empty) {
+                {status: identical, binding: $binding, conflict: null}
+            } else {
+                {status: conflict, binding: $binding, conflict: ($matches | first)}
+            }
+        }
+    }
+
+    let to_add = $results | where status in [new, conflict]
+    let identical = $results | where status == identical
+    let conflicts = $results | where status == conflict
+
+    if ($identical | is-not-empty) {
+        let n = $identical | length
+        print $'($n) already set — skipped.'
+    }
+
+    if ($conflicts | is-not-empty) and (not $force) {
+        let n = $conflicts | length
+        print $'($n) conflicts found — nothing applied:'
+        $conflicts | each {|c|
+            let kb = $c.conflict
+            let name = $kb.name? | default 'unnamed'
+            print $'  ($c.binding.modifier)+($c.binding.keycode) is bound to "($name)"'
+        }
+        print 'Use --force to override.'
+        return
+    }
+
+    if ($to_add | is-not-empty) {
+        $env.config.keybindings ++= ($to_add | get binding)
+        let n = $to_add | length
+        print $'($n) keybindings applied.'
+    }
 }
 
 # Get next command from cmd-stack
@@ -88,9 +153,9 @@ def --env cmd-cycle [
     | commandline edit -r $in
 }
 
-def --env setup-keybindings [] {
-    # Add keybindings for `cmd-stack`
-    $env.config.keybindings ++= [
+# Default keybindings for cmd-stack
+def default-keybindings [] {
+    [
         {
             modifier: control_alt
             keycode: char_k
@@ -102,6 +167,17 @@ def --env setup-keybindings [] {
             keycode: char_j
             mode: [emacs vi_normal vi_insert]
             event: {send: executehostcommand cmd: 'cmd-stack prev'}
+        }
+        # ctrl+s to push — inspired by Claude Code's submit keybinding.
+        # Note: ctrl+s may conflict with terminal XOFF (flow control).
+        # If so, disable it with `stty -ixon` or use one of these alternatives:
+        # - ctrl+alt+p (p for push)
+        # - ctrl+alt+s (s for store/stack)
+        {
+            modifier: control
+            keycode: char_s
+            mode: [emacs vi_normal vi_insert]
+            event: {send: executehostcommand cmd: 'cmd-stack push (commandline)'}
         }
     ]
 }

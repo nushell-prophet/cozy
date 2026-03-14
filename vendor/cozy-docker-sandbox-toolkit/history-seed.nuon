@@ -1,0 +1,15 @@
+[[command_line, cwd, start_timestamp, duration_ms, exit_status];
+ ["claude --dangerously-skip-permissions", "/home/agent/workspace/mounted", 0, 0, 0],
+ ["claude --dangerously-skip-permissions --resume", "/home/agent/workspace/mounted", 0, 0, 0],
+ ["use toolkit.nu", "/home/agent/workspace/mounted", 0, 0, 0],
+ ["toolkit sync-repos", "/home/agent/workspace/mounted", 0, 0, 0],
+ ["toolkit history export", "/home/agent/workspace/mounted", 0, 0, 0],
+ ["toolkit history import", "/home/agent/workspace/mounted", 0, 0, 0],
+ ["claude-nu messages", "/home/agent/workspace/mounted", 0, 0, 0],
+ ["claude-nu messages --with-responses", "/home/agent/workspace/mounted", 0, 0, 0],
+ ["claude-nu messages --all-sessions", "/home/agent/workspace/mounted", 0, 0, 0],
+ ["claude-nu sessions", "/home/agent/workspace/mounted", 0, 0, 0],
+ ["claude-nu export-session | claude-nu save-markdown", "/home/agent/workspace/mounted", 0, 0, 0],
+ ["claude-nu fetch-claude-docs", "/home/agent/workspace/mounted", 0, 0, 0],
+ ["claude-nu fetch-nushell-docs", "/home/agent/workspace/mounted", 0, 0, 0],
+ ["zellij attach -c sandbox", "/home/agent/workspace/mounted", 0, 0, 0]]
