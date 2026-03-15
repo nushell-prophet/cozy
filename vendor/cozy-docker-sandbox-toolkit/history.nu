@@ -1,6 +1,7 @@
 const history_db = '~/.config/nushell/history.sqlite3'
 const history_columns = "command_line, cwd, start_timestamp, duration_ms, exit_status"
 const sandbox_state_dir = '~/mounted/sandbox-state'
+const seed_file = path self | path dirname | path join 'history-seed.nuon'
 
 def sandbox-state-path [filename: string]: nothing -> path {
     let dir = $sandbox_state_dir | path expand
@@ -15,7 +16,6 @@ export def main [] { help history }
 # Initializes the history database if needed, then imports history-seed.nuon
 # from the toolkit directory.
 export def seed []: nothing -> nothing {
-    let seed_file = ($env.CURRENT_FILE | path dirname | path join 'history-seed.nuon')
     if not ($seed_file | path exists) {
         error make { msg: $"seed file not found: ($seed_file)" }
     }
