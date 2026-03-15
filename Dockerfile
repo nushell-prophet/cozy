@@ -21,10 +21,10 @@ RUN NONINTERACTIVE=1 /bin/bash -c \
 
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
 
-RUN brew install nushell fzf lazygit helix zellij broot carapace git-delta visidata bat \
+RUN brew install nushell fzf lazygit helix zellij broot git-delta visidata bat \
     && brew cleanup --prune=all
 
-RUN brew install jj \
+RUN brew install jj git-lfs \
     && brew cleanup --prune=all
 
 ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime \
