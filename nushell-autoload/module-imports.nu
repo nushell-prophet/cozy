@@ -6,7 +6,11 @@ overlay new others
 # Nushell Modules
 overlay use ~/repos/nu-goodies/nu-goodies
 
-$env.kv.path = ($nu.home-dir | path join .local share nushell-kv)
+$env.kv.path = (
+    if $env.WORKSPACE_DIR? != null { $env.WORKSPACE_DIR } else { 
+        $nu.home-dir | path join .local share nushell-kv
+    }
+)
 overlay use ~/repos/nushell-kv/kv --prefix
 
 overlay use ~/repos/dotnu/dotnu --prefix
