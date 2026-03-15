@@ -94,7 +94,7 @@ export def "main test" [
 
     print $"Image: ($template)"
     print "Creating sandbox..."
-    ^docker sandbox create --debug --load-local-template -t $template --name $sandbox claude $ws
+    ^docker sandbox create --debug -t $template --name $sandbox claude $ws
 
     # Wait for readiness
     mut ready = false

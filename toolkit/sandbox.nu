@@ -50,7 +50,7 @@ export def build [
   for sb in $sandboxes {
     for ws in $sb.workspaces {
       print $"Creating sandbox for ($ws)..."
-      ^docker sandbox create --debug --load-local-template -t $"($image):($tag)" --name $sb.name claude $ws
+      ^docker sandbox create --debug -t $"($image):($tag)" --name $sb.name claude $ws
     }
   }
 }
@@ -73,7 +73,7 @@ export def run [
 
   let full = $"($image):($tag | first | get tag)"
   let path = $project_path | default $env.PWD
-  ^docker sandbox run --load-local-template -t $full claude $path
+  ^docker sandbox run -t $full claude $path
 }
 
 # List sandboxes as a table
