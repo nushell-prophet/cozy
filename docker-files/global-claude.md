@@ -36,7 +36,7 @@ Nushell is the primary shell. Modules are in `~/repos/`:
 - `dotnu` — module management
 - `numd` — Nushell-native markdown processor
 - `nu-cmd-stack` — command history stacking
-- `nushell-kv` — key-value store
+- `nu-kv` — key-value store
 - `claude-nu` — Claude Code integration
 
 Use `use ~/repos/<module>/<module>` to load a module. Autoload scripts are in `~/.config/nushell/autoload/`.

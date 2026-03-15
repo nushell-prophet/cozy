@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Lazygit with git-delta side-by-side diffs, accessible via `cmd+alt+l` in Zellij
 - Broot file manager with `:pbq`/`:pbfq` path-to-clipboard commands
 - FZF integration for Nushell history navigation (`ctrl+f`, `alt+f`)
-- Vendored Nushell modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nushell-kv, nutest, cozy-docker-sandbox-toolkit
+- Vendored Nushell modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, cozy-docker-sandbox-toolkit
 - Dotfiles deployment from my-dotfiles repo via `toolkit push-to-machine`
 - WezTerm config with kitty protocol keybindings, QuickSelect patterns, and sandbox/zen mode support
 - Git author attribution so Claude Code commits are attributed to `claude@anthropic.com`

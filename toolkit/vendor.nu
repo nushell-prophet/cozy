@@ -5,7 +5,7 @@ const modules = [
     [repo module];
     [cozy-docker-sandbox-toolkit .]
     [nu-goodies nu-goodies]
-    [nushell-kv kv]
+    [nu-kv kv]
     [dotnu dotnu]
     [numd numd]
     [claude-nu claude-nu]

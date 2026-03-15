@@ -1,7 +1,7 @@
 const repos = {
     cozy-docker-sandbox-toolkit: "https://github.com/nushell-prophet/cozy-docker-sandbox-toolkit.git"
     nu-goodies: "https://github.com/nushell-prophet/nu-goodies.git"
-    nushell-kv: "https://github.com/nushell-prophet/nu-kv.git"
+    nu-kv: "https://github.com/nushell-prophet/nu-kv.git"
     dotnu: "https://github.com/nushell-prophet/dotnu.git"
     numd: "https://github.com/nushell-prophet/numd.git"
     claude-nu: "https://github.com/nushell-prophet/claude-nu.git"

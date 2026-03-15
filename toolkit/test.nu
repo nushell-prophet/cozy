@@ -47,7 +47,7 @@ const files = [
 const dirs = [
     "/home/agent/repos/cozy-docker-sandbox-toolkit"
     "/home/agent/repos/nu-goodies"
-    "/home/agent/repos/nushell-kv"
+    "/home/agent/repos/nu-kv"
     "/home/agent/repos/dotnu"
     "/home/agent/repos/numd"
     "/home/agent/repos/claude-nu"

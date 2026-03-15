@@ -8,10 +8,10 @@ overlay use ~/repos/nu-goodies/nu-goodies
 
 $env.kv.path = (
     if $env.WORKSPACE_DIR? != null { $env.WORKSPACE_DIR } else { 
-        $nu.home-dir | path join .local share nushell-kv
+        $nu.home-dir | path join .local share nu-kv
     }
 )
-overlay use ~/repos/nushell-kv/kv --prefix
+overlay use ~/repos/nu-kv/kv --prefix
 
 overlay use ~/repos/dotnu/dotnu --prefix
 overlay use ~/repos/numd/numd --prefix

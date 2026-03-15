@@ -11,7 +11,7 @@ Dockerfile
 ├── Homebrew tools: nushell, helix, lazygit, zellij, broot, fzf, carapace, git-delta, jj, visidata
 ├── Dotfiles: cloned from github.com/nushell-prophet/my-dotfiles at build time
 │   └── toolkit push-to-machine deploys configs for helix, lazygit, zellij, broot, nushell, claude
-├── Vendored Nushell modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nushell-kv
+├── Vendored Nushell modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv
 │   └── vendor/ dir (default) or git clone (with --build-arg MODULES_SOURCE=clone)
 └── Nushell autoload scripts: copied into ~/.config/nushell/autoload/
 ```

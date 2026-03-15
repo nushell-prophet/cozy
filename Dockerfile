@@ -60,7 +60,7 @@ ARG MODULES_SOURCE=vendor
 RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
       git clone https://github.com/nushell-prophet/cozy-docker-sandbox-toolkit.git ~/repos/cozy-docker-sandbox-toolkit \
       && git clone https://github.com/nushell-prophet/nu-goodies.git ~/repos/nu-goodies \
-      && git clone https://github.com/nushell-prophet/nu-kv.git ~/repos/nushell-kv \
+      && git clone https://github.com/nushell-prophet/nu-kv.git ~/repos/nu-kv \
       && git clone https://github.com/nushell-prophet/dotnu.git ~/repos/dotnu \
       && git clone https://github.com/nushell-prophet/numd.git ~/repos/numd \
       && git clone https://github.com/nushell-prophet/claude-nu.git ~/repos/claude-nu \
