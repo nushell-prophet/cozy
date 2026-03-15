@@ -13,7 +13,6 @@ You are running inside a Docker sandbox (Ubuntu, aarch64). The workspace is moun
 - **git** + **git-delta** (`delta`) — syntax-highlighted diffs
 - **jj** — Jujutsu VCS, configured with `hx` as editor
 - **Lazygit** — TUI for git
-- **gh** — GitHub CLI
 
 ### File Navigation & Search
 - **Broot** (`broot`, `br` in Nushell) — tree file manager
@@ -24,7 +23,6 @@ You are running inside a Docker sandbox (Ubuntu, aarch64). The workspace is moun
 - **visidata** (`vd`) — terminal spreadsheet for CSV, JSON, SQLite, etc.
 - **Python 3**, **Node.js**, **Go** — available via base image and Homebrew
 - **jq** — JSON processor
-- **Carapace** — multi-shell completion engine
 
 ### Package Managers
 - **brew**, **pip**, **uv**, **npm** — install additional packages as needed
@@ -49,6 +47,5 @@ A Nushell MCP server is registered in `~/.claude.json`. It provides `eval`, `lis
 
 ## Constraints
 
-- Outbound network is firewalled — request domain access if needed
 - Docker socket is available for container operations
 - Home directory is at `/home/agent`; symlink `~/workspace/mounted` points to the workspace
