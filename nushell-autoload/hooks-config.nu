@@ -4,50 +4,25 @@ $env.config.hooks = {
   env_change: {
     PWD: [
       {
-        condition: {|_ after| not ($after | path join 'toolkit.nu' | path exists) }
-        code: "hide toolkit"
-        # code: "overlay hide --keep-env [ PWD ] toolkit"
-      }
-      {
         # seems like the hook below is redundant as env_change presupposes change
         # condition: {|_, after| $_ != null}
         code: "if $env.ZELLIJ_SESSION_NAME? != null {
-                            let pwd = pwd | path basename;
-                            let tabs = zellij action query-tab-names
-                            | lines
+                  let pwd = pwd | path basename;
+                  let tabs = zellij action query-tab-names
+                  | lines
 
-                            let length = $tabs
-                            | where $it =~ $\"^($pwd)\\(·|$)\"
-                            | length
+                  let length = $tabs
+                  | where $it =~ $\"^($pwd)\\(·|$)\"
+                  | length
 
-                            if $length > 0 and ($tabs | last) =~ 'Tab #\\d+' {
-                                $'($pwd)·($length + 1)'
-                            } else {$pwd}
-                            | str replace -r '^-+' ''
-                            | zellij action rename-tab $in
-                        }"
+                  if $length > 0 and ($tabs | last) =~ 'Tab #\\d+' {
+                      $'($pwd)·($length + 1)'
+                  } else {$pwd}
+                  | str replace -r '^-+' ''
+                  | zellij action rename-tab $in
+              }"
       }
-
-      {|before _|
-        if $before == null {
-          let file = ($nu.home-dir | path join ".local" "share" "nushell" "startup-times.nuon")
-          if not ($file | path exists) {
-            mkdir ($file | path dirname)
-            touch $file
-          }
-          let ver = (version)
-          open $file | append {
-            date: (date now)
-            time: $nu.startup-time
-            build: ($ver.build_rust_channel)
-            allocator: ($ver.allocator)
-            version: ($ver.version)
-            commit: ($ver.commit_hash)
-            build_time: ($ver.build_time)
-            bytes_loaded: (view files | get size | math sum)
-          } | collect { save --force $file }
-        }
-      }
+      
     ]
   }
 
