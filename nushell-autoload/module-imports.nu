@@ -19,3 +19,5 @@ overlay use ~/repos/numd/numd --prefix
 use ~/repos/claude-nu/claude-nu/
 
 use ~/.config/zellij/todo-nu/todo.nu lstd
+
+use ~/repos/nu-cmd-stack/cmd-stack
