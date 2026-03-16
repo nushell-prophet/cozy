@@ -10,7 +10,7 @@ Symlinked at `~/toolkit.nu` inside the container and auto-activated via Nushell 
 
 ### `toolkit sync-repos`
 
-Pulls the latest changes for a predefined set of Nushell module repos under `~/git/`. Handles branch switching, dirty working tree detection, and converting vendored directories to proper git repos.
+Pulls the latest changes for a predefined set of Nushell module repos under `~/repos/`. Handles branch switching, dirty working tree detection, and converting vendored directories to proper git repos.
 
 ```nushell
 use toolkit.nu; toolkit sync-repos       # skip repos with local changes
