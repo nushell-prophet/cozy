@@ -11,9 +11,11 @@ Dockerfile
 ├── Homebrew tools: nushell, helix, lazygit, zellij, broot, fzf, git-delta, git-lfs, jj, visidata, bat
 ├── Dotfiles: cloned from github.com/nushell-prophet/my-dotfiles at build time
 │   └── toolkit push-to-machine deploys configs for helix, lazygit, zellij, broot, nushell, claude
-├── Vendored Nushell modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest
+├── Vendored Nushell modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, cozy-docker-sandbox-toolkit
 │   └── vendor/ dir (default) or git clone (with --build-arg MODULES_SOURCE=clone)
-└── Nushell autoload scripts: copied into ~/.config/nushell/autoload/
+├── Nushell autoload scripts: copied into ~/.config/nushell/autoload/
+├── docker-files/global-claude.md: appended to sandbox ~/.claude/CLAUDE.md (tool catalog for Claude)
+└── MCP: nushell registered as stdio MCP server via `claude mcp add`
 ```
 
 ## Build & Run
