@@ -30,7 +30,6 @@ docker sandbox exec -it -w /home/agent/workspace/mounted cozy-test nu -l --execu
 Cozy is based on [docker sandbox](https://docs.docker.com/ai/sandboxes/), so it is:
 - macOS and Windows (experimental) compatible — the image provides both `arm64` and `amd64` architectures
 - isolated
-- convenient
 - with built-in AI agent (I personally tested it with `claude code`)
 
 ### Nushell
@@ -106,7 +105,9 @@ Changes from WezTerm defaults:
 
 To connect to the sandbox with Wezterm (`/home/agent/workspace/mounted` is a symlink to whichever workspace you mounted) you can use the next command:
 
-`wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua start -- docker sandbox exec -it cozy-test nu -l --execute 'print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\"; zellij attach -c cozy-test'`
+```
+wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua start -- docker sandbox exec -it cozy-test nu -l --execute 'print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\"; zellij attach -c cozy-test'
+```
 
 ## Nushell modules loaded by default
 
