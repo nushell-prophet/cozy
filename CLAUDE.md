@@ -8,10 +8,10 @@ Modern, beginner-friendly terminal environment for AI agents, running inside `do
 Dockerfile
 ├── Base: docker/sandbox-templates:claude-code (Ubuntu, git, curl, Python, Node.js, Go, rg, jq, gh)
 ├── apt: procps, file
-├── Homebrew tools: nushell, helix, lazygit, zellij, broot, fzf, git-delta, git-lfs, jj, visidata
+├── Homebrew tools: nushell, helix, lazygit, zellij, broot, fzf, git-delta, git-lfs, jj, visidata, bat
 ├── Dotfiles: cloned from github.com/nushell-prophet/my-dotfiles at build time
 │   └── toolkit push-to-machine deploys configs for helix, lazygit, zellij, broot, nushell, claude
-├── Vendored Nushell modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv
+├── Vendored Nushell modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest
 │   └── vendor/ dir (default) or git clone (with --build-arg MODULES_SOURCE=clone)
 └── Nushell autoload scripts: copied into ~/.config/nushell/autoload/
 ```
@@ -20,7 +20,7 @@ Dockerfile
 
 ```sh
 docker build -t cozy:v1 .
-docker sandbox run --load-local-template -t cozy:v1 claude ~/path/to/project
+docker sandbox create -t cozy:v1 claude ~/path/to/project
 ```
 
 Requires Docker Desktop 4.58+ on macOS.
