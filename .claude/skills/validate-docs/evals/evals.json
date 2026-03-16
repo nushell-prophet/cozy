@@ -1,0 +1,23 @@
+{
+  "skill_name": "validate-docs",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "validate my docs against the code",
+      "expected_output": "Should identify all inconsistencies between documentation files (CLAUDE.md, README.md, etc.) and source-of-truth files (Dockerfile, test.nu, toolkit README), then fix them. Should NOT flag changelog entries about past renames.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I just renamed a bunch of things in the Dockerfile. Can you check if the docs are still accurate?",
+      "expected_output": "Should cross-reference Dockerfile tool/package lists and paths against all docs, find any stale references from the rename, and fix them.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "check if README.md and CLAUDE.md are consistent with each other and with the Dockerfile",
+      "expected_output": "Should compare claims across README.md, CLAUDE.md, and Dockerfile. Find mismatches in tool lists, paths, commands, and module names. Fix the docs to match the Dockerfile (source of truth).",
+      "files": []
+    }
+  ]
+}
