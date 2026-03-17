@@ -1,4 +1,4 @@
-FROM docker/sandbox-templates:claude-code
+FROM docker/sandbox-templates:shell
 
 USER root
 
@@ -73,6 +73,8 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
     && ln -s ~/repos/cozy-docker-sandbox-toolkit ~/workspace/cozy-docker-sandbox-toolkit \
     && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/ \
     && rm -rf /tmp/vendor/ /tmp/nushell-autoload/
+
+RUN npm install -g @anthropic-ai/claude-code
 
 # Register nushell MCP server in Claude Code user config (~/.claude.json).
 # autoload/mcp-server.nu self-heals if sandbox create overwrites the file.

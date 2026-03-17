@@ -6,11 +6,12 @@ Modern, beginner-friendly terminal environment for AI agents, running inside `do
 
 ```
 Dockerfile
-├── Base: docker/sandbox-templates:claude-code (Ubuntu, git, curl, Python, Node.js, Go, rg, jq, gh)
+├── Base: docker/sandbox-templates:shell (Ubuntu, git, curl, Python, Node.js, Go, rg, jq, gh)
 ├── apt: procps, file
 ├── Homebrew tools: nushell, helix, lazygit, zellij, broot, fzf, git-delta, git-lfs, jj, visidata, bat
 ├── Dotfiles: cloned from github.com/nushell-prophet/my-dotfiles at build time
 │   └── toolkit push-to-machine deploys configs for helix, lazygit, zellij, broot, nushell, claude
+├── npm: @anthropic-ai/claude-code (installed separately, late layer)
 ├── Vendored Nushell modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, cozy-docker-sandbox-toolkit
 │   └── vendor/ dir (default) or git clone (with --build-arg MODULES_SOURCE=clone)
 ├── Nushell autoload scripts: copied into ~/.config/nushell/autoload/
