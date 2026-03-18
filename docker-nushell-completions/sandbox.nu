@@ -1,4 +1,4 @@
-const agents = [cagent claude codex copilot gemini kiro]
+const agents = [cagent claude codex copilot gemini kiro shell]
 
 def "nu-complete sandbox names" [] {
     ^docker sandbox ls --json | from json | get vms
@@ -10,6 +10,24 @@ def "nu-complete sandbox run-target" [] {
         | each {|x| { value: $x.name, description: $x.status }}
     let new = $agents | each {|a| { value: $a, description: "new" }}
     $new | append $vms
+}
+
+const script_path = path self
+
+export def wezterm-cozy [
+    sandbox_name: string@"nu-complete sandbox names"
+    --config-file: path
+] {
+    let conf = $config_file
+    | default ($script_path | path dirname | path join ../vendor/dotfiles/wezterm/wezterm.lua)
+
+    ^wezterm --config-file $conf start --always-new-process -- ...[
+        docker sandbox exec -it $sandbox_name
+        nu --login --commands $'
+            print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\";
+            zellij attach -c ($sandbox_name)
+        '
+    ]
 }
 
 export extern "docker sandbox" [
