@@ -26,7 +26,7 @@ docker build -t cozy:v1 .
 docker sandbox create -t cozy:v1 claude ~/path/to/project
 ```
 
-Requires Docker Desktop 4.58+ on macOS.
+Requires Docker Desktop 4.58+ on macOS or Windows.
 
 ## Sandbox Management
 
@@ -49,7 +49,7 @@ After Dockerfile changes: rebuild image, then recreate sandbox (delete + run).
 
 ## Notes
 
-- Workspace is mounted at its original macOS path (e.g. `/Users/user/temp/docker/`), not at `/workspace` or `/home/agent`
+- Workspace is mounted at its original host path (e.g. `/Users/user/temp/docker/`), not at `/workspace` or `/home/agent`
 - Only the workspace folder from `docker sandbox run` is synced — `exec` from a different folder doesn't mount it
 - Sandbox uses microVMs — won't work inside UTM on M1 (no nested virtualization)
 - Base image CVEs (e.g. in `/usr/bin/docker`) are fixed upstream — pull latest base image periodically
