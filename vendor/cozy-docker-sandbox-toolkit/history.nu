@@ -27,7 +27,7 @@ export def seed []: nothing -> nothing {
 # Reads the sqlite database directly, so it works from any context:
 # interactive shell, `nu -c`, scripts, or the Bash tool.
 # No login shell (`nu -l`) required.
-# Each export gets a timestamped filename; latest symlink always points to the most recent.
+# Each export gets a timestamped filename; import picks the most recent by name.
 export def export [
     path?: path  # Output file (default: ~/workspace/mounted/sandbox-state/history-<timestamp>.nuon)
 ]: nothing -> nothing {
@@ -42,10 +42,6 @@ export def export [
         return
     }
     $items | save --force $out
-    # update "latest" symlink
-    let link = $out | path dirname | path join 'history-latest.nuon'
-    rm -f $link
-    ^ln -s ($out | path basename) $link
     print $"Exported ($items | length) history items to ($out)"
 }
 
@@ -54,13 +50,20 @@ export def export [
 # Inserts directly into the sqlite database, so it works from any context.
 # The file should contain a table with columns:
 # command_line, cwd, start_timestamp, duration_ms, exit_status.
-# Without a path, imports from the latest export via the history-latest.nuon symlink.
+# Without a path, imports from the most recent history-*.nuon in sandbox-state.
 # Deduplicates incoming rows and skips entries already in the DB.
 # Re-sorts the DB by start_timestamp after import.
 export def import [
-    path?: path  # Input file (default: ~/workspace/mounted/sandbox-state/history-latest.nuon)
+    path?: path  # Input file (default: latest history-*.nuon in ~/workspace/mounted/sandbox-state/)
 ]: nothing -> nothing {
-    let src = $path | default (sandbox-state-path 'history-latest.nuon')
+    let src = if $path != null { $path } else {
+        let dir = $sandbox_state_dir | path expand
+        let files = glob ($dir | path join 'history-*.nuon') | sort
+        if ($files | is-empty) {
+            error make { msg: $"no history exports found in ($dir)" }
+        }
+        $files | last
+    }
     if not ($src | path exists) {
         error make { msg: $"file not found: ($src)" }
     }
