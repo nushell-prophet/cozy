@@ -7,8 +7,8 @@ Modern, beginner-friendly terminal environment for AI agents, running inside `do
 ```
 Dockerfile
 ├── Base: docker/sandbox-templates:shell (Ubuntu, git, curl, Python, Node.js, Go, rg, jq, gh)
-├── apt: procps, file
-├── Homebrew tools: nushell, helix, lazygit, zellij, broot, fzf, git-delta, git-lfs, jj, visidata, bat
+├── apt: procps, file, gcc, libc6-dev
+├── Homebrew tools: nushell, helix, lazygit, zellij, broot, fzf, git-delta, git-lfs, jj, visidata, bat, topiary
 ├── Dotfiles: cloned from github.com/nushell-prophet/my-dotfiles at build time
 │   └── toolkit push-to-machine deploys configs for helix, lazygit, zellij, broot, nushell, claude
 ├── Claude Code: installed via official install script (https://claude.ai/install.sh), late layer
