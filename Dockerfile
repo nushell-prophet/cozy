@@ -7,6 +7,8 @@ RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/*.sources /etc/apt/sou
     && apt-get install -y --no-install-recommends \
         procps \
         file \
+        gcc \
+        libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=755 docker-files/pbcopy /usr/local/bin/pbcopy
@@ -21,7 +23,7 @@ RUN NONINTERACTIVE=1 /bin/bash -c \
 
 ENV PATH="/home/agent/.local/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
 
-RUN brew install nushell fzf lazygit helix zellij broot git-delta visidata bat \
+RUN brew install nushell fzf lazygit helix zellij broot git-delta visidata bat topiary \
     && brew cleanup --prune=all
 
 RUN brew install jj git-lfs \
@@ -73,6 +75,9 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
     && ln -s ~/repos/cozy-docker-sandbox-toolkit ~/workspace/cozy-docker-sandbox-toolkit \
     && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/ \
     && rm -rf /tmp/vendor/ /tmp/nushell-autoload/
+
+# Set up topiary nushell grammar and config (topiary binary already installed via brew above)
+RUN nu -c 'use ~/repos/cozy-docker-sandbox-toolkit/topiary.nu; topiary install'
 
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
