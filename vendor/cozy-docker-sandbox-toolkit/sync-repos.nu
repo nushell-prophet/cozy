@@ -1,13 +1,15 @@
 const repos = {
-    cozy-docker-sandbox-toolkit: "https://github.com/nushell-prophet/cozy-docker-sandbox-toolkit.git"
-    nu-goodies: "https://github.com/nushell-prophet/nu-goodies.git"
-    nu-kv: "https://github.com/nushell-prophet/nu-kv.git"
-    dotnu: "https://github.com/nushell-prophet/dotnu.git"
-    numd: "https://github.com/nushell-prophet/numd.git"
     claude-nu: "https://github.com/nushell-prophet/claude-nu.git"
+    cozy-docker-sandbox-toolkit: "https://github.com/nushell-prophet/cozy-docker-sandbox-toolkit.git"
+    dotnu: "https://github.com/nushell-prophet/dotnu.git"
     nu-cmd-stack: "https://github.com/nushell-prophet/nu-cmd-stack.git"
+    nu-goodies: "https://github.com/nushell-prophet/nu-goodies.git"
+    numd: "https://github.com/nushell-prophet/numd.git"
+    nu-kv: "https://github.com/nushell-prophet/nu-kv.git"
     topiary-nushell: "https://github.com/blindFS/topiary-nushell.git"
 }
+
+const base = $nu.home-dir | path join repos
 
 def remote-head-branch []: nothing -> string {
     ^git remote show origin
@@ -19,14 +21,10 @@ def remote-head-branch []: nothing -> string {
 
 # Convert vendor directories to git repos if needed, pull latest from all
 export def main [--force (-f)] {
-    let base = $nu.home-dir | path join git
-
-    $repos | items {|name url|
+    $repos
+    | items {|name url|
         let dir = $base | path join $name
-        if not ($dir | path exists) {
-            print $"  (ansi yellow)($name)(ansi reset): not found, skipping"
-            return
-        }
+        mkdir $dir
 
         if ($dir | path join '.git' | path exists) {
             cd $dir

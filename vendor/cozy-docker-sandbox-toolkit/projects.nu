@@ -25,7 +25,7 @@ export def export [
     mkdir $dst
     ^rsync -a --exclude='.DS_Store' $"($src)/" $"($dst)/"
     let count = ls $src | where type == dir | length
-    print $"Exported ($count) project(s) to ($dst)"
+    print $"Exported ($count) project\(s) to ($dst)"
 }
 
 # Import Claude Code project sessions from sandbox-state.
@@ -58,5 +58,5 @@ export def import [
         ^rsync -a --ignore-existing --exclude='.DS_Store' $"($project.name)/" $"($project_dst)/"
         $imported += 1
     }
-    print $"Imported ($imported) project(s) into ($dst)"
+    print $"Imported ($imported) project\(s) into ($dst)"
 }
