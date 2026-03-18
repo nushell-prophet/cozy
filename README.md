@@ -15,7 +15,7 @@ First, install Docker Desktop https://www.docker.com/products/docker-desktop/
 docker build -t cozy:latest .
 
 # create local container. Base images for the agents are provided by Docker.
-docker sandbox create --name cozy-test -t cozy:latest shell $working_dir example-workspace
+docker sandbox create --name cozy-test -t cozy:latest shell example-workspace
 
 # connect to the container
 docker sandbox exec -it cozy-test nu -l --execute 'zellij attach -c cozy-test'
