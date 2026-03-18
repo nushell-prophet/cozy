@@ -11,7 +11,7 @@ Dockerfile
 ├── Homebrew tools: nushell, helix, lazygit, zellij, broot, fzf, git-delta, git-lfs, jj, visidata, bat
 ├── Dotfiles: cloned from github.com/nushell-prophet/my-dotfiles at build time
 │   └── toolkit push-to-machine deploys configs for helix, lazygit, zellij, broot, nushell, claude
-├── npm: @anthropic-ai/claude-code (installed separately, late layer)
+├── Claude Code: installed via official install script (https://claude.ai/install.sh), late layer
 ├── Vendored Nushell modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, cozy-docker-sandbox-toolkit
 │   └── vendor/ dir (default) or git clone (with --build-arg MODULES_SOURCE=clone)
 ├── Nushell autoload scripts: copied into ~/.config/nushell/autoload/

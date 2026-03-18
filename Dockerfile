@@ -19,7 +19,7 @@ USER agent
 RUN NONINTERACTIVE=1 /bin/bash -c \
     "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
+ENV PATH="/home/agent/.local/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
 
 RUN brew install nushell fzf lazygit helix zellij broot git-delta visidata bat \
     && brew cleanup --prune=all
@@ -74,7 +74,7 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
     && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/ \
     && rm -rf /tmp/vendor/ /tmp/nushell-autoload/
 
-RUN npm install -g @anthropic-ai/claude-code
+RUN curl -fsSL https://claude.ai/install.sh | bash
 
 # Register nushell MCP server in Claude Code user config (~/.claude.json).
 # autoload/mcp-server.nu self-heals if sandbox create overwrites the file.

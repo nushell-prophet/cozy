@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Rename project from `ai-sandbox` to `cozy` and Docker image from `nushell-ai-sandbox` to `cozy`
 - Rename companion toolkit from `ai-sandbox-toolkit` to `cozy-docker-sandbox-toolkit`
-- Switch base image from `docker/sandbox-templates:claude-code` to `docker/sandbox-templates:shell`; install Claude Code via npm as a late Dockerfile layer — the `claude-code` image updates frequently and invalidated all cached layers on every rebuild
+- Switch base image from `docker/sandbox-templates:claude-code` to `docker/sandbox-templates:shell`; install Claude Code via Anthropic's recommended install script (`claude.ai/install.sh`) as a late Dockerfile layer — the `claude-code` image updates frequently and invalidated all cached layers on every rebuild
 
 ## [0.0.1] - 2026-03-08
 
