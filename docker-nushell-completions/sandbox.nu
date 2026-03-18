@@ -1,8 +1,9 @@
 const agents = [cagent claude codex copilot gemini kiro shell]
 
 def "nu-complete sandbox names" [] {
-    ^docker sandbox ls --json | from json | get vms
-    | each {|x| { value: $x.name, description: $"($x.agent) ($x.status)" }}
+    ^docker sandbox ls
+    | detect columns
+    | each {|x| { value: $x.SANDBOX, description: $"($x.STATUS) ($x.WORKSPACE)" }}
 }
 
 def "nu-complete sandbox run-target" [] {
