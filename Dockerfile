@@ -49,7 +49,11 @@ ENV XDG_CONFIG_HOME=$HOME/.config \
 RUN broot --write-default-conf $XDG_CONFIG_HOME/broot \
     && broot --set-install-state installed
 
-RUN git config --global user.name "Agent" && git config --global user.email "agent@sandbox"
+# Workspace is mounted from the host, so it's owned by a different uid.
+# Git refuses to operate on repos with mismatched ownership (CVE-2022-24765).
+# Wildcard is safe here — the sandbox is single-user and isolated.
+RUN git config --global user.name "Agent" && git config --global user.email "agent@sandbox" \
+    && git config --global --add safe.directory '*'
 
 ARG DOTFILES_CACHE_BUST
 RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/repos/dotfiles \
