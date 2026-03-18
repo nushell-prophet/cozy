@@ -11,12 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Rename project from `ai-sandbox` to `cozy` and Docker image from `nushell-ai-sandbox` to `cozy`
 - Rename companion toolkit from `ai-sandbox-toolkit` to `cozy-docker-sandbox-toolkit`
+- Switch base image from `docker/sandbox-templates:claude-code` to `docker/sandbox-templates:shell`; install Claude Code via npm as a late Dockerfile layer — the `claude-code` image updates frequently and invalidated all cached layers on every rebuild
 
 ## [0.0.1] - 2026-03-08
 
 ### Added
 
-- Docker sandbox-based terminal environment for AI agents, built on `docker/sandbox-templates:claude-code` with Homebrew toolchain
+- Docker sandbox-based terminal environment for AI agents, built on `docker/sandbox-templates:shell` with Homebrew toolchain and Claude Code installed via npm
 - Nushell as primary shell with sensible defaults, autoload scripts, and MCP server pre-configured for Claude Code
 - Zellij terminal multiplexer with custom keybindings (`ctrl+shift+g` mode toggle, `cmd+t/n/w` for tabs and panes)
 - Helix editor configured with Nushell backend and `+ s` menu for XML-wrapped clipboard copy

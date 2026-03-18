@@ -15,7 +15,7 @@ First, install Docker Desktop https://www.docker.com/products/docker-desktop/
 docker build -t cozy:latest .
 
 # create local container. Base images for the agents are provided by Docker.
-let agent = 'claude' # Agents: claude, codex, copilot, gemini, cagent, kiro, opencode, shell
+let agent = 'shell' # Agents: claude, codex, copilot, gemini, cagent, kiro, opencode, shell
 let working_dir = 'example-workspace' # Files in the `$working_dir` are synced bidirectionally between the host and the VM as changes happen.
 docker sandbox create --name cozy-test -t cozy:latest $agent $working_dir
 
