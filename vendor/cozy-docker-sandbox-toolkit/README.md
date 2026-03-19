@@ -38,14 +38,12 @@ use toolkit.nu; toolkit history export ./my-history.nuon  # custom path
 
 ### `toolkit history import`
 
-Imports history records from a `.nuon` file back into the SQLite database. Without a path, reads from the `history-latest.nuon` symlink created by export.
+Imports history records from a `.nuon` file back into the SQLite database. Without a path, picks the most recent `history-*.nuon` file in `sandbox-state/` by name. Deduplicates incoming rows and skips entries already present in the database.
 
 ```nushell
 use toolkit.nu; toolkit history import                    # from latest export
 use toolkit.nu; toolkit history import ./my-history.nuon  # from specific file
 ```
-
-Note: import does not deduplicate — running it twice inserts all records again.
 
 ## License
 

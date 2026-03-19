@@ -1,7 +1,7 @@
 const history_db = '~/.config/nushell/history.sqlite3'
 const history_columns = "command_line, cwd, start_timestamp, duration_ms, exit_status"
 const sandbox_state_dir = '~/workspace/mounted/sandbox-state'
-const seed_file = path self | path dirname | path join 'history-seed.nuon'
+const seed_file = path self | path dirname | path join .. history-seed.nuon
 
 def sandbox-state-path [filename: string]: nothing -> path {
     let dir = $sandbox_state_dir | path expand
@@ -9,15 +9,13 @@ def sandbox-state-path [filename: string]: nothing -> path {
     $dir | path join $filename
 }
 
-export def main [] { help history }
-
 # Seed nushell history with useful commands from the bundled seed file.
 #
 # Initializes the history database if needed, then imports history-seed.nuon
 # from the toolkit directory.
 export def seed []: nothing -> nothing {
     if not ($seed_file | path exists) {
-        error make { msg: $"seed file not found: ($seed_file)" }
+        error make {msg: $"seed file not found: ($seed_file)"}
     }
     import $seed_file
 }
@@ -29,12 +27,12 @@ export def seed []: nothing -> nothing {
 # No login shell (`nu -l`) required.
 # Each export gets a timestamped filename; import picks the most recent by name.
 export def export [
-    path?: path  # Output file (default: ~/workspace/mounted/sandbox-state/history-<timestamp>.nuon)
+    path?: path # Output file (default: ~/workspace/mounted/sandbox-state/history-<timestamp>.nuon)
 ]: nothing -> nothing {
     let out = $path | default (sandbox-state-path $"history-(date now | format date '%Y%m%d-%H%M%S').nuon")
     let db = $history_db | path expand
     if not ($db | path exists) {
-        error make { msg: $"history database not found: ($db)" }
+        error make {msg: $"history database not found: ($db)"}
     }
     let items = open $db | query db $"SELECT ($history_columns) FROM history ORDER BY id"
     if ($items | is-empty) {
@@ -54,22 +52,22 @@ export def export [
 # Deduplicates incoming rows and skips entries already in the DB.
 # Re-sorts the DB by start_timestamp after import.
 export def import [
-    path?: path  # Input file (default: latest history-*.nuon in ~/workspace/mounted/sandbox-state/)
+    path?: path # Input file (default: latest history-*.nuon in ~/workspace/mounted/sandbox-state/)
 ]: nothing -> nothing {
     let src = if $path != null { $path } else {
         let dir = $sandbox_state_dir | path expand
         let files = glob ($dir | path join 'history-*.nuon') | sort
         if ($files | is-empty) {
-            error make { msg: $"no history exports found in ($dir)" }
+            error make {msg: $"no history exports found in ($dir)"}
         }
         $files | last
     }
     if not ($src | path exists) {
-        error make { msg: $"file not found: ($src)" }
+        error make {msg: $"file not found: ($src)"}
     }
     let db = $history_db | path expand
     if not ($db | path exists) {
-        error make { msg: $"history database not found: ($db)" }
+        error make {msg: $"history database not found: ($db)"}
     }
     let items = open $src
     if ($items | is-empty) {
@@ -109,7 +107,11 @@ export def import [
     $sorted | each {|row|
         open $db
         | query db $"INSERT INTO history \(($history_columns)\) VALUES \(?, ?, ?, ?, ?)" --params [
-            $row.command_line $row.cwd $row.start_timestamp $row.duration_ms $row.exit_status
+            $row.command_line
+            $row.cwd
+            $row.start_timestamp
+            $row.duration_ms
+            $row.exit_status
         ]
     } | ignore
 

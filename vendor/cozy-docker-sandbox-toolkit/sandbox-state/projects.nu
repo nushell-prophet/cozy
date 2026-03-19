@@ -7,19 +7,17 @@ def sandbox-state-path [filename: string]: nothing -> path {
     $dir | path join $filename
 }
 
-export def main [] { help projects }
-
 # Export Claude Code project sessions to sandbox-state for preservation.
 #
 # Copies ~/.claude/projects/ into ~/workspace/mounted/sandbox-state/projects/.
 # The mounted directory survives sandbox recreation, so exported sessions
 # can be imported into a fresh sandbox.
 export def export [
-    path?: path  # Output directory (default: ~/workspace/mounted/sandbox-state/projects)
+    path?: path # Output directory (default: ~/workspace/mounted/sandbox-state/projects)
 ]: nothing -> nothing {
     let src = $claude_projects_dir | path expand
     if not ($src | path exists) {
-        error make { msg: $"projects directory not found: ($src)" }
+        error make {msg: $"projects directory not found: ($src)"}
     }
     let dst = $path | default (sandbox-state-path 'projects')
     mkdir $dst
@@ -33,11 +31,11 @@ export def export [
 # Copies sessions from ~/workspace/mounted/sandbox-state/projects/ into ~/.claude/projects/.
 # Existing sessions with the same UUID are skipped (no overwrite).
 export def import [
-    path?: path  # Input directory (default: ~/workspace/mounted/sandbox-state/projects)
+    path?: path # Input directory (default: ~/workspace/mounted/sandbox-state/projects)
 ]: nothing -> nothing {
     let src = $path | default (sandbox-state-path 'projects')
     if not ($src | path exists) {
-        error make { msg: $"projects directory not found: ($src)" }
+        error make {msg: $"projects directory not found: ($src)"}
     }
     let dst = $claude_projects_dir | path expand
     mkdir $dst

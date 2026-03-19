@@ -65,6 +65,11 @@ export def install []: nothing -> nothing {
     if ($so_path | path exists) {
         print $"  (ansi green)grammar(ansi reset): cached"
     } else {
+        if (which gcc | is-empty) {
+            print "  Installing gcc (needed to compile tree-sitter grammar)..."
+            ^sudo apt-get update -qq
+            ^sudo apt-get install -y -qq gcc libc6-dev
+        }
         print "  Building tree-sitter-nu grammar..."
         let tmp = mktemp -d
         ^git clone --depth 1 https://github.com/nushell/tree-sitter-nu.git $tmp
