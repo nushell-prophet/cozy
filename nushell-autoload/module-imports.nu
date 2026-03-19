@@ -9,7 +9,7 @@ overlay use ~/repos/nu-goodies/nu-goodies
 overlay use ~/repos/cozy-docker-sandbox-toolkit/ as cozy --prefix
 
 $env.kv.path = (
-    if $env.WORKSPACE_DIR? != null { $env.WORKSPACE_DIR } else { 
+    if $env.WORKSPACE_DIR? != null { $env.WORKSPACE_DIR } else {
         $nu.home-dir | path join .local share nu-kv
     }
 )
