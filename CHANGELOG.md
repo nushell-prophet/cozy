@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3] - 2026-03-19
+
+### Added
+
+- `wezterm-cozy` command to launch a WezTerm window into a sandbox with Zellij auto-attach (97b77c6)
+- `cozy-docker-sandbox-toolkit` available as `cozy` in Nushell autoload (c895984, 25df314)
+
+### Changed
+
+- Zellij no longer shows startup tips (9d5421b)
+
+### Fixed
+
+- Git operations (lazygit, etc.) failing on mounted workspace due to `safe.directory` ownership check — sandbox mounts have a different uid (05b9cf5)
+- Sandbox completions reported wrong statuses via `docker sandbox ls --json`; switched to flat output (1a62f77)
+
 ## [0.0.2] - 2026-03-18
 
 ### Added
@@ -56,6 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sandbox image test script with tool launch verification
 - Supports both `arm64` and `amd64` architectures via Docker sandbox
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.0.2...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.0.3...HEAD
+[0.0.3]: https://github.com/nushell-prophet/cozy/compare/0.0.2...0.0.3
 [0.0.2]: https://github.com/nushell-prophet/cozy/compare/0.0.1...0.0.2
 [0.0.1]: https://github.com/nushell-prophet/cozy/releases/tag/0.0.1
