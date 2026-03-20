@@ -107,6 +107,7 @@ local function setup_environment()
     XDG_DATA_HOME = home .. "/.local/share",
   }
 end
+-- mounted
 
 -- Setup environment
 local ok, env_vars = pcall(setup_environment)
@@ -118,10 +119,11 @@ config.set_environment_variables = ok and env_vars or {}
 -- Font configuration with fallback chain
 -- WezTerm skips unavailable fonts and uses the next available one
 config.font = wezterm.font_with_fallback {
+  
   { family = 'ZedMono Nerd Font', stretch = 'Expanded' }, -- brew install --cask font-zed-mono-nerd-font
+  { family = 'Cascadia Code' },
   'JetBrains Mono',
   'Fira Code',
-  'Cascadia Code',
   'Iosevka',
   'Menlo',
   'Consolas',

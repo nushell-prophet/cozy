@@ -125,45 +125,45 @@ keybinds clear-defaults=true {
         }
     }
     shared_among "normal" "locked" {
-        bind "Super Shift +" { Resize "Increase"; }
-        bind "Super Shift -" { Resize "Decrease"; }
-        bind "Super Shift =" { Resize "Increase"; }
-        bind "Super [" { PreviousSwapLayout; }
-        bind "Super ]" { NextSwapLayout; }
-        bind "Super f" { ToggleFloatingPanes; }
-        bind "Super h" { MoveFocus "left"; }
-        bind "Super Shift h" { GoToPreviousTab; }
-        bind "Super i" { MoveTab "left"; }
-        bind "Super j" { MoveFocus "down"; }
-        bind "Super k" { MoveFocus "up"; }
-        bind "Super l" { MoveFocus "right"; }
-        bind "Super Shift l" { GoToNextTab; }
-        bind "Super n" { NewPane; }
-        bind "Super t" { NewTab; }
-        bind "Super alt t" { NewTab {
+        bind "Alt Shift +" { Resize "Increase"; }
+        bind "Alt Shift -" { Resize "Decrease"; }
+        bind "Alt Shift =" { Resize "Increase"; }
+        bind "Alt [" { PreviousSwapLayout; }
+        bind "Alt ]" { NextSwapLayout; }
+        bind "Alt f" { ToggleFloatingPanes; }
+        bind "Alt h" { MoveFocus "left"; }
+        bind "Alt Shift h" { GoToPreviousTab; }
+        bind "Alt i" { MoveTab "left"; }
+        bind "Alt j" { MoveFocus "down"; }
+        bind "Alt k" { MoveFocus "up"; }
+        bind "Alt l" { MoveFocus "right"; }
+        bind "Alt Shift l" { GoToNextTab; }
+        bind "Alt n" { NewPane; }
+        bind "Alt t" { NewTab; }
+        bind "Alt alt t" { NewTab {
                cwd "~/temp/"
                name "temp"
            }
         }
-        bind "Super o" { MoveTab "right"; }
-        bind "Super w" { CloseFocus; }
-        bind "Super 1" { GoToTab 1; }
-        bind "Super 2" { GoToTab 2; }
-        bind "Super 3" { GoToTab 3; }
-        bind "Super 4" { GoToTab 4; }
-        bind "Super 5" { GoToTab 5; }
-        bind "Super 6" { GoToTab 6; }
-        bind "Super 7" { GoToTab 7; }
-        bind "Super 8" { GoToTab 8; }
-        bind "Super 9" { GoToTab 9; }
+        bind "Alt o" { MoveTab "right"; }
+        bind "Alt w" { CloseFocus; }
+        bind "Alt 1" { GoToTab 1; }
+        bind "Alt 2" { GoToTab 2; }
+        bind "Alt 3" { GoToTab 3; }
+        bind "Alt 4" { GoToTab 4; }
+        bind "Alt 5" { GoToTab 5; }
+        bind "Alt 6" { GoToTab 6; }
+        bind "Alt 7" { GoToTab 7; }
+        bind "Alt 8" { GoToTab 8; }
+        bind "Alt 9" { GoToTab 9; }
 
         bind "PageDown" { PageScrollDown; }
         bind "PageUp" { PageScrollUp; }
         bind "Shift PageDown" { ScrollDown; }
         bind "Shift PageUp" { ScrollUp; }
 
-        bind "Super m" { ToggleFocusFullscreen; }
-        bind "Super Shift e" {
+        bind "Alt m" { ToggleFocusFullscreen; }
+        bind "Alt Shift e" {
             DumpScreen "/tmp/zellij-screen.txt" {
                 full true
             };
@@ -214,7 +214,7 @@ keybinds clear-defaults=true {
             };
         }
 
-        bind "Super e" {
+        bind "Alt e" {
             Run "todo-hx" {
                 close_on_exit true
 //                cwd "tasks"
