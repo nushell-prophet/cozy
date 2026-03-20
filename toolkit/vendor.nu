@@ -46,7 +46,7 @@ export def main [] {
             cp $src $dst
         } else {
             mkdir $dst
-            ^rsync -a --exclude='.git' --exclude='.DS_Store' --exclude='lazytests' --exclude='md_backups' --exclude='zzz_md_backups' $"($src)/" $"($dst)/"
+            ^rsync -a --prune-empty-dirs --exclude='.git' --exclude='.DS_Store' --exclude='lazytests' --exclude='md_backups' --exclude='zzz_md_backups' $"($src)/" $"($dst)/"
         }
         print $"(ansi green)Copied:(ansi reset) ($m.repo)/($m.module)"
     }
