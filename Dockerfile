@@ -53,7 +53,9 @@ RUN broot --write-default-conf $XDG_CONFIG_HOME/broot \
 # Git refuses to operate on repos with mismatched ownership (CVE-2022-24765).
 # Wildcard is safe here — the sandbox is single-user and isolated.
 RUN git config --global user.name "Agent" && git config --global user.email "agent@sandbox" \
-    && git config --global --add safe.directory '*'
+    && git config --global --add safe.directory '*' \
+    && git config --global core.excludesFile ~/.gitignore \
+    && echo '.DS_Store' > ~/.gitignore
 
 ARG DOTFILES_CACHE_BUST
 RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/repos/dotfiles \
