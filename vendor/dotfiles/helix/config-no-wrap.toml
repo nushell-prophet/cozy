@@ -1,0 +1,171 @@
+theme = "carbonfox"
+
+[editor]
+auto-pairs = false
+auto-save = true
+bufferline = "multiple"
+cursorcolumn = true
+cursorline = true
+insert-final-newline = true
+line-number = "relative"
+mouse = false
+preview-completion-insert = true
+shell = [
+    "nu",
+    "--login",
+    "--no-newline",
+    "--stdin",
+    "-c",
+]
+
+[editor.whitespace.render]
+nbsp = "none"
+newline = "none"
+nnbsp = "none"
+space = "none"
+tab = "all"
+
+[editor.cursor-shape]
+insert = "bar"
+normal = "block"
+select = "underline"
+
+[editor.indent-guides]
+character = "╎"
+render = true
+skip-levels = 1
+
+[editor.soft-wrap]
+enable = false
+max-indent-retain = 0
+max-wrap = 25
+
+[editor.lsp]
+auto-signature-help = false
+
+[editor.statusline]
+left = [
+    "mode",
+    "spinner",
+    "file-name",
+    "total-line-numbers",
+    "file-encoding",
+]
+center = []
+right = [
+    "selections",
+    "primary-selection-length",
+    "position",
+    "position-percentage",
+    "spacer",
+    "diagnostics",
+    "workspace-diagnostics",
+    "version-control",
+]
+
+[keys.normal]
+y = [
+    "yank_main_selection_to_clipboard",
+    "yank",
+]
+p = "paste_clipboard_after"
+P = "paste_clipboard_before"
+d = [
+    "yank_main_selection_to_clipboard",
+    "delete_selection",
+]
+X = [
+    "extend_line_up",
+    "extend_to_line_bounds",
+]
+C-j = [
+    "extend_to_line_bounds",
+    "delete_selection",
+    "paste_after",
+]
+C-k = [
+    "extend_to_line_bounds",
+    "delete_selection",
+    "move_line_up",
+    "paste_before",
+]
+C-right = "move_next_word_start"
+C-left = "move_prev_word_end"
+tab = "move_parent_node_end"
+S-tab = "move_parent_node_start"
+A-l = [
+    ":w",
+    ":new",
+    ":insert-output lazygit",
+    ":buffer-close!",
+    ":reload",
+]
+
+[keys.normal."+"]
+w = ":set soft-wrap.enable false"
+W = ":set soft-wrap.enable true"
+c = """
+:pipe #correct english→
+^claude -p r###########'
+Correct grammar in the text. Respond only with corrected text.
+<text>%{selection}</text>'###########
+"""
+d = ":pipe word-diff apply"
+n = "@%s"
+t = ':pipe $"<user>\n($in)</user>"'
+s = '''
+:pipe-to #xml-coordinate-references→
+r#'<selected-text file="%sh{realpath %{buffer_name}}" lines="%{selection_line_start}-%{selection_line_end}">%{selection}</selected-text>'# | pbcopy
+'''
+A = '''
+:append-output #append-commented-results→
+nu -c r###########'%{selection}'########### o+e>| lines
+| each { $"# => ($in)"}
+| if r###########'%{selection}'########### ends-with "\n" {} else {prepend ''}
+| to text
+'''
+a = '''
+:append-output #append-abreviated-results→
+let lines = nu -c r###########'%{selection}'########### o+e>| lines
+
+let len = $lines | length;
+
+$lines
+| if $len > 7 {
+  first 7 | append $'... and ($len - 7) more lines'
+} else {}
+| each {$"# => ($in)"}
+| if r###########'%{selection}'########### ends-with "\n" {} else {prepend ''}
+| to text
+'''
+
+[keys.insert]
+C-right = "move_next_word_start"
+C-left = "move_prev_word_end"
+S-tab = "move_parent_node_start"
+up = "no_op"
+down = "no_op"
+left = "no_op"
+right = "no_op"
+pageup = "no_op"
+pagedown = "no_op"
+home = "no_op"
+end = "no_op"
+"A-'" = [
+    ":append-output '$\"\"'",
+    "collapse_selection",
+]
+
+[keys.select]
+y = [
+    "yank_main_selection_to_clipboard",
+    "yank",
+]
+p = "paste_clipboard_after"
+P = "paste_clipboard_before"
+d = [
+    "yank_main_selection_to_clipboard",
+    "delete_selection",
+]
+tab = "extend_parent_node_end"
+S-tab = "extend_parent_node_start"

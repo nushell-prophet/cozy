@@ -140,7 +140,7 @@ export def --env set [
     let value_to_store = $in | resolve-value $value
 
     if $cwd {
-        $env.kv.path = (pwd | path join nu-kv)
+        $env.kv.path = (pwd | path join nushell-kv)
         if $value_to_store == null { return }
     }
 
