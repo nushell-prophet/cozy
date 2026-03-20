@@ -83,7 +83,7 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
     && rm -rf /tmp/vendor/ /tmp/nushell-autoload/
 
 # Set up topiary nushell grammar and config (topiary binary already installed via brew above)
-RUN nu -c 'use ~/repos/cozy-docker-sandbox-toolkit/topiary.nu; topiary install'
+RUN nu -c 'use ~/repos/cozy-docker-sandbox-toolkit/install/topiary.nu; topiary install'
 
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
