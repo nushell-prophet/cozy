@@ -11,8 +11,17 @@ const modules = [
     [claude-nu claude-nu]
     [nu-cmd-stack cmd-stack]
     [nutest nutest]
-    [dotfiles wezterm]
+    [dotfiles broot]
+    [dotfiles claude]
+    [dotfiles helix]
+    [dotfiles jj]
+    [dotfiles lazygit]
+    [dotfiles nushell]
     [dotfiles zellij]
+    [dotfiles toolkit.nu]
+    [dotfiles paths-docker.csv]
+    [dotfiles config-gitignore]
+    [dotfiles claude-gitignore]
 ]
 
 export def main [] {
@@ -32,8 +41,13 @@ export def main [] {
             continue
         }
 
-        mkdir $dst
-        ^rsync -a --exclude='.git' --exclude='.DS_Store' --exclude='lazytests' --exclude='md_backups' --exclude='zzz_md_backups' $"($src)/" $"($dst)/"
+        if ($src | path type) == 'file' {
+            mkdir ($dst | path dirname)
+            cp $src $dst
+        } else {
+            mkdir $dst
+            ^rsync -a --exclude='.git' --exclude='.DS_Store' --exclude='lazytests' --exclude='md_backups' --exclude='zzz_md_backups' $"($src)/" $"($dst)/"
+        }
         print $"(ansi green)Copied:(ansi reset) ($m.repo)/($m.module)"
     }
 }

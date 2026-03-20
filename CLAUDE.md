@@ -9,11 +9,11 @@ Dockerfile
 ├── Base: docker/sandbox-templates:shell (Ubuntu, git, curl, Python, Node.js, Go, rg, jq, gh)
 ├── apt: procps, file, gcc, libc6-dev
 ├── Homebrew tools: nushell, helix, lazygit, zellij, broot, fzf, git-delta, git-lfs, jj, visidata, bat, topiary
-├── Dotfiles: cloned from github.com/nushell-prophet/my-dotfiles at build time
-│   └── toolkit push-to-machine deploys configs for helix, lazygit, zellij, broot, nushell, claude
-├── Claude Code: installed via official install script (https://claude.ai/install.sh), late layer
-├── Vendored Nushell modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, cozy-docker-sandbox-toolkit
+├── Vendored modules and dotfiles: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, cozy-docker-sandbox-toolkit, dotfiles
 │   └── vendor/ dir (default) or git clone (with --build-arg MODULES_SOURCE=clone)
+├── Dotfiles: vendored from dotfiles/ sibling repo, deployed via toolkit push-to-machine
+│   └── configs for helix, lazygit, zellij, broot, nushell, claude
+├── Claude Code: installed via official install script (https://claude.ai/install.sh), late layer
 ├── Nushell autoload scripts: copied into ~/.config/nushell/autoload/
 ├── docker-files/global-claude.md: appended to sandbox ~/.claude/CLAUDE.md (tool catalog for Claude)
 └── MCP: nushell registered as stdio MCP server via `claude mcp add`

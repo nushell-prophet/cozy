@@ -57,13 +57,6 @@ RUN git config --global user.name "Agent" && git config --global user.email "age
     && git config --global core.excludesFile ~/.gitignore \
     && printf '.DS_Store\nThumbs.db\ndesktop.ini\n' > ~/.gitignore
 
-ARG DOTFILES_CACHE_BUST
-RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/repos/dotfiles \
-    && cd ~/repos/dotfiles \
-    && nu -c 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker --commit-changes' \
-    && printf '\n' >> ~/.claude/CLAUDE.md && cat /tmp/global-claude.md >> ~/.claude/CLAUDE.md \
-    && rm /tmp/global-claude.md
-
 ARG MODULES_SOURCE=vendor
 RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
       git clone https://github.com/nushell-prophet/cozy-docker-sandbox-toolkit.git ~/repos/cozy-docker-sandbox-toolkit \
@@ -73,6 +66,7 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
       && git clone https://github.com/nushell-prophet/numd.git ~/repos/numd \
       && git clone https://github.com/nushell-prophet/claude-nu.git ~/repos/claude-nu \
       && git clone https://github.com/nushell-prophet/nu-cmd-stack.git ~/repos/nu-cmd-stack \
+      && git clone https://github.com/nushell-prophet/my-dotfiles.git ~/repos/dotfiles \
       && git clone https://github.com/vyadh/nutest.git ~/repos/nutest; \
     else \
       cp -r /tmp/vendor/* ~/repos/; \
@@ -81,6 +75,11 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
     && ln -s ~/repos/cozy-docker-sandbox-toolkit ~/workspace/cozy-docker-sandbox-toolkit \
     && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/ \
     && rm -rf /tmp/vendor/ /tmp/nushell-autoload/
+
+RUN cd ~/repos/dotfiles \
+    && nu -c 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker --commit-changes' \
+    && printf '\n' >> ~/.claude/CLAUDE.md && cat /tmp/global-claude.md >> ~/.claude/CLAUDE.md \
+    && rm /tmp/global-claude.md
 
 # Set up topiary nushell grammar and config (topiary binary already installed via brew above)
 RUN nu -c 'use ~/repos/cozy-docker-sandbox-toolkit/install/topiary.nu; topiary install'
