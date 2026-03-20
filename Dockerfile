@@ -55,7 +55,7 @@ RUN broot --write-default-conf $XDG_CONFIG_HOME/broot \
 RUN git config --global user.name "Agent" && git config --global user.email "agent@sandbox" \
     && git config --global --add safe.directory '*' \
     && git config --global core.excludesFile ~/.gitignore \
-    && echo '.DS_Store' > ~/.gitignore
+    && printf '.DS_Store\nThumbs.db\ndesktop.ini\n' > ~/.gitignore
 
 ARG DOTFILES_CACHE_BUST
 RUN git clone https://github.com/nushell-prophet/my-dotfiles.git ~/repos/dotfiles \
