@@ -71,7 +71,7 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
     else \
       cp -r /tmp/vendor/* ~/repos/; \
     fi \
-    && mkdir -p ~/workspace \
+    && mkdir -p ~/workspace ~/.config/nushell/autoload \
     && ln -s ~/repos/cozy-docker-sandbox-toolkit ~/workspace/cozy-docker-sandbox-toolkit \
     && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/ \
     && rm -rf /tmp/vendor/ /tmp/nushell-autoload/
