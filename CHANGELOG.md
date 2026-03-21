@@ -7,9 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.4] - 2026-03-21
+
+### Added
+
+- Global gitignore in sandbox image for `.DS_Store` (macOS) and `Thumbs.db`/`desktop.ini` (Windows) — host workspace mounts bring these in (839aa13, ed6995f)
+
 ### Changed
 
+- Vendor dotfiles selectively from local sibling repo instead of cloning from GitHub at build time — only Docker-relevant configs (broot, claude, helix, jj, lazygit, nushell, zellij) are included; irrelevant dirs (hammerspoon, macos-fresh, wezterm, visidata) excluded (1898b2b)
 - Vendor topiary-nushell (languages.ncl, queries, LICENSE) to eliminate GitHub clone during default build — only tree-sitter-nu grammar compilation still requires network (5cd891d)
+- Move `nu-kv` state directory into `sandbox-state/` (4322f8a)
+
+### Removed
+
+- Stale `md_backups` rsync excludes from `vendor.nu` — directories were cleaned up upstream (0dd61f6)
+
+### Fixed
+
+- `topiary.nu` import path in Dockerfile not updated after toolkit refactor to directory-based structure — broke fresh builds on Windows where no cached layers existed (2d2c23d)
+- Empty directory skeletons left in vendored copies (233 empty helix query dirs, empty broot/zellij dirs) — added `--prune-empty-dirs` to rsync (ef27066)
 
 ## [0.0.3] - 2026-03-19
 
@@ -76,7 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sandbox image test script with tool launch verification (a333bb6)
 - Supports both `arm64` and `amd64` architectures via Docker sandbox
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.0.3...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.0.4...HEAD
+[0.0.4]: https://github.com/nushell-prophet/cozy/compare/0.0.3...0.0.4
 [0.0.3]: https://github.com/nushell-prophet/cozy/compare/0.0.2...0.0.3
 [0.0.2]: https://github.com/nushell-prophet/cozy/compare/0.0.1...0.0.2
 [0.0.1]: https://github.com/nushell-prophet/cozy/releases/tag/0.0.1
