@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.5] - 2026-03-21
+
+### Added
+
+- Combined `sandbox-state export` / `sandbox-state import` commands that run both history and projects operations in one call (4053c75)
+- WezTerm config vendored into sandbox image (172d4dc, 2da8940)
+
+### Fixed
+
+- Autoload directory not created before copying nushell scripts — broke fresh builds without cached layers (cb7e15d)
+
 ## [0.0.4] - 2026-03-21
 
 ### Added
@@ -93,7 +104,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sandbox image test script with tool launch verification (a333bb6)
 - Supports both `arm64` and `amd64` architectures via Docker sandbox
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.0.4...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.0.5...HEAD
+[0.0.5]: https://github.com/nushell-prophet/cozy/compare/0.0.4...0.0.5
 [0.0.4]: https://github.com/nushell-prophet/cozy/compare/0.0.3...0.0.4
 [0.0.3]: https://github.com/nushell-prophet/cozy/compare/0.0.2...0.0.3
 [0.0.2]: https://github.com/nushell-prophet/cozy/compare/0.0.1...0.0.2
