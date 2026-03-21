@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Vendor topiary-nushell (languages.ncl, queries, LICENSE) to eliminate GitHub clone during default build — only tree-sitter-nu grammar compilation still requires network (5cd891d)
+
 ## [0.0.3] - 2026-03-19
 
 ### Added
