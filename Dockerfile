@@ -82,6 +82,9 @@ RUN cd ~/repos/dotfiles \
     && rm /tmp/global-claude.md
 
 # Set up topiary nushell grammar and config (topiary binary already installed via brew above)
+# Pre-place vendored topiary-nushell so the install script skips the clone.
+# In clone mode the dir is absent and topiary install clones from GitHub as before.
+RUN if [ -d ~/repos/topiary-nushell ]; then mkdir -p ~/git && ln -s ~/repos/topiary-nushell ~/git/topiary-nushell; fi
 RUN nu -c 'use ~/repos/cozy-docker-sandbox-toolkit/install/topiary.nu; topiary install'
 
 RUN curl -fsSL https://claude.ai/install.sh | bash

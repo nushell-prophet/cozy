@@ -9,7 +9,7 @@ Dockerfile
 ├── Base: docker/sandbox-templates:shell (Ubuntu, git, curl, Python, Node.js, Go, rg, jq, gh)
 ├── apt: procps, file, gcc, libc6-dev
 ├── Homebrew tools: nushell, helix, lazygit, zellij, broot, fzf, git-delta, git-lfs, jj, visidata, bat, topiary
-├── Vendored modules and dotfiles: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, cozy-docker-sandbox-toolkit, dotfiles
+├── Vendored modules and dotfiles: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, cozy-docker-sandbox-toolkit, topiary-nushell, dotfiles
 │   └── vendor/ dir (default) or git clone (with --build-arg MODULES_SOURCE=clone)
 ├── Dotfiles: vendored from dotfiles/ sibling repo, deployed via toolkit push-to-machine
 │   └── configs for helix, lazygit, zellij, broot, nushell, claude
