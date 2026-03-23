@@ -26,6 +26,8 @@ const modules = [
     [dotfiles paths-docker.csv]
     [dotfiles config-gitignore]
     [dotfiles claude-gitignore]
+    [my-claude-skills plugins/my-skills/skills]
+    [nushell-skills plugins]
 ]
 
 export def main [] {

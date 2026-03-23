@@ -67,7 +67,9 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
       && git clone https://github.com/nushell-prophet/claude-nu.git ~/repos/claude-nu \
       && git clone https://github.com/nushell-prophet/nu-cmd-stack.git ~/repos/nu-cmd-stack \
       && git clone https://github.com/nushell-prophet/my-dotfiles.git ~/repos/dotfiles \
-      && git clone https://github.com/vyadh/nutest.git ~/repos/nutest; \
+      && git clone https://github.com/vyadh/nutest.git ~/repos/nutest \
+      && git clone https://github.com/nushell-prophet/nushell-skills.git ~/repos/nushell-skills \
+      && git clone https://github.com/maxim-uvarov/my-claude-skills.git ~/repos/my-claude-skills; \
     else \
       cp -r /tmp/vendor/* ~/repos/; \
     fi \
@@ -80,6 +82,14 @@ RUN cd ~/repos/dotfiles \
     && nu -c 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker --commit-changes' \
     && printf '\n' >> ~/.claude/CLAUDE.md && cat /tmp/global-claude.md >> ~/.claude/CLAUDE.md \
     && rm /tmp/global-claude.md
+
+# Deploy Claude skills from dedicated skill repos into ~/.claude/skills/
+# my-claude-skills: personal skills (elegance-first, intent-audit, jj-ai-guide, keep-a-changelog, spec-extract)
+# nushell-skills: public nushell skills (nushell-completions, nushell-style) — copied second so canonical versions win
+RUN cp -r ~/repos/my-claude-skills/plugins/my-skills/skills/* ~/.claude/skills/ \
+    && for plugin_dir in ~/repos/nushell-skills/plugins/*/skills/*; do \
+         cp -r "$plugin_dir" ~/.claude/skills/; \
+       done
 
 # Set up topiary nushell grammar and config (topiary binary already installed via brew above)
 # Pre-place vendored topiary-nushell so the install script skips the clone.
