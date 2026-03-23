@@ -1,2 +1,4 @@
 *.local.*
 /.claude/worktrees
+
+/docs.docker.com
