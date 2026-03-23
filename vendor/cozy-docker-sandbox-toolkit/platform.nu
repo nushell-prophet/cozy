@@ -3,13 +3,13 @@
 # Docker sandbox mounts the host workspace at its original path,
 # so WORKSPACE_DIR reveals the host OS via path conventions:
 #   /Users/...         → macos
-#   /c/... or /mnt/... → windows
+#   /c/... C:/... or /mnt/... → windows
 #   anything else      → linux
 export def main []: nothing -> string {
     let workspace = $env.WORKSPACE_DIR? | default ""
     if ($workspace | str starts-with "/Users/") {
         "macos"
-    } else if ($workspace =~ '^/[a-zA-Z]/') or ($workspace | str starts-with "/mnt/") {
+    } else if ($workspace =~ '^/[a-zA-Z]/') or ($workspace =~ '^[a-zA-Z]:/') or ($workspace | str starts-with "/mnt/") {
         "windows"
     } else {
         "linux"
