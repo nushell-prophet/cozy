@@ -41,6 +41,10 @@ docker sandbox stop <name>
 docker sandbox rm <name>
 ```
 
+## Local Docs
+
+`toolkit docs` downloads Docker sandbox documentation as markdown into `docs.docker.com/` — a self-contained git repo inside `cozy/`, ignored by `.gitignore`. Re-run to sync updates; idempotent. When you need Docker sandbox docs, read from `docs.docker.com/` instead of fetching from the web.
+
 ## Rebuilding
 
 After Dockerfile changes: rebuild image, then recreate sandbox (delete + run).
