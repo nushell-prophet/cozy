@@ -23,8 +23,8 @@ Dockerfile
 
 ```sh
 docker build -t cozy:v1 .
-docker sandbox create -t cozy:v1 claude ~/path/to/project
-#                     ^^image     ^^agent ^^workspace
+docker sandbox create -t cozy:v1 shell ~/path/to/project
+#                     ^^image    ^^agent ^^workspace
 ```
 
 The agent name (`claude`, `shell`, etc.) selects which agent process runs inside the sandbox — it is independent of the base image (`docker/sandbox-templates:shell`) used in the Dockerfile.
