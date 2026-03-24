@@ -27,9 +27,15 @@ docker sandbox exec -it cozy-test nu -l --execute 'zellij attach -c cozy-test'
 ### Docker sandbox
 
 Cozy is based on [docker sandbox](https://docs.docker.com/ai/sandboxes/), so it is:
-- macOS and Windows (experimental) compatible — the image provides both `arm64` and `amd64` architectures
+- macOS and Windows* (experimental) compatible — the image provides both `arm64` and `amd64` architectures
 - isolated
 - with built-in AI agent (I personally tested it with `claude code`)
+
+**\* Windows support**
+
+I develop and use `cozy` on macOS, but I expect some of my students to use Windows. After brief testing, the main issue turned out to be the keyboard layout: Windows doesn't have a Cmd key, and its Win key combinations are reserved by the OS — so simply replacing Cmd with Win isn't possible. The best option I've found so far is to replace Cmd with Alt.
+
+To apply this automatically, run inside the cozy sandbox: `cozy platform apply windows`.
 
 ### Nushell
 
