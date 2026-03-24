@@ -11,6 +11,10 @@ This is a work-in-progress educational project with video demos on the way.
 First, install Docker Desktop https://www.docker.com/products/docker-desktop/
 
 ```sh
+# Clone the repo, cd into it
+git clone https://github.com/nushell-prophet/cozy
+cd cozy
+
 # Build the image (execute the command from the root of this repo)
 docker build -t cozy:latest .
 
