@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.6] - 2026-03-24
+
+### Added
+
+- Claude Code skills vendored and deployed to `~/.claude/skills/` in image — includes nushell-style, nushell-completions, and my-skills plugins (b1e2a53)
+- `toolkit docs` command to download Docker sandbox documentation as local markdown for offline reference (991b20e)
+
+### Changed
+
+- Updated nu-goodies from upstream (aa2e881)
+
+### Fixed
+
+- Windows detection in `platform.nu` — incorrect OS check broke platform-specific logic (1ccec18)
+
 ## [0.0.5] - 2026-03-21
 
 ### Added
@@ -104,7 +119,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sandbox image test script with tool launch verification (a333bb6)
 - Supports both `arm64` and `amd64` architectures via Docker sandbox
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.0.5...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.0.6...HEAD
+[0.0.6]: https://github.com/nushell-prophet/cozy/compare/0.0.5...0.0.6
 [0.0.5]: https://github.com/nushell-prophet/cozy/compare/0.0.4...0.0.5
 [0.0.4]: https://github.com/nushell-prophet/cozy/compare/0.0.3...0.0.4
 [0.0.3]: https://github.com/nushell-prophet/cozy/compare/0.0.2...0.0.3
