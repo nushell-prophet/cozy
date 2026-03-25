@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.7] - 2026-03-25
+
+### Added
+
+- `cozy dev-link` command to replace vendored `~/repos/` copies with symlinks to the mounted workspace — enables edit-and-test without rebuild (1a36b53)
+- `cozy configure claude-settings` command to merge default Claude settings (effortLevel, cleanupPeriodDays) into sandbox (1a36b53)
+- `install-skills` dotfiles toolkit command to deploy Claude skills from sibling skill repos into `~/.claude/skills/` (1a36b53)
+- Zellij helper scripts: `broot-paste.nu` pastes broot selection into focused pane, `lazygit-helix.nu` sends Esc/reload-all to helix around lazygit, `hx-scrollback.nu` wraps helix for scrollback editing (1a36b53)
+- Nushell hook for auto-renaming Zellij tabs based on current directory (1a36b53)
+- Helix keybindings: `Ctrl+w` write, `Ctrl+r` reload, `Ctrl+Shift+g` git-commit current buffer, `+ e` dotnu-embeds-update, `+ f` flatten-to-nuon, `+ g` git-commit shortcut, `+ n` timestamp, `+ p` pandoc reformat, `+ v` voice via kokoro, `+ C` remove commented output (1a36b53)
+
+### Changed
+
+- `platform apply` platform parameter changed from `--platform` flag to positional argument (1a36b53)
+- Windows detection regex in `platform.nu` simplified — single pattern `'^/:?[a-zA-Z]/'` replaces two separate checks (1a36b53)
+- Helix whitespace rendering set to show all characters (nbsp, newline, nnbsp, space) instead of none (1a36b53)
+- Zellij `Super Shift e` now uses built-in `EditScrollback` instead of custom dump-and-open-in-helix flow (1a36b53)
+- Zellij `Super Alt l` runs lazygit through `lazygit-helix.nu` wrapper instead of directly — sends Esc before and `:reload-all` after for helix integration (1a36b53)
+- Zellij `Super Alt b` runs broot through `broot-paste.nu` wrapper — pastes selection into the focused tiled pane instead of the floating one (1a36b53)
+- Zellij scrollback editor changed to `hx-scrollback` wrapper that passes `--config ~/.config/helix/config-no-wrap.toml` (1a36b53)
+- Zellij release notes disabled (`show_release_notes false`) (1a36b53)
+- WezTerm SSH agent forwarding disabled (`mux_enable_ssh_agent = false`) (1a36b53)
+- Nushell OSC 8 clickable links in `ls` output disabled (1a36b53)
+
+### Removed
+
+- Zellij `Super Alt t` shortcut for opening a tab in `~/temp/` (1a36b53)
+
+### Fixed
+
+- CLAUDE.md build example used wrong agent type — corrected to `shell` (6bd2641)
+
 ## [0.0.6] - 2026-03-24
 
 ### Added
@@ -119,7 +151,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sandbox image test script with tool launch verification (a333bb6)
 - Supports both `arm64` and `amd64` architectures via Docker sandbox
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.0.6...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.0.7...HEAD
+[0.0.7]: https://github.com/nushell-prophet/cozy/compare/0.0.6...0.0.7
 [0.0.6]: https://github.com/nushell-prophet/cozy/compare/0.0.5...0.0.6
 [0.0.5]: https://github.com/nushell-prophet/cozy/compare/0.0.4...0.0.5
 [0.0.4]: https://github.com/nushell-prophet/cozy/compare/0.0.3...0.0.4
