@@ -145,7 +145,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Docker sandbox-based terminal environment for AI agents, built on `docker/sandbox-templates:shell` with Homebrew toolchain and Claude Code installed via npm (42325d7, 92a25c6)
+- Docker sandbox-based terminal environment for AI agents, built on `docker/sandbox-templates:claude-code` with Homebrew toolchain (42325d7, 92a25c6)
 - Nushell as primary shell with sensible defaults, autoload scripts, and MCP server pre-configured for Claude Code (f3effc3, 96944a9)
 - Zellij terminal multiplexer with custom keybindings (`ctrl+shift+g` mode toggle, `cmd+t/n/w` for tabs and panes) (47c55a3)
 - Helix editor configured with Nushell backend and `+ s` menu for XML-wrapped clipboard copy (47c55a3)

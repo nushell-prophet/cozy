@@ -62,7 +62,7 @@ Shortcuts:
 - `cmd+n` — new pane within current tab
 - `cmd+w` — close the currently selected pane (or a floating window like Helix and Broot, described below)
 - `cmd+h/j/k/l` — navigate panes
-- `cmd+shift+j/k` — navigate tabs
+- `cmd+shift+h/l` — navigate tabs
 
 ### Helix editor
 
@@ -85,7 +85,7 @@ Lazygit is a godsend interface for git that greatly simplifies everyday operatio
 
 ### Broot
 
-Broot is a file manager with a tree-like structure and fuzzy search. `cmd+shift+b` opens it, and `alt+enter` to paste back to active pane the selected path.
+Broot is a file manager with a tree-like structure and fuzzy search. `cmd+alt+b` opens it, and `alt+enter` to paste back to active pane the selected path.
 
 ### FZF
 
@@ -137,7 +137,8 @@ A Nushell toolbox for working with Claude Code sessions. Main commands:
 - `claude-nu parse-session` — detailed session analysis with selectable columns (file ops, tool stats, agents, etc.)
 - `claude-nu export-session` — export session dialogue as markdown
 - `claude-nu save-markdown` — save exported sessions to files
-- `claude-nu download-documentation` — download Claude Code docs and Nushell docs (from the Nushell book) for offline use
+- `claude-nu fetch-claude-docs` — download Claude Code docs for offline use
+- `claude-nu fetch-nushell-docs` — download Nushell docs (from the Nushell book) for offline use
 
 The environment also includes Claude Code skills for building Nushell completions and writing opinionated Nushell code.
 
