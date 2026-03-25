@@ -55,6 +55,13 @@ After Dockerfile changes: rebuild image, then recreate sandbox (delete + run).
 - Do NOT suggest pushing images or tags to Docker Hub or any registry. All images are local-only.
 - Keep command output visible — don't use quiet/silent flags (`-qq`, `-s`, `--quiet`) in scripts. Users should see what's happening during installation and setup.
 
+## Sources of truth
+
+- Keybindings: `vendor/dotfiles/zellij/config.kdl` (README keybinding docs drift from this)
+- Vendored modules: `toolkit/vendor.nu` (not the CLAUDE.md architecture list)
+- `cozy` command surface: `sandbox-toolkit/mod.nu` exports
+- CHANGELOG entries are historical — cross-reference sequential versions for contradictions
+
 ## Notes
 
 - Workspace is mounted at its original host path (e.g. `/Users/user/temp/docker/`), not at `/workspace` or `/home/agent`
