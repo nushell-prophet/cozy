@@ -11,6 +11,7 @@
 #   push-to-machine          - Copy configs from repo to machine (--dry-run for preview)
 #   fill-candidates          - Find new config files to potentially track
 #   cleanup-paths-not-in-csv - List repo files not tracked in CSV
+#   install-skills           - Deploy Claude skills from sibling skill repos into ~/.claude/skills/
 
 const excluded_locals = [**/.git/** **/.jj/** toolkit.nu macos-fresh/* paths-default.csv paths-docker.csv README.md .gitignore CLAUDE.md .DS_Store .claude/settings.local.json paths-local.csv config-gitignore claude-gitignore]
 
@@ -226,6 +227,7 @@ export def push-to-machine [
     # Create symlinks for PATH-accessible commands
     [[target link];
      ['~/.config/zellij/todo-nu/todo-hx.nu' '~/.local/bin/todo-hx']
+     ['~/.config/zellij/hx-scrollback.nu' '~/.local/bin/hx-scrollback']
     ] | each {|s|
         let target = $s.target | path expand
         let link = $s.link | path expand --no-symlink
@@ -344,5 +346,90 @@ export def cleanup-paths-not-in-csv [
         $orphans | each { ^git rm $in }
     } else {
         $orphans
+    }
+}
+
+const this_dir = path self | path dirname
+
+const skill_repos = [
+    [repo subpath];
+    [my-claude-skills plugins/my-skills/skills]
+    [nushell-skills plugins]
+]
+
+# Collect all available skills from sibling skill repos
+def collect-skills [base: path] {
+    $skill_repos | each {|r|
+        let repo_dir = $base | path join $r.repo
+        if not ($repo_dir | path exists) {
+            print $"(ansi yellow)Skipped:(ansi reset) ($r.repo) not found at ($repo_dir)"
+            return []
+        }
+
+        let src = $repo_dir | path join $r.subpath
+
+        # my-claude-skills: flat — skills/* are skill dirs directly
+        # nushell-skills: nested — plugins/*/skills/* are skill dirs
+        let skill_dirs = if ($r.subpath | str ends-with 'skills') {
+            ls $src | where type == dir | get name
+        } else {
+            glob ($src | path join '*/skills/*') --no-file
+        }
+
+        $skill_dirs | each {|s| {name: ($s | path basename), path: $s, repo: $r.repo} }
+    } | flatten
+}
+
+# Deploy Claude skills from sibling repos into ~/.claude/skills/
+# Expects my-claude-skills and nushell-skills as siblings of this repo (../my-claude-skills, etc.)
+export def install-skills [
+    ...names: string # skill names to install (omit for --all, or use --list to see available)
+    --base-dir: path # directory containing skill repos (default: parent of this repo)
+    --all # install all available skills
+    --list # list available skills without installing
+    --dry-run # show what would be copied without copying
+] {
+    let base = $base_dir | default ($this_dir | path join '..')
+    let skills = collect-skills $base
+
+    if $list {
+        return ($skills | select name repo)
+    }
+
+    if ($names | is-empty) and not $all {
+        print "Specify skill names, or use --all to install everything."
+        print $"Use --list to see available skills."
+        return
+    }
+
+    let to_install = if $all {
+        $skills
+    } else {
+        let unknown = $names | where {|n| $n not-in $skills.name }
+        if ($unknown | is-not-empty) {
+            print $"(ansi red)Unknown skills:(ansi reset) ($unknown | str join ', ')"
+            return
+        }
+        # When a skill exists in both repos, keep the last occurrence
+        # Not: nushell-skills is listed after my-claude-skills in skill_repos,
+        # so its version wins for shared skills
+        $skills | where name in $names
+    }
+
+    let target = '~/.claude/skills' | path expand --no-symlink
+    if not $dry_run { mkdir $target }
+
+    # Deduplicate: last occurrence wins (nushell-skills over my-claude-skills)
+    let to_install = $to_install | reverse | uniq-by name | reverse
+
+    for $skill in $to_install {
+        if $dry_run {
+            print $"($skill.repo) → ($skill.name)"
+        } else {
+            let dest = $target | path join $skill.name
+            mkdir $dest
+            ^rsync -a --delete $"($skill.path)/" $"($dest)/"
+            print $"(ansi green)Installed:(ansi reset) ($skill.name) \(($skill.repo))"
+        }
     }
 }

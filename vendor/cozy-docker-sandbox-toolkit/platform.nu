@@ -9,7 +9,7 @@ export def main []: nothing -> string {
     let workspace = $env.WORKSPACE_DIR? | default ""
     if ($workspace | str starts-with "/Users/") {
         "macos"
-    } else if ($workspace =~ '^/[a-zA-Z]/') or ($workspace =~ '^[a-zA-Z]:/') or ($workspace | str starts-with "/mnt/") {
+    } else if ($workspace =~ '^/:?[a-zA-Z]/') or ($workspace | str starts-with "/mnt/") {
         "windows"
     } else {
         "linux"
@@ -22,7 +22,7 @@ export def main []: nothing -> string {
 # matching the target platform.
 # Currently handles: zellij keybindings (Super→Alt for Windows).
 export def apply [
-    --platform: string  # override auto-detection
+    platform?: string # override auto-detection
 ]: nothing -> nothing {
     let host = $platform | default (main)
 
@@ -35,7 +35,7 @@ export def apply [
         [name path];
         [zellij ("~/.config/zellij/config.kdl" | path expand)]
     ]
-    | where { $in.path | path exists }
+        | where { $in.path | path exists }
 
     if ($transforms | is-empty) {
         print $"Platform: ($host) — no config files found to transform"
@@ -43,15 +43,15 @@ export def apply [
     }
 
     let applied = $transforms | each {|t|
-        let original = open $t.path --raw
-        let transformed = transform $host $t.name $original
-        if $original == $transformed {
-            null
-        } else {
-            $transformed | save --force $t.path
-            $t.name
-        }
-    } | compact
+            let original = open $t.path --raw
+            let transformed = transform $host $t.name $original
+            if $original == $transformed {
+                null
+            } else {
+                $transformed | save --force $t.path
+                $t.name
+            }
+        } | compact
 
     if ($applied | is-empty) {
         print $"Platform: ($host) — all configs already transformed"
@@ -61,9 +61,9 @@ export def apply [
 }
 
 # Apply platform-specific transformations to a config's content.
-def transform [host: string, name: string, content: string]: nothing -> string {
+def transform [host: string name: string content: string]: nothing -> string {
     match $name {
-        "zellij" => (transform-zellij $host $content),
+        "zellij" => (transform-zellij $host $content)
         _ => $content
     }
 }
@@ -78,7 +78,7 @@ def transform [host: string, name: string, content: string]: nothing -> string {
 #
 # Convention in config.kdl: compound modifiers use title case
 # ("Super Shift", "Super Alt") with Super always first.
-def transform-zellij [host: string, content: string]: nothing -> string {
+def transform-zellij [host: string content: string]: nothing -> string {
     if $host == "windows" {
         $content
         | str replace --all '"Super Shift ' '"Alt Shift '
