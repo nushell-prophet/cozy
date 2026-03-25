@@ -87,7 +87,8 @@ RUN cd ~/repos/dotfiles \
 # Deploy Claude skills from dedicated skill repos into ~/.claude/skills/
 # my-claude-skills: personal skills (elegance-first, intent-audit, jj-ai-guide, keep-a-changelog, spec-extract)
 # nushell-skills: public nushell skills (nushell-completions, nushell-style) — copied second so canonical versions win
-RUN cp -r ~/repos/my-claude-skills/plugins/my-skills/skills/* ~/.claude/skills/ \
+RUN mkdir -p ~/.claude/skills/ \
+    && cp -r ~/repos/my-claude-skills/plugins/my-skills/skills/* ~/.claude/skills/ \
     && for plugin_dir in ~/repos/nushell-skills/plugins/*/skills/*; do \
          cp -r "$plugin_dir" ~/.claude/skills/; \
        done
