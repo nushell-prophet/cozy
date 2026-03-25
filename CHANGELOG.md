@@ -7,15 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.8] - 2026-03-25
+
 ### Changed
 
-- Consolidated `cozy-docker-sandbox-toolkit` into `cozy/sandbox-toolkit/` — the toolkit is no longer a separate repo. The whole `cozy` repo is cloned into the sandbox, giving one `git pull` for both toolkit and vendored module updates. `sync-repos` now pulls `cozy` instead of `cozy-docker-sandbox-toolkit`.
+- Consolidated `cozy-docker-sandbox-toolkit` into `cozy/sandbox-toolkit/` — the toolkit is no longer a separate repo. The whole `cozy` repo is cloned into the sandbox, giving one `git pull` for both toolkit and vendored module updates. `sync-repos` now pulls `cozy` instead of `cozy-docker-sandbox-toolkit` (f5e842c)
+- Updated vendored modules (a83af56)
 
 ### Removed
 
-- `cozy-docker-sandbox-toolkit` entry from `vendor.nu` — toolkit lives directly in the repo, no longer vendored from a sibling directory
-- `~/workspace/cozy-docker-sandbox-toolkit` symlink from Dockerfile — no longer needed
-- Stale `use toolkit.nu` and `toolkit *` entries from history seed — replaced with current `cozy *` commands
+- `cozy-docker-sandbox-toolkit` entry from `vendor.nu` — toolkit lives directly in the repo, no longer vendored from a sibling directory (f5e842c)
+- `~/workspace/cozy-docker-sandbox-toolkit` symlink from Dockerfile — no longer needed (f5e842c)
+- Stale `use toolkit.nu` and `toolkit *` entries from history seed — replaced with current `cozy *` commands (f5e842c)
+
+### Fixed
+
+- Skills directory not created before copying — broke fresh builds where `~/.claude/skills/` didn't exist yet (771d7bf)
 
 ## [0.0.7] - 2026-03-25
 
@@ -161,7 +168,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sandbox image test script with tool launch verification (a333bb6)
 - Supports both `arm64` and `amd64` architectures via Docker sandbox
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.0.7...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.0.8...HEAD
+[0.0.8]: https://github.com/nushell-prophet/cozy/compare/0.0.7...0.0.8
 [0.0.7]: https://github.com/nushell-prophet/cozy/compare/0.0.6...0.0.7
 [0.0.6]: https://github.com/nushell-prophet/cozy/compare/0.0.5...0.0.6
 [0.0.5]: https://github.com/nushell-prophet/cozy/compare/0.0.4...0.0.5
