@@ -33,6 +33,8 @@ hide in unexpected places like vendored copies and test files.
    - Wrong paths
    - Command mismatches
    - Test files that check for removed/renamed things
+   - CHANGELOG contradictions between sequential versions (e.g. v0.0.2 says
+     "switch from A to B" but v0.0.1 already claims B)
 
 4. **Report** — numbered list of issues, grouped by file. Show what the doc says vs
    what the code says.
