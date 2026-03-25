@@ -35,7 +35,7 @@ export def install []: nothing -> nothing {
     print "  Building zellij without web_server_capability (this may take a while)..."
     # Use thin LTO instead of full — nearly same performance, much less memory.
     # Full LTO (zellij default) OOM-kills the linker in sandbox VMs.
-    ^cargo build --release --no-default-features --features plugins_from_target,vendored_curl --config 'profile.release.lto="thin"'
+    ^cargo build --release --no-default-features --features plugins_from_target,vendored_curl
 
     # Remove brew-installed zellij if present
     if (^brew list zellij | complete).exit_code == 0 {

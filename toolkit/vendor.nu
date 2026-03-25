@@ -3,7 +3,6 @@
 
 const modules = [
     [repo module];
-    [cozy-docker-sandbox-toolkit .]
     [nu-goodies nu-goodies]
     [nu-kv kv]
     [dotnu dotnu]

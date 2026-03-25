@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Consolidated `cozy-docker-sandbox-toolkit` into `cozy/sandbox-toolkit/` — the toolkit is no longer a separate repo. The whole `cozy` repo is cloned into the sandbox, giving one `git pull` for both toolkit and vendored module updates. `sync-repos` now pulls `cozy` instead of `cozy-docker-sandbox-toolkit`.
+
+### Removed
+
+- `cozy-docker-sandbox-toolkit` entry from `vendor.nu` — toolkit lives directly in the repo, no longer vendored from a sibling directory
+- `~/workspace/cozy-docker-sandbox-toolkit` symlink from Dockerfile — no longer needed
+- Stale `use toolkit.nu` and `toolkit *` entries from history seed — replaced with current `cozy *` commands
+
 ## [0.0.7] - 2026-03-25
 
 ### Added

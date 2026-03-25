@@ -85,7 +85,7 @@ Lazygit is a godsend interface for git that greatly simplifies everyday operatio
 
 ### Broot
 
-Broot is a file manager with a tree-like structure and fuzzy search. `cmd+shift+b` opens it. `:pbq` quits and copies the selected path (relative to repo root) to the clipboard; `:pbfq` copies the full path instead.
+Broot is a file manager with a tree-like structure and fuzzy search. `cmd+shift+b` opens it, and `alt+enter` to paste back to active pane the selected path.
 
 ### FZF
 

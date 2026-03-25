@@ -40,11 +40,10 @@ const files = [
     "/home/agent/.config/nushell/autoload/standard_4002_aliasses.nu"
     "/home/agent/.config/nushell/autoload/mcp-server.nu"
     "/home/agent/.claude.json"
-    "/home/agent/toolkit.nu"
 ]
 
 const dirs = [
-    "/home/agent/repos/cozy-docker-sandbox-toolkit"
+    "/home/agent/repos/cozy/sandbox-toolkit"
     "/home/agent/repos/nu-goodies"
     "/home/agent/repos/nu-kv"
     "/home/agent/repos/dotnu"

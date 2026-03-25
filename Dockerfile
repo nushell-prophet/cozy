@@ -38,6 +38,7 @@ ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime \
 COPY --chown=agent:agent docker-files/.visidatarc /home/agent/.visidatarc
 COPY --chown=agent:agent nushell-autoload/ /tmp/nushell-autoload/
 COPY --chown=agent:agent vendor/ /tmp/vendor/
+COPY --chown=agent:agent sandbox-toolkit/ /tmp/sandbox-toolkit/
 COPY --chown=agent:agent docker-files/global-claude.md /tmp/global-claude.md
 
 RUN mkdir ~/repos
@@ -59,7 +60,7 @@ RUN git config --global user.name "Agent" && git config --global user.email "age
 
 ARG MODULES_SOURCE=vendor
 RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
-      git clone https://github.com/nushell-prophet/cozy-docker-sandbox-toolkit.git ~/repos/cozy-docker-sandbox-toolkit \
+      git clone https://github.com/nushell-prophet/cozy.git ~/repos/cozy \
       && git clone https://github.com/nushell-prophet/nu-goodies.git ~/repos/nu-goodies \
       && git clone https://github.com/nushell-prophet/nu-kv.git ~/repos/nu-kv \
       && git clone https://github.com/nushell-prophet/dotnu.git ~/repos/dotnu \
@@ -74,9 +75,9 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
       cp -r /tmp/vendor/* ~/repos/; \
     fi \
     && mkdir -p ~/workspace ~/.config/nushell/autoload \
-    && ln -s ~/repos/cozy-docker-sandbox-toolkit ~/workspace/cozy-docker-sandbox-toolkit \
+    && if [ "$MODULES_SOURCE" != "clone" ]; then mkdir -p ~/repos/cozy && cp -r /tmp/sandbox-toolkit ~/repos/cozy/sandbox-toolkit; fi \
     && cp /tmp/nushell-autoload/*.nu ~/.config/nushell/autoload/ \
-    && rm -rf /tmp/vendor/ /tmp/nushell-autoload/
+    && rm -rf /tmp/vendor/ /tmp/nushell-autoload/ /tmp/sandbox-toolkit/
 
 RUN cd ~/repos/dotfiles \
     && nu -c 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker --commit-changes' \
@@ -95,7 +96,7 @@ RUN cp -r ~/repos/my-claude-skills/plugins/my-skills/skills/* ~/.claude/skills/ 
 # Pre-place vendored topiary-nushell so the install script skips the clone.
 # In clone mode the dir is absent and topiary install clones from GitHub as before.
 RUN if [ -d ~/repos/topiary-nushell ]; then mkdir -p ~/git && ln -s ~/repos/topiary-nushell ~/git/topiary-nushell; fi
-RUN nu -c 'use ~/repos/cozy-docker-sandbox-toolkit/install/topiary.nu; topiary install'
+RUN nu -c 'use ~/repos/cozy/sandbox-toolkit/install/topiary.nu; topiary install'
 
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
