@@ -37,9 +37,9 @@ export def install []: nothing -> nothing {
         print $"  (ansi green)languages.ncl(ansi reset): exists"
     } else {
         open --raw $lang_src
-            | str replace --regex '(grammar\.source\.git\s*=\s*\{[^}]*\},)' '$1
+        | str replace --regex '(grammar\.source\.git\s*=\s*\{[^}]*\},)' '$1
       indent = "    "'
-            | save -f $lang_ncl
+        | save -f $lang_ncl
         print $"  (ansi cyan)languages.ncl(ansi reset): copied with indent override"
     }
 

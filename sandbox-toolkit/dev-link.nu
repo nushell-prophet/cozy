@@ -21,7 +21,7 @@ export def main [
         let target = $ws | path join $name
 
         if not ($target | path exists) {
-            {name: $name, status: skipped}
+            {name: $name status: skipped}
         } else {
             let already = try {
                 let existing = ^readlink $repo_path | str trim
@@ -31,11 +31,11 @@ export def main [
             }
 
             if $already {
-                {name: $name, status: ok}
+                {name: $name status: ok}
             } else {
                 rm -rf $repo_path
                 ^ln -s $target $repo_path
-                {name: $name, status: linked}
+                {name: $name status: linked}
             }
         }
     }

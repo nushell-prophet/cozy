@@ -3,7 +3,7 @@
 # Safe to re-run: no-op when all defaults are already present.
 export def claude-settings [] {
     let settings_path = $nu.home-dir | path join .claude settings.json
-    let defaults = {effortLevel: max, cleanupPeriodDays: 999}
+    let defaults = {effortLevel: max cleanupPeriodDays: 999}
 
     if ($settings_path | path exists) {
         let current = open $settings_path

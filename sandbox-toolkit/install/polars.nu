@@ -12,7 +12,7 @@ export def install []: nothing -> nothing {
     if (which cargo | is-empty) {
         $env.PATH = ($env.PATH | prepend $cargo_bin)
         if (which cargo | is-empty) {
-            error make { msg: "cargo not found — run `toolkit rust install` first" }
+            error make {msg: "cargo not found — run `toolkit rust install` first"}
         }
     }
 
