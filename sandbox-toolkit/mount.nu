@@ -57,7 +57,7 @@ export def init []: nothing -> nothing {
         ^git config -f .git/config $'submodule.($name).url' $'./($name)'
         ^git config -f .git/config $'submodule.($name).active' true
         let commit = ^git -C $name rev-parse HEAD | str trim
-        ^git update-index --add --cacheinfo $'160000,($commit),($name)'
+        ^git update-index --add --cacheinfo 160000 $commit $name
     }
 
     # .gitignore
