@@ -1,5 +1,20 @@
 $env.config.hooks = {
-    pre_prompt: [{ null }] # run before the prompt is shown
+    pre_prompt: [
+        {
+            if ($nu.history-path =~ '\.sqlite3$') {
+                let exit_code = $env.LAST_EXIT_CODE
+                let sid = history session
+                if $exit_code >= 1 {
+                    open $nu.history-path
+                    | query db $"UPDATE history SET command_line = command_line || ' # exit:($exit_code)' WHERE id = \(SELECT MAX\(id\) FROM history WHERE session_id = ($sid) AND command_line NOT LIKE '% # exit:%'\)"
+                } else {
+                    # Strip # exit: from all entries matching the last command
+                    open $nu.history-path
+                    | query db $"UPDATE history SET command_line = SUBSTR\(command_line, 1, INSTR\(command_line, ' # exit:'\) - 1\) WHERE command_line LIKE \(SELECT command_line FROM history WHERE id = \(SELECT MAX\(id\) FROM history WHERE session_id = ($sid)\)\) || ' # exit:%'"
+                }
+            }
+        }
+    ]
     pre_execution: [{ null }] # run before the repl input is run
     env_change: {
         PWD: [
