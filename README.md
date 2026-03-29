@@ -126,6 +126,21 @@ wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua start -- docker sandbo
 
 ## Nushell modules loaded by default
 
+### nu-goodies
+
+A personal collection of everyday Nushell commands developed over time. In the AI context, two commands may be especially useful:
+
+- `example` — captures the last pipeline from history, runs it, and formats command + output as a copyable snippet (wraps output in `# =>` comments and the command in `nu -c '...'`)
+- `copy-out` — grabs commands with their output from Zellij pane scrollback and copies them to the clipboard (output lines are prefixed with `# =>`)
+
+### nu-kv
+
+A key-value store for Nushell. Autoloaded with the `kv` prefix.
+
+### nu-cmd-stack
+
+Command history stacking module.
+
 ### numd
 
 `numd` is a module for literate programming. `numd run <file>` parses Nushell code blocks in an `.md` file, executes them, and updates the file with captured output.
@@ -150,12 +165,5 @@ The environment also includes Claude Code skills for building Nushell completion
 
 ### nutest
 
-[nutest](https://github.com/vyadh/nutest) is a Nushell test framework by [vyadh](https://github.com/vyadh). Licensed under MIT.
-
-### nu-goodies
-
-A personal collection of everyday Nushell commands developed over time. In the AI context, two commands may be especially useful:
-
-- `example` — captures the last pipeline from history, runs it, and formats command + output as a copyable snippet (wraps output in `# =>` comments and the command in `nu -c '...'`)
-- `copy-out` — grabs commands with their output from Zellij pane scrollback and copies them to the clipboard (output lines are prefixed with `# =>`)
+[nutest](https://github.com/vyadh/nutest) is a Nushell test framework by [vyadh](https://github.com/vyadh). Licensed under MIT. Not autoloaded — use `use ~/repos/nutest/nutest` to load.
 

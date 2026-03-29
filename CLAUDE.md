@@ -13,7 +13,7 @@ Dockerfile
 ├── sandbox-toolkit/: runtime toolkit (the `cozy` overlay) — lives in-repo, copied or cloned into ~/repos/cozy/ at build time
 │   └── vendor/ dir (default) or git clone (with --build-arg MODULES_SOURCE=clone)
 ├── Dotfiles: vendored from dotfiles/ sibling repo, deployed via toolkit push-to-machine
-│   └── configs for helix, lazygit, zellij, broot, nushell, claude
+│   └── configs for helix, lazygit, zellij, broot, nushell, claude, jj, wezterm
 ├── Claude Code: installed via official install script (https://claude.ai/install.sh), late layer
 ├── Nushell autoload scripts: copied into ~/.config/nushell/autoload/
 ├── docker-files/global-claude.md: appended to sandbox ~/.claude/CLAUDE.md (tool catalog for Claude)
