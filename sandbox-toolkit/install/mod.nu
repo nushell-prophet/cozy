@@ -1,3 +1,8 @@
+# Install claude code using official installer script
+export def claude [] {
+    use claude.nu [ install ]; install
+}
+
 # Install Rust via rustup
 export def rust [] {
     use rust.nu [ install ]; install
