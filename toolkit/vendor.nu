@@ -4,43 +4,8 @@
 # Default: download tarballs from GitHub (no git clone, no auth needed)
 # --local: use local ~/repos/ directories (original rsync behavior)
 
-const modules = [
-    [repo github module];
-    [nu-goodies nushell-prophet/nu-goodies nu-goodies]
-    [nu-kv nushell-prophet/nu-kv kv]
-    [dotnu nushell-prophet/dotnu dotnu]
-    [numd nushell-prophet/numd numd]
-    [claude-nu nushell-prophet/claude-nu claude-nu]
-    [nu-cmd-stack nushell-prophet/nu-cmd-stack cmd-stack]
-    [nutest vyadh/nutest nutest]
-    [topiary-nushell blindFS/topiary-nushell languages.ncl]
-    [topiary-nushell blindFS/topiary-nushell queries]
-    [topiary-nushell blindFS/topiary-nushell LICENSE]
-    [dotfiles nushell-prophet/my-dotfiles broot]
-    [dotfiles nushell-prophet/my-dotfiles claude]
-    [dotfiles nushell-prophet/my-dotfiles helix]
-    [dotfiles nushell-prophet/my-dotfiles jj]
-    [dotfiles nushell-prophet/my-dotfiles lazygit]
-    [dotfiles nushell-prophet/my-dotfiles nushell]
-    [dotfiles nushell-prophet/my-dotfiles zellij]
-    [dotfiles nushell-prophet/my-dotfiles wezterm]
-    [dotfiles nushell-prophet/my-dotfiles toolkit.nu]
-    [dotfiles nushell-prophet/my-dotfiles paths-docker.csv]
-    [my-claude-skills maxim-uvarov/my-claude-skills plugins/my-skills/skills]
-    [nushell-skills nushell-prophet/nushell-skills plugins]
-]
-
-# Group modules by repo to avoid downloading the same tarball multiple times
-def group-by-repo []: list<record<repo: string, github: string, module: string>> -> list<record<repo: string, github: string, modules: list<string>>> {
-    $in
-    | group-by repo
-    | items {|repo rows|
-        {
-            repo: $repo
-            github: ($rows.0.github)
-            modules: ($rows | get module)
-        }
-    }
+def load-modules []: nothing -> list<record<repo: string, github: string, modules: list<string>>> {
+    open ($env.FILE_PWD | path join vendor.yml)
 }
 
 def fetch-tarball [github: string]: nothing -> path {
@@ -73,16 +38,20 @@ export def main [--local (-l)] {
     rm -rf $vendor_dir
     mkdir $vendor_dir
 
+    let groups = load-modules
+
     if $local {
         let git_dir = pwd | path join '..'
-        for $m in $modules {
-            let src = $git_dir | path join $m.repo $m.module
-            let dst = $vendor_dir | path join $m.repo $m.module
-            copy-module $src $dst
-            print $"  (ansi green)Copied:(ansi reset) ($m.repo)/($m.module)"
+        for $group in $groups {
+            for module in $group.modules {
+                let src = $git_dir | path join $group.repo $module
+                let dst = $vendor_dir | path join $group.repo $module
+                copy-module $src $dst
+                print $"  (ansi green)Copied:(ansi reset) ($group.repo)/($module)"
+            }
         }
     } else {
-        for $group in ($modules | group-by-repo) {
+        for $group in $groups {
             let tmp = fetch-tarball $group.github
             for module in $group.modules {
                 let src = $tmp | path join $module
