@@ -17,15 +17,15 @@ cd cozy
 
 # Build the image (execute the command from the root of this repo)
 # Claude Code is included by default. To build without it:
-# docker build --build-arg INSTALL_CLAUDE=false -t cozy:latest .
-docker build -t cozy:latest .
+# docker build --build-arg INSTALL_CLAUDE=false --tag cozy:latest .
+docker build --tag cozy:latest .
 
 # create local container. Base images for the agents are provided by Docker.
-docker sandbox create --name cozy-test -t cozy:latest shell example-workspace
+docker sandbox create --name cozy-test --tag cozy:latest shell example-workspace
 #                                        ^^image      ^^agent ^^workspace
 
 # connect to the sandbox and start Zellij session
-docker sandbox exec -it cozy-test nu -l --execute 'zellij attach -c cozy-test'
+docker sandbox exec -it cozy-test nu --login --execute 'zellij attach -c cozy-test'
 ```
 
 ## Technologies
