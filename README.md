@@ -16,6 +16,8 @@ git clone https://github.com/nushell-prophet/cozy
 cd cozy
 
 # Build the image (execute the command from the root of this repo)
+# Claude Code is included by default. To build without it:
+# docker build --build-arg INSTALL_CLAUDE=false -t cozy:latest .
 docker build -t cozy:latest .
 
 # create local container. Base images for the agents are provided by Docker.
@@ -74,6 +76,10 @@ In Helix, `+ s` (custom `+` menu, then `s`) copies the selected lines and wraps 
 <selected-text file="README.md" lines="43-43">selected content here
 </selected-text>
 ```
+
+### Building without Claude Code
+
+Claude Code is included by default. To build an agent-free image, pass `--build-arg INSTALL_CLAUDE=false`. This skips the Claude Code binary and MCP server registration but keeps all other Claude-related files (skills, `CLAUDE.md`, MCP autoload scripts) in the image — they are inert without the binary and only add a small amount to image size. This keeps a single Dockerfile without conditional logic sprawl and avoids a second test matrix.
 
 ### Git attribution
 

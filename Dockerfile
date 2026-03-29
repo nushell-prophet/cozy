@@ -99,12 +99,17 @@ RUN mkdir -p ~/.claude/skills/ \
 RUN if [ -d ~/repos/topiary-nushell ]; then mkdir -p ~/git && ln -s ~/repos/topiary-nushell ~/git/topiary-nushell; fi
 RUN nu -c 'use ~/repos/cozy/sandbox-toolkit/install/topiary.nu; topiary install'
 
-RUN curl -fsSL https://claude.ai/install.sh | bash
+ARG INSTALL_CLAUDE=true
+RUN if [ "$INSTALL_CLAUDE" = "true" ]; then \
+      curl -fsSL https://claude.ai/install.sh | bash; \
+    fi
 
 # Register nushell MCP server in Claude Code user config (~/.claude.json).
 # autoload/mcp-server.nu self-heals if sandbox create overwrites the file.
-RUN claude mcp add --scope user --transport stdio nushell -- \
-        /home/linuxbrew/.linuxbrew/bin/nu --mcp
+RUN if [ "$INSTALL_CLAUDE" = "true" ]; then \
+      claude mcp add --scope user --transport stdio nushell -- \
+        /home/linuxbrew/.linuxbrew/bin/nu --mcp; \
+    fi
 
 RUN echo 'export GIT_AUTHOR_NAME="Claude"' >> /etc/sandbox-persistent.sh \
     && echo 'export GIT_AUTHOR_EMAIL="claude@anthropic.com"' >> /etc/sandbox-persistent.sh \
