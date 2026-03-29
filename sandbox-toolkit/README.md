@@ -8,7 +8,7 @@ Maintains running sandboxes without rebuilding — updates modules, syncs repos,
 
 ### `cozy sync-repos`
 
-Pulls the latest changes for all Nushell module repos under `~/repos/` (including the cozy repo itself). Handles branch switching, dirty working tree detection, and converting vendored directories to proper git repos.
+Pulls the latest changes for all repos under `~/repos/`. Handles branch switching, dirty working tree detection, and converting vendored directories to proper git repos.
 
 ```nushell
 cozy sync-repos       # skip repos with local changes

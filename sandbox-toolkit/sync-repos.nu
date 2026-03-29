@@ -7,6 +7,10 @@ const repos = {
     numd: "https://github.com/nushell-prophet/numd.git"
     nu-kv: "https://github.com/nushell-prophet/nu-kv.git"
     topiary-nushell: "https://github.com/blindFS/topiary-nushell.git"
+    dotfiles: "https://github.com/nushell-prophet/my-dotfiles.git"
+    nutest: "https://github.com/vyadh/nutest.git"
+    nushell-skills: "https://github.com/nushell-prophet/nushell-skills.git"
+    my-claude-skills: "https://github.com/maxim-uvarov/my-claude-skills.git"
 }
 
 const base = $nu.home-dir | path join repos
