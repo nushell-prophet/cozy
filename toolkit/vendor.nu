@@ -4,8 +4,10 @@
 # Default: download tarballs from GitHub (no git clone, no auth needed)
 # --local: use local ~/repos/ directories (original rsync behavior)
 
+const vendor_yml = (path self | path dirname | path join vendor.yml)
+
 def load-modules []: nothing -> list<record<repo: string, github: string, modules: list<string>>> {
-    open ($env.FILE_PWD | path join vendor.yml)
+    open $vendor_yml
 }
 
 def fetch-tarball [github: string]: nothing -> path {
@@ -26,9 +28,43 @@ def copy-module [src: path, dst: path] {
         cp $src $dst
     } else {
         mkdir $dst
-        ^rsync -a --prune-empty-dirs
-            --exclude='.git' --exclude='.DS_Store' --exclude='lazytests'
-            $"($src)/" $"($dst)/"
+        ^rsync -a --prune-empty-dirs --exclude='.git' --exclude='.DS_Store' --exclude='lazytests' $"($src)/" $"($dst)/"
+    }
+}
+
+const ignore_repos = [
+    .github
+    config-tools
+    cozy
+    cozy-docker-sandbox-toolkit
+    my-dot-claude
+    my-dotfiles
+    npshow-module
+    nushell-history-based-completions
+    nushell-prophet-journal
+    nushell-prophet-manuals
+    nushell-show
+]
+
+# Check for nushell-prophet repos not yet in vendor.yml
+export def "main check" [] {
+    let known = load-modules
+        | where github starts-with 'nushell-prophet/'
+        | get github
+        | each { $in | split row '/' | last }
+
+    let remote = curl -s "https://api.github.com/users/nushell-prophet/repos?per_page=100"
+        | from json
+        | get name
+
+    let new = $remote
+        | where {|r| $r not-in $known and $r not-in $ignore_repos }
+
+    if ($new | is-empty) {
+        print "No new nushell-prophet repos found."
+    } else {
+        print $"New repos not in vendor.yml:"
+        $new | each { print $"  ($in)" }
     }
 }
 
