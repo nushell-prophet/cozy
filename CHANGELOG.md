@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.9] - 2026-03-29
+
+### Added
+
+- `INSTALL_CLAUDE` build arg to make Claude Code installation optional — pass `--build-arg INSTALL_CLAUDE=false` for an agent-free terminal environment (7b88616)
+
+### Changed
+
+- `sync-repos` now covers dotfiles, nutest, nushell-skills, and my-claude-skills — previously required a full rebuild to update (09fb006)
+- Nushell pre_prompt hook tags history entries with non-zero exit codes and clears the tag on success (f651592)
+
+### Fixed
+
+- Zellij `dump-screen` uses `--path` flag instead of positional argument, matching current zellij CLI (f651592)
+- `git update-index --cacheinfo` uses separate arguments for cross-version compatibility (f1d8aae)
+- Stale gitignore files removed from dotfiles vendor (4ea246e)
+
 ## [0.0.8] - 2026-03-25
 
 ### Changed
@@ -168,7 +185,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sandbox image test script with tool launch verification (a333bb6)
 - Supports both `arm64` and `amd64` architectures via Docker sandbox
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.0.8...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.0.9...HEAD
+[0.0.9]: https://github.com/nushell-prophet/cozy/compare/0.0.8...0.0.9
 [0.0.8]: https://github.com/nushell-prophet/cozy/compare/0.0.7...0.0.8
 [0.0.7]: https://github.com/nushell-prophet/cozy/compare/0.0.6...0.0.7
 [0.0.6]: https://github.com/nushell-prophet/cozy/compare/0.0.5...0.0.6
