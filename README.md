@@ -22,7 +22,6 @@ docker build --tag cozy:latest .
 
 # create local container. Base images for the agents are provided by Docker.
 docker sandbox create --name cozy-test --tag cozy:latest shell example-workspace
-#                                        ^^image      ^^agent ^^workspace
 
 # connect to the sandbox and start Zellij session
 docker sandbox exec -it cozy-test nu --login --execute 'zellij attach -c cozy-test'
