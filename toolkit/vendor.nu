@@ -47,7 +47,7 @@ const ignore_repos = [
 ]
 
 # Check for nushell-prophet repos not yet in vendor.yml
-export def "main check" [] {
+export def "main check" [--add (-a)] {
     let known = load-modules
         | where github starts-with 'nushell-prophet/'
         | get github
@@ -62,9 +62,21 @@ export def "main check" [] {
 
     if ($new | is-empty) {
         print "No new nushell-prophet repos found."
+        return
+    }
+
+    print $"New repos not in vendor.yml:"
+    $new | each { print $"  ($in)" }
+
+    if $add {
+        let entries = $new | each {|name|
+            { repo: $name, github: $"nushell-prophet/($name)", modules: [$name] }
+        }
+        let current = load-modules
+        $current | append $entries | to yaml | save -f $vendor_yml
+        print $"\nAdded ($new | length) repo\(s\) to vendor.yml with default modules."
     } else {
-        print $"New repos not in vendor.yml:"
-        $new | each { print $"  ($in)" }
+        print $"\nUse --add to append them to vendor.yml with default modules."
     }
 }
 
