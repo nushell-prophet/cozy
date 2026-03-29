@@ -48,7 +48,7 @@ Use `use ~/repos/<module>/<module>` to load a module. Autoload scripts are in `~
 
 ## Nushell MCP Server
 
-A Nushell MCP server is registered in `~/.claude.json`. It provides `eval`, `list_commands`, and `command_help` tools for running Nushell commands with structured output.
+A Nushell MCP server is registered in `~/.claude.json`. It provides `evaluate`, `list_commands`, and `command_help` tools for running Nushell commands with structured output.
 
 ## Constraints
 
