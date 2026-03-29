@@ -23,8 +23,6 @@ const modules = [
     [dotfiles wezterm] # needed for wezterm config wezterm-cozy
     [dotfiles toolkit.nu]
     [dotfiles paths-docker.csv]
-    [dotfiles config-gitignore]
-    [dotfiles claude-gitignore]
     [my-claude-skills plugins/my-skills/skills]
     [nushell-skills plugins]
 ]
