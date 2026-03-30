@@ -257,7 +257,8 @@ export def messages [
             each { insert session $session_uuid }
         } else { }
         | if $all_projects {
-            insert project ($session_file | path dirname | path basename)
+            let project_name = $session_file | path dirname | path basename
+            each { insert project $project_name }
         } else { }
     }
     | flatten
