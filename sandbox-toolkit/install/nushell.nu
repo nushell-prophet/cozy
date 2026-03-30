@@ -43,7 +43,8 @@ export def install [
 
     print $"  Building nushell ($label) — this may take a while..."
     # Thin LTO to avoid OOM in sandbox VMs (same rationale as zellij.nu).
-    ^cargo build --release --config 'profile.release.lto="thin"'
+    # -j 1 + lto=false to avoid OOM in sandbox VMs (limited RAM).
+    ^cargo build --release -j 1 --config 'profile.release.lto=false'
 
     let bin = $repo_dir | path join target release nu
     let dest = $cargo_bin | path join nu

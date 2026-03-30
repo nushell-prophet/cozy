@@ -38,7 +38,9 @@ export def install []: nothing -> nothing {
     ^git checkout $tag
 
     print $"  Building nu_plugin_image ($tag) — this may take a few minutes..."
-    ^cargo build --release --locked
+    # -j 1 to avoid OOM in sandbox VMs (limited RAM).
+    # Not thin LTO because: even thin LTO OOM-kills the linker in sandbox VMs.
+    ^cargo build --release --locked -j 1 --config 'profile.release.lto=false'
 
     let bin = $repo_dir | path join target release nu_plugin_image
     let dest = $cargo_bin | path join nu_plugin_image

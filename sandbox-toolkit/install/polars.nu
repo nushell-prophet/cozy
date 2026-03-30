@@ -21,7 +21,8 @@ export def install []: nothing -> nothing {
         print $"  (ansi green)nu_plugin_polars(ansi reset): already installed"
     } else {
         print "  Installing nu_plugin_polars (this may take several minutes)..."
-        ^cargo install nu_plugin_polars
+        # -j 1 to avoid OOM in sandbox VMs (limited RAM).
+        ^cargo install nu_plugin_polars -j 1
         print $"  (ansi green)nu_plugin_polars(ansi reset): installed"
     }
 
