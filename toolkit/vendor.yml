@@ -1,43 +1,59 @@
 - repo: nu-goodies
   github: nushell-prophet/nu-goodies
-  modules: [nu-goodies]
-
+  modules:
+  - nu-goodies
 - repo: nu-kv
   github: nushell-prophet/nu-kv
-  modules: [kv]
-
+  modules:
+  - kv
 - repo: dotnu
   github: nushell-prophet/dotnu
-  modules: [dotnu]
-
+  modules:
+  - dotnu
 - repo: numd
   github: nushell-prophet/numd
-  modules: [numd]
-
+  modules:
+  - numd
 - repo: claude-nu
   github: nushell-prophet/claude-nu
-  modules: [claude-nu]
-
+  modules:
+  - claude-nu
 - repo: nu-cmd-stack
   github: nushell-prophet/nu-cmd-stack
-  modules: [cmd-stack]
-
+  modules:
+  - cmd-stack
 - repo: nutest
   github: vyadh/nutest
-  modules: [nutest]
-
+  modules:
+  - nutest
 - repo: topiary-nushell
   github: blindFS/topiary-nushell
-  modules: [languages.ncl, queries, LICENSE]
-
+  modules:
+  - languages.ncl
+  - queries
+  - LICENSE
 - repo: dotfiles
   github: nushell-prophet/my-dotfiles
-  modules: [broot, claude, helix, jj, lazygit, nushell, zellij, wezterm, toolkit.nu, paths-docker.csv]
-
+  modules:
+  - broot
+  - claude
+  - helix
+  - jj
+  - lazygit
+  - nushell
+  - zellij
+  - wezterm
+  - toolkit.nu
+  - paths-docker.csv
 - repo: my-claude-skills
   github: maxim-uvarov/my-claude-skills
-  modules: [plugins/my-skills/skills]
-
+  modules:
+  - plugins/my-skills/skills
 - repo: nushell-skills
   github: nushell-prophet/nushell-skills
-  modules: [plugins]
+  modules:
+  - plugins
+- repo: nu-multiproof
+  github: nushell-prophet/nu-multiproof
+  modules:
+  - nu-multiproof
