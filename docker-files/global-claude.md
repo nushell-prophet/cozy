@@ -43,6 +43,7 @@ Nushell is the primary shell. Modules are in `~/repos/`:
 - `nu-kv` — key-value store
 - `claude-nu` — Claude Code integration
 - `nutest` — test framework
+- `nu-multiproof` — multi-proof utilities
 
 Use `use ~/repos/<module>/<module>` to load a module. Autoload scripts are in `~/.config/nushell/autoload/`.
 

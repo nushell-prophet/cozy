@@ -8,8 +8,8 @@ Modern, beginner-friendly terminal environment for AI agents, running inside `do
 Dockerfile
 ├── Base: docker/sandbox-templates:shell (Ubuntu, git, curl, Python, Node.js, Go, rg, jq, gh)
 ├── apt: procps, file, gcc, libc6-dev
-├── Homebrew tools: nushell, helix, lazygit, zellij, broot, fzf, git-delta, git-lfs, jj, visidata, bat, topiary
-├── Vendored modules and dotfiles: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, topiary-nushell, dotfiles, my-claude-skills, nushell-skills
+├── Homebrew tools: nushell, helix, lazygit, zellij, broot, fzf, git-delta, git-lfs, jj, visidata, bat, topiary, fd
+├── Vendored modules and dotfiles: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, topiary-nushell, dotfiles, my-claude-skills, nushell-skills, nu-multiproof
 ├── sandbox-toolkit/: runtime toolkit (the `cozy` overlay) — lives in-repo, copied or cloned into ~/repos/cozy/ at build time
 │   └── vendor/ dir (default) or git clone (with --build-arg MODULES_SOURCE=clone)
 ├── Dotfiles: vendored from dotfiles/ sibling repo, deployed via toolkit push-to-machine
@@ -58,7 +58,7 @@ After Dockerfile changes: rebuild image, then recreate sandbox (delete + run).
 ## Sources of truth
 
 - Keybindings: `vendor/dotfiles/zellij/config.kdl` (README keybinding docs drift from this)
-- Vendored modules: `toolkit/vendor.nu` (not the CLAUDE.md architecture list)
+- Vendored modules: `toolkit/vendor.yml` via `toolkit/vendor.nu` (not the CLAUDE.md architecture list)
 - `cozy` command surface: `sandbox-toolkit/mod.nu` exports
 - CHANGELOG entries are historical — cross-reference sequential versions for contradictions
 
