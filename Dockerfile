@@ -23,7 +23,7 @@ RUN NONINTERACTIVE=1 /bin/bash -c \
 
 ENV PATH="/home/agent/.local/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
 
-RUN brew install nushell fzf lazygit helix zellij broot git-delta visidata bat topiary \
+RUN brew install nushell fzf lazygit helix zellij broot git-delta visidata bat topiary fd \
     && brew cleanup --prune=all
 
 RUN brew install jj git-lfs \
