@@ -57,9 +57,9 @@ ENV XDG_CONFIG_HOME=$HOME/.config \
 RUN broot --write-default-conf $XDG_CONFIG_HOME/broot \
     && broot --set-install-state installed
 
-RUN git config --global user.name "Agent" && git config --global user.email "agent@sandbox" \
-    && git config --global core.excludesFile ~/.gitignore \
-    && printf '.DS_Store\nThumbs.db\ndesktop.ini\n' > ~/.gitignore
+# user.name, user.email, core.excludesFile are set by the sandbox runtime
+# at startup (overwrites ~/.gitconfig) — no need to set them here.
+RUN printf '.DS_Store\nThumbs.db\ndesktop.ini\n' > ~/.gitignore
 
 ARG MODULES_SOURCE=vendor
 RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
