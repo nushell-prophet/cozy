@@ -66,6 +66,7 @@ After Dockerfile changes: rebuild image, then recreate sandbox (delete + run).
 
 - Workspace is mounted at its original host path (e.g. `/Users/user/temp/docker/`), not at `/workspace` or `/home/agent`
 - Only the workspace folder from `docker sandbox run` is synced — `exec` from a different folder doesn't mount it
+- `docker sandbox create` overwrites `~/.gitconfig` on every start — use `git config --system` (writes to `/etc/gitconfig`) for settings that must survive sandbox recreation
 - Sandbox uses microVMs — won't work inside UTM on M1 (no nested virtualization)
 - Base image CVEs (e.g. in `/usr/bin/docker`) are fixed upstream — pull latest base image periodically
 - Homebrew fetches latest versions at build time — use `brew pin` or specify versions if reproducibility matters

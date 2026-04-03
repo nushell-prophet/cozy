@@ -13,6 +13,13 @@ RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/*.sources /etc/apt/sou
 
 COPY --chmod=755 docker-files/pbcopy /usr/local/bin/pbcopy
 
+# System-level safe.directory wildcard (/etc/gitconfig).
+# Why: `docker sandbox create` overwrites ~/.gitconfig at startup with its own
+# user/safe/credential settings, wiping anything set during build via --global.
+# System-level config is not touched by the sandbox runtime.
+# Not --global because: sandbox overwrites ~/.gitconfig on every start.
+RUN git config --system --add safe.directory '*'
+
 RUN printf 'Acquire::http::Proxy "http://host.docker.internal:3128/";\nAcquire::https::Proxy "http://host.docker.internal:3128/";\n' \
         > /etc/apt/apt.conf.d/90proxy
 
@@ -50,11 +57,7 @@ ENV XDG_CONFIG_HOME=$HOME/.config \
 RUN broot --write-default-conf $XDG_CONFIG_HOME/broot \
     && broot --set-install-state installed
 
-# Workspace is mounted from the host, so it's owned by a different uid.
-# Git refuses to operate on repos with mismatched ownership (CVE-2022-24765).
-# Wildcard is safe here — the sandbox is single-user and isolated.
 RUN git config --global user.name "Agent" && git config --global user.email "agent@sandbox" \
-    && git config --global --add safe.directory '*' \
     && git config --global core.excludesFile ~/.gitignore \
     && printf '.DS_Store\nThumbs.db\ndesktop.ini\n' > ~/.gitignore
 
