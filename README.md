@@ -24,7 +24,7 @@ docker build -t cozy:latest .
 docker sandbox create --name cozy-test -t cozy:latest shell example-workspace
 #                                        ^^image      ^^agent ^^workspace
 
-# connect to the container
+# connect to the sandbox and start Zellij session
 docker sandbox exec -it cozy-test nu -l --execute 'zellij attach -c cozy-test'
 ```
 
