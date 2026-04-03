@@ -36,7 +36,7 @@ ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime \
     TERM_PROGRAM=WezTerm
 
 COPY --chown=agent:agent docker-files/.visidatarc /home/agent/.visidatarc
-COPY --chown=agent:agent nushell-autoload/ /tmp/nushell-autoload/
+COPY --chown=agent:agent docker-files/nushell-autoload/ /tmp/nushell-autoload/
 COPY --chown=agent:agent vendor/ /tmp/vendor/
 COPY --chown=agent:agent sandbox-toolkit/ /tmp/sandbox-toolkit/
 COPY --chown=agent:agent docker-files/global-claude.md /tmp/global-claude.md
