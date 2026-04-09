@@ -11,6 +11,9 @@ RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/*.sources /etc/apt/sou
         libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Why: Docker sandbox has no system clipboard. This shim uses OSC 52 escape
+# sequences to push copied text to the host terminal's clipboard. Consumed by
+# helix, lazygit, broot, nushell keybindings, and nu-goodies commands.
 COPY --chmod=755 docker-files/pbcopy /usr/local/bin/pbcopy
 
 # System-level safe.directory wildcard (/etc/gitconfig).
