@@ -7,7 +7,8 @@ export def main [] { help nushell }
 # Requires Rust (use `toolkit install rust` first).
 # Safe to re-run — pulls latest and rebuilds.
 export def install [
-    --dev  # Build from main branch instead of latest release
+    --dev      # Build from main branch instead of latest release
+    --no-mcp   # Build without MCP support
 ]: nothing -> nothing {
     let cargo_bin = $nu.home-dir | path join .cargo bin
 
@@ -42,9 +43,19 @@ export def install [
     }
 
     print $"  Building nushell ($label) — this may take a while..."
-    # Thin LTO to avoid OOM in sandbox VMs (same rationale as zellij.nu).
     # -j 1 + lto=false to avoid OOM in sandbox VMs (limited RAM).
-    ^cargo build --release -j 1 --config 'profile.release.lto=false'
+    if $no_mcp {
+        let defaults = open Cargo.toml | get features.default
+        if "mcp" in $defaults {
+            let features = $defaults | where {|x| $x != "mcp"} | str join ","
+            ^cargo build --release -j 1 --config 'profile.release.lto=false' --no-default-features --features $features
+        } else {
+            print $"  (ansi yellow)Warning(ansi reset): 'mcp' not in default features — building with all defaults"
+            ^cargo build --release -j 1 --config 'profile.release.lto=false'
+        }
+    } else {
+        ^cargo build --release -j 1 --config 'profile.release.lto=false'
+    }
 
     let bin = $repo_dir | path join target release nu
     let dest = $cargo_bin | path join nu
