@@ -32,6 +32,7 @@ docker sandbox exec -it cozy-test nu --login --execute 'zellij attach -c cozy-te
 **Installed**: [Nushell](#nushell), [Helix](#helix-editor), [Zellij](#zellij), [Lazygit](#lazygit), [Broot](#broot), [FZF](#fzf), git-delta, visidata, bat, topiary, fd, jj, git-lfs, [Claude Code](#building-without-claude-code), procps, file, gcc, libc6-dev (base image adds git, curl, Python, Node.js, Go, ripgrep, jq, gh)
 
 **Optional** (`cozy install`): Rust, nu_plugin_polars, nu-plugin-image, Claude Code (reinstall)
+
 **Rebuild from source** (`cozy install`): Nushell, Zellij (without web sharing), topiary
 
 ### Docker sandbox
