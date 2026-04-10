@@ -7,18 +7,14 @@
 #
 # 📍 Quick Navigation:
 #   • Basic Configuration
-#   • Keyboard Shortcuts
 #   • Core Keybindings
 #   • Menu Systems
-#   • FZF Integration
+#   • FZF Integration Suite
 #   • Tool Integrations
-#   • External Dependencies
 #
 # 🎯 Dependencies Required:
-#   - carapace (completions)
 #   - fzf (history search)
 #   - broot (file browser)
-#   - zellij (terminal multiplexer)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -119,6 +115,10 @@ $env.config.keybindings ++= [
     }
 ]
 
+# ───────────────────────────────────────────────────────────────────────────────
+# Navigate history
+# Shortcut: Alt+Up/down
+# ───────────────────────────────────────────────────────────────────────────────
 $env.config.keybindings ++= [
     {
         name: previous_history_item
@@ -129,10 +129,6 @@ $env.config.keybindings ++= [
     }
 ]
 
-# ───────────────────────────────────────────────────────────────────────────────
-# Navigate history
-# Shortcut: Alt+Up/down
-# ───────────────────────────────────────────────────────────────────────────────
 $env.config.keybindings ++= [
     {
         name: next_history_item
@@ -188,8 +184,8 @@ $env.config.menus ++= [
             | where $it =~ $"\(?i)($buffer_esc)"
             | compact --empty
             | each {
-                if ($in has ' ') {
-                    $'"($in)"'
+                if $in has (char space) {
+                    $'"($in)"' # enclose entry into quotes
                 } else { }
                 | {value: $in}
             }
@@ -205,40 +201,42 @@ $env.config.menus ++= [
 # Note: $env.ignore-env-vars is initialized at the end of this configuration file
 # ───────────────────────────────────────────────────────────────────────────────
 
+# Not using nushell menu because `scope variables` inside a menu source closure
+# only sees closure-local scope since ~0.101 (nushell/nushell#14071).
+# Using `executehostcommand` + fzf instead — runs in REPL scope, sees all variables.
 $env.config.keybindings ++= [
     {
         name: vars_menu
         modifier: alt
         keycode: char_o
         mode: [emacs]
-        event: {send: menu name: vars_menu}
+        event: {
+            send: executehostcommand
+            cmd: (vars-menu-source)
+        }
     }
 ]
 
-$env.config.menus ++= [
-    {
-        name: vars_menu
-        only_buffer_difference: true
-        marker: "# "
-        type: {
-            layout: list
-            page_size: 10
-        }
-        style: {
-            text: green
-            selected_text: green_reverse
-            description_text: yellow
-        }
-        source: {|buffer position|
-            scope variables
-            # Filter out variables captured at config initialization (see end of file)
+def vars-menu-source [] {
+    let closure = {
+        let selected = scope variables
             | where name not-in ($env.ignore-env-vars? | default [])
             | sort-by var_id -r
-            | where name =~ $buffer
-            | each {|it| {value: $it.name description: $it.type} }
+            | each { $"($in.name)\t($in.type)" }
+            | str join (char nul)
+            | ^fzf --read0 --no-sort --layout=reverse --height=40% --delimiter="\t"
+            | decode utf-8
+            | str trim
+            | split row "\t"
+            | first
+
+        if ($selected | is-not-empty) {
+            commandline edit --insert $selected
         }
     }
-]
+
+    view source $closure | lines | skip | drop | to text
+}
 
 # ───────────────────────────────────────────────────────────────────────────────
 # Convert Command Line to Raw String Literal
@@ -419,65 +417,6 @@ def 'fzf-hist-current-commandline-prefix-replace' [] {
     view source $closure | lines | skip | drop | to text
 }
 
-# ───────────────────────────────────────────────────────────────────────────────
-# FZF Context-Aware Session Search
-# Shortcut: Alt+Ctrl+F
-# Usage: Search sessions that contain similar commands to current input
-# Features: Context awareness, session correlation, command appending
-# ───────────────────────────────────────────────────────────────────────────────
-
-$env.config.keybindings ++= [
-    {
-        name: fzf_history_sessions
-        modifier: alt_control
-        keycode: char_f
-        mode: [emacs vi_normal vi_insert]
-        event: {
-            send: executehostcommand
-            cmd: (fzf-hist-with-sessions-that-include-current-entry)
-        }
-    }
-]
-
-def 'fzf-hist-with-sessions-that-include-current-entry' [] {
-    let closure = {
-        open $nu.history-path
-        | query db -p [
-            (commandline | split row -r $';(char nl)?' | str trim | compact --empty | to json)
-        ] "
-            WITH json_values AS (
-                SELECT value
-                FROM json_each(?)
-            )
-            SELECT DISTINCT command_line
-            FROM history AS session_history
-            WHERE EXISTS (
-                SELECT 1
-                FROM json_values
-                WHERE session_history.command_line LIKE '%' || json_values.value || '%'
-            )
-        "
-        | get command_line
-        | each { str replace -a '    ' "\u{200B}" }
-        | str join (char nul)
-        | ^fzf ...(
-            $env.FZF_HISTORY_BASE ++ [
-                '--no-sort'
-            ]
-        )
-        | decode utf-8
-        | str trim --char (char nl)
-        | str replace -ar (char nul) $';(char nl)'
-        | str replace -r $';(char nl)$' ''
-        | str replace -a "\u{200B}" '    '
-        | str trim
-        | commandline edit -a $in
-        | commandline set-cursor -e
-    }
-
-    view source $closure | lines | skip | drop | to text
-}
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # ▐ TOOL INTEGRATIONS
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -584,24 +523,6 @@ $env.config.keybindings ++= [
     }
 ]
 
-# ───────────────────────────────────────────────────────────────────────────────
-# String Interpolation Template
-# Shortcut: Alt+Shift+'
-# Usage: Inserts $"" template with cursor positioned inside quotes
-# ───────────────────────────────────────────────────────────────────────────────
-
-$env.config.keybindings ++= [
-    {
-        name: paste_interpolation
-        modifier: alt_shift
-        keycode: "char_'"
-        mode: [emacs]
-        event: {
-            send: executehostcommand
-            cmd: r#'commandline edit --insert '$""'; commandline set-cursor ((commandline get-cursor) - 1)'#
-        }
-    }
-]
 
 # ───────────────────────────────────────────────────────────────────────────────
 # Smart Pipe Completions Menu - Intelligent command continuation
