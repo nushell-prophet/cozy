@@ -26,7 +26,8 @@ COPY --chmod=755 docker-files/pbcopy /usr/local/bin/pbcopy
 # --commit-changes`, which runs `git commit` inside ~/.config and ~/.claude.
 RUN git config --system --add safe.directory '*' \
     && git config --system user.name "Agent" \
-    && git config --system user.email "agent@sandbox"
+    && git config --system user.email "agent@sandbox" \
+    && git config --system core.excludesFile /home/agent/.gitignore
 
 RUN printf 'Acquire::http::Proxy "http://host.docker.internal:3128/";\nAcquire::https::Proxy "http://host.docker.internal:3128/";\n' \
         > /etc/apt/apt.conf.d/90proxy
@@ -65,8 +66,9 @@ ENV XDG_CONFIG_HOME=$HOME/.config \
 RUN broot --write-default-conf $XDG_CONFIG_HOME/broot \
     && broot --set-install-state installed
 
-# user.name, user.email, core.excludesFile are set by the sandbox runtime
-# at startup (overwrites ~/.gitconfig) — no need to set them here.
+# The ignore file this points to is /home/agent/.gitignore, bound via
+# `core.excludesFile` at --system level above. --system (not --global)
+# because the sandbox runtime overwrites ~/.gitconfig on every start.
 RUN printf '.DS_Store\nThumbs.db\ndesktop.ini\n' > ~/.gitignore
 
 ARG MODULES_SOURCE=vendor
