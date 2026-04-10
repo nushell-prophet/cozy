@@ -46,11 +46,11 @@ Merges default Claude settings (effortLevel, cleanupPeriodDays) into sandbox `~/
 
 ### `cozy sandbox-state export` / `cozy sandbox-state import`
 
-Combined export/import of Nushell history, Claude Code project sessions, and Claude Code credentials/settings.
+Combined export/import of both Nushell history and Claude Code project sessions.
 
 ```nushell
-cozy sandbox-state export        # exports history + projects + credentials
-cozy sandbox-state import        # imports history + projects + credentials
+cozy sandbox-state export        # exports history + projects
+cozy sandbox-state import        # imports history + projects
 ```
 
 ### `cozy sandbox-state history export` / `import`
@@ -69,16 +69,6 @@ Seeds history from the bundled `history-seed.nuon` file.
 ### `cozy sandbox-state projects export` / `import`
 
 Copies Claude Code project sessions (`~/.claude/projects/`) to/from `~/workspace/mounted/sandbox-state/projects/`. The mounted directory survives sandbox recreation.
-
-### `cozy sandbox-state credentials export` / `import`
-
-Exports/imports Claude Code OAuth credentials (`~/.claude/.credentials.json`) and settings (`~/.claude/settings.json`) to/from `~/workspace/mounted/sandbox-state/`. Import skips existing credentials unless `--force` is used; settings are merged (existing keys preserved).
-
-```nushell
-cozy sandbox-state credentials export
-cozy sandbox-state credentials import          # skip if credentials exist
-cozy sandbox-state credentials import --force  # overwrite existing
-```
 
 ### `cozy install ...`
 
