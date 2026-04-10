@@ -8,6 +8,7 @@ description: >
   "generate a spec from code," "I need to review the architecture," or "document what exists."
   Also trigger when the user mentions extracting contracts, interfaces, or feature maps from code.
   Works best on projects up to ~5K LOC but handles larger ones by focusing on public interfaces.
+version: 0.1.0
 ---
 
 # Spec Extract

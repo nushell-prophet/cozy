@@ -8,6 +8,7 @@ description: >
   "audit the session", "review what was lost", "verify commits match discussion",
   or references preserving decision context. Trigger at the end of a coding
   session if the user asks for a final review before finishing.
+version: 0.1.0
 ---
 
 # Intent Audit

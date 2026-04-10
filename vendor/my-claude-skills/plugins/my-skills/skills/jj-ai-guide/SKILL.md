@@ -2,6 +2,7 @@
 name: jj-ai-guide
 description: Guide for working with Jujutsu (jj) version control system. Use when the user is working in a jj repository, asks about jj commands, or needs help with version control operations in a jj-based project. Covers commands, revsets, filesets, templates, conflicts, and AI-safe workflows.
 allowed-tools: Bash, Read, Grep, Glob
+version: 0.1.0
 ---
 
 # Jujutsu (jj) Guide for AI Agents

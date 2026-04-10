@@ -6,6 +6,7 @@ description: >
   "think through this first", "elegance-first", "analyze before solving",
   "structure this problem", or "step back and think". Do NOT auto-trigger on
   general coding or implementation requests.
+version: 0.1.0
 ---
 
 # Elegance-First Problem Framing
