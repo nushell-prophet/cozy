@@ -29,59 +29,88 @@ export def --env main [
 
     let term_size = term size
 
-    let screen_size = $term_size
-        | if $rows == null { values } else {
-            $in.columns * $rows
+    let screen_size = if $rows == null {
+            $term_size | values | math product
+        } else {
+            $term_size.columns * $rows
         }
-        | math product
 
-    let 1_list = $strings.0 | split chars
-    let 1_len = $1_list | length
-    let date_text = date now | format date "%Y%m%d_%H%M%S"
-
+    let pattern_len = $strings.0 | split chars | length
     let colors = rand-hex-col2
 
     $env.gradient-screen-last-colors = $colors
 
-    let other_strings = $strings
-        | skip
-        | each {|i|
-            str c $i ($1_list | last ($1_len - ($i | str length) mod $1_len) | str join)
-        }
-        | append ''
+    let chars = build-screen-buffer $strings $screen_size --no-date=$no_date
 
-    let other_len = $other_strings
-        | str length
-        | math sum
+    apply-gradient $chars $pattern_len $colors $term_size.columns
+    | if $echo { } else {
+        print; sleep 2sec;
+    }
+}
 
-    let n_chunks = ($screen_size - $other_len) // $1_len
-
-    let base = seq 0 $n_chunks
-        | each { $strings.0 }
-
-    let output = $other_strings
-        | reduce -f $base {|i acc|
-            $acc
-            | insert (random int 3..$n_chunks) $i
-        }
-        | str join
-        | split chars --grapheme-clusters
-        | first $screen_size
-        | if $no_date { } else {
-            drop ($date_text | str length)
-            | append ($date_text | split chars)
-        }
-        | window $1_len --stride $1_len --remainder
+def apply-gradient [
+    chars: list<string>
+    pattern_len: int
+    colors: list<string>
+    columns: int
+]: nothing -> string {
+    let output = $chars
+        | window $pattern_len --stride $pattern_len --remainder
         | each { str join | ansi gradient --fgstart $colors.0 --fgend $colors.1 }
         | str join
 
+    # Why: re-window by terminal width to insert newlines — the gradient
+    # was applied per pattern_len chunk, but display needs column breaks
     split-ansi-chars $output
-    | window $term_size.columns --stride $term_size.columns
+    | window $columns --stride $columns
     | each { str join }
     | str join (char nl)
     | $'($in)(ansi reset)'
-    | if $echo { } else {
-        print; sleep 2sec;
+}
+
+def build-screen-buffer [
+    strings: list<string>
+    screen_size: int
+    --no-date
+]: nothing -> list<string> {
+    let pattern_chars = $strings.0 | split chars
+    let pattern_len = $pattern_chars | length
+    let date_text = date now | format date "%Y%m%d_%H%M%S"
+
+    # Why: pad each filler text with trailing pattern chars so its length
+    # is a multiple of pattern_len — keeps gradient windows aligned
+    let filler_texts = $strings
+        | skip
+        | each {|i|
+            str c $i ($pattern_chars | last ($pattern_len - ($i | str length) mod $pattern_len) | str join)
+        }
+        | append ''
+
+    let filler_len = $filler_texts
+        | str length
+        | math sum
+
+    # Why: clamp to 4 minimum so `random int 3..$repeat_count` is always
+    # a valid range — fillers alone can exceed screen_size with many strings
+    let repeat_count = [
+        (($screen_size - $filler_len) // $pattern_len)
+        4
+    ] | math max
+
+    let base = seq 0 $repeat_count
+        | each { $strings.0 }
+
+    $filler_texts
+    | reduce -f $base {|i acc|
+        $acc
+        | insert (random int 3..$repeat_count) $i
+    }
+    | str join
+    | split chars --grapheme-clusters
+    | first $screen_size
+    | if $no_date { } else {
+        drop ($date_text | str length)
+        | append ($date_text | split chars)
     }
 }
 
