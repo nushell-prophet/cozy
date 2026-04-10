@@ -80,8 +80,10 @@ RUN if [ "$MODULES_SOURCE" = "clone" ]; then \
       && git clone https://github.com/nushell-prophet/nu-cmd-stack.git ~/repos/nu-cmd-stack \
       && git clone https://github.com/nushell-prophet/my-dotfiles.git ~/repos/dotfiles \
       && git clone https://github.com/vyadh/nutest.git ~/repos/nutest \
+      && git clone https://github.com/blindFS/topiary-nushell.git ~/repos/topiary-nushell \
       && git clone https://github.com/nushell-prophet/nushell-skills.git ~/repos/nushell-skills \
-      && git clone https://github.com/maxim-uvarov/my-claude-skills.git ~/repos/my-claude-skills; \
+      && git clone https://github.com/maxim-uvarov/my-claude-skills.git ~/repos/my-claude-skills \
+      && git clone https://github.com/nushell-prophet/nu-multiproof.git ~/repos/nu-multiproof; \
     else \
       cp -r /tmp/vendor/* ~/repos/; \
     fi \
