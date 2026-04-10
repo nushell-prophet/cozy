@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-04-10
+
+### Added
+
+- `cozy install claude` subcommand to install Claude Code inside a running sandbox — complements the `INSTALL_CLAUDE=false` build arg from 0.0.9, letting you start from an agent-free image and add Claude on demand (517703c)
+- `--no-mcp` flag for `cozy install nushell` to skip MCP server registration (cf1ab49)
+- `fd` (fd-find) to the sandbox Homebrew install list (29d9bc8)
+- `nu-multiproof` vendored module for multi-proof utilities (d539cc0, 4c9d8df, 691b3c0)
+- `vendor check` command to detect new `nushell-prophet` repos that aren't yet vendored, with `--add` to append them to `vendor.yml` (cb268a0, 11973ee)
+
+### Changed
+
+- Default vendoring now downloads GitHub tarballs instead of full git clones — faster builds, no `.git/` bloat; pass `--build-arg MODULES_SOURCE=clone` for the old clone-based build (302275c)
+- `vendor.nu` modules table extracted into `vendor.yml` as the single source of truth for vendored modules (425ebe8)
+- Nushell `vars_menu` rewritten to use fzf via `executehostcommand` — native menu broke after nushell 0.101 scope changes (`scope variables` inside menu closures no longer sees REPL variables) (56cdac1)
+- `working_dirs_cd_menu` switched to `GROUP BY cwd ORDER BY MAX(start_timestamp)` — the previous `DISTINCT cwd ORDER BY id DESC` returned every row because SQLite resolved `id` by adding it to the DISTINCT key (a1619a7)
+- WezTerm QuickSelect patterns no longer include trailing punctuation (591cf4c)
+- Vendored `nu-goodies` `gradient-screen` and other modules refreshed from upstream (681e421, b98008c, 835bbf6, 6765bb1, bf4e0f1)
+
+### Removed
+
+- Nushell keybindings `fzf_history_sessions` (Alt-Ctrl-F) and `paste_interpolation` (Alt-Shift-') (56cdac1)
+
+### Fixed
+
+- Rust install scripts now limit cargo parallelism and disable LTO — prevents OOM kills during `brew install` in memory-constrained build environments (41f5782)
+- `safe.directory = *` moved from `--global` to `--system` git config so it survives `docker sandbox create` wiping `~/.gitconfig` (25fc7b5)
+- Build-time git user identity now set at `--system` level so build commits don't fail when `~/.gitconfig` is wiped on sandbox recreation (e1f4050)
+- `core.excludesFile` re-bound to `/home/agent/.gitignore` at `--system` level — global gitignore was lost on sandbox recreation (596f7b9)
+- Dockerfile clone mode (`--build-arg MODULES_SOURCE=clone`) now includes `topiary-nushell` and `nu-multiproof` (691b3c0)
+
 ## [0.0.9] - 2026-03-29
 
 ### Added
@@ -185,7 +216,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sandbox image test script with tool launch verification (a333bb6)
 - Supports both `arm64` and `amd64` architectures via Docker sandbox
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.0.9...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.1.0...HEAD
+[0.1.0]: https://github.com/nushell-prophet/cozy/compare/0.0.9...0.1.0
 [0.0.9]: https://github.com/nushell-prophet/cozy/compare/0.0.8...0.0.9
 [0.0.8]: https://github.com/nushell-prophet/cozy/compare/0.0.7...0.0.8
 [0.0.7]: https://github.com/nushell-prophet/cozy/compare/0.0.6...0.0.7
