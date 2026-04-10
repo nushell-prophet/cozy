@@ -33,7 +33,7 @@ def copy-module [src: path, dst: path] {
 }
 
 const ignore_repos = [
-    .github
+    ".github"
     config-tools
     cozy
     cozy-docker-sandbox-toolkit
