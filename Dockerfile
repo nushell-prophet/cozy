@@ -16,12 +16,17 @@ RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/*.sources /etc/apt/sou
 # helix, lazygit, broot, nushell keybindings, and nu-goodies commands.
 COPY --chmod=755 docker-files/pbcopy /usr/local/bin/pbcopy
 
-# System-level safe.directory wildcard (/etc/gitconfig).
+# System-level git config (/etc/gitconfig).
 # Why: `docker sandbox create` overwrites ~/.gitconfig at startup with its own
 # user/safe/credential settings, wiping anything set during build via --global.
-# System-level config is not touched by the sandbox runtime.
+# System-level config is not touched by the sandbox runtime, and at runtime
+# global wins over system, so the sandbox's user identity still takes priority.
 # Not --global because: sandbox overwrites ~/.gitconfig on every start.
-RUN git config --system --add safe.directory '*'
+# user.name/email are needed at build time by `toolkit push-to-machine
+# --commit-changes`, which runs `git commit` inside ~/.config and ~/.claude.
+RUN git config --system --add safe.directory '*' \
+    && git config --system user.name "Agent" \
+    && git config --system user.email "agent@sandbox"
 
 RUN printf 'Acquire::http::Proxy "http://host.docker.internal:3128/";\nAcquire::https::Proxy "http://host.docker.internal:3128/";\n' \
         > /etc/apt/apt.conf.d/90proxy
