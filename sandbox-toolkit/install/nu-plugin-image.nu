@@ -7,17 +7,16 @@ export def main [] { help nu-plugin-image }
 # Clones the repo, checks out the tag matching the running Nushell
 # version, and builds with --locked to use pinned dependencies.
 # Provides `to png` and `from png`.
-# Requires Rust (use `toolkit install rust` first).
+# Installs Rust automatically if not already present.
 # Safe to re-run — pulls latest matching tag and rebuilds.
 export def install []: nothing -> nothing {
     let cargo_bin = $nu.home-dir | path join .cargo bin
 
-    # Ensure cargo is available
-    if (which cargo | is-empty) {
+    # Ensure Rust is installed
+    use rust.nu
+    rust install
+    if $cargo_bin not-in $env.PATH {
         $env.PATH = ($env.PATH | prepend $cargo_bin)
-        if (which cargo | is-empty) {
-            error make {msg: "cargo not found — run `toolkit install rust` first"}
-        }
     }
 
     let repo_dir = $nu.home-dir | path join git nu_plugin_image

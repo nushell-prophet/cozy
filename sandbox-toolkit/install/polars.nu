@@ -2,18 +2,17 @@ export def main [] { help polars }
 
 # Install nu_plugin_polars and register it with Nushell.
 #
-# Requires Rust (use `toolkit rust install` first).
+# Installs Rust automatically if not already present.
 # Compiles from source — may take several minutes.
 # Safe to re-run — skips steps already done.
 export def install []: nothing -> nothing {
     let cargo_bin = $nu.home-dir | path join .cargo bin
 
-    # Ensure cargo is available
-    if (which cargo | is-empty) {
+    # Ensure Rust is installed
+    use rust.nu
+    rust install
+    if $cargo_bin not-in $env.PATH {
         $env.PATH = ($env.PATH | prepend $cargo_bin)
-        if (which cargo | is-empty) {
-            error make {msg: "cargo not found — run `toolkit rust install` first"}
-        }
     }
 
     let plugin_path = $cargo_bin | path join nu_plugin_polars
