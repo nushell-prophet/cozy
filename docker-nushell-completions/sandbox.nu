@@ -24,7 +24,7 @@ export def wezterm-cozy [
 
     ^wezterm --config-file $conf start --always-new-process -- ...[
         docker sandbox exec -it $sandbox_name
-        nu --login --commands $'
+        nu --login --execute $'
             print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\";
             zellij attach -c ($sandbox_name)
         '
