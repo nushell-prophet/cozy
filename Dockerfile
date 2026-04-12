@@ -49,7 +49,8 @@ ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime \
     HOME=/home/agent \
     TERM=xterm-256color \
     COLORTERM=truecolor \
-    TERM_PROGRAM=WezTerm
+    TERM_PROGRAM=WezTerm \
+    LANG=C.UTF-8
 
 COPY --chown=agent:agent docker-files/.visidatarc /home/agent/.visidatarc
 COPY --chown=agent:agent docker-files/nushell-autoload/ /tmp/nushell-autoload/
