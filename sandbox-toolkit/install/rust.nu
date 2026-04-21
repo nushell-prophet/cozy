@@ -4,6 +4,20 @@ export def main [] { help rust }
 #
 # Safe to re-run — skips if rustc is already available.
 export def install []: nothing -> nothing {
+    # Why: sandbox proxy (host.docker.internal:3128) is flaky; cargo's default
+    # 30s timeout with no retries fails on first hiccup. Originally set in
+    # Dockerfile, restored here since rust moved to runtime install (commit
+    # 22a7dbf dropped it). Idempotent — only writes if missing.
+    let cargo_config = $nu.home-dir | path join .cargo config.toml
+    if not ($cargo_config | path exists) {
+        mkdir ($cargo_config | path dirname)
+        {
+            net: {retry: 5, git-fetch-with-cli: true}
+            http: {timeout: 120}
+            registries: {crates-io: {protocol: "sparse"}}
+        } | save $cargo_config
+    }
+
     if not (which rustc | is-empty) {
         print $"  (ansi green)rust(ansi reset): already installed"
         return
