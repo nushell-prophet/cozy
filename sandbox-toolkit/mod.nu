@@ -7,3 +7,4 @@ export use sandbox-state/
 export use dev-link.nu
 export use install/
 export use configure/
+export use git-harden.nu

@@ -29,6 +29,17 @@ RUN git config --system --add safe.directory '*' \
     && git config --system user.email "agent@sandbox" \
     && git config --system core.excludesFile /home/agent/.gitignore
 
+# Harden git against VirtioFS shared-mount corruption.
+# Why: VirtioFS (Docker Desktop's macOS mount) doesn't atomically flush pack
+# writes across the VM/host boundary, so `git gc` / auto-repack can leave
+# torn packs visible to the host as "unknown object type 0" corruption.
+# Disable auto-gc (the dangerous operation) and force fsync so writes don't
+# return until the VM commits to disk.
+# Not --global because: sandbox overwrites ~/.gitconfig on every start.
+RUN git config --system gc.auto 0 \
+    && git config --system core.fsync all \
+    && git config --system core.fsyncMethod fsync
+
 RUN printf 'Acquire::http::Proxy "http://host.docker.internal:3128/";\nAcquire::https::Proxy "http://host.docker.internal:3128/";\n' \
         > /etc/apt/apt.conf.d/90proxy
 
