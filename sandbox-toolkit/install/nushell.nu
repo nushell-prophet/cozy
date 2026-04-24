@@ -4,7 +4,7 @@ export def main [] { help nushell }
 #
 # By default builds the latest release tag. Use --dev to build
 # from main branch (bleeding edge).
-# Requires Rust (use `toolkit install rust` first).
+# Installs Rust automatically if not already present.
 # Safe to re-run — pulls latest and rebuilds.
 export def install [
     --dev      # Build from main branch instead of latest release
@@ -12,12 +12,11 @@ export def install [
 ]: nothing -> nothing {
     let cargo_bin = $nu.home-dir | path join .cargo bin
 
-    # Ensure cargo is available
-    if (which cargo | is-empty) {
+    # Ensure Rust is installed
+    use rust.nu
+    rust install
+    if $cargo_bin not-in $env.PATH {
         $env.PATH = ($env.PATH | prepend $cargo_bin)
-        if (which cargo | is-empty) {
-            error make { msg: "cargo not found — run `toolkit install rust` first" }
-        }
     }
 
     let repo_dir = $nu.home-dir | path join git nushell
