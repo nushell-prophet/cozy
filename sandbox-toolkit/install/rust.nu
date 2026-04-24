@@ -12,7 +12,7 @@ export def install []: nothing -> nothing {
     if not ($cargo_config | path exists) {
         mkdir ($cargo_config | path dirname)
         {
-            net: {retry: 5, git-fetch-with-cli: true}
+            net: {retry: 5 git-fetch-with-cli: true}
             http: {timeout: 120}
             registries: {crates-io: {protocol: "sparse"}}
         } | save $cargo_config

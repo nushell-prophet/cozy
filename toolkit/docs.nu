@@ -35,19 +35,19 @@ export def main [] {
     init $dir
 
     let results = $pages | par-each {|page|
-        let url = $"($base_url)/($page).md"
-        let file = $dir | path join $"($page).md"
-        mkdir ($file | path dirname)
+            let url = $"($base_url)/($page).md"
+            let file = $dir | path join $"($page).md"
+            mkdir ($file | path dirname)
 
-        # Why: http get doesn't work through Docker sandbox proxy, curl does
-        let result = do { ^curl -sfL $url } | complete
-        if $result.exit_code == 0 {
-            $result.stdout | save -f $file
-            {page: $page, status: ok}
-        } else {
-            {page: $page, status: failed}
-        }
-    } | sort-by page
+            # Why: http get doesn't work through Docker sandbox proxy, curl does
+            let result = do { ^curl -sfL $url } | complete
+            if $result.exit_code == 0 {
+                $result.stdout | save -f $file
+                {page: $page status: ok}
+            } else {
+                {page: $page status: failed}
+            }
+        } | sort-by page
 
     let ok = $results | where status == "ok" | length
     let failed = $results | where status == "failed"

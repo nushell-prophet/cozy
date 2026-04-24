@@ -1,4 +1,4 @@
-export def main [] {}
+export def main [] { }
 
 # Install claude using official install script
 export def install [] {

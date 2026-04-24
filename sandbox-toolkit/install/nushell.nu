@@ -7,8 +7,8 @@ export def main [] { help nushell }
 # Installs Rust automatically if not already present.
 # Safe to re-run — pulls latest and rebuilds.
 export def install [
-    --dev      # Build from main branch instead of latest release
-    --no-mcp   # Build without MCP support
+    --dev # Build from main branch instead of latest release
+    --no-mcp # Build without MCP support
 ]: nothing -> nothing {
     let cargo_bin = $nu.home-dir | path join .cargo bin
 
@@ -36,7 +36,7 @@ export def install [
         $"main \(($rev)\)"
     } else {
         ^git fetch --tags
-        let tag = ^git tag -l '[0-9]*' --sort=-v:refname | lines | first
+        let tag = ^git tag -l '[0-9]*' --sort='-v:refname' | lines | first
         ^git checkout $tag
         $tag
     }
@@ -46,7 +46,7 @@ export def install [
     if $no_mcp {
         let defaults = open Cargo.toml | get features.default
         if "mcp" in $defaults {
-            let features = $defaults | where {|x| $x != "mcp"} | str join ","
+            let features = $defaults | where {|x| $x != "mcp" } | str join ","
             ^cargo build --release -j 1 --config 'profile.release.lto=false' --no-default-features --features $features
         } else {
             print $"  (ansi yellow)Warning(ansi reset): 'mcp' not in default features — building with all defaults"

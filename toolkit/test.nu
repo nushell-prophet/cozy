@@ -66,20 +66,20 @@ def --wrapped exec [...args: string]: nothing -> string {
     ^docker sandbox exec $sandbox ...$args
 }
 
-def ok [label: string, detail?: string]: nothing -> record {
-    {label: $label, pass: true, detail: ($detail | default "")}
+def ok [label: string detail?: string]: nothing -> record {
+    {label: $label pass: true detail: ($detail | default "")}
 }
 
-def fail [label: string, detail: string]: nothing -> record {
-    {label: $label, pass: false, detail: $detail}
+def fail [label: string detail: string]: nothing -> record {
+    {label: $label pass: false detail: $detail}
 }
 
 export def main [] { help main }
 
 # Run checks against a fresh sandbox, clean up after
 export def "main test" [
-    --tag (-t): string = "latest"  # image tag to test
-    --keep (-k)                    # keep sandbox after tests
+    --tag (-t): string = "latest" # image tag to test
+    --keep (-k) # keep sandbox after tests
 ] {
     let template = $"($image):($tag)"
 
@@ -102,7 +102,7 @@ export def "main test" [
         }
     }
     if not $ready {
-        error make { msg: "Sandbox did not become ready" }
+        error make {msg: "Sandbox did not become ready"}
     }
     print "Sandbox ready"
 

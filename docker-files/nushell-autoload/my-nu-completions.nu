@@ -1,5 +1,5 @@
 def nu-complete-tte-style-completions [] {
-    [beams, binarypath, blackhole, bouncyballs, bubbles, burn, colorshift, crumble, decrypt, errorcorrect, expand, fireworks, middleout, orbittingvolley, overflow, pour, print, rain, randomsequence, rings, scattered, slice, slide, spotlights, spray, swarm, synthgrid, unstable, vhstape, waves, wipe]
+    [beams binarypath blackhole bouncyballs bubbles burn colorshift crumble decrypt errorcorrect expand fireworks middleout orbittingvolley overflow pour print rain randomsequence rings scattered slice slide spotlights spray swarm synthgrid unstable vhstape waves wipe]
 }
 
 export extern tte [
@@ -13,4 +13,5 @@ export extern tte [
     --frame-rate
     --canvas-width
     --canvas-height
-    --ignore-terminal-dimensions]
+    --ignore-terminal-dimensions
+]

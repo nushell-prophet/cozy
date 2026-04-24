@@ -2,14 +2,14 @@ const agents = [cagent claude codex copilot gemini kiro shell]
 
 def "nu-complete sandbox names" [] {
     ^docker sandbox ls
-    | detect columns --guess # --json gives status that all machines are running
-    | each {|x| { value: $x.SANDBOX, description: $"($x.STATUS) ($x.WORKSPACE)" }}
+    | detect columns
+    | each {|x| {value: $x.SANDBOX description: $"($x.STATUS) ($x.WORKSPACE)"} }
 }
 
 def "nu-complete sandbox run-target" [] {
     let vms = ^docker sandbox ls --json | from json | get vms
-        | each {|x| { value: $x.name, description: $x.status }}
-    let new = $agents | each {|a| { value: $a, description: "new" }}
+        | each {|x| {value: $x.name description: $x.status} }
+    let new = $agents | each {|a| {value: $a description: "new"} }
     $new | append $vms
 }
 
@@ -20,7 +20,7 @@ export def wezterm-cozy [
     --config-file: path
 ] {
     let conf = $config_file
-    | default ($script_path | path dirname | path join ../vendor/dotfiles/wezterm/wezterm.lua)
+        | default ($script_path | path dirname | path join ../vendor/dotfiles/wezterm/wezterm.lua)
 
     ^wezterm --config-file $conf start --always-new-process -- ...[
         docker sandbox exec -it $sandbox_name
@@ -32,74 +32,74 @@ export def wezterm-cozy [
 }
 
 export extern "docker sandbox" [
-    --debug(-D)
+    --debug (-D)
 ]
 
 export extern "docker sandbox create" [
     agent: string@$agents
     workspace?: path
-    --debug(-D)
+    --debug (-D)
     --load-local-template
     --name: string
-    --quiet(-q)
-    --template(-t): string
+    --quiet (-q)
+    --template (-t): string
 ]
 
 export extern "docker sandbox run" [
     target: string@"nu-complete sandbox run-target"
     workspace?: path
-    --debug(-D)
+    --debug (-D)
     --load-local-template
     --name: string
-    --template(-t): string
+    --template (-t): string
 ]
 
 export extern "docker sandbox exec" [
     sandbox: string@"nu-complete sandbox names"
     ...args: string
-    --debug(-D)
-    --detach(-d)
+    --debug (-D)
+    --detach (-d)
     --detach-keys: string
-    --env(-e): string
+    --env (-e): string
     --env-file: string
-    --interactive(-i)
+    --interactive (-i)
     --privileged
-    --tty(-t)
-    --user(-u): string
-    --workdir(-w): string
+    --tty (-t)
+    --user (-u): string
+    --workdir (-w): string
 ]
 
 export extern "docker sandbox ls" [
-    --debug(-D)
+    --debug (-D)
     --json
     --no-trunc
-    --quiet(-q)
+    --quiet (-q)
 ]
 
 export extern "docker sandbox stop" [
     ...sandbox: string@"nu-complete sandbox names"
-    --debug(-D)
+    --debug (-D)
 ]
 
 export extern "docker sandbox rm" [
     ...sandbox: string@"nu-complete sandbox names"
-    --debug(-D)
+    --debug (-D)
 ]
 
 export extern "docker sandbox save" [
     sandbox: string@"nu-complete sandbox names"
     tag: string
-    --debug(-D)
-    --output(-o): path
+    --debug (-D)
+    --output (-o): path
 ]
 
 export extern "docker sandbox reset" [
-    --debug(-D)
-    --force(-f)
+    --debug (-D)
+    --force (-f)
 ]
 
 export extern "docker sandbox network" [
-    --debug(-D)
+    --debug (-D)
 ]
 
 export extern "docker sandbox network proxy" [
@@ -110,17 +110,17 @@ export extern "docker sandbox network proxy" [
     --block-host: string
     --bypass-cidr: string
     --bypass-host: string
-    --debug(-D)
+    --debug (-D)
     --policy: string@[allow deny]
 ]
 
 export extern "docker sandbox network log" [
-    --debug(-D)
+    --debug (-D)
     --json
     --limit: int
-    --quiet(-q)
+    --quiet (-q)
 ]
 
 export extern "docker sandbox version" [
-    --debug(-D)
+    --debug (-D)
 ]

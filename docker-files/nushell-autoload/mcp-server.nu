@@ -7,10 +7,10 @@ if ($config_path | path exists) {
     let config = open $config_path
     if ($config | get --optional mcpServers.nushell) == null {
         $config
-        | upsert mcpServers.nushell {type: stdio, command: $nu_bin, args: ["--mcp"], env: {}}
+        | upsert mcpServers.nushell {type: stdio command: $nu_bin args: ["--mcp"] env: {}}
         | save -f $config_path
     }
 } else {
-    {mcpServers: {nushell: {type: stdio, command: $nu_bin, args: ["--mcp"], env: {}}}}
+    {mcpServers: {nushell: {type: stdio command: $nu_bin args: ["--mcp"] env: {}}}}
     | save -f $config_path
 }

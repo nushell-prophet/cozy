@@ -25,8 +25,8 @@ export def zellij [] {
 
 # Build nushell from source (latest release or --dev for main)
 export def nushell [
-    --dev      # Build from main branch instead of latest release
-    --no-mcp   # Build without MCP support
+    --dev # Build from main branch instead of latest release
+    --no-mcp # Build without MCP support
 ] {
     use nushell.nu [ install ]; install --dev=$dev --no-mcp=$no_mcp
 }

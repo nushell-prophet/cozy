@@ -18,7 +18,7 @@ def fetch-tarball [github: string]: nothing -> path {
     $tmp
 }
 
-def copy-module [src: path, dst: path] {
+def copy-module [src: path dst: path] {
     if not ($src | path exists) {
         print $"  (ansi red)Missing:(ansi reset) ($src)"
         return
@@ -70,8 +70,8 @@ export def "main check" [--add (-a)] {
 
     if $add {
         let entries = $new | each {|name|
-            { repo: $name, github: $"nushell-prophet/($name)", modules: [$name] }
-        }
+                {repo: $name github: $"nushell-prophet/($name)" modules: [$name]}
+            }
         let current = load-modules
         $current | append $entries | to yaml | save -f $vendor_yml
         print $"\nAdded ($new | length) repo\(s\) to vendor.yml with default modules."

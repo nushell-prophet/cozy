@@ -10,14 +10,14 @@
 # git binary and ignores the sandbox's /etc/gitconfig. Repo-local config
 # lives on the shared mount, so both sides honor it.
 
-def git-config-get [repo: path, key: string]: nothing -> any {
+def git-config-get [repo: path key: string]: nothing -> any {
     let r = do { git -C $repo config --get $key } | complete
     if $r.exit_code == 0 { $r.stdout | str trim } else { null }
 }
 
 export def main [
-    path: path = '.'  # target repo, or parent for --all
-    --all (-a)        # harden every git repo in immediate subdirs of path
+    path: path = '.' # target repo, or parent for --all
+    --all (-a) # harden every git repo in immediate subdirs of path
 ]: nothing -> table {
     let targets = if $all {
         ls $path
@@ -37,9 +37,9 @@ export def main [
         ^git -C $p config gc.auto 0
         ^git -C $p config receive.autoGc false
         {
-            repo: ($p | path expand | path basename),
-            prev_gc_auto: ($before_gc | default '(unset)'),
-            prev_receive_autogc: ($before_recv | default '(unset)'),
+            repo: ($p | path expand | path basename)
+            prev_gc_auto: ($before_gc | default '(unset)')
+            prev_receive_autogc: ($before_recv | default '(unset)')
         }
     }
 }
