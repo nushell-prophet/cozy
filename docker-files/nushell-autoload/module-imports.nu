@@ -10,7 +10,7 @@ overlay use ~/repos/cozy/sandbox-toolkit/ as cozy --prefix
 
 $env.kv.path = (
     if $env.WORKSPACE_DIR? != null {
-        { $env.WORKSPACE_DIR | path join 'sandbox-state' 'nu-kv-values' | tee { mkdir $in } }
+        $env.WORKSPACE_DIR | path join 'sandbox-state' 'nu-kv-values' | tee { mkdir $in }
     } else {
         $nu.home-dir | path join .local share nu-kv
     }
