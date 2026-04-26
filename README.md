@@ -106,7 +106,7 @@ In Nushell there are keybindings:
 - `ctrl+f` to spawn fzf with Nushell history; after selecting, the command is inserted into the command line.
 - `alt+f` to spawn fzf with `^currently-entered-commandline`; the current command line is replaced with the selection.
 
-In fzf, `tab` and `shift-tab` select multiple commands. On enter, selected commands are joined with `;\n` and are pasted back into commandline.
+In fzf, `tab` and `shift-tab` select multiple commands. On enter, selected commands are joined with `;\n` and are pasted back into the command line.
 
 ### Wezterm
 
