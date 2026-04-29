@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-04-29
+
+### Added
+
+- `cozy git-harden` command — sets `gc.auto=0` and `receive.autoGc=false` in `.git/config` to prevent VirtioFS shared-mount corruption when host and sandbox both touch the same `.git/`. Two prior incidents (torn pack on cozy, zero-byte index on temp2) traced to non-atomic flushes across the VM/host boundary (ba35a06)
+- `cozy install nushell`, `polars`, `nu-plugin-image`, and `zellij` now auto-install rust when missing instead of erroring with "cargo not found — run `toolkit install rust` first" (b156778, d077ee5)
+
+### Changed
+
+- Sandbox `/etc/gitconfig` sets `gc.auto=0` (kills the auto-repack that produced a torn pack) and `core.fsync=all` + `core.fsyncMethod=fsync` (writes wait for real disk commits) — protects against VirtioFS corruption on shared host↔sandbox mounts (ba35a06)
+- `LANG=C.UTF-8` set as a Dockerfile ENV — fixes git-delta showing UTF-8 multi-byte sequences (e.g. em-dashes) as literal `<E2><80><94>` hex escapes when piping through less (ed407d1)
+- `wezterm-cozy` zellij attach uses `nu --login --execute` instead of `--commands`, matching the current nushell flag (a80c590)
+- Vendored `nushell-skills` bumped to 1.2.0 — adds Nushell 0.100→0.112 migration guide and enhancements references covering renamed/removed commands and new idioms; activates on phrases like "update nushell script" (33111cc)
+- Vendored `nu-kv` — new `setp` shorthand for `pbpaste | set pbpaste`, and `kv get --pbcopy` flag to pipe the retrieved value through `pbcopy` in one call (ab672c9)
+- Vendored `nu-goodies` — new `rgv` command wraps `rg --vimgrep` and parses output into a `{path, content}` table that pairs with WezTerm's quick-select pattern; `gradient-screen.nu` collapsed back to inline pipeline form (da884ca)
+- Vendored `nu-cmd-stack` — `cmd-stack init` accepts `--quiet` (suppresses help/result messages) and `--force-keybindings` (overrides conflicts); the interactive `history` selector passes `--quiet` so it doesn't reprint banners (d13dd1d)
+- Vendored `dotfiles/wezterm` — quick-select regex generalized from a nushell-error-only pattern to `[^\s│]+:\d+:\d+`, matching `rg --vimgrep`, nushell table rows, stack traces, and error headers (cfcaaae)
+- Vendored `dotfiles/zellij` — `hx-scrollback` opens helix at line +99999 so scrollback dumps land at the bottom (most recent output) instead of the top; `todo-nu` no longer overwrites an existing `todo/CLAUDE.md` (06ae5f1)
+- Vendored `dotfiles/claude` — adds Conciseness (STRICT) section with anti-verbosity rules; reorganizes English-rephrasing into Communication (4f18cc0)
+
+### Fixed
+
+- `cozy install nushell` (and other cargo-dependent scripts) timing out on flaky proxy — `~/.cargo/config.toml` is now written with `retry=5`, `http.timeout=120s`, and sparse registry protocol during `cozy install rust` (1367dfb)
+- `nu-kv` storage path env var unset when `$env.WORKSPACE_DIR` was set — `tee { mkdir $in }` was wrapped in a record literal that returned the record instead of the path (caceab4)
+- `nu-complete sandbox names` completions broken — `docker sandbox ls --json` reports stale "running" status for all machines; switched to `detect columns --guess` over the flat output (8bf56ff)
+
 ## [0.1.0] - 2026-04-10
 
 ### Added
@@ -216,7 +242,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sandbox image test script with tool launch verification (a333bb6)
 - Supports both `arm64` and `amd64` architectures via Docker sandbox
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.1.0...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.1.1...HEAD
+[0.1.1]: https://github.com/nushell-prophet/cozy/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/nushell-prophet/cozy/compare/0.0.9...0.1.0
 [0.0.9]: https://github.com/nushell-prophet/cozy/compare/0.0.8...0.0.9
 [0.0.8]: https://github.com/nushell-prophet/cozy/compare/0.0.7...0.0.8
