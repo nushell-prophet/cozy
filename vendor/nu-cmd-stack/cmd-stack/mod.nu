@@ -15,28 +15,27 @@ export def main [] {
 # Initialize cmd-stack
 export def --env init [
     commands?: list
+    --quiet # don't print help instructions
+    --force-keybindings # force keybindings add
 ] {
     let $commands = $in
     | if $commands == null { } else { $commands }
-
-    if $commands == null {
-        print 'Pipe the list of your commands to `cmd-stack init`'
-        return
-    }
 
     $env.cmd-stack = {
         index: -1
         stack: $commands
     }
 
-    default-keybindings | apply-keybindings
+    default-keybindings | apply-keybindings --force=$force_keybindings --quiet=$quiet
 
-    [
-        $'(stack-length) items added to cmd-stack.'
-        'use `ctrl+alt+j/k` for scrolling through them.'
-    ]
-    | to text
-    | print
+    if not $quiet { 
+        if $commands == null {
+            print 'Pipe the list of your commands to `cmd-stack init`'
+        } else {
+            print $'(stack-length) items added to cmd-stack.'
+            print 'use `ctrl+alt+j/k` for scrolling through them.'
+        }
+    }
 }
 
 # Push a command to the end of cmd-stack
@@ -58,8 +57,9 @@ def --env cmd-push [cmd: string] {
 # Apply keybindings with conflict detection.
 # Pipe a list of keybinding records. Identical existing bindings are skipped.
 # Conflicts are reported — use --force to override them.
-export def --env apply-keybindings [
+def --env apply-keybindings [
     --force  # Override conflicting keybindings
+    --quiet  # Don't print information message 
 ] {
     let bindings = $in
     let normalize_mod = {|m| $m | split row '_' | sort | str join '_' }
@@ -106,7 +106,7 @@ export def --env apply-keybindings [
     if ($to_add | is-not-empty) {
         $env.config.keybindings ++= ($to_add | get binding)
         let n = $to_add | length
-        print $'($n) keybindings applied.'
+        if not $quiet { print $'($n) keybindings applied.' }
     }
 }
 
@@ -184,6 +184,7 @@ def default-keybindings [] {
 
 alias core_hist = history
 
+# add commands from n-last-history sessesion into cmd-stack with template `[session commands] | cmd-stack init` for interactive pick
 export def --env 'history' [
     --last-sessions: int = 10
 ] {
@@ -199,7 +200,7 @@ export def --env 'history' [
     | each {
         get command
         | to nuon --indent 2
-        | $'($in) | cmd-stack init'
+        | $'($in) | cmd-stack init --quiet'
     }
     | init
 }
