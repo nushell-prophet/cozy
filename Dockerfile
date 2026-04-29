@@ -16,29 +16,14 @@ RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/*.sources /etc/apt/sou
 # helix, lazygit, broot, nushell keybindings, and nu-goodies commands.
 COPY --chmod=755 docker-files/pbcopy /usr/local/bin/pbcopy
 
-# System-level git config (/etc/gitconfig).
-# Why: `docker sandbox create` overwrites ~/.gitconfig at startup with its own
-# user/safe/credential settings, wiping anything set during build via --global.
-# System-level config is not touched by the sandbox runtime, and at runtime
-# global wins over system, so the sandbox's user identity still takes priority.
-# Not --global because: sandbox overwrites ~/.gitconfig on every start.
-# user.name/email are needed at build time by `toolkit push-to-machine
-# --commit-changes`, which runs `git commit` inside ~/.config and ~/.claude.
-RUN git config --system --add safe.directory '*' \
-    && git config --system user.name "Agent" \
-    && git config --system user.email "agent@sandbox" \
-    && git config --system core.excludesFile /home/agent/.gitignore
-
-# Harden git against VirtioFS shared-mount corruption.
-# Why: VirtioFS (Docker Desktop's macOS mount) doesn't atomically flush pack
-# writes across the VM/host boundary, so `git gc` / auto-repack can leave
-# torn packs visible to the host as "unknown object type 0" corruption.
-# Disable auto-gc (the dangerous operation) and force fsync so writes don't
-# return until the VM commits to disk.
-# Not --global because: sandbox overwrites ~/.gitconfig on every start.
-RUN git config --system gc.auto 0 \
-    && git config --system core.fsync all \
-    && git config --system core.fsyncMethod fsync
+# Build-time git identity fallback (/etc/gitconfig).
+# Used by `toolkit push-to-machine --commit-changes` below before dotfiles
+# deploys a real ~/.gitconfig. /etc/gitconfig is fine here because at build
+# time `git` is /usr/bin/git (apt) which reads /etc/gitconfig.
+# Runtime settings (excludes, safe.directory, gc, fsync) live in the XDG
+# config below — see that block for why /etc/gitconfig is unreliable at runtime.
+RUN git config --system user.name "Agent" \
+    && git config --system user.email "agent@sandbox"
 
 RUN printf 'Acquire::http::Proxy "http://host.docker.internal:3128/";\nAcquire::https::Proxy "http://host.docker.internal:3128/";\n' \
         > /etc/apt/apt.conf.d/90proxy
@@ -78,10 +63,25 @@ ENV XDG_CONFIG_HOME=$HOME/.config \
 RUN broot --write-default-conf $XDG_CONFIG_HOME/broot \
     && broot --set-install-state installed
 
-# The ignore file this points to is /home/agent/.gitignore, bound via
-# `core.excludesFile` at --system level above. --system (not --global)
-# because the sandbox runtime overwrites ~/.gitconfig on every start.
-RUN printf '.DS_Store\nThumbs.db\ndesktop.ini\n' > ~/.gitignore
+# Per-user git config at the XDG path (~/.config/git/).
+# Why XDG, not /etc/gitconfig: brew git (often added later, either by users or
+# by future Dockerfile changes) has sysconfdir /home/linuxbrew/.linuxbrew/etc
+# and ignores /etc/gitconfig entirely — so any --system setting silently
+# becomes a no-op the moment brew git lands on PATH.
+# Why XDG, not --global (~/.gitconfig): docker sandbox create overwrites
+# ~/.gitconfig on every start. ~/.config/git/ is not touched.
+# XDG is read by every git binary regardless of sysconfdir.
+#
+# - ignore: git's default global ignore (no core.excludesFile binding needed)
+# - safe.directory '*': trust host-owned mounts (uid mismatch via VirtioFS)
+# - gc.auto=0, core.fsync*: harden against VirtioFS torn-pack corruption.
+#   VirtioFS doesn't atomically flush pack writes across the VM/host boundary,
+#   so `git gc` / auto-repack can leave packs visible to the host as
+#   "unknown object type 0" corruption. Disable auto-gc and force fsync so
+#   writes don't return until the VM commits to disk.
+RUN mkdir -p ~/.config/git \
+    && printf '.DS_Store\nThumbs.db\ndesktop.ini\n' > ~/.config/git/ignore \
+    && printf '[safe]\n\tdirectory = *\n[gc]\n\tauto = 0\n[core]\n\tfsync = all\n\tfsyncMethod = fsync\n' > ~/.config/git/config
 
 ARG MODULES_SOURCE=vendor
 RUN if [ "$MODULES_SOURCE" = "clone" ]; then \

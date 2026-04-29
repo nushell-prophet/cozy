@@ -4,11 +4,12 @@
 # operation. Mitigates pack/index corruption from VirtioFS torn writes when
 # both sides hit .git concurrently (e.g. host lazygit while a sandbox is live).
 #
-# Why repo-local and not /etc/gitconfig: the Dockerfile already sets these
-# system-wide inside the sandbox, but host-triggered gc (including via
-# lazygit, `git push file://...`, or plain `git gc`) runs with the host's
-# git binary and ignores the sandbox's /etc/gitconfig. Repo-local config
-# lives on the shared mount, so both sides honor it.
+# Why repo-local and not the sandbox's user config: the Dockerfile already
+# sets these in ~/.config/git/config inside the sandbox, but host-triggered
+# gc (including via lazygit, `git push file://...`, or plain `git gc`) runs
+# with the host's git binary and reads the host's ~/.config/git/ — not the
+# sandbox's. Repo-local config lives on the shared mount, so both sides
+# honor it regardless of which git ran the operation.
 
 def git-config-get [repo: path key: string]: nothing -> any {
     let r = do { git -C $repo config --get $key } | complete
