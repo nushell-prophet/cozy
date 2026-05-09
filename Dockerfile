@@ -48,6 +48,12 @@ ENV XDG_CONFIG_HOME=$HOME/.config \
     XDG_DATA_HOME=$HOME/.local/share \
     XDG_CACHE_HOME=$HOME/.cache
 
+# Install nushell up-front: bootstrap.nu IS a nushell script, so nu must
+# exist before we can invoke it. Same prerequisite that bootstrap.sh handles
+# on the host. Bootstrap re-runs `brew install nushell ...` itself — brew
+# is idempotent, so the redundancy is cheap and step 1 stays portable.
+RUN brew install nushell
+
 # Stage cozy repo bits for bootstrap.nu:
 #  - vendor/  → /tmp/vendor/        (bootstrap fans it out under ~/repos/)
 #  - sandbox-toolkit/ + docker-files/ → ~/repos/cozy/{sandbox-toolkit,docker-files}/
