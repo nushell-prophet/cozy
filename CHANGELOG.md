@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `cozy install bootstrap` — single end-to-end installer (brew tools, vendored modules under `~/repos/`, dotfiles via `toolkit push-to-machine`, Claude skills, broot init, topiary, Claude Code + nushell MCP). `--in-docker` for the Dockerfile path, `--local` for sibling-repo vendoring. The same code path will back the future host install. (0c69ad8)
+- `cozy install bootstrap` — single end-to-end installer (brew tools, vendored modules under `~/repos/`, dotfiles via `toolkit push-to-machine`, Claude skills, broot init, topiary, Claude Code + nushell MCP). `--in-docker` for the Dockerfile path, `--local` for sibling-repo vendoring. (0c69ad8)
+- `cozy/bootstrap.sh` — host entry that ensures brew + nu, then execs `bootstrap.nu` with forwarded args. Docker keeps calling `nu -c` directly; both paths share `bootstrap.nu`. (0d095e4)
 
 ### Changed
 
