@@ -38,15 +38,15 @@ export def main [
     ^brew install jj git-lfs
     ^brew cleanup --prune=all
 
-    # Step 2 — XDG git config. In-docker also sets user.name/email here
-    # (used by toolkit push-to-machine --commit-changes in step 4); host
-    # install assumes the user already has identity set elsewhere. XDG works
-    # for both apt-git (build) and brew-git (runtime), unlike /etc/gitconfig
-    # which brew-git ignores.
+    # Step 2 — XDG git config. user.name/email is written here so `toolkit
+    # push-to-machine --commit-changes` (step 4) can commit; writing to XDG
+    # rather than /etc/gitconfig avoids sudo and works for both apt-git
+    # (build) and brew-git (runtime). It's also safe on a real host: git
+    # precedence has ~/.gitconfig (global) overriding XDG, so a user's
+    # personal email wins; XDG only kicks in when nothing else is set.
     let git_xdg = $nu.home-dir | path join '.config' 'git'
     mkdir $git_xdg
-    let user_section = if $in_docker { "[user]\n\tname = Agent\n\temail = agent@sandbox\n" } else { "" }
-    ($user_section + "[safe]\n\tdirectory = *\n[gc]\n\tauto = 0\n[core]\n\tfsync = all\n\tfsyncMethod = fsync\n") | save -f ($git_xdg | path join 'config')
+    "[user]\n\tname = Agent\n\temail = agent@sandbox\n[safe]\n\tdirectory = *\n[gc]\n\tauto = 0\n[core]\n\tfsync = all\n\tfsyncMethod = fsync\n" | save -f ($git_xdg | path join 'config')
     ".DS_Store\nThumbs.db\ndesktop.ini\n" | save -f ($git_xdg | path join 'ignore')
 
     # Step 3 — populate ~/repos/ with vendored modules
