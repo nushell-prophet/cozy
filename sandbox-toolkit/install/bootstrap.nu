@@ -97,6 +97,15 @@ export def main [
 # strips it before invoking apt). Agent has passwordless sudo at build time,
 # same assumption already made by topiary.nu and rust.nu.
 def setup-docker-system [] {
+    # Wipe any pre-existing ~/.config/nushell — `nu` auto-creates default
+    # config.nu/env.nu/history.* on first launch, and on a re-run those
+    # defaults can collide with the dotfiles deploy in step 4 (or with
+    # bootstrap's own autoload write between steps 3 and 4). The
+    # docstring at the top of this file says "Re-run = clean setup" —
+    # this is what makes that true for the nushell config dir.
+    let nu_config = $nu.home-dir | path join '.config' 'nushell'
+    if ($nu_config | path exists) { rm -rf $nu_config }
+
     # Apt proxy first — must exist before `apt-get update` so apt routes
     # through host.docker.internal:3128 (Docker Desktop's HTTP proxy).
     # Direct egress to ports.ubuntu.com:80 is refused inside the sandbox
