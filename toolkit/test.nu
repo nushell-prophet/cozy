@@ -32,7 +32,7 @@ const tools = [
 ]
 
 const files = [
-    "/usr/local/bin/pbcopy"
+    "/home/agent/.local/bin/pbcopy"
     "/home/agent/.config/nushell/autoload/module-imports.nu"
     "/home/agent/.config/nushell/autoload/cmd-stack-import.nu"
     "/home/agent/.config/nushell/autoload/hooks-config.nu"
@@ -213,7 +213,7 @@ def check-config []: nothing -> list {
     }
 
     let pbcopy = try {
-        exec test -x /usr/local/bin/pbcopy | ignore
+        exec test -x /home/agent/.local/bin/pbcopy | ignore
         ok "pbcopy: executable"
     } catch {
         fail "pbcopy: executable" "not executable"
