@@ -24,10 +24,13 @@ export def main [
     --in-docker # invoked from Dockerfile RUN (vendor already staged at /tmp/vendor)
     --local     # use sibling repos via vendor.nu --local (host only)
 ] {
-    # Step 0 — Docker-only system setup (formerly the USER root layers in
-    # Dockerfile: apt deps, pbcopy, /etc/gitconfig, apt proxy, persistent envs).
-    # Skipped on host — host install assumes a pre-configured environment.
-    if $in_docker { setup-docker-system }
+    # Step 0 — Docker-sandbox system setup. Auto-detect via the marker file
+    # the base image ships (/etc/sandbox-persistent.sh — what we append
+    # claude env exports to below). When present, run setup-docker-system
+    # whether or not --in-docker was passed, so in-sandbox re-runs work the
+    # same as docker-build invocations. Skipped on macOS host install
+    # because the marker isn't there.
+    if ('/etc/sandbox-persistent.sh' | path exists) { setup-docker-system }
 
     # Step 1 — brew installs (two groups for build-cache reuse, matches Dockerfile)
     if (which brew | is-empty) {
@@ -143,22 +146,25 @@ export JJ_CONFIG="$HOME/.config/jj/jj-config-claude-ai.toml"
 }
 
 # Place vendored modules under ~/repos/<repo>/<module>/.
+# --in-docker: prefer the /tmp/vendor staging the Dockerfile sets up. Falls
+# back to vendor.nu when /tmp/vendor is absent (in-sandbox manual re-runs).
 def populate-repos [--in-docker --local] {
     let repos_dir = $nu.home-dir | path join 'repos'
     mkdir $repos_dir
     mkdir ($nu.home-dir | path join 'workspace')
 
-    if $in_docker {
-        # Vendor was staged at /tmp/vendor by Docker COPY. sandbox-toolkit and
+    let staged = if ('/tmp/vendor' | path exists) { glob /tmp/vendor/* } else { [] }
+    if $in_docker and ($staged | is-not-empty) {
+        # Vendor staged at /tmp/vendor by Docker COPY. sandbox-toolkit and
         # docker-files were COPYied directly to ~/repos/cozy/ — nothing to do
         # for them here.
-        for entry in (glob /tmp/vendor/*) {
+        for entry in $staged {
             ^cp -r $entry $repos_dir
         }
         return
     }
 
-    # Host: regenerate vendor/ via vendor.nu, then mirror into ~/repos/.
+    # No staged vendor — regenerate cozy/vendor/ via vendor.nu, then mirror.
     let vendor_arg = if $local { ['--local'] } else { [] }
     ^nu --no-config-file ($cozy_root | path join 'toolkit' 'vendor.nu') ...$vendor_arg
     for entry in (glob ($cozy_root | path join 'vendor' '*')) {
