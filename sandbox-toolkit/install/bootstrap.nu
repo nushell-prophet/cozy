@@ -133,16 +133,25 @@ Acquire::https::Proxy "http://host.docker.internal:3128/";
     mkdir $local_bin
     ^install -m 755 ($cozy_root | path join 'docker-files' 'pbcopy') ($local_bin | path join 'pbcopy')
 
-    # Claude runtime env vars (sourced by sandbox shell).
+    # Runtime env exports (the sandbox shell sources this file on each login).
     # /etc/sandbox-persistent.sh is agent-writable on the base image — matches
     # the original Dockerfile's USER-agent `>>` approach, no sudo needed.
-    let claude_envs = 'export GIT_AUTHOR_NAME="Claude"
+    # The XDG/HELIX/LANG block mirrors the Dockerfile's ENV directives so
+    # in-sandbox installs against the base image get the same runtime env
+    # cozy:v1 has baked in (XDG_DATA_HOME is what dotfiles' env.nu reads —
+    # without it `nu` fails to start with "Cannot find column XDG_DATA_HOME").
+    let env_exports = 'export GIT_AUTHOR_NAME="Claude"
 export GIT_AUTHOR_EMAIL="claude@anthropic.com"
 export GIT_COMMITTER_NAME="Claude"
 export GIT_COMMITTER_EMAIL="claude@anthropic.com"
 export JJ_CONFIG="$HOME/.config/jj/jj-config-claude-ai.toml"
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_CACHE_HOME="$HOME/.cache"
+export HELIX_RUNTIME="/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime"
+export LANG="C.UTF-8"
 '
-    $claude_envs | save --append /etc/sandbox-persistent.sh
+    $env_exports | save --append /etc/sandbox-persistent.sh
 }
 
 # Place vendored modules under ~/repos/<repo>/<module>/.
@@ -152,6 +161,21 @@ def populate-repos [--in-docker --local] {
     let repos_dir = $nu.home-dir | path join 'repos'
     mkdir $repos_dir
     mkdir ($nu.home-dir | path join 'workspace')
+
+    # Deposit cozy/sandbox-toolkit/ and cozy/docker-files/ at ~/repos/cozy/.
+    # In --in-docker mode the Dockerfile COPYed them there already, so
+    # cozy_root IS ~/repos/cozy/ and we skip the self-copy. In host mode
+    # cozy_root points at the workspace mount, so we mirror just those two
+    # subdirs (avoiding vendor/, docs.docker.com/, .git/, etc.).
+    let cozy_dst = $repos_dir | path join 'cozy'
+    if ($cozy_root | path expand) != ($cozy_dst | path expand) {
+        mkdir $cozy_dst
+        for sub in [sandbox-toolkit docker-files] {
+            let dst = $cozy_dst | path join $sub
+            if ($dst | path exists) { rm -rf $dst }
+            ^cp -r ($cozy_root | path join $sub) $dst
+        }
+    }
 
     let staged = if ('/tmp/vendor' | path exists) { glob /tmp/vendor/* } else { [] }
     if $in_docker and ($staged | is-not-empty) {
