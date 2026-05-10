@@ -24,6 +24,11 @@ export def main [
     --in-docker # invoked from Dockerfile RUN (vendor already staged at /tmp/vendor)
     --local     # use sibling repos via vendor.nu --local (host only)
 ] {
+    # Step 0 — Docker-only system setup (formerly the USER root layers in
+    # Dockerfile: apt deps, pbcopy, /etc/gitconfig, apt proxy, persistent envs).
+    # Skipped on host — host install assumes a pre-configured environment.
+    if $in_docker { setup-docker-system }
+
     # Step 1 — brew installs (two groups for build-cache reuse, matches Dockerfile)
     if (which brew | is-empty) {
         error make { msg: "brew not found — install Homebrew first: https://brew.sh" }
@@ -33,7 +38,8 @@ export def main [
     ^brew install jj git-lfs
     ^brew cleanup --prune=all
 
-    # Step 2 — XDG git config (per Dockerfile lines 82–84)
+    # Step 2 — XDG runtime git config. System /etc/gitconfig is set in
+    # setup-docker-system as a build-time fallback only.
     let git_xdg = $nu.home-dir | path join '.config' 'git'
     mkdir $git_xdg
     "[safe]\n\tdirectory = *\n[gc]\n\tauto = 0\n[core]\n\tfsync = all\n\tfsyncMethod = fsync\n" | save -f ($git_xdg | path join 'config')
@@ -79,6 +85,51 @@ export def main [
     # Step 9 — Claude Code + nushell MCP
     claude install
     ^claude mcp add --scope user --transport stdio nushell -- /home/linuxbrew/.linuxbrew/bin/nu --mcp
+}
+
+# Docker-only: replicate what the USER root layers in the Dockerfile used to
+# do. Uses sudo — agent has passwordless sudo at build time, same assumption
+# already made by topiary.nu and rust.nu.
+def setup-docker-system [] {
+    # Switch apt sources to https. `2>/dev/null || true` swallows errors when
+    # one of sources.list / sources.list.d is absent.
+    ^sudo bash -c "sed -i 's|http://|https://|g' /etc/apt/sources.list.d/*.sources /etc/apt/sources.list 2>/dev/null || true"
+
+    # apt deps: gcc/libc6-dev for tree-sitter-nu compile in `topiary install`,
+    # procps/file as general runtime tools.
+    ^sudo apt-get update
+    ^sudo apt-get install -y --no-install-recommends procps file gcc libc6-dev
+    ^sudo rm -rf /var/lib/apt/lists/*
+
+    # Why: Docker sandbox has no system clipboard. This shim uses OSC 52 escape
+    # sequences to push copied text to the host terminal's clipboard. Consumed by
+    # helix, lazygit, broot, nushell keybindings, and nu-goodies commands.
+    ^sudo install -m 755 ($cozy_root | path join 'docker-files' 'pbcopy') /usr/local/bin/pbcopy
+
+    # Build-time git identity fallback (/etc/gitconfig). Used by
+    # `toolkit push-to-machine --commit-changes` (called below in step 4)
+    # before dotfiles deploys a real ~/.gitconfig. /etc/gitconfig works at
+    # build time because `git` is /usr/bin/git (apt) which reads it; runtime
+    # XDG settings are written in step 2.
+    ^sudo git config --system user.name "Agent"
+    ^sudo git config --system user.email "agent@sandbox"
+
+    # Apt proxy for sandbox runtime — host runs the proxy on :3128.
+    let proxy_conf = 'Acquire::http::Proxy "http://host.docker.internal:3128/";
+Acquire::https::Proxy "http://host.docker.internal:3128/";
+'
+    $proxy_conf | ^sudo tee /etc/apt/apt.conf.d/90proxy | ignore
+
+    # Claude runtime env vars (sourced by sandbox shell).
+    # /etc/sandbox-persistent.sh is agent-writable on the base image — matches
+    # the original Dockerfile's USER-agent `>>` approach, no sudo needed.
+    let claude_envs = 'export GIT_AUTHOR_NAME="Claude"
+export GIT_AUTHOR_EMAIL="claude@anthropic.com"
+export GIT_COMMITTER_NAME="Claude"
+export GIT_COMMITTER_EMAIL="claude@anthropic.com"
+export JJ_CONFIG="$HOME/.config/jj/jj-config-claude-ai.toml"
+'
+    $claude_envs | save --append /etc/sandbox-persistent.sh
 }
 
 # Place vendored modules under ~/repos/<repo>/<module>/.
