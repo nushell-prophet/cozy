@@ -97,6 +97,17 @@ export def main [
 # strips it before invoking apt). Agent has passwordless sudo at build time,
 # same assumption already made by topiary.nu and rust.nu.
 def setup-docker-system [] {
+    # Apt proxy first — must exist before `apt-get update` so apt routes
+    # through host.docker.internal:3128 (Docker Desktop's HTTP proxy).
+    # Direct egress to ports.ubuntu.com:80 is refused inside the sandbox
+    # network, so without the proxy in place `apt-get update` fails.
+    # The file lives under /etc/apt/apt.conf.d/ rather than via APT_CONFIG
+    # env-var indirection because sudo strips APT_CONFIG before invoking apt.
+    let proxy_conf = 'Acquire::http::Proxy "http://host.docker.internal:3128/";
+Acquire::https::Proxy "http://host.docker.internal:3128/";
+'
+    $proxy_conf | ^sudo tee /etc/apt/apt.conf.d/90proxy | ignore
+
     # apt deps: gcc/libc6-dev for tree-sitter-nu compile in `topiary install`,
     # procps/file as general runtime tools.
     ^sudo apt-get update
@@ -111,15 +122,6 @@ def setup-docker-system [] {
     let local_bin = $nu.home-dir | path join '.local' 'bin'
     mkdir $local_bin
     ^install -m 755 ($cozy_root | path join 'docker-files' 'pbcopy') ($local_bin | path join 'pbcopy')
-
-    # Apt proxy for sandbox runtime — host runs the proxy on :3128. Has to
-    # live under /etc/apt/apt.conf.d/ because sudo strips APT_CONFIG by
-    # default; an env-var-based config would silently fail when users run
-    # `sudo apt`.
-    let proxy_conf = 'Acquire::http::Proxy "http://host.docker.internal:3128/";
-Acquire::https::Proxy "http://host.docker.internal:3128/";
-'
-    $proxy_conf | ^sudo tee /etc/apt/apt.conf.d/90proxy | ignore
 
     # Claude runtime env vars (sourced by sandbox shell).
     # /etc/sandbox-persistent.sh is agent-writable on the base image — matches
