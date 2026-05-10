@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Dockerfile collapsed from ~95 install lines to a single `RUN nu -c '... bootstrap --in-docker'` (-95/+16 net). Docker-isms (USER, ENV, COPY, apt setup, pbcopy, build-time `/etc/gitconfig`, `/etc/sandbox-persistent.sh`) stay inline; everything else moved into `bootstrap.nu` so host and Docker share one install path. Broot init moved into bootstrap step 7 so the host gets it too. `ARG MODULES_SOURCE` and `ARG INSTALL_CLAUDE` dropped — add back if a real second caller wants them. (52d0c50)
+- Continue the bootstrap.nu transition: move every remaining USER-root layer (apt sources sed + apt installs, `/usr/local/bin/pbcopy` install, system `git config`, `/etc/apt/apt.conf.d/90proxy`, `/etc/sandbox-persistent.sh` claude env exports) out of the Dockerfile into `bootstrap.nu`'s new `setup-docker-system` step (gated on `--in-docker`, uses sudo). Dockerfile drops `USER root` entirely and now only carries true Docker-isms: `FROM`, `USER agent`, `ENV`, brew + nushell bootstrap, COPY staging, the bootstrap invocation, README.
 
 ## [0.1.1] - 2026-04-29
 
