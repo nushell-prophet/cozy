@@ -62,14 +62,12 @@ export def main [
     ^cp ($cozy_root | path join 'docker-files' '.visidatarc') ($nu.home-dir | path join '.visidatarc')
 
     # Steps 4 & 5 — deploy dotfiles and Claude skills from ~/repos/dotfiles.
-    # Spawn nu so toolkit.nu's `use`/cwd-relative paths work as in the existing Dockerfile.
+    # Spawn nu so toolkit.nu's `use`/cwd-relative paths work as in the existing
+    # Dockerfile. Always pass `--docker` because cozy only vendors
+    # paths-docker.csv (see toolkit/vendor.yml) — host install is feature
+    # parity and uses the same paths file as the docker install.
     cd ($nu.home-dir | path join 'repos' 'dotfiles')
-    let push_cmd = if $in_docker {
-        'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker --commit-changes'
-    } else {
-        'use toolkit.nu; toolkit push-to-machine --force --create-dirs --commit-changes'
-    }
-    ^nu --no-config-file --commands $push_cmd
+    ^nu --no-config-file --commands 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker --commit-changes'
     ^nu --no-config-file --commands 'use toolkit.nu; toolkit install-skills --all'
 
     # Step 6 — append global Claude instructions to ~/.claude/CLAUDE.md
