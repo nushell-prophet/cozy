@@ -38,11 +38,15 @@ export def main [
     ^brew install jj git-lfs
     ^brew cleanup --prune=all
 
-    # Step 2 — XDG runtime git config. System /etc/gitconfig is set in
-    # setup-docker-system as a build-time fallback only.
+    # Step 2 — XDG git config. In-docker also sets user.name/email here
+    # (used by toolkit push-to-machine --commit-changes in step 4); host
+    # install assumes the user already has identity set elsewhere. XDG works
+    # for both apt-git (build) and brew-git (runtime), unlike /etc/gitconfig
+    # which brew-git ignores.
     let git_xdg = $nu.home-dir | path join '.config' 'git'
     mkdir $git_xdg
-    "[safe]\n\tdirectory = *\n[gc]\n\tauto = 0\n[core]\n\tfsync = all\n\tfsyncMethod = fsync\n" | save -f ($git_xdg | path join 'config')
+    let user_section = if $in_docker { "[user]\n\tname = Agent\n\temail = agent@sandbox\n" } else { "" }
+    ($user_section + "[safe]\n\tdirectory = *\n[gc]\n\tauto = 0\n[core]\n\tfsync = all\n\tfsyncMethod = fsync\n") | save -f ($git_xdg | path join 'config')
     ".DS_Store\nThumbs.db\ndesktop.ini\n" | save -f ($git_xdg | path join 'ignore')
 
     # Step 3 — populate ~/repos/ with vendored modules
@@ -87,14 +91,12 @@ export def main [
     ^claude mcp add --scope user --transport stdio nushell -- /home/linuxbrew/.linuxbrew/bin/nu --mcp
 }
 
-# Docker-only: replicate what the USER root layers in the Dockerfile used to
-# do. Uses sudo — agent has passwordless sudo at build time, same assumption
-# already made by topiary.nu and rust.nu.
+# Docker-only: what the USER root layers in the Dockerfile used to do.
+# Sudo is kept only for genuinely root-owned paths: apt itself, and the apt
+# proxy file (APT_CONFIG env-var indirection wouldn't work because sudo
+# strips it before invoking apt). Agent has passwordless sudo at build time,
+# same assumption already made by topiary.nu and rust.nu.
 def setup-docker-system [] {
-    # Switch apt sources to https. `2>/dev/null || true` swallows errors when
-    # one of sources.list / sources.list.d is absent.
-    ^sudo bash -c "sed -i 's|http://|https://|g' /etc/apt/sources.list.d/*.sources /etc/apt/sources.list 2>/dev/null || true"
-
     # apt deps: gcc/libc6-dev for tree-sitter-nu compile in `topiary install`,
     # procps/file as general runtime tools.
     ^sudo apt-get update
@@ -104,17 +106,16 @@ def setup-docker-system [] {
     # Why: Docker sandbox has no system clipboard. This shim uses OSC 52 escape
     # sequences to push copied text to the host terminal's clipboard. Consumed by
     # helix, lazygit, broot, nushell keybindings, and nu-goodies commands.
-    ^sudo install -m 755 ($cozy_root | path join 'docker-files' 'pbcopy') /usr/local/bin/pbcopy
+    # Goes to ~/.local/bin (already on PATH via Dockerfile ENV) so we don't
+    # need sudo for /usr/local/bin.
+    let local_bin = $nu.home-dir | path join '.local' 'bin'
+    mkdir $local_bin
+    ^install -m 755 ($cozy_root | path join 'docker-files' 'pbcopy') ($local_bin | path join 'pbcopy')
 
-    # Build-time git identity fallback (/etc/gitconfig). Used by
-    # `toolkit push-to-machine --commit-changes` (called below in step 4)
-    # before dotfiles deploys a real ~/.gitconfig. /etc/gitconfig works at
-    # build time because `git` is /usr/bin/git (apt) which reads it; runtime
-    # XDG settings are written in step 2.
-    ^sudo git config --system user.name "Agent"
-    ^sudo git config --system user.email "agent@sandbox"
-
-    # Apt proxy for sandbox runtime — host runs the proxy on :3128.
+    # Apt proxy for sandbox runtime — host runs the proxy on :3128. Has to
+    # live under /etc/apt/apt.conf.d/ because sudo strips APT_CONFIG by
+    # default; an env-var-based config would silently fail when users run
+    # `sudo apt`.
     let proxy_conf = 'Acquire::http::Proxy "http://host.docker.internal:3128/";
 Acquire::https::Proxy "http://host.docker.internal:3128/";
 '
