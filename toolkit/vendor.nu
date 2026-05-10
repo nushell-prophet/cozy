@@ -10,11 +10,20 @@ def load-modules []: nothing -> list<record<repo: string, github: string, module
     open $vendor_yml
 }
 
+# Curl args for the GitHub API: fail-fast on HTTP errors (so a JSON rate-
+# limit body never reaches `tar xz` as "not in gzip format"), show errors
+# even with -s, follow redirects. Bearer auth when GH_TOKEN/GITHUB_TOKEN
+# is set bumps the anonymous 60 req/hr limit to 5000.
+def gh-curl-args []: nothing -> list<string> {
+    let token = $env.GH_TOKEN? | default ($env.GITHUB_TOKEN? | default '')
+    if ($token | is-empty) { [] } else { ['-H' $"Authorization: bearer ($token)"] }
+}
+
 def fetch-tarball [github: string]: nothing -> path {
     let tmp = mktemp -d
     let url = $"https://api.github.com/repos/($github)/tarball"
     print $"  (ansi cyan)Downloading:(ansi reset) ($github)"
-    curl -sL $url | tar xz -C $tmp --strip-components=1
+    curl -fsSL ...(gh-curl-args) $url | tar xz -C $tmp --strip-components=1
     $tmp
 }
 
@@ -53,7 +62,7 @@ export def "main check" [--add (-a)] {
         | get github
         | each { $in | split row '/' | last }
 
-    let remote = curl -s "https://api.github.com/users/nushell-prophet/repos?per_page=100"
+    let remote = curl -fsSL ...(gh-curl-args) "https://api.github.com/users/nushell-prophet/repos?per_page=100"
         | from json
         | get name
 
