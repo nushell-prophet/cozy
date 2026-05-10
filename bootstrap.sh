@@ -6,5 +6,6 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 command -v brew >/dev/null || { echo "Install Homebrew first: https://brew.sh"; exit 1; }
-command -v nu   >/dev/null || brew install nushell
+export PATH="$HOME/.local/bin:$PATH"
+sandbox-toolkit/install/ensure-nu.sh
 exec nu sandbox-toolkit/install/bootstrap.nu "$@"

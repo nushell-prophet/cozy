@@ -21,9 +21,9 @@ ENV XDG_CONFIG_HOME=$HOME/.config \
     XDG_DATA_HOME=$HOME/.local/share \
     XDG_CACHE_HOME=$HOME/.cache
 
-# bootstrap.nu IS a nushell script, so nu must exist before we can invoke it.
-# Bootstrap re-runs `brew install nushell ...` itself — brew is idempotent,
-# so the redundancy is cheap and step 1 stays portable.
+# Pre-install latest nushell as a cached layer. ensure-nu.sh below smoke-
+# tests it against bootstrap.nu and falls back to the pinned version if
+# pre-1.0 syntax has drifted in latest.
 RUN brew install nushell
 
 # Stage cozy repo bits for bootstrap.nu:
@@ -34,9 +34,13 @@ COPY --chown=agent:agent vendor/ /tmp/vendor/
 COPY --chown=agent:agent sandbox-toolkit/ /home/agent/repos/cozy/sandbox-toolkit/
 COPY --chown=agent:agent docker-files/ /home/agent/repos/cozy/docker-files/
 
+# Smoke-test latest nu against bootstrap.nu; download pinned (.nushell-version)
+# into ~/.local/bin/nu if latest can't parse it — guards against pre-1.0 drift.
+RUN /home/agent/repos/cozy/sandbox-toolkit/install/ensure-nu.sh
+
 # All install logic lives in bootstrap.nu — same code path the host install uses.
 # Docker mode uses sudo only where unavoidable (apt itself, /etc/apt proxy
 # file); pbcopy goes to ~/.local/bin and git identity into XDG ~/.config/git/.
-RUN nu -c 'use ~/repos/cozy/sandbox-toolkit/install/bootstrap.nu; bootstrap --in-docker'
+RUN nu /home/agent/repos/cozy/sandbox-toolkit/install/bootstrap.nu --in-docker
 
 COPY --chown=agent:agent README.md /home/agent/workspace/README.md

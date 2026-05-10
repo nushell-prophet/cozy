@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `cozy install bootstrap` — single end-to-end installer (brew tools, vendored modules under `~/repos/`, dotfiles via `toolkit push-to-machine`, Claude skills, broot init, topiary, Claude Code + nushell MCP). `--in-docker` for the Dockerfile path, `--local` for sibling-repo vendoring. (0c69ad8)
 - `cozy/bootstrap.sh` — host entry that ensures brew + nu, then execs `bootstrap.nu` with forwarded args. Docker keeps calling `nu -c` directly; both paths share `bootstrap.nu`. (0d095e4)
+- `sandbox-toolkit/install/ensure-nu.sh` + `.nushell-version` — version-pin fallback for nushell (pre-1.0, syntax drifts between releases). Both `bootstrap.sh` and the Dockerfile call `ensure-nu.sh` before running `bootstrap.nu`: it tries latest brew nushell first, smoke-tests it with `nu -c "use bootstrap.nu"`, and on parse failure downloads the tested version (currently `0.112.2`) from github releases into `~/.local/bin/nu` — already first on PATH so it shadows the broken latest. Architecture/OS detected the way brew picks bottles (`x86_64-unknown-linux-gnu` / `aarch64-apple-darwin` / etc.). If even the pinned version can't parse `bootstrap.nu`, the script fails loudly rather than silently degrading.
 
 ### Changed
 
