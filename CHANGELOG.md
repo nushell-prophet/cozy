@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `cozy install bootstrap` — single end-to-end installer (brew tools, vendored modules under `~/repos/`, dotfiles via `toolkit push-to-machine`, Claude skills, broot init, topiary, Claude Code + nushell MCP). `--in-docker` for the Dockerfile path, `--local` for sibling-repo vendoring. (0c69ad8)
+- `cozy/bootstrap.sh` — host entry that ensures brew + nu, then execs `bootstrap.nu` with forwarded args. Docker keeps calling `nu -c` directly; both paths share `bootstrap.nu`. (0d095e4)
+
+### Changed
+
+- Dockerfile collapsed from ~95 install lines to a single `RUN nu -c '... bootstrap --in-docker'` (-95/+16 net). Docker-isms (USER, ENV, COPY, apt setup, pbcopy, build-time `/etc/gitconfig`, `/etc/sandbox-persistent.sh`) stay inline; everything else moved into `bootstrap.nu` so host and Docker share one install path. Broot init moved into bootstrap step 7 so the host gets it too. `ARG MODULES_SOURCE` and `ARG INSTALL_CLAUDE` dropped — add back if a real second caller wants them. (52d0c50)
+
 ## [0.1.1] - 2026-04-29
 
 ### Added
