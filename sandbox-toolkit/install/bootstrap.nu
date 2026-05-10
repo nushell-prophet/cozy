@@ -10,8 +10,10 @@
 #   --in-docker  Invoked from the Dockerfile RUN layer. Vendor was already
 #                COPYied to /tmp/vendor; sandbox-toolkit + docker-files were
 #                COPYied directly to ~/repos/cozy/.
-#   --local      Host only. Forwards to `toolkit/vendor.nu --local` to rsync
-#                from sibling repos instead of fetching GitHub tarballs.
+#   --local      Force-refresh vendor/ from sibling repos via
+#                `toolkit/vendor.nu --local` (rsync) before mirroring it
+#                under ~/repos/. Without this flag, the committed vendor/
+#                is used as-is — no GitHub fetching, no rsync.
 
 use topiary.nu
 use claude.nu
@@ -155,8 +157,12 @@ export LANG="C.UTF-8"
 }
 
 # Place vendored modules under ~/repos/<repo>/<module>/.
-# --in-docker: prefer the /tmp/vendor staging the Dockerfile sets up. Falls
-# back to vendor.nu when /tmp/vendor is absent (in-sandbox manual re-runs).
+# Source priority:
+#   1. /tmp/vendor (Dockerfile COPY staged it) — when --in-docker and present.
+#   2. cozy_root/vendor/ as-is — the typical "clone the repo and run bootstrap"
+#      case; vendor/ is committed to the repo, so it's already populated.
+#   3. Regenerate via vendor.nu — when vendor/ is empty, or --local forces a
+#      refresh from sibling repos.
 def populate-repos [--in-docker --local] {
     let repos_dir = $nu.home-dir | path join 'repos'
     mkdir $repos_dir
@@ -188,10 +194,17 @@ def populate-repos [--in-docker --local] {
         return
     }
 
-    # No staged vendor — regenerate cozy/vendor/ via vendor.nu, then mirror.
-    let vendor_arg = if $local { ['--local'] } else { [] }
-    ^nu --no-config-file ($cozy_root | path join 'toolkit' 'vendor.nu') ...$vendor_arg
-    for entry in (glob ($cozy_root | path join 'vendor' '*')) {
+    # Use the committed vendor/ as-is unless --local was passed (forced
+    # refresh from sibling repos) or vendor/ is empty (first run before any
+    # vendoring has happened). Avoids re-downloading every tarball from
+    # GitHub when the user just cloned a release and has vendor/ already.
+    let vendor_dir = $cozy_root | path join 'vendor'
+    let vendor_populated = ($vendor_dir | path exists) and ((glob ($vendor_dir | path join '*')) | is-not-empty)
+    if $local or not $vendor_populated {
+        let vendor_arg = if $local { ['--local'] } else { [] }
+        ^nu --no-config-file ($cozy_root | path join 'toolkit' 'vendor.nu') ...$vendor_arg
+    }
+    for entry in (glob ($vendor_dir | path join '*')) {
         ^cp -r $entry $repos_dir
     }
 }
