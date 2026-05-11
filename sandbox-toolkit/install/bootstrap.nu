@@ -8,7 +8,7 @@
 #
 # Mode auto-detection (no flags needed):
 #   /etc/sandbox-persistent.sh present → run setup-docker-system (apt
-#                                        installs, proxy, pbcopy, env).
+#                                        installs, pbcopy, env).
 #   /tmp/vendor present                → use Docker-staged vendor as-is.
 #   else                               → use committed cozy_root/vendor/.
 #
@@ -120,9 +120,8 @@ export def main [
 }
 
 # Docker-only: what the USER root layers in the Dockerfile used to do.
-# Sudo is kept only for genuinely root-owned paths: apt itself, and the apt
-# proxy file (APT_CONFIG env-var indirection wouldn't work because sudo
-# strips it before invoking apt). Agent has passwordless sudo at build time,
+# Sudo is kept only for genuinely root-owned paths: apt itself and the apt
+# sources files under /etc/apt/. Agent has passwordless sudo at build time,
 # same assumption already made by topiary.nu and rust.nu.
 def setup-docker-system [] {
     # Wipe only the colliding artifacts in ~/.config/nushell — `nu`
@@ -143,13 +142,27 @@ def setup-docker-system [] {
     # Autoload dir wipe is in main (runs on host too) — see step before
     # the autoload copy. Not duplicated here.
 
+    # Rewrite Canonical apt sources from http:// to https:// before any apt
+    # call. The sandbox VM refuses direct egress to :80 but allows :443, so
+    # HTTPS sources work everywhere (docker build, fresh sandbox install,
+    # cozy:v1 re-run) without a proxy. Idempotent — re-applies on every
+    # bootstrap so a base-image refresh can't strand us back on plain http.
+    # Covers both deb822 (.sources, Ubuntu 24.04+) and one-line (.list, legacy).
+    let apt_sources_files = (
+        ['/etc/apt/sources.list']
+        | append (ls /etc/apt/sources.list.d/ | get name)
+        | where { |p| $p | path exists }
+    )
+    for f in $apt_sources_files {
+        let content = open --raw $f
+        let updated = $content | str replace --all --regex 'http://(ports|archive|security)\.ubuntu\.com' 'https://$1.ubuntu.com'
+        if $updated != $content {
+            $updated | ^sudo tee $f | ignore
+        }
+    }
+
     # apt deps: gcc/libc6-dev for tree-sitter-nu compile in `topiary install`,
-    # procps/file as general runtime tools. Run before the apt proxy file is
-    # written: at `docker build` time the build network has direct egress and
-    # host.docker.internal:3128 is unreachable, so writing the proxy first
-    # would break apt-get update. At runtime re-runs the proxy file from the
-    # prior build persists in /etc/apt/apt.conf.d/, so apt routes through it
-    # before this step runs again.
+    # procps/file as general runtime tools.
     ^sudo apt-get update
     ^sudo apt-get install -y --no-install-recommends procps file gcc libc6-dev
     ^sudo rm -rf /var/lib/apt/lists/*
@@ -162,19 +175,6 @@ def setup-docker-system [] {
     let local_bin = $nu.home-dir | path join '.local' 'bin'
     mkdir $local_bin
     ^install -m 755 ($cozy_root | path join 'docker-files' 'pbcopy') ($local_bin | path join 'pbcopy')
-
-    # Apt proxy — written here (not before apt-get update) so the `docker
-    # build` invocation, which has no proxy at host.docker.internal:3128,
-    # can complete its apt installs via direct egress. The file is what
-    # makes the sandbox VM's `apt` work at runtime: the sandbox network
-    # refuses direct egress to ports.ubuntu.com:80 and apt's HTTPS method
-    # ignores https_proxy env, so we need this dropped under
-    # /etc/apt/apt.conf.d/. Lives there (not via APT_CONFIG) because sudo
-    # strips APT_CONFIG before invoking apt.
-    let proxy_conf = 'Acquire::http::Proxy "http://host.docker.internal:3128/";
-Acquire::https::Proxy "http://host.docker.internal:3128/";
-'
-    $proxy_conf | ^sudo tee /etc/apt/apt.conf.d/90proxy | ignore
 
     # Runtime env exports (the sandbox shell sources this file on each login).
     # /etc/sandbox-persistent.sh is agent-writable on the base image — matches
