@@ -19,6 +19,7 @@ You are running inside a Docker sandbox (Ubuntu, arm64 or amd64). The workspace 
 - **fzf** — fuzzy finder
 - **ripgrep** (`rg`) — fast grep
 - **bat** — syntax-highlighted file viewer
+- **fd** — fast `find` alternative
 
 ### Data & Languages
 - **visidata** (`vd`) — terminal spreadsheet for CSV, JSON, SQLite, etc.
