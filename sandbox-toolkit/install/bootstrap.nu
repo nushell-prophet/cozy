@@ -113,7 +113,7 @@ export def main [
 
     # Step 9 — Claude Code + nushell MCP
     claude install
-    ^claude mcp add --scope user --transport stdio nushell -- /home/linuxbrew/.linuxbrew/bin/nu --mcp
+    ^claude mcp add --scope user --transport stdio nushell -- (which nu | get path.0) --mcp
 }
 
 # Docker-only: what the USER root layers in the Dockerfile used to do.
