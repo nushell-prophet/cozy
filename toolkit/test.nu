@@ -34,10 +34,9 @@ const tools = [
 const files = [
     "/home/agent/.local/bin/pbcopy"
     "/home/agent/.config/nushell/autoload/module-imports.nu"
-    "/home/agent/.config/nushell/autoload/cmd-stack-import.nu"
     "/home/agent/.config/nushell/autoload/hooks-config.nu"
-    "/home/agent/.config/nushell/autoload/my_nu_completions.nu"
-    "/home/agent/.config/nushell/autoload/standard_4002_aliasses.nu"
+    "/home/agent/.config/nushell/autoload/my-nu-completions.nu"
+    "/home/agent/.config/nushell/autoload/standard-aliasses.nu"
     "/home/agent/.config/nushell/autoload/mcp-server.nu"
     "/home/agent/.claude.json"
 ]
