@@ -232,6 +232,8 @@ def populate-repos [--local] {
         $dir
     }
     for entry in (glob ($vendor_src | path join '*')) {
+        let dst = $repos_dir | path join ($entry | path basename)
+        if ($dst | path exists) { rm -rf $dst }
         ^cp -r $entry $repos_dir
     }
 }
