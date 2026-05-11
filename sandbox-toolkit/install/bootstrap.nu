@@ -36,7 +36,7 @@ export def main [
 
     # Step 1 — brew installs (two groups for build-cache reuse, matches Dockerfile)
     if (which brew | is-empty) {
-        error make { msg: "brew not found — install Homebrew first: https://brew.sh" }
+        error make {msg: "brew not found — install Homebrew first: https://brew.sh"}
     }
     ^brew install nushell fzf lazygit helix zellij broot git-delta visidata bat topiary fd
     ^brew cleanup --prune=all
