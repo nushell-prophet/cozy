@@ -67,7 +67,12 @@ export def main [
 
     # Sandbox-specific config (feature parity with Dockerfile):
     # nushell autoload scripts and visidata config.
+    # Wipe the autoload dir first: cozy owns it, any file not deployed by
+    # the current run is stale (e.g. an entry removed upstream). Without
+    # this, re-runs accumulated removed-upstream autoload files
+    # indefinitely (originally fixed for docker, missing on host until M2).
     let autoload_dst = $nu.home-dir | path join '.config' 'nushell' 'autoload'
+    if ($autoload_dst | path exists) { rm -rf $autoload_dst }
     mkdir $autoload_dst
     for f in (glob ($cozy_root | path join 'docker-files' 'nushell-autoload' '*.nu')) {
         ^cp $f $autoload_dst
@@ -135,8 +140,8 @@ def setup-docker-system [] {
         let p = $nu_config | path join $f
         if ($p | path exists) { rm $p }
     }
-    let autoload = $nu_config | path join 'autoload'
-    if ($autoload | path exists) { rm -rf $autoload }
+    # Autoload dir wipe is in main (runs on host too) — see step before
+    # the autoload copy. Not duplicated here.
 
     # apt deps: gcc/libc6-dev for tree-sitter-nu compile in `topiary install`,
     # procps/file as general runtime tools. Run before the apt proxy file is
