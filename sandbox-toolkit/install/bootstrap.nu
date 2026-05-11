@@ -6,14 +6,17 @@
 #
 # Re-run = clean setup. Idempotency is not a goal.
 #
-# Modes:
-#   --in-docker  Invoked from the Dockerfile RUN layer. Vendor was already
-#                COPYied to /tmp/vendor; sandbox-toolkit + docker-files were
-#                COPYied directly to ~/repos/cozy/.
+# Mode auto-detection (no flags needed):
+#   /etc/sandbox-persistent.sh present → run setup-docker-system (apt
+#                                        installs, proxy, pbcopy, env).
+#   /tmp/vendor present                → use Docker-staged vendor as-is.
+#   else                               → use committed cozy_root/vendor/.
+#
+# Flags:
 #   --local      Force-refresh vendor/ from sibling repos via
 #                `toolkit/vendor.nu --local` (rsync) before mirroring it
-#                under ~/repos/. Without this flag, the committed vendor/
-#                is used as-is — no GitHub fetching, no rsync.
+#                under ~/repos/. Without this flag, vendor/ is used as-is —
+#                no GitHub fetching, no rsync.
 
 use topiary.nu
 use claude.nu
@@ -23,15 +26,12 @@ use claude.nu
 const cozy_root = path self | path dirname | path dirname | path dirname
 
 export def main [
-    --in-docker # invoked from Dockerfile RUN (vendor already staged at /tmp/vendor)
-    --local     # use sibling repos via vendor.nu --local (host only)
+    --local # force-refresh vendor/ from sibling repos via vendor.nu --local
 ] {
-    # Step 0 — Docker-sandbox system setup. Auto-detect via the marker file
-    # the base image ships (/etc/sandbox-persistent.sh — what we append
-    # claude env exports to below). When present, run setup-docker-system
-    # whether or not --in-docker was passed, so in-sandbox re-runs work the
-    # same as docker-build invocations. Skipped on macOS host install
-    # because the marker isn't there.
+    # Step 0 — Docker-sandbox system setup, gated on the marker file the
+    # base image ships (/etc/sandbox-persistent.sh — what we append claude
+    # env exports to below). Present in docker-build AND in-sandbox re-runs,
+    # absent on macOS host install — exactly the partition we want.
     if ('/etc/sandbox-persistent.sh' | path exists) { setup-docker-system }
 
     # Step 1 — brew installs (two groups for build-cache reuse, matches Dockerfile)
@@ -55,7 +55,7 @@ export def main [
     ".DS_Store\nThumbs.db\ndesktop.ini\n" | save -f ($git_xdg | path join 'ignore')
 
     # Step 3 — populate ~/repos/ with vendored modules
-    populate-repos --in-docker=$in_docker --local=$local
+    populate-repos --local=$local
 
     # Sandbox-specific config (feature parity with Dockerfile):
     # nushell autoload scripts and visidata config.
@@ -158,21 +158,20 @@ export LANG="C.UTF-8"
 
 # Place vendored modules under ~/repos/<repo>/<module>/.
 # Source priority:
-#   1. /tmp/vendor (Dockerfile COPY staged it) — when --in-docker and present.
-#   2. cozy_root/vendor/ as-is — the typical "clone the repo and run bootstrap"
-#      case; vendor/ is committed to the repo, so it's already populated.
-#   3. Regenerate via vendor.nu — when vendor/ is empty, or --local forces a
-#      refresh from sibling repos.
-def populate-repos [--in-docker --local] {
+#   1. /tmp/vendor (Dockerfile COPY staged it) — used as-is, unless --local.
+#   2. cozy_root/vendor/ — committed in the repo, regenerated via vendor.nu
+#      only when empty (first-ever run) or --local forces a refresh from
+#      sibling repos. Avoids re-downloading tarballs on every clone.
+def populate-repos [--local] {
     let repos_dir = $nu.home-dir | path join 'repos'
     mkdir $repos_dir
     mkdir ($nu.home-dir | path join 'workspace')
 
     # Deposit cozy/sandbox-toolkit/ and cozy/docker-files/ at ~/repos/cozy/.
-    # In --in-docker mode the Dockerfile COPYed them there already, so
-    # cozy_root IS ~/repos/cozy/ and we skip the self-copy. In host mode
-    # cozy_root points at the workspace mount, so we mirror just those two
-    # subdirs (avoiding vendor/, docs.docker.com/, .git/, etc.).
+    # In docker the Dockerfile COPYed them there already, so cozy_root IS
+    # ~/repos/cozy/ and the equality check skips this. On host cozy_root
+    # points at the workspace mount, so we mirror just those two subdirs
+    # (avoiding vendor/, docs.docker.com/, .git/, etc.).
     let cozy_dst = $repos_dir | path join 'cozy'
     if ($cozy_root | path expand) != ($cozy_dst | path expand) {
         mkdir $cozy_dst
@@ -183,28 +182,18 @@ def populate-repos [--in-docker --local] {
         }
     }
 
-    let staged = if ('/tmp/vendor' | path exists) { glob /tmp/vendor/* } else { [] }
-    if $in_docker and ($staged | is-not-empty) {
-        # Vendor staged at /tmp/vendor by Docker COPY. sandbox-toolkit and
-        # docker-files were COPYied directly to ~/repos/cozy/ — nothing to do
-        # for them here.
-        for entry in $staged {
-            ^cp -r $entry $repos_dir
+    let vendor_src = if not $local and ('/tmp/vendor' | path exists) {
+        '/tmp/vendor'
+    } else {
+        let dir = $cozy_root | path join 'vendor'
+        let populated = ($dir | path exists) and ((glob ($dir | path join '*')) | is-not-empty)
+        if $local or not $populated {
+            let arg = if $local { ['--local'] } else { [] }
+            ^nu --no-config-file ($cozy_root | path join 'toolkit' 'vendor.nu') ...$arg
         }
-        return
+        $dir
     }
-
-    # Use the committed vendor/ as-is unless --local was passed (forced
-    # refresh from sibling repos) or vendor/ is empty (first run before any
-    # vendoring has happened). Avoids re-downloading every tarball from
-    # GitHub when the user just cloned a release and has vendor/ already.
-    let vendor_dir = $cozy_root | path join 'vendor'
-    let vendor_populated = ($vendor_dir | path exists) and ((glob ($vendor_dir | path join '*')) | is-not-empty)
-    if $local or not $vendor_populated {
-        let vendor_arg = if $local { ['--local'] } else { [] }
-        ^nu --no-config-file ($cozy_root | path join 'toolkit' 'vendor.nu') ...$vendor_arg
-    }
-    for entry in (glob ($vendor_dir | path join '*')) {
+    for entry in (glob ($vendor_src | path join '*')) {
         ^cp -r $entry $repos_dir
     }
 }

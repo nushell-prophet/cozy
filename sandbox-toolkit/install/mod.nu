@@ -1,7 +1,7 @@
 # End-to-end install: brew tools, vendored modules, dotfiles, skills,
 # broot, topiary, Claude Code + nushell MCP.
-# `cozy install bootstrap --in-docker` from the Dockerfile RUN;
-# `cozy install bootstrap --local` for sibling-repo vendoring on host.
+# Docker vs. host is auto-detected via filesystem markers (see bootstrap.nu).
+# `cozy install bootstrap --local` forces a vendor refresh from sibling repos.
 export use bootstrap.nu
 
 # Install claude code using official installer script

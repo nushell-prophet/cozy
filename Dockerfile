@@ -41,6 +41,6 @@ RUN /home/agent/repos/cozy/sandbox-toolkit/install/ensure-nu.sh
 # All install logic lives in bootstrap.nu — same code path the host install uses.
 # Docker mode uses sudo only where unavoidable (apt itself, /etc/apt proxy
 # file); pbcopy goes to ~/.local/bin and git identity into XDG ~/.config/git/.
-RUN nu /home/agent/repos/cozy/sandbox-toolkit/install/bootstrap.nu --in-docker
+RUN nu /home/agent/repos/cozy/sandbox-toolkit/install/bootstrap.nu
 
 COPY --chown=agent:agent README.md /home/agent/workspace/README.md
