@@ -4,6 +4,7 @@
 # Default: download tarballs from GitHub (no git clone, no auth needed)
 # --local: use local ~/repos/ directories (original rsync behavior)
 
+const cozy_root = (path self | path dirname | path dirname)
 const vendor_yml = (path self | path dirname | path join vendor.yml)
 
 def load-modules []: nothing -> list<record<repo: string, github: string, modules: list<string>>> {
@@ -90,7 +91,10 @@ export def "main check" [--add (-a)] {
 }
 
 export def main [--local (-l)] {
-    let vendor_dir = pwd | path join vendor
+    # Why: derive vendor_dir from the script's own location (path self)
+    # so this script works regardless of caller's pwd. The script lives
+    # at <cozy_root>/toolkit/vendor.nu.
+    let vendor_dir = $cozy_root | path join vendor
 
     rm -rf $vendor_dir
     mkdir $vendor_dir
@@ -98,7 +102,7 @@ export def main [--local (-l)] {
     let groups = load-modules
 
     if $local {
-        let git_dir = pwd | path join '..'
+        let git_dir = $cozy_root | path dirname
         for $group in $groups {
             for module in $group.modules {
                 let src = $git_dir | path join $group.repo $module
