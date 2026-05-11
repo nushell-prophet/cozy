@@ -1,6 +1,6 @@
 ---
 task-name: release-fixes-orchestration
-status: draft
+status: in_progress
 created: 2026-05-11
 updated: 2026-05-11
 related_files:
