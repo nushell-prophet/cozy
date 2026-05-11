@@ -34,13 +34,11 @@ export def main [
     # absent on macOS host install — exactly the partition we want.
     if ('/etc/sandbox-persistent.sh' | path exists) { setup-docker-system }
 
-    # Step 1 — brew installs (two groups for build-cache reuse, matches Dockerfile)
+    # Step 1 — brew installs
     if (which brew | is-empty) {
         error make {msg: "brew not found — install Homebrew first: https://brew.sh"}
     }
-    ^brew install nushell fzf lazygit helix zellij broot git-delta visidata bat topiary fd
-    ^brew cleanup --prune=all
-    ^brew install jj git-lfs
+    ^brew install nushell fzf lazygit helix zellij broot git-delta visidata bat topiary fd jj git-lfs
     ^brew cleanup --prune=all
 
     # Step 2 — XDG git config. user.name/email is written here so `toolkit
