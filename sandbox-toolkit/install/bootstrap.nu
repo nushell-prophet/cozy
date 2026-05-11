@@ -51,7 +51,17 @@ export def main [
     # personal email wins; XDG only kicks in when nothing else is set.
     let git_xdg = $nu.home-dir | path join '.config' 'git'
     mkdir $git_xdg
-    "[user]\n\tname = Agent\n\temail = agent@sandbox\n[safe]\n\tdirectory = *\n[gc]\n\tauto = 0\n[core]\n\tfsync = all\n\tfsyncMethod = fsync\n" | save -f ($git_xdg | path join 'config')
+    '[user]
+	name = Agent
+	email = agent@sandbox
+[safe]
+	directory = *
+[gc]
+	auto = 0
+[core]
+	fsync = all
+	fsyncMethod = fsync
+' | save -f ($git_xdg | path join 'config')
     ".DS_Store\nThumbs.db\ndesktop.ini\n" | save -f ($git_xdg | path join 'ignore')
 
     # Step 3 — populate ~/repos/ with vendored modules
