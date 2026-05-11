@@ -122,14 +122,23 @@ export def main [
 # strips it before invoking apt). Agent has passwordless sudo at build time,
 # same assumption already made by topiary.nu and rust.nu.
 def setup-docker-system [] {
-    # Wipe any pre-existing ~/.config/nushell — `nu` auto-creates default
-    # config.nu/env.nu/history.* on first launch, and on a re-run those
-    # defaults can collide with the dotfiles deploy in step 4 (or with
-    # bootstrap's own autoload write between steps 3 and 4). The
+    # Wipe only the colliding artifacts in ~/.config/nushell — `nu`
+    # auto-creates default config.nu/env.nu on first launch, and on a
+    # re-run those defaults can collide with the dotfiles deploy in step 4
+    # (or with bootstrap's own autoload write between steps 3 and 4). The
     # docstring at the top of this file says "Re-run = clean setup" —
     # this is what makes that true for the nushell config dir.
+    #
+    # Not `rm -rf $nu_config` because: history.sqlite3* and plugin.msgpackz
+    # live in the same dir and are user state, not collidable config. The
+    # whole-dir wipe destroyed shell history every re-run.
     let nu_config = $nu.home-dir | path join '.config' 'nushell'
-    if ($nu_config | path exists) { rm -rf $nu_config }
+    for f in ['config.nu' 'env.nu'] {
+        let p = $nu_config | path join $f
+        if ($p | path exists) { rm $p }
+    }
+    let autoload = $nu_config | path join 'autoload'
+    if ($autoload | path exists) { rm -rf $autoload }
 
     # apt deps: gcc/libc6-dev for tree-sitter-nu compile in `topiary install`,
     # procps/file as general runtime tools. Run before the apt proxy file is
