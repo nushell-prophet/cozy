@@ -27,6 +27,17 @@ docker sandbox create --name cozy-test --tag cozy:latest shell example-workspace
 docker sandbox exec -it cozy-test nu --login --execute 'zellij attach -c cozy-test'
 ```
 
+## Host install
+
+To install the same stack on your macOS host (nushell, modules, dotfiles, configs):
+
+```sh
+git clone https://github.com/nushell-prophet/cozy
+cd cozy
+./bootstrap.sh             # host install
+./bootstrap.sh --local     # refresh vendor/ from sibling repos (development)
+```
+
 ## Technologies
 
 **Installed**: [Nushell](#nushell), [Helix](#helix-editor), [Zellij](#zellij), [Lazygit](#lazygit), [Broot](#broot), [FZF](#fzf), git-delta, visidata, bat, topiary, fd, jj, git-lfs, [Claude Code](#building-without-claude-code), procps, file, gcc, libc6-dev (base image adds git, curl, Python, Node.js, Go, ripgrep, jq, gh)
