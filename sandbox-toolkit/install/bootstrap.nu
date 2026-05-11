@@ -117,6 +117,19 @@ export def main [
     # Step 9 — Claude Code + nushell MCP
     claude install
     ^claude mcp add --scope user --transport stdio nushell -- (which nu | get path.0) --mcp
+
+    # If setup-docker-system just appended env exports to /etc/sandbox-persistent.sh
+    # but the user's interactive shell predates this run, those exports won't be
+    # in their bash env yet — tools like helix, jj, etc. would launch without
+    # HELIX_RUNTIME/JJ_CONFIG/etc. Detect via missing XDG_DATA_HOME (the marker
+    # we baked) and tell them to re-login. env.nu has a fallback so nu itself
+    # won't crash, but the broader env still needs the refresh.
+    if ('/etc/sandbox-persistent.sh' | path exists) and ($env.XDG_DATA_HOME? | is-empty) {
+        print ""
+        print "Note: env exports were written to /etc/sandbox-persistent.sh but your"
+        print "      current shell predates the bootstrap. Run `exec bash -l` to start"
+        print "      a fresh login shell before launching nu."
+    }
 }
 
 # Docker-only: what the USER root layers in the Dockerfile used to do.
