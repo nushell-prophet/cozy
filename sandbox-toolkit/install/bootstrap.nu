@@ -222,7 +222,6 @@ export LANG="C.UTF-8"
 def populate-repos [--local] {
     let repos_dir = $nu.home-dir | path join 'repos'
     mkdir $repos_dir
-    mkdir ($nu.home-dir | path join 'workspace')
 
     # Deposit cozy/sandbox-toolkit/ and cozy/docker-files/ at ~/repos/cozy/.
     # In docker the Dockerfile COPYed them there already, so cozy_root IS
