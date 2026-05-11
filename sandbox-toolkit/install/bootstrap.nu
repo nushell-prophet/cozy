@@ -189,7 +189,23 @@ export XDG_CACHE_HOME="$HOME/.cache"
 export HELIX_RUNTIME="/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime"
 export LANG="C.UTF-8"
 '
-    $env_exports | save --append /etc/sandbox-persistent.sh
+    # Wrap with markers so re-runs replace the block in place instead of
+    # `save --append`-ing a duplicate copy on every bootstrap invocation.
+    let block = $"# >>> cozy env >>>\n($env_exports)# <<< cozy env <<<\n"
+    let target = '/etc/sandbox-persistent.sh'
+    let existing = if ($target | path exists) { open --raw $target } else { '' }
+    let marker_re = '(?ms)# >>> cozy env >>>.*?# <<< cozy env <<<\n?'
+    let updated = if ($existing =~ $marker_re) {
+        # Why: str replace --regex treats `$name` in the replacement as a
+        # capture-group backref (regex crate convention), which would eat
+        # the literal `$HOME` in our exports. Escape `$` -> `$$` so the
+        # replacement keeps `$HOME` etc. intact.
+        let escaped = $block | str replace --all '$' '$$'
+        $existing | str replace --regex $marker_re $escaped
+    } else {
+        $existing + $block
+    }
+    $updated | save --force $target
 }
 
 # Place vendored modules under ~/repos/<repo>/<module>/.
