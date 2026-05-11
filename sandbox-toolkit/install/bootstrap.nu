@@ -119,19 +119,13 @@ def setup-docker-system [] {
     let nu_config = $nu.home-dir | path join '.config' 'nushell'
     if ($nu_config | path exists) { rm -rf $nu_config }
 
-    # Apt proxy first — must exist before `apt-get update` so apt routes
-    # through host.docker.internal:3128 (Docker Desktop's HTTP proxy).
-    # Direct egress to ports.ubuntu.com:80 is refused inside the sandbox
-    # network, so without the proxy in place `apt-get update` fails.
-    # The file lives under /etc/apt/apt.conf.d/ rather than via APT_CONFIG
-    # env-var indirection because sudo strips APT_CONFIG before invoking apt.
-    let proxy_conf = 'Acquire::http::Proxy "http://host.docker.internal:3128/";
-Acquire::https::Proxy "http://host.docker.internal:3128/";
-'
-    $proxy_conf | ^sudo tee /etc/apt/apt.conf.d/90proxy | ignore
-
     # apt deps: gcc/libc6-dev for tree-sitter-nu compile in `topiary install`,
-    # procps/file as general runtime tools.
+    # procps/file as general runtime tools. Run before the apt proxy file is
+    # written: at `docker build` time the build network has direct egress and
+    # host.docker.internal:3128 is unreachable, so writing the proxy first
+    # would break apt-get update. At runtime re-runs the proxy file from the
+    # prior build persists in /etc/apt/apt.conf.d/, so apt routes through it
+    # before this step runs again.
     ^sudo apt-get update
     ^sudo apt-get install -y --no-install-recommends procps file gcc libc6-dev
     ^sudo rm -rf /var/lib/apt/lists/*
@@ -144,6 +138,19 @@ Acquire::https::Proxy "http://host.docker.internal:3128/";
     let local_bin = $nu.home-dir | path join '.local' 'bin'
     mkdir $local_bin
     ^install -m 755 ($cozy_root | path join 'docker-files' 'pbcopy') ($local_bin | path join 'pbcopy')
+
+    # Apt proxy — written here (not before apt-get update) so the `docker
+    # build` invocation, which has no proxy at host.docker.internal:3128,
+    # can complete its apt installs via direct egress. The file is what
+    # makes the sandbox VM's `apt` work at runtime: the sandbox network
+    # refuses direct egress to ports.ubuntu.com:80 and apt's HTTPS method
+    # ignores https_proxy env, so we need this dropped under
+    # /etc/apt/apt.conf.d/. Lives there (not via APT_CONFIG) because sudo
+    # strips APT_CONFIG before invoking apt.
+    let proxy_conf = 'Acquire::http::Proxy "http://host.docker.internal:3128/";
+Acquire::https::Proxy "http://host.docker.internal:3128/";
+'
+    $proxy_conf | ^sudo tee /etc/apt/apt.conf.d/90proxy | ignore
 
     # Runtime env exports (the sandbox shell sources this file on each login).
     # /etc/sandbox-persistent.sh is agent-writable on the base image — matches
