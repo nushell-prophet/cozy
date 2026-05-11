@@ -10,8 +10,7 @@ Dockerfile
 ├── apt: procps, file, gcc, libc6-dev
 ├── Homebrew tools: nushell, helix, lazygit, zellij, broot, fzf, git-delta, git-lfs, jj, visidata, bat, topiary, fd
 ├── Vendored modules and dotfiles: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, topiary-nushell, dotfiles, my-claude-skills, nushell-skills, nu-multiproof
-├── sandbox-toolkit/: runtime toolkit (the `cozy` overlay) — lives in-repo, copied or cloned into ~/repos/cozy/ at build time
-│   └── vendor/ dir (default) or git clone (with --build-arg MODULES_SOURCE=clone)
+├── sandbox-toolkit/: runtime toolkit (the `cozy` overlay) — lives in-repo, copied into ~/repos/cozy/ at build time
 ├── Dotfiles: vendored from dotfiles/ sibling repo, deployed via toolkit push-to-machine
 │   └── configs for helix, lazygit, zellij, broot, nushell, claude, jj, wezterm
 ├── Claude Code: installed via official install script (https://claude.ai/install.sh), late layer
