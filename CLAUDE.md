@@ -67,6 +67,8 @@ After Dockerfile changes: rebuild image, then recreate sandbox (delete + run).
 - Keybindings: `vendor/dotfiles/zellij/config.kdl` (README keybinding docs drift from this)
 - Vendored modules: `toolkit/vendor.yml` via `toolkit/vendor.nu` (not the CLAUDE.md architecture list)
 - `cozy` command surface: `sandbox-toolkit/mod.nu` exports
+- Install step order (host + docker): `sandbox-toolkit/install/bootstrap.nu` — single entry point for both build paths
+- Pinned nushell fallback: `sandbox-toolkit/install/.nushell-version` — consumed by `ensure-nu.sh` when latest `nu` can't parse `bootstrap.nu`
 - CHANGELOG entries are historical — cross-reference sequential versions for contradictions
 
 ## Notes

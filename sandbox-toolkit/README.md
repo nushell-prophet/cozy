@@ -72,7 +72,9 @@ Copies Claude Code project sessions (`~/.claude/projects/`) to/from `~/workspace
 
 ### `cozy install ...`
 
-Installer subcommands used during image build or inside a running sandbox: `claude`, `topiary`, `nushell`, `polars`, `rust`, `zellij`, `nu-plugin-image`.
+Installer subcommands used during image build or inside a running sandbox: `bootstrap`, `claude`, `topiary`, `nushell`, `polars`, `rust`, `zellij`, `nu-plugin-image`.
+
+`bootstrap` is the single entry point that sets up the sandbox (or host) end-to-end — brew tools, XDG git config, vendored modules, dotfiles, Claude skills, broot, topiary, and Claude Code with the nushell MCP. Same code path is used by the Dockerfile and by `bootstrap.sh` on the host.
 
 ## License
 
