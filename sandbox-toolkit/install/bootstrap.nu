@@ -96,7 +96,19 @@ export def main [
     ^broot --write-default-conf ($xdg_config | path join 'broot')
     ^broot --set-install-state installed
 
-    # Step 8 — topiary install (binary + grammar + config)
+    # Step 8 — topiary install (binary + grammar + config).
+    # topiary.nu reads ~/git/topiary-nushell, but the vendor flow lands the
+    # grammar repo at ~/repos/topiary-nushell/. Bridge with a symlink so
+    # topiary install picks up the vendored copy instead of cloning from
+    # GitHub. No clone fallback per fail-fast: if vendored dir is missing,
+    # topiary install should fail loudly so the build flow is fixed at its
+    # source.
+    let vendored = $nu.home-dir | path join 'repos' 'topiary-nushell'
+    let link = $nu.home-dir | path join 'git' 'topiary-nushell'
+    if ($vendored | path exists) and ($link | path type) != 'symlink' {
+        mkdir ($link | path dirname)
+        ^ln -s $vendored $link
+    }
     topiary install
 
     # Step 9 — Claude Code + nushell MCP
