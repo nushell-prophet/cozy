@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-12
+
 ### Added
 
 - `cozy install bootstrap` — single end-to-end installer (brew tools, vendored modules under `~/repos/`, dotfiles via `toolkit push-to-machine`, Claude skills, broot init, topiary, Claude Code + nushell MCP). `--local` re-vendors from sibling repos for development workflows. (0c69ad8)
@@ -22,12 +24,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `setup-docker-system` and Docker-staged vendor consumption now key off filesystem markers instead of the old `--in-docker` flag: `/etc/sandbox-persistent.sh` (shipped by `docker/sandbox-templates`) gates Docker-runtime setup; populated `/tmp/vendor` gates Docker-build vendor reuse. Same `cozy install bootstrap` invocation now works in a fresh sandbox, in a docker-build `RUN`, and on a macOS host. (ad6285a)
 - `bootstrap.nu` always passes `--docker` to `push-to-machine`. The dotfiles `paths-default.csv` was never vendored (cozy is docker-first) so host mode previously died on a missing file; `paths-docker.csv` is the right paths file for both targets. (6ab6541)
 - Git `user.name` / `user.email` written unconditionally in step 2 (was gated on `--in-docker`). On a real host, git precedence puts `~/.gitconfig` ahead of XDG, so any user's personal identity still overrides; the XDG entry only kicks in when nothing else is set, which is exactly what host-install-inside-a-fresh-sandbox needs. (23ae7fe)
+- Apt sources rewritten to `https://` (idempotent across deb822 `.sources` and one-line `.list` formats) and the `/etc/apt/apt.conf.d/90proxy` file dropped entirely. Collapses docker-build, fresh-sandbox install, and `cozy:v1` re-runs into one path with no proxy dependency — sandbox VMs allow port 443 (where brew already worked) but block direct port 80, which the previous http-via-proxy setup only handled inconsistently. (61d9702)
+- Vendored `dotfiles/claude` — `editorMode=normal` (modal prompt editing), `verbose=true`, and `cleanupPeriodDays=36500` (~100 years session-log retention) baked into `~/.claude/settings.json` via `paths-docker.csv`, so cozy rebuilds restore these defaults instead of falling back to Claude Code's bare settings. (00c63b7, 86e43d0)
+- Vendored `claude-nu` — `claude-export` gains `--tools` and `--include-thinking` flags for filtering transcript exports. (7e8e4e7)
+- Vendored `nu-cmd-stack` — `apply-keybindings` refactor. (7e8e4e7)
+- Vendored `dotfiles/zellij` — `todo-nu` simplifications and `hx-scrollback` adjustments. (7e8e4e7, 3fc1646)
+- Vendored `nu-goodies` — `arrange.nu` updated from upstream. (3fc1646)
+- Vendored `nutest` — broad refresh (formatter/runner/store/orchestrator) following local sync with vyadh/nutest main. (3fc1646)
 
 ### Fixed
 
 - `vendor.nu` no longer feeds HTML/JSON error bodies into `tar xz` and lets the cryptic "gzip: stdin: not in gzip format" surface — `curl` now uses `-fsSL` so HTTP errors fail the pipeline at the network step with the real status code. (f624b24)
 - Bootstrap on a base-image sandbox now exports the same `XDG_*` / `HELIX_RUNTIME` / `LANG` vars the Dockerfile bakes in, and copies `sandbox-toolkit/` + `docker-files/` from the cloned cozy repo into `~/repos/cozy/`. Without these, `nu` died at startup on `env.nu` (missing `XDG_DATA_HOME`) and `module-imports.nu` (missing `~/repos/cozy/sandbox-toolkit/`). (1055fdd)
 - Docker-mode bootstrap re-runs wipe colliding nushell config (`config.nu`, `env.nu`, `autoload/`) at the start of `setup-docker-system` while preserving `history.sqlite3*`, so a pre-launched `nu` no longer leaves default config that collides with the autoload write or dotfiles snapshot. (05930ab, 31c23f5)
+- Runtime git settings (`safe.directory '*'`, `gc.auto=0`, `core.fsync=all`, `core.fsyncMethod=fsync`, global ignore for `.DS_Store` / `Thumbs.db`) moved from `/etc/gitconfig` to `~/.config/git/` (XDG). Brew git's sysconfdir is `/home/linuxbrew/.linuxbrew/etc`, not `/etc`, so every `git config --system` write was going to a file the runtime brew git never reads — `.DS_Store` ignore and the VirtioFS corruption guards from 0.1.1 were silently broken. XDG is read by every git binary regardless of sysconfdir and isn't overwritten by `docker sandbox create`. (288a2c9)
+- Cold-start after `bash bootstrap.sh` in a vanilla shell sandbox no longer crashes `nu` on "Cannot find column XDG_DATA_HOME": `env.nu` now defaults `XDG_DATA_HOME` from `$HOME` when unset, and bootstrap prints a hint to `exec bash -l` when the current shell predates the env exports just written to `/etc/sandbox-persistent.sh`. (4e546fc)
+- `cozy install bootstrap` on macOS host now resolves `nu` via `which nu` at runtime for the `claude mcp add` registration. Previously hardcoded `/home/linuxbrew/.linuxbrew/bin/nu`, which doesn't exist on Apple Silicon brew (`/opt/homebrew/bin/nu`), so the MCP server registered against a non-existent binary and silently failed on host installs. (da7f93b)
+- `topiary install` on macOS no longer runs `sudo apt-get install` when gcc is missing — branches on `$nu.os-info.name` and points users at `xcode-select --install` instead, errors on unknown OS. (47946af)
+- `topiary install` finds the vendored grammar via a `~/git/topiary-nushell → ~/repos/topiary-nushell` symlink — the old Dockerfile shell shim was lost in the nushell rewrite, so topiary was silently missing the vendored grammar (or falling back to a github clone). No clone fallback per fail-fast: missing vendor dir now errors loudly. (53970d8)
+- `populate-repos` runs `rm -rf` on each vendor destination before `cp -r`, mirroring the cozy_dst loop earlier in the file — files removed from upstream vendored modules no longer persist indefinitely in user homes. (362ce1f)
+- `vendor.nu` derives its target directory from `path self | path dirname | path dirname` instead of `pwd`, so invoking it from any cwd writes vendor in the right place and doesn't depend on the caller's working directory. (f4d3590)
+- Host-mode bootstrap re-runs now clean `~/.config/nushell/autoload/` before copying, mirroring the docker behaviour — stale autoload entries from removed upstream sources no longer linger on host. The duplicate docker-only wipe in `setup-docker-system` is removed; cozy now owns the autoload dir from a single site. (121ee4a)
+- `setup-docker-system` env block (XDG/HELIX_RUNTIME/LANG exports) is now idempotent in `/etc/sandbox-persistent.sh` — wrapped with `# >>> cozy env >>>` / `# <<< cozy env <<<` markers and replaced in place on each run, instead of blindly appending duplicates. (45cc3d9)
+- Dropped the unconditional `mkdir ~/workspace` from `populate-repos` — the docker path auto-creates the dir via `COPY README.md /home/agent/workspace/README.md`, and host installs were left with an unused empty `~/workspace/` that confused users who never run the docker path. (7ecd43a)
 
 ## [0.1.1] - 2026-04-29
 
@@ -264,7 +283,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sandbox image test script with tool launch verification (a333bb6)
 - Supports both `arm64` and `amd64` architectures via Docker sandbox
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.1.1...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/nushell-prophet/cozy/compare/0.1.1...0.2.0
 [0.1.1]: https://github.com/nushell-prophet/cozy/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/nushell-prophet/cozy/compare/0.0.9...0.1.0
 [0.0.9]: https://github.com/nushell-prophet/cozy/compare/0.0.8...0.0.9
