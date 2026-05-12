@@ -23,9 +23,14 @@ export def lstd [] {
 }
 
 export def create-todo [] {
-    mkdir todo
+    let todo_folder_is_new = if ('todo' | path exists) { false } else {
+        mkdir todo
+        true
+    }
 
-    # cd todo
+    if not ('todo/CLAUDE.md' | path exists) {
+        cp $CLAUDE_MD todo/CLAUDE.md
+    }
 
     let date = date now | format date '%J-%Q'
 
@@ -37,25 +42,22 @@ export def create-todo [] {
         updated: $date
     }
         | to yaml
-        | str replace -r "\n$" ""
-        | prepend '---'
-        | append '---'
-        | to text
-
-    mkdir todo/
+        | str replace --all $date $'($date) #yyyyMMdd-hhmmss'
+        | str replace 'status: draft' 'status: draft #draft | in_progress | completed | rejected'
+        | $"---\n($in)---\n\n"
 
     if not ($path | path exists) {
-        $frontmatter | save $path
+        $frontmatter | save --raw $path
     }
 
-    hx $path
+    hx +7 $path
 
     # check if the file wasn't modified
-    open $path
-    | if $in == $frontmatter { rm $path }
-
-    if (ls 'todo' | is-empty) { rm 'todo' } else {
-        'todo/CLAUDE.md'
-        | if not ($in | path exists) { cp $CLAUDE_MD $in }
+    if ($path | path exists) {
+        open --raw $path
+        | if $in == $frontmatter {
+            rm $path
+            if $todo_folder_is_new { rm --recursive todo/ }
+        }
     }
 }

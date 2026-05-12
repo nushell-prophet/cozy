@@ -15,27 +15,28 @@ export def main [] {
 # Initialize cmd-stack
 export def --env init [
     commands?: list
-    --quiet # don't print help instructions
-    --force-keybindings # force keybindings add
 ] {
     let $commands = $in
-    | if $commands == null { } else { $commands }
+        | if $commands == null { } else { $commands }
+
+    if $commands == null {
+        print 'Pipe the list of your commands to `cmd-stack init`'
+        return
+    }
 
     $env.cmd-stack = {
         index: -1
         stack: $commands
     }
 
-    default-keybindings | apply-keybindings --force=$force_keybindings --quiet=$quiet
+    default-keybindings | apply-keybindings
 
-    if not $quiet { 
-        if $commands == null {
-            print 'Pipe the list of your commands to `cmd-stack init`'
-        } else {
-            print $'(stack-length) items added to cmd-stack.'
-            print 'use `ctrl+alt+j/k` for scrolling through them.'
-        }
-    }
+    [
+        $'(stack-length) items added to cmd-stack.'
+        'use `ctrl+alt+j/k` for scrolling through them.'
+    ]
+    | to text
+    | print
 }
 
 # Push a command to the end of cmd-stack
@@ -47,7 +48,7 @@ def --env cmd-push [cmd: string] {
     if ($cmd | str trim | is-empty) { return }
 
     if $env.cmd-stack? == null {
-        $env.cmd-stack = {index: -1, stack: []}
+        $env.cmd-stack = {index: -1 stack: []}
     }
 
     $env.cmd-stack.stack = ($env.cmd-stack.stack | append $cmd)
@@ -57,32 +58,31 @@ def --env cmd-push [cmd: string] {
 # Apply keybindings with conflict detection.
 # Pipe a list of keybinding records. Identical existing bindings are skipped.
 # Conflicts are reported — use --force to override them.
-def --env apply-keybindings [
-    --force  # Override conflicting keybindings
-    --quiet  # Don't print information message 
+export def --env apply-keybindings [
+    --force # Override conflicting keybindings
 ] {
     let bindings = $in
     let normalize_mod = {|m| $m | split row '_' | sort | str join '_' }
 
     let results = $bindings | each {|binding|
-        let norm_mod = do $normalize_mod $binding.modifier
-        let matches = $env.config.keybindings | where {|kb|
-            (do $normalize_mod $kb.modifier) == $norm_mod and $kb.keycode == $binding.keycode
-        }
+            let norm_mod = do $normalize_mod $binding.modifier
+            let matches = $env.config.keybindings | where {|kb|
+                    (do $normalize_mod $kb.modifier) == $norm_mod and $kb.keycode == $binding.keycode
+                }
 
-        if ($matches | is-empty) {
-            {status: new, binding: $binding, conflict: null}
-        } else {
-            let identical = $matches | where {|kb| $kb.event == $binding.event }
-            if ($identical | is-not-empty) {
-                {status: identical, binding: $binding, conflict: null}
+            if ($matches | is-empty) {
+                {status: new binding: $binding conflict: null}
             } else {
-                {status: conflict, binding: $binding, conflict: ($matches | first)}
+                let identical = $matches | where {|kb| $kb.event == $binding.event }
+                if ($identical | is-not-empty) {
+                    {status: identical binding: $binding conflict: null}
+                } else {
+                    {status: conflict binding: $binding conflict: ($matches | first)}
+                }
             }
         }
-    }
 
-    let to_add = $results | where status in [new, conflict]
+    let to_add = $results | where status in [new conflict]
     let identical = $results | where status == identical
     let conflicts = $results | where status == conflict
 
@@ -106,7 +106,7 @@ def --env apply-keybindings [
     if ($to_add | is-not-empty) {
         $env.config.keybindings ++= ($to_add | get binding)
         let n = $to_add | length
-        if not $quiet { print $'($n) keybindings applied.' }
+        print $'($n) keybindings applied.'
     }
 }
 
@@ -184,7 +184,6 @@ def default-keybindings [] {
 
 alias core_hist = history
 
-# add commands from n-last-history sessesion into cmd-stack with template `[session commands] | cmd-stack init` for interactive pick
 export def --env 'history' [
     --last-sessions: int = 10
 ] {
@@ -200,7 +199,7 @@ export def --env 'history' [
     | each {
         get command
         | to nuon --indent 2
-        | $'($in) | cmd-stack init --quiet'
+        | $'($in) | cmd-stack init'
     }
     | init
 }

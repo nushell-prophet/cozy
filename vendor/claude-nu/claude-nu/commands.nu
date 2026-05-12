@@ -3,6 +3,10 @@
 # UUID pattern for session files
 const UUID_JSONL_PATTERN = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jsonl$'
 
+# Subagent JSONL pattern (Claude Code 2.1.138+ layout:
+# `<project>/<session-uuid>/subagents/agent-<id>.jsonl`)
+const AGENT_JSONL_PATTERN = 'agent-[0-9a-f]+\.jsonl$'
+
 # System-generated message prefixes to filter out
 const SYSTEM_PREFIXES = [
     "<command-name>"
@@ -119,6 +123,7 @@ export def messages [
     --project (-p): path # Project path to search in (default: current directory)
     --all-projects # Search across all projects
     --include-system (-u) # Include system/meta messages (not just user-typed)
+    --include-thinking # Include assistant thinking blocks (prefixed with [thinking])
     --raw (-r) # Return raw message records instead of just content
     --with-responses (-w) # Include assistant responses (text only, interleaved)
 ]: [nothing -> table table -> table] {
@@ -180,6 +185,15 @@ export def messages [
 
         let session_uuid = $session_file | path basename | str replace '.jsonl' ''
 
+        # Why: --include-thinking surfaces thinking-only assistant turns
+        # (otherwise dropped by the visible-text filter below). Keep
+        # extract-text-content's contract intact for other callers.
+        let extract_assistant = if $include_thinking {
+            {|r| $r | extract-text-with-thinking }
+        } else {
+            {|r| $r | extract-text-content }
+        }
+
         # Parse and filter messages
         let messages = open --raw $session_file
             | lines
@@ -210,7 +224,7 @@ export def messages [
             # Drop assistant messages with no visible text
             | where {|r|
                 match $r.type? {
-                    "assistant" => ($r | extract-text-content | str trim | is-not-empty)
+                    "assistant" => (do $extract_assistant $r | str trim | is-not-empty)
                     _ => true
                 }
             }
@@ -220,7 +234,7 @@ export def messages [
                 where {
                     let msg = $in
                     match $msg.type? {
-                        "assistant" => ($msg | extract-text-content | $in =~ $regex)
+                        "assistant" => (do $extract_assistant $msg | $in =~ $regex)
                         _ => {
                             let content = $msg.message?.content?
                             if ($content | describe) =~ '^(list|table)' {
@@ -238,7 +252,7 @@ export def messages [
         } else {
             $filtered | each {|msg|
                 let message = match $msg.type? {
-                    "assistant" => ($msg | extract-text-content)
+                    "assistant" => (do $extract_assistant $msg)
                     _ => {
                         let content = $msg.message?.content?
                         if ($content | describe) =~ '^(list|table)' {
@@ -279,6 +293,31 @@ export def extract-text-content []: record -> string {
     }
 }
 
+# Like extract-text-content but also surfaces thinking blocks, prefixed with
+# `[thinking]` so they're distinguishable from regular text. Blocks are
+# rendered in source order and joined with blank lines.
+# Why: messages --include-thinking exposes thinking-only assistant turns that
+# the visible-text filter would otherwise drop.
+export def extract-text-with-thinking []: record -> string {
+    let content = $in.message?.content?
+    match ($content | describe) {
+        "string" => { $content }
+        $t if ($t =~ '^(list|table)') => {
+            $content
+            | each {|b|
+                match $b.type? {
+                    "text" => ($b.text? | default "")
+                    "thinking" => $"[thinking] ($b.thinking? | default '')"
+                    _ => ""
+                }
+            }
+            | where { $in | is-not-empty }
+            | str join "\n\n"
+        }
+        _ => { "" }
+    }
+}
+
 # Helper to extract tool calls from assistant messages
 export def extract-tool-calls []: record -> table {
     $in.message?.content?
@@ -298,11 +337,36 @@ export def extract-tool-results []: table -> table {
     | flatten
 }
 
-# Extract session metadata from first record
-export def extract-session-metadata []: record -> record {
-    select --optional sessionId slug version cwd gitBranch
-    | default "" sessionId slug version cwd gitBranch
-    | rename --column {sessionId: session_id gitBranch: git_branch}
+# Extract a session summary string from records.
+# Why: 2.1.x sessions rarely carry a `summary` record; the canonical short
+# summary now lives in `ai-title.aiTitle`. Prefer the legacy `summary`
+# record when present, fall back to `ai-title.aiTitle`.
+export def extract-summary []: table -> string {
+    let records = $in
+    let from_summary = $records | where type? == "summary" | get 0?.summary?
+    if ($from_summary | is-not-empty) {
+        return $from_summary
+    }
+    $records | where type? == "ai-title" | get 0?.aiTitle? | default ""
+}
+
+# Extract session metadata from records, walking each one to find each field.
+# Why: in 2.1.x first record can be permission-mode (sessionId only) or
+# file-history-snapshot (no metadata). A "first non-summary record" lookup
+# returns mostly empty fields; instead pull each field from the first record
+# that actually carries it.
+export def extract-session-metadata []: table -> record {
+    let records = $in
+    let pick = {|field|
+        $records | get $field --optional | compact | first | default ""
+    }
+    {
+        session_id: (do $pick "sessionId")
+        slug: (do $pick "slug")
+        version: (do $pick "version")
+        cwd: (do $pick "cwd")
+        git_branch: (do $pick "gitBranch")
+    }
 }
 
 # Extract thinking level from user records
@@ -334,8 +398,10 @@ export def extract-file-operations []: table -> record {
 }
 
 # Extract agent info from tool calls
+# Why: 2.1.x renamed `Task` to `Agent`; both share input shape.
+# TaskCreate/Update/Stop are TODO-list ops with different schema, not agents.
 export def extract-agents []: table -> table {
-    where name? == "Task"
+    where name? in ["Task" "Agent"]
     | each {
         {
             type: ($in.input?.subagent_type? | default "unknown")
@@ -345,6 +411,8 @@ export def extract-agents []: table -> table {
 }
 
 # Extract tool statistics from tool calls and results
+# Why: tool catalog grew in 2.1.x; count newly-added names so users can see
+# whether/how often they appear in a session.
 export def extract-tool-stats [
     tool_results: table
 ]: table -> record {
@@ -357,6 +425,13 @@ export def extract-tool-stats [
         tool_errors: ($tool_results | where is_error? == true | length)
         ask_user_count: ($tool_calls | where name? == "AskUserQuestion" | length)
         plan_mode_used: ($tool_calls | where name? == "EnterPlanMode" | is-not-empty)
+        tool_counts: {
+            TaskCreate: ($tool_calls | where name? == "TaskCreate" | length)
+            TaskUpdate: ($tool_calls | where name? == "TaskUpdate" | length)
+            TaskStop: ($tool_calls | where name? == "TaskStop" | length)
+            Monitor: ($tool_calls | where name? == "Monitor" | length)
+            ToolSearch: ($tool_calls | where name? == "ToolSearch" | length)
+        }
     }
 }
 
@@ -383,11 +458,7 @@ export def parse-session-file []: path -> record {
 
     let records = $lines | each { from json }
 
-    let summary = $records
-        | where type? == "summary"
-        | first
-        | get summary?
-        | default ""
+    let summary = $records | extract-summary
 
     let user_records = $records | where type? == "user"
     let timestamps = $user_records | extract-timestamps
@@ -440,33 +511,73 @@ export def resolve-piped-sessions [input: any]: nothing -> any {
     }
 }
 
+# Discover session files inside a single directory.
+# Returns rows {path, parent_session_id} where parent_session_id is the
+# parent session UUID for subagent files (basename of `<uuid>/subagents/`),
+# null for top-level session files.
+export def discover-session-files [dir: path]: nothing -> table {
+    let top_level = glob ($dir | path join "*.jsonl")
+        | where $it =~ $UUID_JSONL_PATTERN
+        | each {|p| {path: $p parent_session_id: null} }
+
+    let subagent_files = glob ($dir | path join "*/subagents/*.jsonl")
+        | where $it =~ $AGENT_JSONL_PATTERN
+        | each {|p|
+            # Why: layout is `<dir>/<uuid>/subagents/agent-*.jsonl`,
+            # so the parent UUID is two levels up from the file.
+            {path: $p parent_session_id: ($p | path dirname | path dirname | path basename)}
+        }
+
+    $top_level | append $subagent_files
+}
+
 # Parse Claude Code sessions for structured information
 export def sessions [
     ...paths: path # Session files or directories to parse (default: current project sessions)
+    --all-projects # Enumerate sessions across every project under ~/.claude/projects
 ]: [nothing -> table string -> table] {
     let input = $in
-    let target_paths = $paths
+
+    if $all_projects and ($paths | is-not-empty) {
+        error make {msg: "--all-projects and explicit paths are mutually exclusive"}
+    }
+
+    let target_paths = if $all_projects {
+        let projects_dir = $env.HOME | path join ".claude" "projects"
+        if not ($projects_dir | path exists) {
+            error make {msg: "No projects directory found"}
+        }
+        ls $projects_dir | where type == dir | get name
+    } else {
+        $paths
         | if ($in | is-empty) {
             if ($input | describe) == "string" { [$input] } else { [(get-sessions-dir)] }
         } else { }
+    }
 
-    let session_files = $target_paths
+    let session_rows = $target_paths
         | each {|p|
             if not ($p | path exists) {
                 error make {msg: $"Path not found: ($p)"}
             }
             if ($p | path type) == "dir" {
-                glob ($p | path join "*.jsonl")
-            } else { [$p] }
+                discover-session-files $p
+            } else {
+                # Why: explicit file paths skip the layout-based parent
+                # discovery — caller already pointed us at the file.
+                [{path: $p parent_session_id: null}]
+            }
         }
         | flatten
-        | where $it =~ $UUID_JSONL_PATTERN
+        | where { $in.path =~ $UUID_JSONL_PATTERN or $in.path =~ $AGENT_JSONL_PATTERN }
 
-    if ($session_files | is-empty) {
+    if ($session_rows | is-empty) {
         error make {msg: "No session files found"}
     }
 
-    $session_files | each { parse-session-file }
+    $session_rows | each {|row|
+        $row.path | parse-session-file | insert parent_session_id $row.parent_session_id
+    }
 }
 
 # Parse session file into raw data with selectable columns
@@ -497,6 +608,7 @@ export def parse-session [
     --tool-errors # Include tool_errors column (count of failed tool calls)
     --ask-user-count # Include ask_user_count column
     --plan-mode-used # Include plan_mode_used column (bool)
+    --tool-counts # Include tool_counts column (record keyed by tool name: TaskCreate/Update/Stop, Monitor, ToolSearch)
     # Derived metrics
     --turn-count # Include turn_count column (user→assistant turns)
     --assistant-msg-count # Include assistant_msg_count column
@@ -538,26 +650,27 @@ export def parse-session [
         # Lazy extraction - only compute when flags require it
         let need_file_ops = $all or $edited_files or $read_files
         let need_meta = $all or $session_id or $slug or $version or $cwd or $git_branch
-        let need_tool_stats = $all or $bash_commands or $bash_count or $skill_invocations or $tool_errors or $ask_user_count or $plan_mode_used
+        let need_tool_stats = $all or $bash_commands or $bash_count or $skill_invocations or $tool_errors or $ask_user_count or $plan_mode_used or $tool_counts
         let need_metrics = $all or $turn_count or $assistant_msg_count or $tool_call_count
         let need_timestamps = $all or $first_timestamp or $last_timestamp
 
         let file_ops = if $need_file_ops { $all_tool_calls | extract-file-operations } else { {} }
         let agent_list = if ($all or $agents) { $all_tool_calls | extract-agents } else { [] }
-        let meta = if $need_meta { $records | where type? != "summary" | first | default {} | extract-session-metadata } else { {} }
+        let meta = if $need_meta { $records | extract-session-metadata } else { {} }
         let tool_stats = if $need_tool_stats {
             let tool_results = $user_records | extract-tool-results
-            $all_tool_calls | extract-tool-stats $tool_results
+            let stats = $all_tool_calls | extract-tool-stats $tool_results
+            # Why: 2.1.x replaced EnterPlanMode tool calls with top-level
+            # permission-mode records. Treat either signal as plan-mode.
+            let from_records = $records | where type? == "permission-mode" | get permissionMode? | any { $in == "plan" }
+            $stats | upsert plan_mode_used ($stats.plan_mode_used or $from_records)
         } else { {} }
         let metrics = if $need_metrics {
             $user_records | extract-derived-metrics $assistant_records $all_tool_calls
         } else { {} }
 
         let sum = if ($all or $summary) {
-            $records | where type? == "summary"
-            | first
-            | get summary?
-            | default ""
+            $records | extract-summary
         } else { "" }
 
         let timestamps = if $need_timestamps { $user_records | extract-timestamps } else { {first: null last: null} }
@@ -588,6 +701,7 @@ export def parse-session [
             {include: $tool_errors field: tool_errors value: $tool_stats.tool_errors?}
             {include: $ask_user_count field: ask_user_count value: $tool_stats.ask_user_count?}
             {include: $plan_mode_used field: plan_mode_used value: $tool_stats.plan_mode_used?}
+            {include: $tool_counts field: tool_counts value: $tool_stats.tool_counts?}
             # Derived metrics
             {include: $turn_count field: turn_count value: $metrics.turn_count?}
             {include: $assistant_msg_count field: assistant_msg_count value: $metrics.assistant_msg_count?}
@@ -612,10 +726,85 @@ export def sanitize-topic []: string -> string {
     | str substring 0..<50
 }
 
+# Collapse whitespace (newlines, tabs, runs of spaces) to single spaces
+# and truncate to a max length, appending an ellipsis on truncation.
+def to-one-line [max: int]: string -> string {
+    str replace --all --regex '\s+' ' '
+    | str trim
+    | if ($in | str length) > $max {
+        $in | str substring 0..<$max | $in + "..."
+    } else { }
+}
+
+# One-line summary of a tool_use input record for placeholder rendering.
+# Picks the most informative scalar field (command, file_path, query, etc.)
+# and falls back to a compact NUON dump.
+def summarize-tool-input [input: any]: nothing -> string {
+    if not (($input | describe) | str starts-with "record") { return "" }
+    let cols = $input | columns
+    let preferred = ["command" "file_path" "path" "pattern" "query" "url" "skill" "subagent_type" "description"]
+    let key = $preferred | where {|k| $k in $cols } | get 0?
+    if $key != null {
+        let v = $input | get $key
+        if ($v | describe) == "string" { $v } else { $v | to nuon }
+    } else {
+        $input | to nuon
+    }
+}
+
+# Render a single content block as one line of markdown for --tools mode.
+# text -> text as-is; tool_use/tool_result -> blockquote placeholder.
+def render-block []: record -> string {
+    let block = $in
+    match $block.type? {
+        "text" => ($block.text? | default "")
+        "tool_use" => {
+            let summary = summarize-tool-input $block.input? | to-one-line 120
+            $"> [($block.name? | default 'tool'): ($summary)]"
+        }
+        "tool_result" => {
+            let raw = $block.content?
+            let txt = match ($raw | describe) {
+                "string" => $raw
+                $t if ($t =~ '^(list|table)') => {
+                    $raw | where type? == "text" | get text --optional | str join " "
+                }
+                _ => ""
+            }
+            let n = $txt | str length
+            let err = if $block.is_error? == true { " error" } else { "" }
+            $"> [result($err): ($n) chars]"
+        }
+        _ => ""
+    }
+}
+
+# Render a record's content blocks as markdown text. With --tools, tool_use
+# and tool_result blocks become one-line blockquote placeholders interleaved
+# with text. Without --tools, behaves like extract-text-content.
+def render-content [--tools]: record -> string {
+    let content = $in.message?.content?
+    match ($content | describe) {
+        "string" => { $content }
+        $t if ($t =~ '^(list|table)') => {
+            if $tools {
+                $content
+                | each { render-block }
+                | where { $in | is-not-empty }
+                | str join "\n\n"
+            } else {
+                $content | where type? == "text" | get text --optional | str join
+            }
+        }
+        _ => ""
+    }
+}
+
 # Export session dialogue to structured data with markdown
 export def export-session [
     topic?: string # Topic for filename (default: session summary)
     --session (-s): string@"nu-complete claude sessions" # Session UUID (uses most recent if not specified)
+    --tools # Render tool_use/tool_result blocks as one-line blockquote placeholders (default: drop)
 ]: [nothing -> record table -> table] {
     let input = $in
     let piped_files = resolve-piped-sessions $input
@@ -636,12 +825,7 @@ export def export-session [
             error make {msg: "Session file is empty"}
         }
 
-        # Extract summary from summary record
-        let summary = $records
-            | where type? == "summary"
-            | first
-            | get summary?
-            | default ""
+        let summary = $records | extract-summary
 
         # Determine topic: argument > summary > "session"
         let resolved_topic = $topic
@@ -661,7 +845,7 @@ export def export-session [
         let dialogue = $records
             | where type? in ["user" "assistant"]
             | where isMeta? != true
-            | insert text { extract-text-content }
+            | insert text { if $tools { render-content --tools } else { extract-text-content } }
             | where { $in.text | str trim | is-not-empty }
             # Keep assistant messages; filter user messages starting with system prefixes
             | where {|r| $r.type != "user" or ($SYSTEM_PREFIXES | all {|p| not ($r.text | str starts-with $p) }) }

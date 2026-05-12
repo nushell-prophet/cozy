@@ -4,20 +4,27 @@ Modern, beginner-friendly terminal environment for AI agents, running inside `do
 
 ## Architecture
 
+The Dockerfile is thin: install Homebrew, pre-install nushell as a cached layer, COPY repo bits, then hand off to `bootstrap.nu`. All install logic lives in `sandbox-toolkit/install/bootstrap.nu`, which serves both the docker-build path and the host-install path (via `bootstrap.sh`).
+
 ```
-Dockerfile
+Dockerfile (thin)
 ├── Base: docker/sandbox-templates:shell (Ubuntu, git, curl, Python, Node.js, Go, rg, jq, gh)
-├── apt: procps, file, gcc, libc6-dev
-├── Homebrew tools: nushell, helix, lazygit, zellij, broot, fzf, git-delta, git-lfs, jj, visidata, bat, topiary, fd
-├── Vendored modules and dotfiles: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, topiary-nushell, dotfiles, my-claude-skills, nushell-skills, nu-multiproof
-├── sandbox-toolkit/: runtime toolkit (the `cozy` overlay) — lives in-repo, copied or cloned into ~/repos/cozy/ at build time
-│   └── vendor/ dir (default) or git clone (with --build-arg MODULES_SOURCE=clone)
-├── Dotfiles: vendored from dotfiles/ sibling repo, deployed via toolkit push-to-machine
-│   └── configs for helix, lazygit, zellij, broot, nushell, claude, jj, wezterm
-├── Claude Code: installed via official install script (https://claude.ai/install.sh), late layer
-├── Nushell autoload scripts: copied into ~/.config/nushell/autoload/
-├── docker-files/global-claude.md: appended to sandbox ~/.claude/CLAUDE.md (tool catalog for Claude)
-└── MCP: nushell registered as stdio MCP server via `claude mcp add`
+├── RUN install Homebrew + brew install nushell (cached layer)
+├── COPY vendor/ → /tmp/vendor/; sandbox-toolkit/ + docker-files/ → ~/repos/cozy/
+├── RUN ensure-nu.sh — smoke-test latest nu against bootstrap.nu, fall back to pinned version if pre-1.0 syntax drifted
+└── RUN nu bootstrap.nu — all install logic below
+
+bootstrap.nu (also entry point for host install via bootstrap.sh)
+├── Step 0: setup-docker-system (gated on /etc/sandbox-persistent.sh) — apt deps, pbcopy shim, apt proxy, runtime env exports
+├── Step 1: brew install rest of tools (fzf, helix, lazygit, zellij, broot, git-delta, visidata, bat, topiary, fd, jj, git-lfs)
+├── Step 2: XDG git config (~/.config/git/{config,ignore})
+├── Step 3: populate ~/repos/ from /tmp/vendor (docker) or cozy_root/vendor (host); modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, topiary-nushell, dotfiles, my-claude-skills, nushell-skills, nu-multiproof
+├── Step 3.5: copy docker-files/nushell-autoload/*.nu → ~/.config/nushell/autoload/; .visidatarc → ~/
+├── Steps 4–5: dotfiles deploy via `toolkit push-to-machine --docker`; install Claude skills via `toolkit install-skills --all`
+├── Step 6: append docker-files/global-claude.md to ~/.claude/CLAUDE.md (tool catalog)
+├── Step 7: broot init
+├── Step 8: topiary install (binary + grammar via vendored topiary-nushell + config)
+└── Step 9: Claude Code install + register nushell as stdio MCP via `claude mcp add`
 ```
 
 ## Build & Run
@@ -60,6 +67,8 @@ After Dockerfile changes: rebuild image, then recreate sandbox (delete + run).
 - Keybindings: `vendor/dotfiles/zellij/config.kdl` (README keybinding docs drift from this)
 - Vendored modules: `toolkit/vendor.yml` via `toolkit/vendor.nu` (not the CLAUDE.md architecture list)
 - `cozy` command surface: `sandbox-toolkit/mod.nu` exports
+- Install step order (host + docker): `sandbox-toolkit/install/bootstrap.nu` — single entry point for both build paths
+- Pinned nushell fallback: `sandbox-toolkit/install/.nushell-version` — consumed by `ensure-nu.sh` when latest `nu` can't parse `bootstrap.nu`
 - CHANGELOG entries are historical — cross-reference sequential versions for contradictions
 
 ## Notes

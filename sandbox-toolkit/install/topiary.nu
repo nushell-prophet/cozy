@@ -66,9 +66,19 @@ export def install []: nothing -> nothing {
         print $"  (ansi green)grammar(ansi reset): cached"
     } else {
         if (which gcc | is-empty) {
-            print "  Installing gcc (needed to compile tree-sitter grammar)..."
-            ^sudo apt-get update -qq
-            ^sudo apt-get install -y -qq gcc libc6-dev
+            match $nu.os-info.name {
+                "linux" => {
+                    print "  Installing gcc (needed to compile tree-sitter grammar)..."
+                    ^sudo apt-get update -qq
+                    ^sudo apt-get install -y -qq gcc libc6-dev
+                }
+                "macos" => {
+                    error make {msg: "gcc not found — install Xcode Command Line Tools: xcode-select --install"}
+                }
+                $other => {
+                    error make {msg: $"gcc not found and no install path for OS ($other) — install gcc manually"}
+                }
+            }
         }
         print "  Building tree-sitter-nu grammar..."
         let tmp = mktemp -d
