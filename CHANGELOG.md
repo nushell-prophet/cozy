@@ -67,7 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Default vendoring now downloads GitHub tarballs instead of full git clones — faster builds, no `.git/` bloat; pass `--build-arg MODULES_SOURCE=clone` for the old clone-based build (302275c)
+- Default vendoring now downloads GitHub tarballs instead of full git clones — faster builds, no `.git/` bloat (302275c)
 - `vendor.nu` modules table extracted into `vendor.yml` as the single source of truth for vendored modules (425ebe8)
 - Nushell `vars_menu` rewritten to use fzf via `executehostcommand` — native menu broke after nushell 0.101 scope changes (`scope variables` inside menu closures no longer sees REPL variables) (56cdac1)
 - `working_dirs_cd_menu` switched to `GROUP BY cwd ORDER BY MAX(start_timestamp)` — the previous `DISTINCT cwd ORDER BY id DESC` returned every row because SQLite resolved `id` by adding it to the DISTINCT key (a1619a7)
