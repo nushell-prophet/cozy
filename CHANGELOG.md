@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-05-14
+
+### Added
+
+- `dotfiles/toolkit push-to-machine --delete-orphans` flag — removes machine files whose repo source has been deleted upstream. Without it, removed dotfiles persisted indefinitely in user homes (mirrors the same problem `populate-repos` solved in 0.2.0 for vendored modules). Bootstrap still calls `push-to-machine --docker` without this flag — opt-in. (24e1ce7)
+
+### Changed
+
+- WezTerm `cmd+shift+n` / `alt+cmd+n` now launch a fresh WezTerm instance via `open -n -a WezTerm --args start --always-new-process` instead of `SpawnCommandInNewWindow`. The old action reused the same OS process, so new windows ended up under the existing Dock icon. `--always-new-process` is required: without it the new wezterm-gui detects the running mux over its unix socket and delegates the spawn back, collapsing into the original Dock icon. Works around wezterm issue #6202 where `wezterm start --always-new-process` opens in the background on macOS. (7269696)
+- Vendored `nu-cmd-stack` — `cmd-stack init` now accepts `--quiet` / `--force-keybindings` directly (previously only on `apply-keybindings`), and `apply-keybindings` made private. Interactive `history` selector passes `--quiet` through. (a8af768)
+
+### Removed
+
+- Vendored dotfiles slash commands `/commit-git`, `/git-improve-history`, and the `commit-git` agent — superseded by upstream Claude Code's built-in `/commit-git` skill (now listed in the global skills catalog). (a03aaf2)
+
+### Fixed
+
+- `env.nu` also defaults `XDG_CONFIG_HOME` from `$HOME` when unset, not just `XDG_DATA_HOME` — the `TOPIARY_*` exports and `vd` alias further down read `XDG_CONFIG_HOME` and crashed nu on a fresh macOS shell or sandbox shell predating bootstrap with "Cannot find column XDG_CONFIG_HOME". Extends the 0.2.0 XDG_DATA_HOME fallback. (a2e6bfe)
+- `cozy install bootstrap` skips the `claude.ai/install.sh` curl|bash when `claude` is already on PATH — e.g. inside `sbx run claude`, whose base image ships Claude Code pre-installed, the reinstall was wasted work. (e67ed1d)
+
 ## [0.2.1] - 2026-05-14
 
 ### Added
@@ -293,7 +313,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sandbox image test script with tool launch verification (a333bb6)
 - Supports both `arm64` and `amd64` architectures via Docker sandbox
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.2.1...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.2.2...HEAD
+[0.2.2]: https://github.com/nushell-prophet/cozy/compare/0.2.1...0.2.2
 [0.2.1]: https://github.com/nushell-prophet/cozy/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/nushell-prophet/cozy/compare/0.1.1...0.2.0
 [0.1.1]: https://github.com/nushell-prophet/cozy/compare/0.1.0...0.1.1
