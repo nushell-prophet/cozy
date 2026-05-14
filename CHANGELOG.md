@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-05-14
+
+### Added
+
+- `bootstrap.sh` / `bootstrap.nu` gain `--force` flag, and host installs now refuse to clobber existing user configs on first run — fail-fast guard checks `XDG_CONFIG_HOME/{nushell,helix,zellij,lazygit,broot,jj,git}`, `~/.claude/`, `~/.visidatarc`, and `~/repos/`; lists conflicts and exits with instructions. Re-runs skip the guard via a `~/.cozy-installed` stamp written on successful completion; `--force` is the escape hatch for partial-failure recovery. (b459662)
+
+### Fixed
+
+- macOS host install now exports `XDG_CONFIG_HOME="$HOME/.config"` to the user's shell rc (`~/.zshrc` or `~/.bash_profile`, picked by `$SHELL`), wrapped in `# >>> cozy env >>>` markers. Without this, `nu` on macOS read defaults from `~/Library/Application Support/nushell/` and all the dotfiles cozy had just deployed to `~/.config/nushell/` were silently invisible. (40d94b7)
+
 ## [0.2.0] - 2026-05-12
 
 ### Added
@@ -283,7 +293,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sandbox image test script with tool launch verification (a333bb6)
 - Supports both `arm64` and `amd64` architectures via Docker sandbox
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.2.1...HEAD
+[0.2.1]: https://github.com/nushell-prophet/cozy/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/nushell-prophet/cozy/compare/0.1.1...0.2.0
 [0.1.1]: https://github.com/nushell-prophet/cozy/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/nushell-prophet/cozy/compare/0.0.9...0.1.0
