@@ -53,10 +53,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `bootstrap.sh` / `bootstrap.nu` gain `--force` flag, and host installs now refuse to clobber existing user configs on first run — fail-fast guard checks `XDG_CONFIG_HOME/{nushell,helix,zellij,lazygit,broot,jj,git}`, `~/.claude/`, `~/.visidatarc`, and `~/repos/`; lists conflicts and exits with instructions. Re-runs skip the guard via a `~/.cozy-installed` stamp written on successful completion; `--force` is the escape hatch for partial-failure recovery. (b459662)
+- Third install path: a Docker sandbox kit. `kit/spec.yaml` is a `kind: mixin` layered onto the standard `shell` agent — `environment.variables` mirrors the Dockerfile ENV block, `commands.install` mirrors the four `RUN` lines (Homebrew install → `brew install nushell` → `ensure-nu.sh` → `nu bootstrap.nu`). No changes to `bootstrap.nu`: it already derives `cozy_root` from `path self`, and the kit drops sources at `/home/agent/repos/cozy/` so that path lines up. Eliminates the `docker build` step for users who only want the cozy environment on top of stock `shell`.
+- `toolkit/pack-kit.nu` — stages `kit/files/home/repos/cozy/{sandbox-toolkit,docker-files,vendor,toolkit}/` from the repo root. Run before `sbx run shell --kit ./kit/` or `sbx kit pack ./kit/`. Repo layout stays flat; the kit's nested `files/` tree is gitignored and assembled on demand.
+- `kit/spec.yaml` `network.allowedDomains` is provisional — derived by walking the install path, not verified against a real `sbx run`. First successful run should audit what fires and prune what doesn't.
 
 ### Fixed
 
 - macOS host install now exports `XDG_CONFIG_HOME="$HOME/.config"` to the user's shell rc (`~/.zshrc` or `~/.bash_profile`, picked by `$SHELL`), wrapped in `# >>> cozy env >>>` markers. Without this, `nu` on macOS read defaults from `~/Library/Application Support/nushell/` and all the dotfiles cozy had just deployed to `~/.config/nushell/` were silently invisible. (40d94b7)
+
 
 ## [0.2.0] - 2026-05-12
 
