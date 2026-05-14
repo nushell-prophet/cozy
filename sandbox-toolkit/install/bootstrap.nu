@@ -17,6 +17,10 @@
 #                `toolkit/vendor.nu --local` (rsync) before mirroring it
 #                under ~/repos/. Without this flag, vendor/ is used as-is —
 #                no GitHub fetching, no rsync.
+#   --force      Skip the host-install safety check that refuses to clobber
+#                existing user configs under XDG_CONFIG_HOME, ~/.claude/,
+#                ~/.visidatarc, and ~/repos/. Also needed to recover from
+#                a partial first-run failure (stamp file not yet written).
 
 use topiary.nu
 use claude.nu
@@ -27,12 +31,19 @@ const cozy_root = path self | path dirname | path dirname | path dirname
 
 export def main [
     --local # force-refresh vendor/ from sibling repos via vendor.nu --local
+    --force # skip the host-install safety check that refuses to clobber existing user configs
 ] {
     # Step 0 — Docker-sandbox system setup, gated on the marker file the
     # base image ships (/etc/sandbox-persistent.sh — what we append claude
     # env exports to below). Present in docker-build AND in-sandbox re-runs,
     # absent on macOS host install — exactly the partition we want.
-    if ('/etc/sandbox-persistent.sh' | path exists) { setup-docker-system }
+    if ('/etc/sandbox-persistent.sh' | path exists) {
+        setup-docker-system
+    } else if not $force {
+        # Host install: refuse to clobber existing user configs. Skipped in
+        # Docker (clean sandbox) and on re-runs (via ~/.cozy-installed stamp).
+        check-no-clobber
+    }
 
     # Step 1 — brew installs
     if (which brew | is-empty) {
@@ -118,6 +129,12 @@ export def main [
     claude install
     ^claude mcp add --scope user --transport stdio nushell -- (which nu | get path.0) --mcp
 
+    # Stamp: tells check-no-clobber on re-runs that cozy owns these dirs
+    # now, so its guard doesn't trip on cozy's own deployed files. Written
+    # last so a partial failure leaves no stamp — user has to pass --force
+    # to recover, which is a reasonable speed bump.
+    '' | save -f ($nu.home-dir | path join '.cozy-installed')
+
     # If setup-docker-system just appended env exports to /etc/sandbox-persistent.sh
     # but the user's interactive shell predates this run, those exports won't be
     # in their bash env yet — tools like helix, jj, etc. would launch without
@@ -130,6 +147,47 @@ export def main [
         print "      current shell predates the bootstrap. Run `exec bash -l` to start"
         print "      a fresh login shell before launching nu."
     }
+}
+
+# Host-install safety guard. Refuses to proceed if XDG_CONFIG_HOME dirs or
+# other deploy targets already contain user files — without this, a Mac
+# user with their own helix/zellij/nushell configs would silently lose them
+# at step 3.5 (autoload wipe) or step 4 (push-to-machine, which writes
+# config.nu/env.nu/config.toml/etc. with --force). Skipped on re-runs via
+# ~/.cozy-installed stamp, and entirely with --force.
+#
+# Conservative by design: checks dirs (not individual files in
+# paths-docker.csv) so the user is asked even when their custom files
+# wouldn't actually conflict. --force is the escape hatch.
+def check-no-clobber [] {
+    let stamp = $nu.home-dir | path join '.cozy-installed'
+    if ($stamp | path exists) { return }
+
+    let xdg_config = $env.XDG_CONFIG_HOME? | default ($nu.home-dir | path join '.config')
+    let candidates = [
+        ($xdg_config | path join 'nushell')
+        ($xdg_config | path join 'helix')
+        ($xdg_config | path join 'zellij')
+        ($xdg_config | path join 'lazygit')
+        ($xdg_config | path join 'broot')
+        ($xdg_config | path join 'jj')
+        ($xdg_config | path join 'git')
+        ($nu.home-dir | path join '.claude')
+        ($nu.home-dir | path join '.visidatarc')
+        ($nu.home-dir | path join 'repos')
+    ]
+    let existing = $candidates | where {|p|
+        ($p | path exists) and (
+            ($p | path type) != 'dir' or (ls --all $p | is-not-empty)
+        )
+    }
+    if ($existing | is-empty) { return }
+
+    print "cozy host install would clobber existing entries:"
+    for p in $existing { print $"  ($p)" }
+    print ""
+    print "Back them up or move aside, then re-run with --force to proceed."
+    exit 1
 }
 
 # Docker-only: what the USER root layers in the Dockerfile used to do.

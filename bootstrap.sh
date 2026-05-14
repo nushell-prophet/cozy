@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Host entry to the same installer the Dockerfile runs.
-# Usage: ./bootstrap.sh [--local]
+# Usage: ./bootstrap.sh [--local] [--force]
 #   --local : forwarded to bootstrap.nu, which then calls toolkit/vendor.nu --local
 #             (rsync from sibling repos instead of github tarball clone).
+#   --force : skip the host-install safety check that refuses to clobber
+#             existing user configs (see bootstrap.nu's check-no-clobber).
 set -euo pipefail
 cd "$(dirname "$0")"
 command -v brew >/dev/null || { echo "Install Homebrew first: https://brew.sh"; exit 1; }
