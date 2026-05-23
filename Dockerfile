@@ -28,19 +28,19 @@ RUN brew install nushell
 
 # Stage cozy repo bits for bootstrap.nu:
 #  - vendor/  → /tmp/vendor/        (bootstrap fans it out under ~/repos/)
-#  - sandbox-toolkit/ + docker-files/ → ~/repos/cozy/{sandbox-toolkit,docker-files}/
+#  - cozy-module/ + docker-files/ → ~/repos/cozy/{cozy-module,docker-files}/
 #    so bootstrap.nu can resolve cozy_root from `path self`.
 COPY --chown=agent:agent vendor/ /tmp/vendor/
-COPY --chown=agent:agent sandbox-toolkit/ /home/agent/repos/cozy/sandbox-toolkit/
+COPY --chown=agent:agent cozy-module/ /home/agent/repos/cozy/cozy-module/
 COPY --chown=agent:agent docker-files/ /home/agent/repos/cozy/docker-files/
 
 # Smoke-test latest nu against bootstrap.nu; download pinned (.nushell-version)
 # into ~/.local/bin/nu if latest can't parse it — guards against pre-1.0 drift.
-RUN /home/agent/repos/cozy/sandbox-toolkit/install/ensure-nu.sh
+RUN /home/agent/repos/cozy/cozy-module/install/ensure-nu.sh
 
 # All install logic lives in bootstrap.nu — same code path the host install uses.
 # Docker mode uses sudo only where unavoidable (apt itself, /etc/apt proxy
 # file); pbcopy goes to ~/.local/bin and git identity into XDG ~/.config/git/.
-RUN nu /home/agent/repos/cozy/sandbox-toolkit/install/bootstrap.nu
+RUN nu /home/agent/repos/cozy/cozy-module/install/bootstrap.nu
 
 COPY --chown=agent:agent README.md /home/agent/workspace/README.md

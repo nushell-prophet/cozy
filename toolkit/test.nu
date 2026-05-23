@@ -42,7 +42,7 @@ const files = [
 ]
 
 const dirs = [
-    "/home/agent/repos/cozy/sandbox-toolkit"
+    "/home/agent/repos/cozy/cozy-module"
     "/home/agent/repos/nu-goodies"
     "/home/agent/repos/nu-kv"
     "/home/agent/repos/dotnu"

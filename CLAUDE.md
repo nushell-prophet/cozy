@@ -4,13 +4,13 @@ Modern, beginner-friendly terminal environment for AI agents, running inside `do
 
 ## Architecture
 
-The Dockerfile is thin: install Homebrew, pre-install nushell as a cached layer, COPY repo bits, then hand off to `bootstrap.nu`. All install logic lives in `sandbox-toolkit/install/bootstrap.nu`, which serves both the docker-build path and the host-install path (via `bootstrap.sh`).
+The Dockerfile is thin: install Homebrew, pre-install nushell as a cached layer, COPY repo bits, then hand off to `bootstrap.nu`. All install logic lives in `cozy-module/install/bootstrap.nu`, which serves both the docker-build path and the host-install path (via `bootstrap.sh`).
 
 ```
 Dockerfile (thin)
 ├── Base: docker/sandbox-templates:shell (Ubuntu, git, curl, Python, Node.js, Go, rg, jq, gh)
 ├── RUN install Homebrew + brew install nushell (cached layer)
-├── COPY vendor/ → /tmp/vendor/; sandbox-toolkit/ + docker-files/ → ~/repos/cozy/
+├── COPY vendor/ → /tmp/vendor/; cozy-module/ + docker-files/ → ~/repos/cozy/
 ├── RUN ensure-nu.sh — smoke-test latest nu against bootstrap.nu, fall back to pinned version if pre-1.0 syntax drifted
 └── RUN nu bootstrap.nu — all install logic below
 
@@ -66,9 +66,9 @@ After Dockerfile changes: rebuild image, then recreate sandbox (delete + run).
 
 - Keybindings: `vendor/dotfiles/zellij/config.kdl` (README keybinding docs drift from this)
 - Vendored modules: `toolkit/vendor.yml` via `toolkit/vendor.nu` (not the CLAUDE.md architecture list)
-- `cozy` command surface: `sandbox-toolkit/mod.nu` exports
-- Install step order (host + docker): `sandbox-toolkit/install/bootstrap.nu` — single entry point for both build paths
-- Pinned nushell fallback: `sandbox-toolkit/install/.nushell-version` — consumed by `ensure-nu.sh` when latest `nu` can't parse `bootstrap.nu`
+- `cozy` command surface: `cozy-module/mod.nu` exports
+- Install step order (host + docker): `cozy-module/install/bootstrap.nu` — single entry point for both build paths
+- Pinned nushell fallback: `cozy-module/install/.nushell-version` — consumed by `ensure-nu.sh` when latest `nu` can't parse `bootstrap.nu`
 - CHANGELOG entries are historical — cross-reference sequential versions for contradictions
 
 ## Notes

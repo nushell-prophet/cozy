@@ -9,8 +9,8 @@ set -euo pipefail
 cd "$(dirname "$0")"
 command -v brew >/dev/null || { echo "Install Homebrew first: https://brew.sh"; exit 1; }
 export PATH="$HOME/.local/bin:$PATH"
-sandbox-toolkit/install/ensure-nu.sh
-nu sandbox-toolkit/install/bootstrap.nu "$@"
+cozy-module/install/ensure-nu.sh
+nu cozy-module/install/bootstrap.nu "$@"
 
 # Why: on macOS, `nu` without XDG_CONFIG_HOME reads
 # ~/Library/Application Support/nushell/ — but bootstrap.nu deploys dotfiles

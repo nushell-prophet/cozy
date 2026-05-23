@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Renamed `sandbox-toolkit/` → `cozy-module/`. The folder is loaded inside the sandbox as the `cozy` overlay (`overlay use ~/repos/cozy/cozy-module/ as cozy --prefix`); aligning the directory name with that identity. Affects `Dockerfile`, `bootstrap.sh`, `CLAUDE.md`, `cozy-module/install/bootstrap.nu` (`populate-repos` mirror loop + `cozy_root` derivation comment), `cozy-module/README.md` title, `docker-files/nushell-autoload/module-imports.nu`, `toolkit/test.nu`, and `.claude/skills/post-build-check/SKILL.md`.
+
 ## [0.2.2] - 2026-05-14
 
 ### Added

@@ -1,4 +1,4 @@
-# sandbox-toolkit
+# cozy-module
 
 Runtime toolkit for [cozy](https://github.com/nushell-prophet/cozy) sandboxes. Loaded as the `cozy` overlay inside the container.
 

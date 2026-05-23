@@ -6,7 +6,7 @@ overlay new others
 # Nushell Modules
 overlay use ~/repos/nu-goodies/nu-goodies
 
-overlay use ~/repos/cozy/sandbox-toolkit/ as cozy --prefix
+overlay use ~/repos/cozy/cozy-module/ as cozy --prefix
 
 $env.kv.path = (
     if $env.WORKSPACE_DIR? != null {

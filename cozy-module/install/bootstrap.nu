@@ -26,7 +26,7 @@ use topiary.nu
 use claude.nu
 
 # Cozy repo root, derived from this file's location:
-# sandbox-toolkit/install/bootstrap.nu  →  three dirnames up
+# cozy-module/install/bootstrap.nu  →  three dirnames up
 const cozy_root = path self | path dirname | path dirname | path dirname
 
 export def main [
@@ -294,7 +294,7 @@ def populate-repos [--local] {
     let repos_dir = $nu.home-dir | path join 'repos'
     mkdir $repos_dir
 
-    # Deposit cozy/sandbox-toolkit/ and cozy/docker-files/ at ~/repos/cozy/.
+    # Deposit cozy/cozy-module/ and cozy/docker-files/ at ~/repos/cozy/.
     # In docker the Dockerfile COPYed them there already, so cozy_root IS
     # ~/repos/cozy/ and the equality check skips this. On host cozy_root
     # points at the workspace mount, so we mirror just those two subdirs
@@ -302,7 +302,7 @@ def populate-repos [--local] {
     let cozy_dst = $repos_dir | path join 'cozy'
     if ($cozy_root | path expand) != ($cozy_dst | path expand) {
         mkdir $cozy_dst
-        for sub in [sandbox-toolkit docker-files] {
+        for sub in [cozy-module docker-files] {
             let dst = $cozy_dst | path join $sub
             if ($dst | path exists) { rm -rf $dst }
             ^cp -r ($cozy_root | path join $sub) $dst

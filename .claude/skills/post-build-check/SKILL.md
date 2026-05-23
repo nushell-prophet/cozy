@@ -47,7 +47,7 @@ Expected names come from `toolkit/vendor.yml` `repo:` keys plus `cozy` itself
 `topiary-nushell`.
 
 Read the live list from vendor.yml rather than hardcoding — the set drifts.
-The Dockerfile only COPYs `docker-files/` and `sandbox-toolkit/` into
+The Dockerfile only COPYs `docker-files/` and `cozy-module/` into
 `~/repos/cozy/`, so `vendor.yml` is not under `~/repos/cozy/toolkit/`. Read it
 from the workspace mount where this skill is invoked (typically the cozy
 workspace itself):
@@ -83,7 +83,7 @@ Empty result = pass.
 ### 4. bootstrap.nu parses on shipped nu
 
 ```nu
-^nu --ide-check 0 ~/repos/cozy/sandbox-toolkit/install/bootstrap.nu
+^nu --ide-check 0 ~/repos/cozy/cozy-module/install/bootstrap.nu
 ```
 
 Hints OK; any line containing `"severity":"error"` is a fail. If this fails,
@@ -135,7 +135,7 @@ sourced.
 
 ```nu
 ^grep -c '# >>> cozy env >>>' /etc/sandbox-persistent.sh   # expect 1
-^nu ~/repos/cozy/sandbox-toolkit/install/bootstrap.nu
+^nu ~/repos/cozy/cozy-module/install/bootstrap.nu
 ^grep -c '# >>> cozy env >>>' /etc/sandbox-persistent.sh   # must still be 1
 ```
 
@@ -203,7 +203,7 @@ If multiple unrelated auto-checks fail simultaneously, suspect `bootstrap.nu`
 didn't complete. Re-run it manually to surface the first error:
 
 ```nu
-^nu ~/repos/cozy/sandbox-toolkit/install/bootstrap.nu
+^nu ~/repos/cozy/cozy-module/install/bootstrap.nu
 ```
 
 Read the output for the first error and surface to the user — do not patch
