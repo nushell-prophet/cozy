@@ -1,3 +1,5 @@
+use _clone-or-fail.nu
+
 const topiary_nushell_url = "https://github.com/blindFS/topiary-nushell.git"
 
 export def main [] { help topiary }
@@ -20,7 +22,6 @@ export def install []: nothing -> nothing {
     let repo_dir = $nu.home-dir | path join git topiary-nushell
     if not ($repo_dir | path exists) {
         print "  Cloning topiary-nushell..."
-        use _clone-or-fail.nu
         _clone-or-fail $topiary_nushell_url $repo_dir
     } else {
         print $"  (ansi green)topiary-nushell(ansi reset): already cloned"
@@ -83,7 +84,6 @@ export def install []: nothing -> nothing {
         }
         print "  Building tree-sitter-nu grammar..."
         let tmp = mktemp -d
-        use _clone-or-fail.nu
         _clone-or-fail https://github.com/nushell/tree-sitter-nu.git $tmp ...[--depth 1]
         ^gcc -shared -fPIC -o ($tmp | path join parser.so) ($tmp | path join src parser.c) ($tmp | path join src scanner.c) $"-I($tmp | path join src)"
         mkdir $cache_dir

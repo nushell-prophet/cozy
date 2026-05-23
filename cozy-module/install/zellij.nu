@@ -1,3 +1,6 @@
+use rust.nu
+use _clone-or-fail.nu
+
 export def main [] { help zellij }
 
 # Build zellij from source without web session sharing.
@@ -10,7 +13,6 @@ export def install []: nothing -> nothing {
     let cargo_bin = $nu.home-dir | path join .cargo bin
 
     # Ensure Rust is installed
-    use rust.nu
     rust install
     if $cargo_bin not-in $env.PATH {
         $env.PATH = ($env.PATH | prepend $cargo_bin)
@@ -19,7 +21,6 @@ export def install []: nothing -> nothing {
     let repo_dir = $nu.home-dir | path join git zellij
     if not ($repo_dir | path exists) {
         print "  Cloning zellij..."
-        use _clone-or-fail.nu
         _clone-or-fail https://github.com/zellij-org/zellij.git $repo_dir
     } else {
         print $"  (ansi green)zellij(ansi reset): repo already cloned"

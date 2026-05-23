@@ -1,3 +1,6 @@
+use rust.nu
+use _clone-or-fail.nu
+
 export def main [] { help nushell }
 
 # Build nushell from source.
@@ -13,7 +16,6 @@ export def install [
     let cargo_bin = $nu.home-dir | path join .cargo bin
 
     # Ensure Rust is installed
-    use rust.nu
     rust install
     if $cargo_bin not-in $env.PATH {
         $env.PATH = ($env.PATH | prepend $cargo_bin)
@@ -22,7 +24,6 @@ export def install [
     let repo_dir = $nu.home-dir | path join git nushell
     if not ($repo_dir | path exists) {
         print "  Cloning nushell..."
-        use _clone-or-fail.nu
         _clone-or-fail https://github.com/nushell/nushell.git $repo_dir
     } else {
         print $"  (ansi green)nushell(ansi reset): repo already cloned"

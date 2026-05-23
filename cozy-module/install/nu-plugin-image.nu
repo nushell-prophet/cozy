@@ -1,3 +1,6 @@
+use rust.nu
+use _clone-or-fail.nu
+
 const repo_url = "https://github.com/fmotalleb/nu_plugin_image.git"
 
 export def main [] { help nu-plugin-image }
@@ -13,7 +16,6 @@ export def install []: nothing -> nothing {
     let cargo_bin = $nu.home-dir | path join .cargo bin
 
     # Ensure Rust is installed
-    use rust.nu
     rust install
     if $cargo_bin not-in $env.PATH {
         $env.PATH = ($env.PATH | prepend $cargo_bin)
@@ -22,7 +24,6 @@ export def install []: nothing -> nothing {
     let repo_dir = $nu.home-dir | path join git nu_plugin_image
     if not ($repo_dir | path exists) {
         print "  Cloning nu_plugin_image..."
-        use _clone-or-fail.nu
         _clone-or-fail $repo_url $repo_dir
     } else {
         print $"  (ansi green)nu_plugin_image(ansi reset): repo already cloned"
