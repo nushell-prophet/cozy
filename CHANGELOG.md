@@ -11,14 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Renamed `sandbox-toolkit/` → `cozy-module/`. The folder is loaded inside the sandbox as the `cozy` overlay (`overlay use ~/repos/cozy/cozy-module/ as cozy --prefix`); aligning the directory name with that identity. Affects `Dockerfile`, `bootstrap.sh`, `CLAUDE.md`, `cozy-module/install/bootstrap.nu` (`populate-repos` mirror loop + `cozy_root` derivation comment), `cozy-module/README.md` title, `docker-files/nushell-autoload/module-imports.nu`, `toolkit/test.nu`, and `.claude/skills/post-build-check/SKILL.md`. (674684d, b7636c8)
-- Vendored `nu-goodies` — adds `fzf-preview` (pipe paths through fzf with a bat preview in the right pane, parses `file:line[:col]` to jump and highlight the matching line, falls back to `file --brief` for binaries) and `in-pane` (open a zellij pane in the current tab running `nu --execute <command>`, closes when nushell exits). (6395628)
-- Vendored `nu-multiproof` — broad refactor refresh from upstream: public `--path` parameter renamed to `--repo` across commands, path-typed parameters retyped from `string` to `path`, `_ots-helpers.nu` split out, several private helpers made non-export. Plus two `tree-hashes` fixes: uuid-suffix the root-cid stage dir to avoid collisions on concurrent runs, and the stale-sig check now also catches bare `<manifest>.sig` (previously only the `.sig` adjacent to a present manifest). (86398d3)
-- Vendored `dotfiles/wezterm` — QuickSelect `file:line` regex now excludes `╭─[`, so nushell error headers like `╭─[/path/to/file.nu:1946:63]` no longer match with the box-drawing prefix included in the selection. (81e25dc)
+- Renamed `sandbox-toolkit/` → `cozy-module/` — aligns the folder name with how it's loaded inside the sandbox (`overlay use ~/repos/cozy/cozy-module/ as cozy --prefix`). Custom scripts importing from the old path need updating. (674684d, b7636c8)
+- Vendored `nu-goodies` — adds `fzf-preview` (pipe paths through fzf with bat preview, jumps to `file:line[:col]`) and `in-pane` (open a zellij pane running `nu --execute <command>`). (6395628)
+- Vendored `nu-multiproof` — upstream refactor refresh: `--path` → `--repo` across commands, path-typed params retyped from `string` to `path`. Plus `tree-hashes` fixes: uuid-suffix the root-cid stage dir, stale-sig check now also catches bare `<manifest>.sig`. (86398d3)
+- Vendored `dotfiles/wezterm` — QuickSelect `file:line` regex excludes `╭─[` so nushell error headers like `╭─[/path/file.nu:1946:63]` no longer match with the box-drawing prefix. (81e25dc)
 
 ### Fixed
 
-- Bootstrap `claude install` step no longer skips the real install during docker build. The `which claude` guard added in e67ed1d matched the `claude install` module command itself (since `use claude.nu` was already in scope), so the install was skipped and the subsequent `^claude mcp add` then failed with `Command 'claude' not found`. Filter `which` results to `type == external` so only an actual binary on PATH counts; preserves the original intent of skipping when claude is pre-installed (e.g. inside `sbx run claude`). (a51a5c7)
+- Bootstrap `claude install` no longer skips the real install during docker build. The `which claude` guard from e67ed1d matched the `claude install` module command itself (added by `use claude.nu`), making the subsequent `^claude mcp add` fail with `Command 'claude' not found`. Now filters to `type == external`. (a51a5c7)
 
 ## [0.2.2] - 2026-05-14
 
