@@ -7,7 +7,7 @@ description: >
   helix, zellij, lazygit, broot, topiary, jj, …), vendored nu modules
   under ~/repos/, dotfiles via `toolkit push-to-machine`, Claude skills,
   Claude Code with the nushell MCP. Same bootstrap.nu the Dockerfile and
-  bootstrap.sh paths use — see sandbox-toolkit/install/bootstrap.nu.
+  bootstrap.sh paths use — see cozy-module/install/bootstrap.nu.
 
 # Mirrors the Dockerfile ENV block. PATH is fully expanded (no ${PATH}
 # reference) — kit-level value substitution behaviour is undocumented;
@@ -49,7 +49,7 @@ network:
 
 # Files arrive at /home/agent/repos/cozy/ before install commands run.
 # bootstrap.nu derives cozy_root from `path self` (three dirnames up from
-# sandbox-toolkit/install/bootstrap.nu), which lands exactly there. The
+# cozy-module/install/bootstrap.nu), which lands exactly there. The
 # vendor/ subdir is consumed by populate-repos via the `cozy_root/vendor`
 # fallback (no /tmp/vendor staging needed).
 #
@@ -69,13 +69,13 @@ commands:
       description: Pre-install nushell
     # Mirrors Dockerfile: RUN ensure-nu.sh — smoke-test latest nu against
     # bootstrap.nu, fall back to pinned .nushell-version on parse failure.
-    - command: /home/agent/repos/cozy/sandbox-toolkit/install/ensure-nu.sh
+    - command: /home/agent/repos/cozy/cozy-module/install/ensure-nu.sh
       user: "1000"
       description: Pin nushell if latest can't parse bootstrap.nu
     # Mirrors Dockerfile: RUN nu bootstrap.nu — the full installer
     # (brew tools, XDG git, ~/repos/, dotfiles, skills, broot, topiary,
     # Claude Code + MCP). Step 0 setup-docker-system fires automatically
     # via the /etc/sandbox-persistent.sh marker shipped by the base image.
-    - command: nu /home/agent/repos/cozy/sandbox-toolkit/install/bootstrap.nu
+    - command: nu /home/agent/repos/cozy/cozy-module/install/bootstrap.nu
       user: "1000"
       description: Run the full cozy installer

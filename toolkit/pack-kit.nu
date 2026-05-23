@@ -2,7 +2,7 @@
 # for `sbx run shell --kit ./kit/` or `sbx kit pack ./kit/`.
 #
 # Why a stage step instead of committing files/ to git: the kit's `files/`
-# tree must mirror the four source dirs (sandbox-toolkit, docker-files,
+# tree must mirror the four source dirs (cozy-module, docker-files,
 # vendor, toolkit) at a nested path (home/repos/cozy/). Committing the
 # nested layout would either duplicate content or rely on symlinks that
 # `sbx kit pack` may or may not resolve. A pack step keeps the repo flat
@@ -18,7 +18,7 @@ mkdir $dst
 # Mirror the four subdirs verbatim. toolkit/ is included for completeness
 # even though bootstrap.nu only invokes toolkit/vendor.nu when vendor/ is
 # empty or --local is passed (neither happens with a pre-populated kit).
-for sub in [sandbox-toolkit docker-files vendor toolkit] {
+for sub in [cozy-module docker-files vendor toolkit] {
     ^cp -r ($cozy_root | path join $sub) $dst
 }
 

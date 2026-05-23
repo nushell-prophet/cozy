@@ -13,20 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Replaced `cozy platform` / `cozy platform apply` with a single narrow command `cozy swap-zellij-super`. The previous module auto-detected the host OS from `WORKSPACE_DIR` path heuristics, but detection was unreliable on Windows (broke in 1a36b53 and even the prior fix didn't hold) and macOS/Linux branches were no-ops. The new command does the one thing that was actually used — rewriting Super→Alt in `~/.config/zellij/config.kdl` for Windows hosts — with no detection, no dispatcher, no platform parameter.
-
-## [0.2.3] - 2026-05-23
-
-### Changed
-
-- Renamed `sandbox-toolkit/` → `cozy-module/` — aligns the folder name with how it's loaded inside the sandbox (`overlay use ~/repos/cozy/cozy-module/ as cozy --prefix`). Custom scripts importing from the old path need updating. (674684d, b7636c8)
-- Vendored `nu-goodies` — adds `fzf-preview` (pipe paths through fzf with bat preview, jumps to `file:line[:col]`) and `in-pane` (open a zellij pane running `nu --execute <command>`). (6395628)
-- Vendored `nu-multiproof` — upstream refactor refresh: `--path` → `--repo` across commands, path-typed params retyped from `string` to `path`. Plus `tree-hashes` fixes: uuid-suffix the root-cid stage dir, stale-sig check now also catches bare `<manifest>.sig`. (86398d3)
-- Vendored `dotfiles/wezterm` — QuickSelect `file:line` regex excludes `╭─[` so nushell error headers like `╭─[/path/file.nu:1946:63]` no longer match with the box-drawing prefix. (81e25dc)
-
-### Fixed
-
-- Bootstrap `claude install` no longer skips the real install during docker build. The `which claude` guard from e67ed1d matched the `claude install` module command itself (added by `use claude.nu`), making the subsequent `^claude mcp add` fail with `Command 'claude' not found`. Now filters to `type == external`. (a51a5c7)
+- Renamed `sandbox-toolkit/` → `cozy-module/`. The folder is loaded inside the sandbox as the `cozy` overlay (`overlay use ~/repos/cozy/cozy-module/ as cozy --prefix`); aligning the directory name with that identity. Affects `Dockerfile`, `bootstrap.sh`, `CLAUDE.md`, `cozy-module/install/bootstrap.nu` (`populate-repos` mirror loop + `cozy_root` derivation comment), `cozy-module/README.md` title, `docker-files/nushell-autoload/module-imports.nu`, `toolkit/test.nu`, `.claude/skills/post-build-check/SKILL.md`, `kit/spec.yaml` (description + install commands), and `toolkit/pack-kit.nu` (`for sub in [...]` mirror loop).
 
 ## [0.2.2] - 2026-05-14
 
