@@ -7,7 +7,15 @@
 #             existing user configs (see bootstrap.nu's check-no-clobber).
 set -euo pipefail
 cd "$(dirname "$0")"
-command -v brew >/dev/null || { echo "Install Homebrew first: https://brew.sh"; exit 1; }
+# Why not auto-install brew: its installer needs sudo to create and chown
+# /opt/homebrew (or /usr/local/Homebrew). Even with NONINTERACTIVE=1 that
+# still prompts for a password or fails without a tty — defeats the
+# no-sudo-prompts flow this script is built around.
+command -v brew >/dev/null || {
+    echo "Install Homebrew first: https://brew.sh"
+    echo '  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
+    exit 1
+}
 export PATH="$HOME/.local/bin:$PATH"
 cozy-module/install/ensure-nu.sh
 nu cozy-module/install/bootstrap.nu "$@"
