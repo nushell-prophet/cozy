@@ -1,12 +1,14 @@
-# Cozy (Docker-based convenient terminal environment)
+# Cozy
 
-I spent a huge amount of time tuning my terminal setup to make it convenient and powerful. I believe terminal newbies can use the setup that I publish as an inspiration or as a tool that works out of the box (though I really encourage everybody to build their own setup by themselves - as I believe it is the only way to mastery).
+A convenient terminal environment for AI sandboxes (and macOS hosts).
 
-## Preamble
+Years of tuning my own terminal setup, packaged so others can pick it up as inspiration or as a working starting point. I still encourage everyone to roll their own eventually — it's the only path to mastery.
 
-This is a work-in-progress educational project with video demos on the way.
+This is a work-in-progress educational project; video demos are on the way.
 
 ## Quick start
+
+Cozy started on `docker sandbox` and that's still my primary target, so the quick start uses Docker. Internally the Dockerfile is a thin wrapper around `bootstrap.nu` — the same installer used by [Install elsewhere](#install-elsewhere) below. Every supported target (Docker, `sbx`, Apple container, macOS host) lands on the same environment.
 
 First, install Docker Desktop https://www.docker.com/products/docker-desktop/
 
@@ -15,7 +17,7 @@ First, install Docker Desktop https://www.docker.com/products/docker-desktop/
 git clone https://github.com/nushell-prophet/cozy
 cd cozy
 
-# Build the image (execute the command from the root of this repo)
+# Build the image — runs the shared bootstrap.nu installer inside the image
 docker build --tag cozy:latest .
 
 # create local container. Base images for the agents are provided by Docker.
@@ -25,16 +27,20 @@ docker sandbox create --name cozy-test --tag cozy:latest shell example-workspace
 docker sandbox exec -it cozy-test nu --login --execute 'zellij attach -c cozy-test'
 ```
 
-## Host install
+## Install elsewhere
 
-To install the same stack on your macOS host (nushell, modules, dotfiles, configs):
+`bootstrap.sh` exposes the same `bootstrap.nu` installer the Dockerfile runs, as a host-callable script. It deploys the full environment (nushell, modules, dotfiles, configs) into virtually any Ubuntu-based sandbox or directly onto a macOS host — for example `sbx` with a pure `shell` agent, an Apple container running Ubuntu, or a plain macOS install.
+
+**Prerequisite:** Homebrew (https://brew.sh). `bootstrap.sh` uses `brew` for nushell and the rest of the toolchain, and exits early if it isn't on `PATH`.
 
 ```sh
 git clone https://github.com/nushell-prophet/cozy
 cd cozy
-./bootstrap.sh             # host install
+./bootstrap.sh             # install
 ./bootstrap.sh --local     # refresh vendor/ from sibling repos (development)
 ```
+
+The only piece that varies per environment is the Wezterm launch command — see the [Wezterm](#wezterm) section for the `docker sandbox` example I test against.
 
 ## Technologies
 
@@ -115,10 +121,9 @@ In fzf, `tab` and `shift-tab` select multiple commands. On enter, selected comma
 
 ### Wezterm
 
-I use Wezterm for connecting to this environment. The config is vendored at [vendor/dotfiles/wezterm/wezterm.lua](vendor/dotfiles/wezterm/wezterm.lua).
-Brew users can install it via `brew install wezterm --cask`.
+I use Wezterm to connect to this environment. The config is vendored at [vendor/dotfiles/wezterm/wezterm.lua](vendor/dotfiles/wezterm/wezterm.lua); install Wezterm with `brew install wezterm --cask`.
 
-Its killer feature is `ctrl+shift+space` — it highlights paths and Nushell's structured output elements for quick copying.
+Its killer feature is `ctrl+shift+space` — highlights paths and Nushell's structured output elements for quick copying.
 
 Changes from WezTerm defaults:
 
@@ -127,8 +132,7 @@ Changes from WezTerm defaults:
 - **QuickSelect patterns**: custom regexes for jj change IDs, Nushell error paths (`╭─[file:line:col]`), Nushell table headers/values, and filesystem paths
 - **Dynamic modes**: `ZEN_MODE` / `SANDBOX_MODE` user variables adjust font size and background at runtime
 
-
-To connect to the sandbox with Wezterm (`/home/agent/workspace/mounted` is a symlink to whichever workspace you mounted) you can use the next command:
+The launch command below targets `docker sandbox` — the entry point I test against. For other runtimes (`sbx`, Apple container, etc.) swap out the `docker sandbox exec` portion. Inside the sandbox, `/home/agent/workspace/mounted` is a symlink to whichever workspace you mounted.
 
 ```
 wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua start -- docker sandbox exec -it cozy-test nu -l --execute 'print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\"; zellij attach -c cozy-test'
