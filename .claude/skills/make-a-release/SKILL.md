@@ -53,6 +53,15 @@ Read `CHANGELOG.md`. Before cutting the release, review `[Unreleased]` entries f
 - Empty categories omitted
 - Internal refactors, CI changes, and implementation details excluded
 
+**Conciseness (STRICT).** One main fact per entry plus the minimum WHY a reader needs. Aim for one sentence; two when the WHY genuinely needs it. Three sentences = too much. Skip:
+
+- Per-file "Affects: …" lists for renames/refactors — `git log` and the linked compare URL have that
+- Sub-details of new commands (state purpose + the one key flag, not every fallback / auto-close / pane-direction behavior)
+- "Broad refresh from upstream", "preserves the original intent of …", "(previously only X)" framing — state the change directly
+- Restating what the previous version did to motivate the current one — link the version inline if the reader needs it
+
+Past released sections are frozen. Do not rewrite them while tidying — only the new entries are in scope.
+
 If entries need cleanup, fix them before proceeding. Show the user what you changed.
 
 ### 4. Update CHANGELOG.md
@@ -85,6 +94,8 @@ git tag X.Y.Z
 ```
 
 No `v` prefix. Lightweight tag (no `-a`), matching existing convention.
+
+Treat the release commit as final once tagged. If the user asks to tweak the changelog after this point, ask whether to **amend + retag** (clean history, safe while the tag is unpushed) or **add a follow-up commit** (preserves the tag but leaves it pointing at the pre-tweak version). Default to follow-up commit if they don't have a preference.
 
 ### 7. Report
 
