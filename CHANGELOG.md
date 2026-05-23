@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `bootstrap.sh` auto-installs Homebrew on Linux when passwordless `sudo -n` works (e.g. inside a `docker sandbox` `shell` agent). On macOS — or any host where sudo would prompt — it keeps the fail-fast behavior and now prints the `NONINTERACTIVE=1` install one-liner alongside the brew.sh link so it can be copy-pasted directly. (c9fe9cf, 75a78a2)
+
 ## [0.2.3] - 2026-05-23
 
 ### Changed

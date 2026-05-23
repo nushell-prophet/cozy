@@ -7,14 +7,22 @@
 #             existing user configs (see bootstrap.nu's check-no-clobber).
 set -euo pipefail
 cd "$(dirname "$0")"
-# Why not auto-install brew: its installer needs sudo to create and chown
-# /opt/homebrew (or /usr/local/Homebrew). Even with NONINTERACTIVE=1 that
-# still prompts for a password or fails without a tty — defeats the
-# no-sudo-prompts flow this script is built around.
+# Brew's installer needs sudo to chown /opt/homebrew (or /usr/local/Homebrew
+# on Intel macs, /home/linuxbrew/.linuxbrew on Linux). NONINTERACTIVE=1 only
+# switches `sudo` to `sudo -n`, which aborts without cached creds — it does
+# not bypass sudo. So on a normal macOS host we'd either prompt for a
+# password or fail outright, which breaks the no-prompts flow this script
+# is built around. Auto-install only on Linux with passwordless sudo (e.g.
+# `docker sandbox` `shell` agent); on macOS, always fail-fast with the
+# copy-paste snippet so the user's password prompt stays out of the script.
 command -v brew >/dev/null || {
-    echo "Install Homebrew first: https://brew.sh"
-    echo '  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
-    exit 1
+    if [ "$(uname)" = Linux ] && sudo -n true 2>/dev/null; then
+        NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    else
+        echo "Install Homebrew first: https://brew.sh"
+        echo '  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
+        exit 1
+    fi
 }
 export PATH="$HOME/.local/bin:$PATH"
 cozy-module/install/ensure-nu.sh
