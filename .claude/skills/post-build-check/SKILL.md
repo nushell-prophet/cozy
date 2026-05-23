@@ -46,10 +46,23 @@ Expected names come from `toolkit/vendor.yml` `repo:` keys plus `cozy` itself
 `nu-kv`, `nu-multiproof`, `numd`, `nushell-skills`, `nutest`,
 `topiary-nushell`.
 
-Read the live list from vendor.yml rather than hardcoding — the set drifts:
+Read the live list from vendor.yml rather than hardcoding — the set drifts.
+The Dockerfile only COPYs `docker-files/` and `sandbox-toolkit/` into
+`~/repos/cozy/`, so `vendor.yml` is not under `~/repos/cozy/toolkit/`. Read it
+from the workspace mount where this skill is invoked (typically the cozy
+workspace itself):
 
 ```nu
-let expected = (open ~/repos/cozy/toolkit/vendor.yml | get repo | append 'cozy' | sort)
+let vendor_yml = (
+  ['./toolkit/vendor.yml' '~/workspace/mounted/toolkit/vendor.yml']
+  | each { |p| $p | path expand }
+  | where { |p| $p | path exists }
+  | first
+)
+if ($vendor_yml | is-empty) {
+  error make { msg: 'vendor.yml not found — re-invoke from the cozy workspace mount' }
+}
+let expected = (open $vendor_yml | get repo | append 'cozy' | sort)
 let actual = (ls ~/repos | get name | path basename | sort)
 {missing: ($expected | where $it not-in $actual), extra: ($actual | where $it not-in $expected)}
 ```
@@ -89,11 +102,13 @@ is a fail.
 ### 6. ~/.claude/CLAUDE.md catalog appended
 
 ```nu
-open ~/.claude/CLAUDE.md | str contains 'fd'
+open --raw ~/.claude/CLAUDE.md | str contains 'fd'
 ```
 
 Greps for one tool that step 6 of bootstrap.nu appends from
-`docker-files/global-claude.md`. False = the append step didn't run.
+`docker-files/global-claude.md`. False = the append step didn't run. The
+`--raw` flag is required — without it `open` auto-parses the markdown into a
+record and `str contains` errors on a non-string input.
 
 ### 7. ~/workspace/ shape
 
@@ -131,12 +146,15 @@ appended (the 0.2.0 fix from commit 45cc3d9).
 
 ```nu
 'def main [] { 1 }' | save -f /tmp/t.nu
-^topiary format --language nu /tmp/t.nu
-open /tmp/t.nu
+^topiary format /tmp/t.nu
+open --raw /tmp/t.nu
 ```
 
 Must reformat without error. A grammar-not-found error means the
-`topiary-nushell` symlink in step 8 of bootstrap.nu didn't land.
+`topiary-nushell` symlink in step 8 of bootstrap.nu didn't land. Don't pass
+`--language nu` alongside the file argument — topiary 0.7+ treats `--language`
+and `[FILES]` as mutually exclusive (exits 2). Auto-detection via the `.nu`
+extension is the supported form.
 
 ### 11. XDG git config in place
 
