@@ -6,6 +6,7 @@ export use commands.nu [
     # "download-nushell-nightly"
     "example"
     "fs"
+    "fzf-preview"
     "fill non-exist"
     "find-root"
     "format profile"
@@ -47,6 +48,7 @@ export use arrange.nu [
 export use capture.nu [
     "copy-out"
     "delete-prompts"
+    "in-pane"
     "wez-to-ansi"
     "wez-to-asciicast"
     "wez-to-gif"

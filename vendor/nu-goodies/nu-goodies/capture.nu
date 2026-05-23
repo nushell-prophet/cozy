@@ -138,7 +138,7 @@ def 'zellij-dump-prompts' [
 
     let max_n = $indices | math max
     if ($prompts | length) < ($max_n + 1) {
-        error make --unspanned {msg: $'Not enough commands in scrollback \(need ($max_n + 1) prompts\)'}
+        error make --unspanned {msg: $"Not enough commands in scrollback \(need ($max_n + 1) prompts\)"}
     }
 
     {raw_lines: $raw_lines reversed_prompts: ($prompts | reverse)}
@@ -259,6 +259,16 @@ export def 'copy-out' [
     | str join "\n\n"
     | str replace -ra '\n+$' ''
     | if $echo { } else { pbcopy }
+}
+
+# Open a new Zellij pane in the current tab running `nu --execute <command>`.
+# Pane closes automatically when nushell exits (--close-on-exit).
+export def 'in-pane' [
+    command: string # Command to run in the new pane (nushell syntax; pipes allowed)
+    --right (-r) # Split right instead of down
+]: nothing -> nothing {
+    let direction = if $right { 'right' } else { 'down' }
+    zellij action new-pane --close-on-exit --direction $direction -- nu --execute $command | ignore
 }
 
 # Delete last N prompts with their outputs from Zellij pane scrollback

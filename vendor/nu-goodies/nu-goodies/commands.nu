@@ -864,8 +864,44 @@ export def 'fs' [...files: path@completions-files-modified]: nothing -> any {
     } else { }
 }
 
+# Pipe files into fzf with bat preview in the right pane. Returns the selected path.
+# Lines like `file:line` or `file:line:col` (e.g. from `rgv`) highlight that line.
+# Binary files show `file --brief` info instead of bat output.
+export def 'fzf-preview' []: [list<string> -> string, table -> string] {
+    let input = $in
+    let preview = 'f={}
+l=0
+if ! [ -r "$f" ]; then
+  rest=$(printf %s "$f" | grep -oE ":[0-9]+(:[0-9]+)?$")
+  if [ -n "$rest" ]; then
+    base=${f%$rest}
+    if [ -r "$base" ]; then
+      f=$base
+      l=$(printf %s "$rest" | grep -oE "[0-9]+" | head -1)
+    fi
+  fi
+fi
+start=1
+if [ "$l" -gt 0 ]; then
+  start=$((l - ${FZF_PREVIEW_LINES:-40} / 2))
+  [ "$start" -lt 1 ] && start=1
+fi
+case $(file --brief --mime -- "$f") in
+  *binary*) file -- "$f" ;;
+  *) bat --color=always --pager=never --style=numbers --line-range=$start: --highlight-line=$l -- "$f" ;;
+esac'
+
+    $input
+    | if ($in | describe | str starts-with 'list') { } else {
+         if 'name' in ($in | columns) { get name } else { get path }
+    }
+    | to text
+    | fzf --preview $preview --preview-window 'right:70%'
+    | str trim
+}
+
 # Helper function initially from nupm/utils/dirs.nu
-# 
+#
 # Try to find the package root directory by looking for nupm.nuon in parent
 # directories.
 export def find-root [dir?: path]: [nothing -> path nothing -> nothing] {
