@@ -16,16 +16,20 @@ def parse-ls-tree []: string -> table<mode: string, type: string, hash: string, 
     lines | parse "{mode} {type} {hash}\t{name}"
 }
 
-# Extract tree hash from commit object text
+# Extract tree hash from commit object text.
+# Why: commit body lines can start with "tree " — only the header section
+# (everything before the first blank line) carries the actual tree pointer.
 def parse-commit-tree []: string -> string {
-    lines
+    split row --regex '\r?\n\r?\n'
+    | first
+    | lines
     | where ($it starts-with "tree ")
     | first
     | str replace "tree " ""
 }
 
 # Copy git loose objects between directories
-def copy-loose-objects [src: path, dest: path] {
+def copy-loose-objects [src: path dest: path] {
     let src = $src | path expand
     glob ($src | path join "??/*") | each {|file|
         let rel = ($file | path relative-to $src)
@@ -41,18 +45,18 @@ def copy-loose-objects [src: path, dest: path] {
 def find-path-objects [
     tree_hash: string
     file_path: string
-    --path: path  # Target git repo root
+    --repo: path # Target git repo root
 ]: nothing -> list<record<hash: string, type: string>> {
     let parts = ($file_path | split row "/")
+    let last_index = ($parts | length) - 1
     mut objects = []
     mut current_tree = $tree_hash
 
-    for name in $parts {
-        let entries = if $path != null {
-            ^git -C $path ls-tree $current_tree | parse-ls-tree
-        } else {
-            ^git ls-tree $current_tree | parse-ls-tree
-        }
+    for it in ($parts | enumerate) {
+        let name = $it.item
+        let is_last = $it.index == $last_index
+
+        let entries = (^git -C $repo ls-tree $current_tree | parse-ls-tree)
         let entry = ($entries | where name == $name)
 
         if ($entry | is-empty) {
@@ -60,38 +64,43 @@ def find-path-objects [
         }
 
         let entry = ($entry | first)
-        $objects = ($objects | append {hash: $entry.hash, type: $entry.type})
+        $objects = ($objects | append {hash: $entry.hash type: $entry.type})
 
         if $entry.type == "tree" {
             $current_tree = $entry.hash
+        } else if not $is_last {
+            # Why: without this, the cursor stayed at the previous tree and the
+            # next segment was looked up there — producing either a misleading
+            # "not found in tree <root>" message or, worse, a silent success
+            # with a bogus proof (when a sibling at the wrong level happened to
+            # share the name).
+            error make {msg: $"'($name)' is a ($entry.type); cannot descend into ($file_path)"}
         }
     }
 
     $objects
 }
 
-# Convert git objects to SHA-256 loose format.
+# Extract loose objects from the source repo into a fresh bare repo
+# of the same object format, then copy them out.
 #
-# Git objects in a SHA-1 repo can't be directly copied into a SHA-256 repo —
-# the hash-based storage paths differ. This packs objects from the current repo,
-# then unpacks them into a temporary bare SHA-256 repo, letting git rehash them.
-def repack-objects-sha256 [
-    hashes: list<string>  # Object hashes to convert
-    dest: path            # Directory to receive loose objects
-    --path: path          # Target git repo root
+# Not a SHA-1→SHA-256 conversion: tree object bodies encode child references
+# as raw hash bytes, which `git unpack-objects` does not rewrite. The bundle
+# format must match the source; cross-format conversion would need
+# tree-rewriting (out of scope). Caller must ensure source repo is SHA-256.
+def extract-loose-objects [
+    hashes: list<string> # Object hashes to extract
+    dest: path # Directory to receive loose objects
+    --repo: path # Target git repo root
 ] {
     let tmp_dir = (^mktemp -d | str trim)
     let hashes_file = ($tmp_dir | path join "hashes.txt")
     let pack_file = ($tmp_dir | path join "pack.bin")
-    let bare_repo = ($tmp_dir | path join "sha256-repo")
+    let bare_repo = ($tmp_dir | path join "bare-repo")
 
     $hashes | str join "\n" | save --force $hashes_file
     ^git init --bare --object-format=sha256 $bare_repo o+e>| ignore
-    if $path != null {
-        open --raw $hashes_file | ^git -C $path pack-objects --stdout | save --raw --force $pack_file
-    } else {
-        open --raw $hashes_file | ^git pack-objects --stdout | save --raw --force $pack_file
-    }
+    open --raw $hashes_file | ^git -C $repo pack-objects --stdout | save --raw --force $pack_file
     open --raw $pack_file | ^git --git-dir $bare_repo unpack-objects
 
     copy-loose-objects ($bare_repo | path join "objects") $dest
@@ -100,35 +109,43 @@ def repack-objects-sha256 [
 
 # Extract a merkle proof bundle for given files at a given commit
 export def extract [
-    ...files: string            # Target file paths to prove
-    --commit: string = "HEAD"   # Commit to prove against
-    --out-dir: string = "proof" # Output directory for proof bundle
-    --path: path                # Target git repo root (default: git root of current directory)
+    ...files: string # Target file paths to prove
+    --commit: string = "HEAD" # Commit to prove against
+    --out-dir: path = "proof" # Output directory for proof bundle
+    --repo: path # Target git repo root (default: git root of current directory)
 ] {
     if ($files | is-empty) {
         error make {msg: "no files specified"}
     }
 
-    let root = if $path != null { $path | path expand } else {
+    let root = if $repo != null { $repo | path expand } else {
         ^git rev-parse --show-toplevel | str trim
+    }
+    # Why: tree objects encode children as raw hash bytes; SHA-1 sources would
+    # need tree rewriting to produce a self-consistent SHA-256 bundle.
+    let src_format = (^git -C $root config extensions.objectFormat | complete | get stdout | str trim)
+    if $src_format != "sha256" {
+        error make {msg: $"git-proof requires a SHA-256 repo \(extensions.objectFormat=sha256\); source is '($src_format)'"}
     }
     let commit_hash = (^git -C $root rev-parse $commit | str trim)
     let tree_hash = (^git -C $root cat-file -p $commit_hash | parse-commit-tree)
 
     # Collect merkle path objects for all target files
     mut all_objects = [
-        {hash: $commit_hash, type: "commit"}
-        {hash: $tree_hash, type: "tree"}
+        {hash: $commit_hash type: "commit"}
+        {hash: $tree_hash type: "tree"}
     ]
     mut target_files = []
 
     for file in $files {
-        let path_objects = (find-path-objects $tree_hash $file --path $root)
+        let path_objects = (find-path-objects $tree_hash $file --repo $root)
         $all_objects = ($all_objects | append $path_objects)
-        $target_files = ($target_files | append {
-            path: $file
-            hash: ($path_objects | last | get hash)
-        })
+        $target_files = (
+            $target_files | append {
+                path: $file
+                hash: ($path_objects | last | get hash)
+            }
+        )
     }
 
     let unique_objects = ($all_objects | uniq-by hash)
@@ -138,7 +155,7 @@ export def extract [
     let objects_dir = ($out_dir | path join "objects")
     mkdir $objects_dir
 
-    repack-objects-sha256 ($unique_objects | get hash) $objects_dir --path $root
+    extract-loose-objects ($unique_objects | get hash) $objects_dir --repo $root
 
     # Copy pubkeys from target repo's multiproofs/pubkeys/
     let pubkeys_dir = ($out_dir | path join "pubkeys")
@@ -179,9 +196,9 @@ def verify-object-hashes [
     $objects | each {|obj|
         let result = (do { ^git --git-dir $repo cat-file -t $obj.hash } | complete)
         if $result.exit_code == 0 {
-            {hash: $obj.hash, valid: true, type: ($result.stdout | str trim)}
+            {hash: $obj.hash valid: true type: ($result.stdout | str trim)}
         } else {
-            {hash: $obj.hash, valid: false, error: ($result.stderr | str trim)}
+            {hash: $obj.hash valid: false error: ($result.stderr | str trim)}
         }
     }
 }
@@ -197,24 +214,24 @@ def verify-file-path [
     mut current_hash = $tree_hash
 
     for part in $parts {
-        let h = $current_hash  # immutable copy — mut vars can't be captured in closures
+        let h = $current_hash # immutable copy — mut vars can't be captured in closures
         let result = (do { ^git --git-dir $repo ls-tree $h } | complete)
         if $result.exit_code != 0 {
-            return {step: $"file ($file_entry.path)", valid: false, error: ($result.stderr | str trim)}
+            return {step: $"file ($file_entry.path)" valid: false error: ($result.stderr | str trim)}
         }
 
         let matching = ($result.stdout | parse-ls-tree | where name == $part)
         if ($matching | is-empty) {
-            return {step: $"file ($file_entry.path)", valid: false, error: $"'($part)' not found in tree ($h | str substring 0..12)..."}
+            return {step: $"file ($file_entry.path)" valid: false error: $"'($part)' not found in tree ($h | str substring 0..12)..."}
         }
 
         $current_hash = ($matching | first | get hash)
     }
 
     if $current_hash == $file_entry.hash {
-        {step: $"file ($file_entry.path)", valid: true, hash: $current_hash}
+        {step: $"file ($file_entry.path)" valid: true hash: $current_hash}
     } else {
-        {step: $"file ($file_entry.path)", valid: false, error: $"expected ($file_entry.hash), got ($current_hash)"}
+        {step: $"file ($file_entry.path)" valid: false error: $"expected ($file_entry.hash), got ($current_hash)"}
     }
 }
 
@@ -226,40 +243,75 @@ def verify-merkle-paths [
     let tree_hash = (^git --git-dir $repo cat-file -p $manifest.commit | parse-commit-tree)
 
     if $tree_hash != $manifest.tree {
-        return [{
-            step: "commit->tree"
-            valid: false
-            error: $"commit tree ($tree_hash) != manifest tree ($manifest.tree)"
-        }]
+        return [
+            {
+                step: "commit->tree"
+                valid: false
+                error: $"commit tree ($tree_hash) != manifest tree ($manifest.tree)"
+            }
+        ]
     }
 
     let file_results = $manifest.files | each { verify-file-path $repo $tree_hash $in }
 
-    [{step: "commit->tree", valid: true, hash: $tree_hash}] ++ $file_results
+    [{step: "commit->tree" valid: true hash: $tree_hash}] ++ $file_results
+}
+
+# Build an OpenSSH allowed_signers body from every *.pub in a directory.
+# Wildcard principal + namespaces="git" so each key is trusted for commit
+# signatures only (not ssh logins).
+def build-allowed-signers [pubkeys_dir: path]: nothing -> string {
+    glob ($pubkeys_dir | path join "*.pub")
+    | each {|file|
+        let key = (open --raw $file | str trim)
+        $"* namespaces=\"git\" ($key)"
+    }
+    | str join "\n"
+}
+
+# Render the repo's pubkeys/ into an allowed_signers file usable by
+# `git -c gpg.ssh.allowedSignersFile=<path> verify-commit`.
+# Does not modify git config — the caller chooses how to wire it up.
+export def "render-allowed-signers" [
+    out: path # Output path for the rendered file
+    --pubkeys-dir: path # Source directory of *.pub files (default: <git-root>/multiproofs/pubkeys)
+] {
+    let dir = if $pubkeys_dir != null { $pubkeys_dir | path expand } else {
+        ^git rev-parse --show-toplevel | str trim | path join "multiproofs/pubkeys"
+    }
+
+    let signers = (build-allowed-signers $dir)
+    if ($signers | str trim | is-empty) {
+        error make {msg: $"no *.pub files in ($dir)"}
+    }
+
+    $signers | save --force $out
+    print $"Wrote ($out)"
+    print "Use it without persisting git config:"
+    print $"  git -c gpg.ssh.allowedSignersFile=($out) verify-commit HEAD"
 }
 
 # Verify commit signature against bundled pubkeys
 def verify-signature [
-    proof_dir: string
+    proof_dir: path
     manifest: record
-    tmp_repo: string
+    tmp_repo: path
 ]: nothing -> record<valid: bool> {
-    let signers = glob ($proof_dir | path join "pubkeys/*.pub")
-        | each {|file|
-            let key = (open --raw $file | str trim)
-            $"* namespaces=\"git\" ($key)"
-        }
-        | str join "\n"
+    let signers = (build-allowed-signers ($proof_dir | path join "pubkeys"))
 
     if ($signers | str trim | is-empty) {
-        return {valid: false, error: "no public keys in proof bundle"}
+        return {valid: false error: "no public keys in proof bundle"}
     }
 
     let signers_file = ($tmp_repo | path dirname | path join "allowed_signers")
     $signers | save --force $signers_file
-    ^git --git-dir $tmp_repo config gpg.ssh.allowedSignersFile $signers_file
 
-    let result = (do { ^git --git-dir $tmp_repo verify-commit $manifest.commit } | complete)
+    # Pass the signers file via -c so we don't persist git config in the temp repo
+    let result = (
+        do {
+            ^git -c $"gpg.ssh.allowedSignersFile=($signers_file)" --git-dir $tmp_repo verify-commit $manifest.commit
+        } | complete
+    )
     let output = if ($result.stderr | str trim | is-not-empty) {
         $result.stderr | str trim
     } else {
@@ -267,15 +319,15 @@ def verify-signature [
     }
 
     if $result.exit_code == 0 {
-        {valid: true, detail: $output}
+        {valid: true detail: $output}
     } else {
-        {valid: false, error: $output}
+        {valid: false error: $output}
     }
 }
 
 # Verify a proof bundle autonomously (without access to original repo)
 export def verify [
-    proof_dir: string = "proof"  # Proof bundle directory
+    proof_dir: path = "proof" # Proof bundle directory
 ] {
     let manifest_path = ($proof_dir | path join "manifest.json")
     if not ($manifest_path | path exists) {
@@ -303,7 +355,7 @@ export def verify [
         print $"   FAIL: ($invalid | length) objects have invalid hashes"
         $invalid | each {|r| print $"     ($r.hash | str substring 0..12)...: ($r.error)" }
         rm --recursive $tmp_dir
-        return {valid: false, error: "object hash verification failed"}
+        return {valid: false structure_valid: false error: "object hash verification failed"}
     }
     print $"   OK: all ($hash_results | length) objects verified"
 
@@ -316,7 +368,7 @@ export def verify [
         print "   FAIL: merkle path verification failed"
         $path_invalid | each {|r| print $"     ($r.step): ($r.error)" }
         rm --recursive $tmp_dir
-        return {valid: false, error: "merkle path verification failed"}
+        return {valid: false structure_valid: false error: "merkle path verification failed"}
     }
     $path_results | each {|r| print $"   OK: ($r.step)" }
 
@@ -328,13 +380,20 @@ export def verify [
     if $sig_result.valid {
         print $"   OK: ($sig_result.detail)"
     } else {
-        print $"   WARN: ($sig_result.error)"
-        print "   (signature check requires ssh-keygen; proof structure is still valid)"
+        print $"   FAIL: ($sig_result.error)"
     }
 
-    print "\nProof is VALID."
+    # Why: callers checking only `.valid` must reject unsigned/wrongly-signed
+    # bundles. `structure_valid` is exposed for callers that want each leg.
+    let overall = $sig_result.valid
+    if $overall {
+        print "\nProof is VALID."
+    } else {
+        print "\nProof is INVALID (structure ok, signature failed)."
+    }
     {
-        valid: true
+        valid: $overall
+        structure_valid: true
         commit: $manifest.commit
         files: $manifest.files
         signature: $sig_result
