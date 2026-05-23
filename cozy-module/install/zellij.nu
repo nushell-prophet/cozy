@@ -19,7 +19,8 @@ export def install []: nothing -> nothing {
     let repo_dir = $nu.home-dir | path join git zellij
     if not ($repo_dir | path exists) {
         print "  Cloning zellij..."
-        ^git clone https://github.com/zellij-org/zellij.git $repo_dir
+        use _clone-or-fail.nu
+        _clone-or-fail https://github.com/zellij-org/zellij.git $repo_dir
     } else {
         print $"  (ansi green)zellij(ansi reset): repo already cloned"
     }

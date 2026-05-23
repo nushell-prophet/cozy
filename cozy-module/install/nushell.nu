@@ -22,7 +22,8 @@ export def install [
     let repo_dir = $nu.home-dir | path join git nushell
     if not ($repo_dir | path exists) {
         print "  Cloning nushell..."
-        ^git clone https://github.com/nushell/nushell.git $repo_dir
+        use _clone-or-fail.nu
+        _clone-or-fail https://github.com/nushell/nushell.git $repo_dir
     } else {
         print $"  (ansi green)nushell(ansi reset): repo already cloned"
     }

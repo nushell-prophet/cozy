@@ -22,7 +22,8 @@ export def install []: nothing -> nothing {
     let repo_dir = $nu.home-dir | path join git nu_plugin_image
     if not ($repo_dir | path exists) {
         print "  Cloning nu_plugin_image..."
-        ^git clone $repo_url $repo_dir
+        use _clone-or-fail.nu
+        _clone-or-fail $repo_url $repo_dir
     } else {
         print $"  (ansi green)nu_plugin_image(ansi reset): repo already cloned"
     }
