@@ -31,13 +31,12 @@ Replaces vendored `~/repos/` copies with symlinks to the mounted workspace. Enab
 cozy dev-link
 ```
 
-### `cozy platform` / `cozy platform apply`
+### `cozy swap-zellij-super`
 
-Detects the host platform from the workspace mount path. `apply` transforms configs for the detected (or given) platform — currently remaps Zellij Super keybindings to Alt for Windows.
+Rewrites `~/.config/zellij/config.kdl` in place to remove the Super modifier (Super+Shift→Alt+Shift, Super+Alt→Ctrl+Alt, Super→Alt). Intended for Windows hosts, where Win+key is reserved by the OS and the default Super-based bindings collide. Idempotent.
 
 ```nushell
-cozy platform                    # detect: macos, windows, or linux
-cozy platform apply windows      # apply Windows keybinding transforms
+cozy swap-zellij-super
 ```
 
 ### `cozy configure claude-settings`

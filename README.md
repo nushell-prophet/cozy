@@ -61,7 +61,7 @@ Cozy is based on [docker sandbox](https://docs.docker.com/ai/sandboxes/), so it 
 
 I develop and use `cozy` on macOS, but I expect some of my students to use Windows. After brief testing, the main issue turned out to be the keyboard layout: Windows doesn't have a Cmd key, and its Win key combinations are reserved by the OS — so simply replacing Cmd with Win isn't possible. The best option I've found so far is to replace Cmd with Alt.
 
-To apply this automatically, run inside the cozy sandbox: `cozy platform apply windows`.
+To apply this automatically, run inside the cozy sandbox: `cozy swap-zellij-super`.
 
 ### Nushell
 
