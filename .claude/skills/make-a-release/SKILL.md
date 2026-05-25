@@ -41,10 +41,10 @@ If you find missed changes, draft new entries and show them to the user before a
 
 ### 3. Review and finalize Unreleased entries
 
-Read `CHANGELOG.md`. Before cutting the release, review `[Unreleased]` entries for quality:
+Read `CHANGELOG.md`. Before cutting the release, review all the `[Unreleased]` entries for quality:
 
 - Every entry is written from the **user's perspective** — what changed for them, not what happened in the code
-- No verbatim commit messages — rewrite if needed
+- Entries are brief — one line per entry, two at most.
 - Related commits merged into single entries where they describe one user-facing change
 - Each entry ends with short commit hash(es) in parentheses: `(abc1234)` or `(abc1234, def5678)`
 - Categories are only the six standard ones (Added, Changed, Deprecated, Removed, Fixed, Security), in that order
