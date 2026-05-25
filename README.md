@@ -44,7 +44,7 @@ The only piece that varies per environment is the Wezterm launch command — see
 
 ## Technologies
 
-**Installed**: [Nushell](#nushell), [Helix](#helix-editor), [Zellij](#zellij), [Lazygit](#lazygit), [Broot](#broot), [FZF](#fzf), git-delta, [visidata](#visidata), bat, topiary, fd, jj, git-lfs, Claude Code, procps, file, gcc, libc6-dev (base image adds git, curl, Python, Node.js, Go, ripgrep, jq, gh)
+**Installed**: [Nushell](#nushell), [Helix](#helix-editor), [Zellij](#zellij), [Lazygit](#lazygit), [Broot](#broot), [FZF](#fzf), git-delta, [VisiData](#visidata), bat, topiary, fd, jj, git-lfs, Claude Code, procps, file, gcc, libc6-dev (base image adds git, curl, Python, Node.js, Go, ripgrep, jq, gh)
 
 **Optional** (`cozy install`): Rust, nu_plugin_polars, nu-plugin-image, Claude Code (reinstall)
 
@@ -119,9 +119,9 @@ In Nushell there are keybindings:
 
 In fzf, `tab` and `shift-tab` select multiple commands. On enter, selected commands are joined with `;\n` and are pasted back into the command line.
 
-### Visidata
+### VisiData
 
-Visidata - a tabular viewer and data multitool. The author, Saul, condensed years of low-level, first-hand data-manipulation experience into an extremely versatile tool, which I use with great pleasure and joy. Even though Nushell has its own mighty built-in `explore` which I use too, `vd` is something very special for me. In cozy I have commands `in-vd` and `hist`.
+VisiData is a tabular viewer and data multitool by Saul Pwanson — years of hands-on data work distilled into one terminal app. Nushell's built-in `explore` is great and I use it too, but for deeper digging `vd` remains my go-to. In cozy, `in-vd` pipes any structured data into VisiData (format auto-detected), and `hist` queries Nushell's SQLite history with filters and opens the result in `vd`.
 
 ### Wezterm
 
