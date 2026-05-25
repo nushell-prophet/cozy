@@ -1,10 +1,11 @@
 # WORKSPACE_DIR is the host-rendered path. On macOS/Linux it's also valid in-VM
 # (sbx bind-mounts at the same absolute path). On Windows sbx leaves it as
-# "C:/Users/..." while the actual mount lives at "/c/Users/...". Resolve once
-# here; everything downstream uses ~/workspace/mounted.
+# "C:\Users\..." (or "C:/Users/...") while the actual mount lives at
+# "/c/Users/...". Resolve once here; everything downstream uses ~/workspace/mounted.
 def resolve-workspace-mount [host: string] {
     if ($host | path exists) { return $host }
-    let m = $host | parse -r '^(?<drive>[A-Za-z]):/(?<rest>.*)$'
+    let normalized = $host | str replace -ra '\\' '/'
+    let m = $normalized | parse -r '^(?<drive>[A-Za-z]):/(?<rest>.*)$'
     if ($m | is-empty) {
         error make {msg: $"WORKSPACE_DIR ($host) not resolvable inside VM"}
     }
