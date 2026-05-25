@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-05-25
+
 ### Added
 
-- `bootstrap.sh` auto-installs Homebrew on Linux when sudo is passwordless. On macOS or other prompting hosts it prints the `NONINTERACTIVE=1` install one-liner alongside the brew.sh link. (c9fe9cf, 75a78a2)
+- `bootstrap.sh` auto-installs Homebrew on Linux when sudo is passwordless. On macOS or other prompting hosts it prints the `NONINTERACTIVE=1` install one-liner alongside the brew.sh link. (c9fe9cf, 5e6b6b1)
+- Bash login prints a one-line hint to launch nushell — the `shell` agent drops into bash by default, but everything cozy ships is nu-first. (1f86c86)
 
 ### Changed
 
@@ -19,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `toolkit/pack-kit.nu` and the `kit/files/` gitignore entry — superseded by the in-sandbox clone. (9958cdf)
+
+### Fixed
+
+- `WORKSPACE_DIR` from sbx on Windows hosts — translates `C:/Users/...` → `/c/Users/...` and normalizes backslashes, with hard-error on miss. (fff77fd, aac188b)
+- `cozy install <plugin>` clones now fail loudly when an upstream URL is gone — git previously hung on a credential prompt because GitHub returns 404 for deleted repos. (c495b22)
 
 ## [0.2.3] - 2026-05-23
 
@@ -262,7 +270,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.2.3...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.2.4...HEAD
+[0.2.4]: https://github.com/nushell-prophet/cozy/compare/0.2.3...0.2.4
 [0.2.3]: https://github.com/nushell-prophet/cozy/compare/0.2.2...0.2.3
 [0.2.2]: https://github.com/nushell-prophet/cozy/compare/0.2.1...0.2.2
 [0.2.1]: https://github.com/nushell-prophet/cozy/compare/0.2.0...0.2.1
