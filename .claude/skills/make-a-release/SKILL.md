@@ -41,21 +41,19 @@ If you find missed changes, draft new entries and show them to the user before a
 
 ### 3. Review and finalize Unreleased entries
 
-Read `CHANGELOG.md`. Before cutting the release, review all the `[Unreleased]` entries for quality:
+Read `CHANGELOG.md`. The writing policy lives in `cozy/CLAUDE.md` ("Changelog" section) — entries target potential new users evaluating cozy, with the KEEP/DROP filters and the "one line per entry, two at most" norm (also stated in the CHANGELOG header).
 
-- Every entry is written from the **user's perspective** — what changed for them, not what happened in the code
-- Entries are brief — one line per entry, two at most.
+Before cutting the release, every `[Unreleased]` entry should clear these release-time checks:
+
+- Written from the **user's perspective** — what changed for them, not what happened in the code
+- One line per entry, two at most — i.e., one sentence usually, two when the WHY genuinely needs it
 - Related commits merged into single entries where they describe one user-facing change
-- Each entry ends with short commit hash(es) in parentheses: `(abc1234)` or `(abc1234, def5678)`
-- Categories are only the six standard ones (Added, Changed, Deprecated, Removed, Fixed, Security), in that order
-- Empty categories omitted
-- Internal refactors, CI changes, and implementation details excluded
+- Ends with short commit hash(es) in parentheses: `(abc1234)` or `(abc1234, def5678)`
+- Categories are only the six standard ones (Added, Changed, Deprecated, Removed, Fixed, Security), in that order; empty ones omitted
 
-**Conciseness (STRICT).** One main fact per entry plus the minimum WHY a reader needs. Aim for one sentence; two when the WHY genuinely needs it. Three sentences = too much. Skip:
+**Release-specific skip list** (in addition to CLAUDE.md's DROP rules):
 
-- Per-file "Affects: …" lists for renames/refactors — `git log` and the linked compare URL have that
-- Sub-details of new commands (state purpose + the one key flag, not every fallback / auto-close / pane-direction behavior)
-- "Broad refresh from upstream", "preserves the original intent of …", "(previously only X)" framing — state the change directly
+- Sub-details of new commands — state purpose + the one key flag, not every fallback / auto-close / pane-direction behavior
 - Restating what the previous version did to motivate the current one — link the version inline if the reader needs it
 
 Past released sections are frozen. Do not rewrite them while tidying — only the new entries are in scope.
