@@ -264,7 +264,7 @@ export XDG_DATA_HOME="$HOME/.local/share"
 export XDG_CACHE_HOME="$HOME/.cache"
 export HELIX_RUNTIME="/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime"
 export LANG="C.UTF-8"
-[ -t 1 ] && echo "cozy ready — run nu to start"
+[ -t 1 ] && { [ -f "$HOME/repos/cozy/docker-files/logo.ans" ] && cat "$HOME/repos/cozy/docker-files/logo.ans"; echo "cozy ready — run nu to start"; }
 '
     # Wrap with markers so re-runs replace the block in place instead of
     # `save --append`-ing a duplicate copy on every bootstrap invocation.
