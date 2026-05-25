@@ -44,7 +44,7 @@ The only piece that varies per environment is the Wezterm launch command — see
 
 ## Technologies
 
-**Installed**: [Nushell](#nushell), [Helix](#helix-editor), [Zellij](#zellij), [Lazygit](#lazygit), [Broot](#broot), [FZF](#fzf), git-delta, visidata, bat, topiary, fd, jj, git-lfs, Claude Code, procps, file, gcc, libc6-dev (base image adds git, curl, Python, Node.js, Go, ripgrep, jq, gh)
+**Installed**: [Nushell](#nushell), [Helix](#helix-editor), [Zellij](#zellij), [Lazygit](#lazygit), [Broot](#broot), [FZF](#fzf), git-delta, [visidata](#visidata), bat, topiary, fd, jj, git-lfs, Claude Code, procps, file, gcc, libc6-dev (base image adds git, curl, Python, Node.js, Go, ripgrep, jq, gh)
 
 **Optional** (`cozy install`): Rust, nu_plugin_polars, nu-plugin-image, Claude Code (reinstall)
 
@@ -118,6 +118,10 @@ In Nushell there are keybindings:
 - `alt+f` to spawn fzf with `^currently-entered-commandline`; the current command line is replaced with the selection.
 
 In fzf, `tab` and `shift-tab` select multiple commands. On enter, selected commands are joined with `;\n` and are pasted back into the command line.
+
+### Visidata
+
+Visidata - a tabular viewer and data multitool. The author, Saul, condensed years of low level first hand data manipulation experience into an extremely versetile tool, which I use with great pleasure and joy. Even though Nushell has it's own mighty built-in `explore` which I use too, `vd` is something very special for me. In cozy I have commands `in-vd` and `hist`. 
 
 ### Wezterm
 
