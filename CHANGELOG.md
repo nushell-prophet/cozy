@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `WORKSPACE_DIR` from sbx on Windows hosts — translates `C:/Users/...` → `/c/Users/...` and normalizes backslashes, with hard-error on miss. (fff77fd, aac188b)
+- `WORKSPACE_DIR` from sbx on Windows hosts — translates `C:\Users\...` → `/c/Users/...` and normalizes backslashes, with hard-error on miss. (fff77fd, aac188b)
 - `cozy install <plugin>` clones now fail loudly when an upstream URL is gone — git previously hung on a credential prompt because GitHub returns 404 for deleted repos. (c495b22)
 
 ## [0.2.3] - 2026-05-23
