@@ -62,7 +62,7 @@ commands:
     # Clone cozy. The shell agent's base image ships git, so this runs
     # before Homebrew. --depth 1 keeps the clone small (~4 MB vs full
     # history). Pin to a tag/branch via --branch if reproducibility matters.
-    - command: git clone --depth 1 --branch feat/sbx https://github.com/nushell-prophet/cozy /home/agent/repos/cozy
+    - command: git clone --depth 1 https://github.com/nushell-prophet/cozy /home/agent/repos/cozy
       user: "1000"
       description: Clone cozy
     # Install Homebrew. bootstrap.nu IS a nushell script, so brew (which
