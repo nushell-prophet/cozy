@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Renamed `sandbox-toolkit/` → `cozy-module/`. The folder is loaded inside the sandbox as the `cozy` overlay (`overlay use ~/repos/cozy/cozy-module/ as cozy --prefix`); aligning the directory name with that identity. Affects `Dockerfile`, `bootstrap.sh`, `CLAUDE.md`, `cozy-module/install/bootstrap.nu` (`populate-repos` mirror loop + `cozy_root` derivation comment), `cozy-module/README.md` title, `docker-files/nushell-autoload/module-imports.nu`, `toolkit/test.nu`, `.claude/skills/post-build-check/SKILL.md`, `kit/spec.yaml` (description + install commands), and `toolkit/pack-kit.nu` (`for sub in [...]` mirror loop).
+- Kit install switched from bundled `files/` to in-sandbox `git clone`. `kit/spec.yaml` now adds `git clone --depth 1 https://github.com/nushell-prophet/cozy /home/agent/repos/cozy` as the first install step and drops the `files/` staging tree. The original bundling rationale (0.2.1 — "avoid github.com reachability for the payload") didn't hold up: the install path already requires github.com for `topiary install` (tree-sitter-nu clone), `ensure-nu.sh` fallback (release tarballs), and `claude install` (claude.ai). One more URL doesn't expand the trust surface; it does remove the pack step and the gitignored staging tree. (9958cdf)
+- README `Install elsewhere` gains an `### sbx kit` subsection — previously the kit was only documented in CHANGELOG. (d0347a6)
+
+### Removed
+
+- `toolkit/pack-kit.nu` and the `/kit/files` `.gitignore` entry — obsoleted by the clone-in-sandbox kit above. (9958cdf)
 
 ## [0.2.2] - 2026-05-14
 
