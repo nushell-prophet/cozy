@@ -40,6 +40,15 @@ cd cozy
 ./bootstrap.sh --local     # refresh vendor/ from sibling repos (development)
 ```
 
+### sbx kit
+
+For `sbx` specifically, cozy also ships as a [kit](https://docs.docker.com/ai/sandboxes/customize/kits/) — a single `kit/spec.yaml` that layers cozy on the standard `shell` agent. The kit clones this repo in-sandbox and runs the same `bootstrap.nu`, so no host-side `bootstrap.sh` is needed:
+
+```sh
+git clone https://github.com/nushell-prophet/cozy
+sbx run shell --kit cozy/kit/ ~/path/to/workspace
+```
+
 The only piece that varies per environment is the Wezterm launch command — see the [Wezterm](#wezterm) section for the `docker sandbox` example I test against.
 
 ## Technologies
