@@ -28,8 +28,6 @@ Ask the user if they don't specify one. Suggest based on changes:
 - New features → minor bump
 - Bug fixes only → patch bump
 
-Current versions use `0.0.x` — the project is pre-1.0.
-
 ### 2. Audit git log for missed changes
 
 Run `git log --oneline <previous-tag>..HEAD` to see all commits since the last release. Cross-reference each commit against the `[Unreleased]` entries in `CHANGELOG.md`.
