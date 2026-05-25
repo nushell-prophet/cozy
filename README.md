@@ -121,7 +121,7 @@ In fzf, `tab` and `shift-tab` select multiple commands. On enter, selected comma
 
 ### Visidata
 
-Visidata - a tabular viewer and data multitool. The author, Saul, condensed years of low level first hand data manipulation experience into an extremely versetile tool, which I use with great pleasure and joy. Even though Nushell has it's own mighty built-in `explore` which I use too, `vd` is something very special for me. In cozy I have commands `in-vd` and `hist`. 
+Visidata - a tabular viewer and data multitool. The author, Saul, condensed years of low-level, first-hand data-manipulation experience into an extremely versatile tool, which I use with great pleasure and joy. Even though Nushell has its own mighty built-in `explore` which I use too, `vd` is something very special for me. In cozy I have commands `in-vd` and `hist`.
 
 ### Wezterm
 
