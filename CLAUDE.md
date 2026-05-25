@@ -62,6 +62,15 @@ After Dockerfile changes: rebuild image, then recreate sandbox (delete + run).
 - Do NOT suggest pushing images or tags to Docker Hub or any registry. All images are local-only.
 - Keep command output visible — don't use quiet/silent flags (`-qq`, `-s`, `--quiet`) in scripts. Users should see what's happening during installation and setup.
 
+## Changelog
+
+`CHANGELOG.md` targets potential new users (there are no existing users yet). Each entry should answer: "would this matter to someone deciding whether to adopt cozy, or how to use it?"
+
+- KEEP: user-facing CLI/flag changes, behavior changes a user would notice, bug fixes adopters could still hit, vendored module bumps with the new capability named.
+- DROP: "Affects: X, Y, Z" file lists, internal refactor rationale, build-time bug fixes that no longer apply, vague "refreshed from upstream" lines.
+- One line per entry, two at most. Include commit hash(es) for traceability.
+- When editing existing sections, verify diff scope matches commit message — `7130961` silently deleted `[0.2.3]` while claiming only to extend a file list.
+
 ## Sources of truth
 
 - Keybindings: `vendor/dotfiles/zellij/config.kdl` (README keybinding docs drift from this)
