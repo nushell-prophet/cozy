@@ -54,7 +54,7 @@ workspace itself):
 
 ```nu
 let vendor_yml = (
-  ['./toolkit/vendor.yml' '~/workspace/mounted/toolkit/vendor.yml']
+  ['./toolkit/vendor.yml' ($env.WORKSPACE_DIR? | default '' | path join 'toolkit/vendor.yml')]
   | each { |p| $p | path expand }
   | where { |p| $p | path exists }
   | first
