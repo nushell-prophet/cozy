@@ -4,9 +4,12 @@
 #
 # Run once after sandbox creation. Safe to re-run (idempotent).
 export def main [
-    --workspace (-w): path # workspace path (default: ~/workspace/mounted)
+    --workspace (-w): path # workspace path (default: $env.WORKSPACE_DIR)
 ]: nothing -> table {
-    let ws = $workspace | default ($nu.home-dir | path join workspace mounted)
+    let ws = $workspace | default $env.WORKSPACE_DIR?
+    if $ws == null {
+        error make {msg: "workspace path not given and WORKSPACE_DIR not set — pass --workspace"}
+    }
     if not ($ws | path exists) {
         error make {msg: $"workspace path ($ws) does not exist — pass --workspace or check WORKSPACE_DIR"}
     }

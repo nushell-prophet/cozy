@@ -1,7 +1,8 @@
 # WORKSPACE_DIR is the host-rendered path. On macOS/Linux it's also valid in-VM
 # (sbx bind-mounts at the same absolute path). On Windows sbx leaves it as
 # "C:\Users\..." (or "C:/Users/...") while the actual mount lives at
-# "/c/Users/...". Resolve once here; everything downstream uses ~/workspace/mounted.
+# "/c/Users/...". Rewrite $env.WORKSPACE_DIR to the in-VM path once here so
+# every downstream consumer can read it directly — no symlink intermediary.
 def resolve-workspace-mount [host: string] {
     if ($host | path exists) { return $host }
     let normalized = $host | str replace -ra '\\' '/'
@@ -16,7 +17,7 @@ def resolve-workspace-mount [host: string] {
     $candidate
 }
 
-if $env.WORKSPACE_DIR? != null { ^ln -sfn (resolve-workspace-mount $env.WORKSPACE_DIR) ~/workspace/mounted }
+if $env.WORKSPACE_DIR? != null { $env.WORKSPACE_DIR = (resolve-workspace-mount $env.WORKSPACE_DIR) }
 
 # Create isolated overlay for external tools
 overlay new others
@@ -28,7 +29,7 @@ overlay use ~/repos/cozy/cozy-module/ as cozy --prefix
 
 $env.kv.path = (
     if $env.WORKSPACE_DIR? != null {
-        $nu.home-dir | path join workspace mounted sandbox-state nu-kv-values | tee { mkdir $in }
+        $env.WORKSPACE_DIR | path join sandbox-state nu-kv-values | tee { mkdir $in }
     } else {
         $nu.home-dir | path join .local share nu-kv
     }

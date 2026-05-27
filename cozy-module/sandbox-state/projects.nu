@@ -1,19 +1,25 @@
 const claude_projects_dir = '~/.claude/projects'
-const sandbox_state_dir = '~/workspace/mounted/sandbox-state'
+
+def sandbox-state-dir []: nothing -> path {
+    if $env.WORKSPACE_DIR? == null {
+        error make {msg: "WORKSPACE_DIR not set — sandbox-state requires a mounted workspace"}
+    }
+    $env.WORKSPACE_DIR | path join sandbox-state
+}
 
 def sandbox-state-path [filename: string]: nothing -> path {
-    let dir = $sandbox_state_dir | path expand
+    let dir = sandbox-state-dir
     mkdir $dir
     $dir | path join $filename
 }
 
 # Export Claude Code project sessions to sandbox-state for preservation.
 #
-# Copies ~/.claude/projects/ into ~/workspace/mounted/sandbox-state/projects/.
-# The mounted directory survives sandbox recreation, so exported sessions
+# Copies ~/.claude/projects/ into $env.WORKSPACE_DIR/sandbox-state/projects/.
+# The workspace directory survives sandbox recreation, so exported sessions
 # can be imported into a fresh sandbox.
 export def export [
-    path?: path # Output directory (default: ~/workspace/mounted/sandbox-state/projects)
+    path?: path # Output directory (default: $env.WORKSPACE_DIR/sandbox-state/projects)
 ]: nothing -> nothing {
     let src = $claude_projects_dir | path expand
     if not ($src | path exists) {
@@ -28,10 +34,10 @@ export def export [
 
 # Import Claude Code project sessions from sandbox-state.
 #
-# Copies sessions from ~/workspace/mounted/sandbox-state/projects/ into ~/.claude/projects/.
+# Copies sessions from $env.WORKSPACE_DIR/sandbox-state/projects/ into ~/.claude/projects/.
 # Existing sessions with the same UUID are skipped (no overwrite).
 export def import [
-    path?: path # Input directory (default: ~/workspace/mounted/sandbox-state/projects)
+    path?: path # Input directory (default: $env.WORKSPACE_DIR/sandbox-state/projects)
 ]: nothing -> nothing {
     let src = $path | default (sandbox-state-path 'projects')
     if not ($src | path exists) {

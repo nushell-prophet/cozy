@@ -25,7 +25,7 @@ Removed from the actionable list — done in conversation. For audit:
 | F11 | `~/.claude/CLAUDE.md` contains the `fd` entry |
 | F13 | All 5 autoload filenames `test.nu` expects exist under `~/.config/nushell/autoload/` (`module-imports.nu`, `hooks-config.nu`, `my-nu-completions.nu`, `standard-aliasses.nu`, `mcp-server.nu`) |
 | F14 | Ran the marker-replace logic 3× in a row against `/etc/sandbox-persistent.sh`; block count stayed at 1; `$HOME` literal preserved (no `$$HOME` corruption from regex backref) |
-| F16 | `~/workspace/` has only `README.md` (from Dockerfile COPY) and `mounted` symlink — no stale empty mkdir |
+| F16 | `~/workspace/` has only `README.md` (from Dockerfile COPY) — no `mounted` symlink, no stale empty mkdir |
 | Binaries on PATH | fd, bat, rg, delta, jj, vd, gh, hx, lazygit, zellij, topiary, claude, nu, broot all present |
 | MCP nushell tool calls | this conversation is using `mcp__nushell__evaluate` from inside the container — works |
 | 13 vendored modules in `~/repos/` | claude-nu, cozy, dotfiles, dotnu, my-claude-skills, nu-cmd-stack, nu-goodies, nu-kv, nu-multiproof, numd, nushell-skills, nutest, topiary-nushell |

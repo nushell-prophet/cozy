@@ -55,4 +55,4 @@ A Nushell MCP server is registered in `~/.claude.json`. It provides `evaluate`, 
 ## Constraints
 
 - Docker socket is available for container operations
-- Home directory is at `/home/agent`; symlink `~/workspace/mounted` points to the workspace
+- Home directory is at `/home/agent`; the mounted workspace is at `$env.WORKSPACE_DIR` (host path, bind-mounted at the same absolute path on macOS/Linux; on Windows the autoload rewrites `C:\Users\…` → `/c/Users/…`)

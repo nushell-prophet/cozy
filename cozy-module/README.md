@@ -57,7 +57,7 @@ cozy sandbox-state import        # imports history + projects
 Exports Nushell's SQLite history database to a timestamped `.nuon` file, or imports records back. Deduplicates and skips entries already present.
 
 ```nushell
-cozy sandbox-state history export                    # default: ~/workspace/mounted/sandbox-state/history-<timestamp>.nuon
+cozy sandbox-state history export                    # default: $env.WORKSPACE_DIR/sandbox-state/history-<timestamp>.nuon
 cozy sandbox-state history import                    # from latest export
 ```
 
@@ -67,7 +67,7 @@ Seeds history from the bundled `history-seed.nuon` file.
 
 ### `cozy sandbox-state projects export` / `import`
 
-Copies Claude Code project sessions (`~/.claude/projects/`) to/from `~/workspace/mounted/sandbox-state/projects/`. The mounted directory survives sandbox recreation.
+Copies Claude Code project sessions (`~/.claude/projects/`) to/from `$env.WORKSPACE_DIR/sandbox-state/projects/`. The workspace directory survives sandbox recreation.
 
 ### `cozy install ...`
 
