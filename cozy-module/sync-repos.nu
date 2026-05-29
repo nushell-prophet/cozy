@@ -6,6 +6,7 @@ const repos = {
     nu-goodies: "https://github.com/nushell-prophet/nu-goodies.git"
     numd: "https://github.com/nushell-prophet/numd.git"
     nu-kv: "https://github.com/nushell-prophet/nu-kv.git"
+    nu-multiproof: "https://github.com/nushell-prophet/nu-multiproof.git"
     topiary-nushell: "https://github.com/blindFS/topiary-nushell.git"
     dotfiles: "https://github.com/nushell-prophet/my-dotfiles.git"
     nutest: "https://github.com/vyadh/nutest.git"
