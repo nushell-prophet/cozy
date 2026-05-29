@@ -34,7 +34,7 @@ export def wezterm-cozy [
         ]
     }
 
-    if $no_background { do $closure } else { job spawn --tag cozy-1 $closure }
+    if $no_background { do $closure } else { job spawn $closure }
 }
 
 # Docker Sandbox -- local sandbox environments for AI agents
