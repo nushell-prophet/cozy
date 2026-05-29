@@ -1,4 +1,4 @@
-# Nushell Migration Guide (0.100 → 0.112)
+# Nushell Migration Guide (0.100 → 0.113)
 
 When updating Nushell scripts, consult this reference for breaking changes,
 renamed commands, and new idioms. Versions noted as `(v0.NNN)`.
@@ -34,7 +34,10 @@ renamed commands, and new idioms. Versions noted as `(v0.NNN)`.
 | `du` | `--all (-a)` | `--long (-l)` | 0.101 |
 | `watch` | `--debounce-ms` | `--debounce` (duration) | removed 0.112 |
 | `metadata set` | `--merge` | closure form | removed 0.112 |
-| `metadata set` | `--datasource-ls` | `--path-columns [name]` | deprecated 0.111 |
+| `metadata set` | `--datasource-ls` | `--path-columns [name]` | removed 0.113 (deprecated 0.111) |
+| `kill` | `-0` / `-9` shorthand | `-s 0` / `-s 9` (long signal form) | removed 0.113 |
+| `watch` | closure argument | bare `watch path` stream + `for`/`each` | deprecated 0.113 |
+| `grid` | implicit record handling | explicit `(column)` argument | deprecated 0.113 |
 
 ---
 
@@ -289,6 +292,90 @@ cp --all * /tmp   # use --all to include dotfiles
 open --raw file.md   # for raw string
 ```
 
+### `from md` default output is concise rows (v0.113)
+
+```nushell
+# before (0.112): open file.md => full AST (type, position, attrs, children)
+# after  (0.113): open file.md => concise human-friendly rows
+open file.md --raw | from md --verbose   # full AST as before
+```
+
+### `parse` no longer auto-splits external streams (v0.113)
+
+Byte/string streams from external processes are no longer implicitly split by
+lines before `parse`. Pipe through `lines` first.
+
+```nushell
+# before
+^cat file.log | parse -r '(?P<level>\w+)\s+(?P<msg>.+)'
+# after
+^cat file.log | lines | parse -r '(?P<level>\w+)\s+(?P<msg>.+)'
+```
+
+### `kill -0` no longer accepted as shorthand (v0.113)
+
+`kill -0` used to send signal 0 but now errors (was also a footgun — could
+terminate nushell itself). Use the long form.
+
+```nushell
+# before: kill -0 1234
+# after:  kill -s 0 1234   # signal 0 = check if process exists
+# same for: kill -9 pid => kill -s 9 pid
+```
+
+### `mkdir -v` / `mv -v` / `rm -v` return tables (v0.113)
+
+Verbose flags now return queryable structured tables instead of human text.
+Scripts that parsed the text output need to consume the table columns.
+
+```nushell
+mkdir -v a/b/c
+# => [[path created error]; [a true ""] [a/b true ""] [a/b/c true ""]]
+
+mv -v src dst   # columns: source, destination, message
+rm -v old.txt   # columns: path, …
+```
+
+### `from xlsx --header-row` default change (v0.113)
+
+Default is now the first non-empty row (was row 0). Pass `--header-row null`
+for no header, or an explicit 0-indexed integer to restore old behavior.
+
+```nushell
+open data.xlsx                          # first non-empty row as header
+open data.xlsx | from xlsx -r null      # treat all rows as data
+open data.xlsx | from xlsx -r 0         # old default
+```
+
+### `to yaml` now quotes ambiguous string values (v0.113)
+
+Previously emitted bare `off` / `on` / `yes` / `no` / `0.0.0.0:8444` etc.,
+which re-parse as booleans or invalid YAML. Now wrapped in single quotes.
+Scripts that compared the round-tripped text need updating.
+
+```nushell
+'{"value": "off"}' | from json | to yaml
+# before: value: off
+# after:  value: 'off'
+```
+
+### `to csv` / `to tsv` now stream and fail on schema drift (v0.113)
+
+Rows are written as they arrive instead of buffered. If a later row
+introduces a new column, the export errors mid-stream.
+
+```nushell
+# fix 1: declare columns up front
+$rows | to csv --columns [a b c]
+# fix 2: collect first when the schema is variable
+$rows | collect | to csv
+```
+
+### `ls` no longer sets `source` metadata (v0.113)
+
+Paired with the `metadata set --datasource-ls` removal. Code that inspected
+`$result | metadata | get source` and matched `"ls"` needs another signal.
+
 ### `into datetime` no longer parses human strings (v0.104)
 
 ```nushell
@@ -472,3 +559,21 @@ If set, solely responsible for formatting — `table` no longer runs on top. Set
 ### Env var names case-insensitive (v0.111)
 
 All `$env` lookups are case-insensitive on all OSes.
+
+### History config fields locked after REPL start (v0.113)
+
+These fields are read once at startup by reedline; setting them from the
+REPL is now a hard error instead of silently ignored. Set them in
+`config.nu` (or via `--config` / env vars) and restart.
+
+```nushell
+# locked: error if assigned from REPL
+$env.config.history.path
+$env.config.history.max_size
+$env.config.history.file_format
+$env.config.history.isolation
+
+# still mutable from REPL — re-read every prompt
+$env.config.history.sync_on_enter
+$env.config.history.ignore_space_prefixed
+```

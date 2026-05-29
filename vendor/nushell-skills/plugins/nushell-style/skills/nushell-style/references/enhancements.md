@@ -1,4 +1,4 @@
-# New Nushell Features for Better Scripts (0.100 → 0.112)
+# New Nushell Features for Better Scripts (0.100 → 0.113)
 
 Modern idioms and new capabilities to improve existing Nushell code.
 Version noted as `(v0.NNN)`.
@@ -60,6 +60,19 @@ watch . | where operation == Write and path like "*.md" | each { md-lint $in.pat
 ### `par-each` streams results as they complete (v0.112)
 
 Unordered `par-each` no longer blocks until all items finish.
+
+### `peek` — inspect a stream without collecting (v0.113)
+
+Captures the first `n` elements into the pipeline metadata while letting the
+stream continue flowing. Useful for logging or debugging without forcing
+`collect`.
+
+```nushell
+ls **/*.rs
+| peek 3                     # first 3 entries stashed in metadata
+| where size > 10kb
+| metadata access {|m| print $m.peek; $in }
+```
 
 ---
 
@@ -486,6 +499,39 @@ def ls [] { echo "custom" }
 %ls  # => real ls output
 ```
 
+### Dynamic `%` sigil dispatch (v0.113)
+
+`%$cmd` and `%($cmd)` resolve the builtin to invoke at runtime. **Only
+builtins are eligible** — custom commands, aliases, and externals fail with
+`command_not_found`. Use this when you stored a builtin name in a variable
+and need to call it without `eval`-style string interpretation; arguments
+are forwarded as parsed values.
+
+```nushell
+let cmd = 'echo'
+%$cmd 'hello'        # => hello
+%('echo') 'world'    # => world
+%($cmd) 'hello'      # => hello
+
+def custom_cmd [] { 'nope' }
+let c = 'custom_cmd'
+%($c)                # error: only builtins resolve
+```
+
+### Fish-style abbreviations (v0.113)
+
+Syntax-aware expansions triggered on space/enter, configured via
+`$env.config.abbreviations`. Unlike aliases, the expanded text is visible and
+editable before submission.
+
+```nushell
+$env.config.abbreviations = {
+    gco: "git checkout"
+    ll:  "ls -la"
+}
+# typing `gco<space>` expands to `git checkout `
+```
+
 ### Command group aliasing (v0.111)
 
 ```nushell
@@ -546,6 +592,26 @@ ls | to nuon --list-of-records --indent 2
 # => [{name: "foo", ...}, {name: "bar", ...}]
 ```
 
+### `to nuon --no-commas` (v0.113)
+
+Omit the optional commas — handy when generating NUON for diff-friendly
+inclusion in source files.
+
+```nushell
+{a: 1 b: 2} | to nuon --no-commas
+```
+
+### `save` preserves TOML comments and formatting (v0.113)
+
+Round-tripping a TOML file no longer strips comments, blank lines, or
+inline-table layout. `Cargo.toml` style files can now be programmatically
+edited without losing context.
+
+```nushell
+open Cargo.toml | update package.version "1.1.0" | save Cargo.toml
+# comments above [package], inline tables, etc. all survive
+```
+
 ### `to md --list` (v0.110)
 
 ```nushell
@@ -557,11 +623,12 @@ ls | to nuon --list-of-records --indent 2
 
 No more broken markdown tables from data containing `|`.
 
-### `from md` — structured markdown parsing (v0.112)
+### `from md` — structured markdown parsing (v0.112, refined v0.113)
 
 ```nushell
-open README.md  # returns AST, not raw string
-open --raw README.md  # for raw string
+open README.md             # 0.113: concise human-friendly rows
+open README.md | from md --verbose  # full AST (type, position, attrs, children)
+open --raw README.md       # raw string
 ```
 
 ### `to text --no-newline` (v0.100)
@@ -652,6 +719,46 @@ kv set key val --table project_settings
 use std; log set-level DEBUG
 ```
 
+### `std-rfc/str lcp` — longest common prefix (v0.113)
+
+```nushell
+use std-rfc/str *
+["foobar" "foobaz" "foo123"] | lcp   # => "foo"
+```
+
+### `std-rfc/iter prod` — cartesian product (v0.113)
+
+```nushell
+use std-rfc/iter *
+[a b] | prod [1 2]   # => [[a 1] [a 2] [b 1] [b 2]]
+```
+
+### `std-rfc/iter recurse` multiple cell paths (v0.113)
+
+Pass several cell paths to descend into multiple shapes in one call.
+
+### `std-rfc/url` (v0.113)
+
+Concise URL manipulation: edit query params, path segments, scheme, etc.,
+without round-tripping through `url parse` / `url join`.
+
+```nushell
+use std-rfc/url *
+"https://example.com/a?x=1" | url set-query y 2
+```
+
+### `std-rfc/pb` — terminal progress bars via OSC 9;4 (v0.113)
+
+Sets the host terminal's taskbar/dock progress (where supported — iTerm,
+WezTerm, ConEmu, etc.).
+
+```nushell
+use std-rfc/pb
+try {
+    0..<10 | each {|x| sleep 200ms; pb set-idx $x 10 }
+} catch { pb error } finally { pb clear }
+```
+
 ---
 
 ## Tables & Display
@@ -682,6 +789,33 @@ if (config use-colors) { $"(ansi green)ok(ansi reset)" } else { "ok" }
 random uuid -v 7  # time-ordered UUID v7
 ```
 
+### Structured verbose for `mkdir` / `mv` / `rm` (v0.113)
+
+`-v` now returns queryable tables instead of human text — scripts can filter
+on the result.
+
+```nushell
+mkdir -v a/b/c | where created     # only paths actually created
+mv -v *.log archive/ | get message
+rm -v old/*                        # one row per path
+```
+
+### `idx` — in-memory filesystem index (v0.113)
+
+Fast fuzzy file/path lookup and content search backed by an in-process index.
+Persisted with `export`/`import`.
+
+```nushell
+idx init ~/repos                       # build index
+idx find "skill"                       # fuzzy match files and dirs
+idx search --regex 'TODO\(\w+\)'       # content search across indexed files
+idx dirs                               # which directories are indexed
+idx status                             # memory / counts
+idx export ~/.cache/idx.bin            # persist
+idx import ~/.cache/idx.bin            # restore
+idx drop                               # free memory
+```
+
 ### `$env.NU_BACKTRACE = 1` (v0.103)
 
 Enable nushell-level backtraces for debugging error chains.
@@ -694,4 +828,28 @@ ls | metadata access {|m| error make {msg: "bad", label: {text: "here", span: $m
 
 # enable path rendering in custom tables
 glob * | wrap path | metadata set --path-columns [path]
+```
+
+### `metadata access` closure can mutate caller env (v0.113)
+
+Previously the closure ran in an isolated scope. Now it behaves like
+`do --env`, so `$env` assignments and `cd` inside the closure leak out.
+
+```nushell
+ls | metadata access {|m| $env.LAST_LISTED = $m.span.start }
+# $env.LAST_LISTED is set in the caller after the pipeline
+```
+
+### `pre_prompt` / `env_change` hooks can edit the commandline (v0.113)
+
+Hooks can rewrite the buffer the user is about to submit (e.g. inject a
+prefix, rewrite a deprecated command). Previously they were read-only.
+
+### `ansi gradient --fgnamed` / `--list` (v0.113)
+
+Named gradients replace having to spell out start/end hex codes.
+
+```nushell
+"banner" | ansi gradient --fgnamed rainbow
+ansi gradient --list   # show all named palettes
 ```
