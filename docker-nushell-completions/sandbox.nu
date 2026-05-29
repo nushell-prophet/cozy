@@ -1,7 +1,7 @@
 const agents = [cagent claude codex copilot gemini kiro shell]
 
 def "nu-complete sandbox names" [] {
-    ^docker sandbox ls
+    ^docker sandbox ls --guess
     | detect columns
     | each {|x| {value: $x.SANDBOX description: $"($x.STATUS) ($x.WORKSPACE)"} }
 }
@@ -38,8 +38,15 @@ export def wezterm-cozy [
         # SANDBOX_MODE OSC user-var trick, which applied it only after the shell
         # started and briefly flashed the config-file default first.
         ^wezterm --config-file $conf --config $'colors={background="#($background)"}' start --always-new-process -- ...[
-            docker sandbox exec -it $sandbox_name
-            nu --login --execute $'zellij attach -c ($sandbox_name)'
+            docker
+            sandbox
+            exec
+            -it
+            $sandbox_name
+            nu
+            --login
+            --execute
+            $'zellij attach -c ($sandbox_name)'
         ]
     }
 
