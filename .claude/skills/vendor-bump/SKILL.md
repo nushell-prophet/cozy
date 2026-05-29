@@ -23,13 +23,21 @@ grouping ("commit by groups"); never combine multiple repos into one commit.
 ## 1. Run vendor.nu
 
 ```sh
-nu toolkit/vendor.nu          # default: github tarballs (anonymous unless GH_TOKEN set)
-nu toolkit/vendor.nu --local  # rsync from sibling ../<repo>/ dirs (dev workflow)
+nu toolkit/vendor.nu --no-commit            # all repos, github tarballs (anonymous unless GH_TOKEN set)
+nu toolkit/vendor.nu --local --no-commit    # all repos, rsync from sibling ../<repo>/ dirs (dev workflow)
+nu toolkit/vendor.nu <repo> --no-commit     # just one repo from vendor.yml
 ```
 
-Default is tarballs. Use `--local` only when the user has unpushed work in
-sibling clones they want to vendor before pushing — confirm with them if
-unclear. `vendor.nu` deletes and rewrites `vendor/` from scratch each run.
+**Always pass `--no-commit`.** `vendor.nu` auto-commits its result with a
+generic `vendor: update <repo>` message by default — that has no body and
+violates the Intent Preservation rule this skill exists to honor. `--no-commit`
+leaves the changes unstaged so steps 2–4 below can compose richer per-repo
+commits.
+
+Default fetch is tarballs. Use `--local` only when the user has unpushed work
+in sibling clones they want to vendor before pushing — confirm with them if
+unclear. Without a `<repo>` arg, `vendor.nu` deletes and rewrites all of
+`vendor/` from scratch; with one, it wipes and rewrites only that repo's dir.
 
 ## 2. Group the diff by repo
 
