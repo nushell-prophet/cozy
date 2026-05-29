@@ -28,7 +28,7 @@ export def wezterm-cozy [
     sandbox_name: string@"nu-complete sandbox names"
     --config-file: path
     --background: string@"nu-complete wezterm background" = "000000" # hex without '#'
-    --no-background
+    --no-job # don't create background job for the proces
 ] {
     let conf = $config_file
         | default ($script_path | path dirname | path join ../vendor/dotfiles/wezterm/wezterm.lua)
@@ -43,7 +43,7 @@ export def wezterm-cozy [
         ]
     }
 
-    if $no_background { do $closure } else { job spawn $closure }
+    if $no_job { do $closure } else { job spawn $closure }
 }
 
 # Docker Sandbox -- local sandbox environments for AI agents
