@@ -94,9 +94,33 @@ export def "main check" [--add (-a)] {
     }
 }
 
+# Commit the freshly vendored files with a standard message. Pathspec-scoped
+# to the touched vendor/ dir(s) so unrelated staged changes stay out of the
+# commit, and a no-op (no diff) just prints instead of failing.
+def commit-vendor [groups: list<any> repo: string] {
+    let paths = if $repo == null {
+        [($cozy_root | path join vendor)]
+    } else {
+        $groups | each {|g| $cozy_root | path join vendor $g.repo }
+    }
+
+    cd $cozy_root
+    ^git add ...$paths
+    let staged = ^git diff --cached --quiet -- ...$paths | complete | get exit_code
+    if $staged == 0 {
+        print $"  (ansi yellow)Nothing to commit(ansi reset)"
+        return
+    }
+
+    let subject = if $repo == null { 'vendor: refresh all modules' } else { $'vendor: update ($repo)' }
+    ^git commit -m $subject -- ...$paths
+    print $"  (ansi green)Committed:(ansi reset) ($subject)"
+}
+
 export def main [
     repo?: string@"nu-complete vendor repos" # vendor only this repo from vendor.yml; omit to refresh all
     --local (-l)
+    --no-commit # skip the automatic git commit of the vendored changes
 ] {
     # Why: derive vendor_dir from the script's own location (path self)
     # so this script works regardless of caller's pwd. The script lives
@@ -139,5 +163,9 @@ export def main [
             }
             rm -rf $tmp
         }
+    }
+
+    if not $no_commit {
+        commit-vendor $groups $repo
     }
 }

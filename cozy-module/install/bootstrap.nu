@@ -316,7 +316,9 @@ def populate-repos [--local] {
         let dir = $cozy_root | path join 'vendor'
         let populated = ($dir | path exists) and ((glob ($dir | path join '*')) | is-not-empty)
         if $local or not $populated {
-            let arg = if $local { ['--local'] } else { [] }
+            # --no-commit: vendor.nu now auto-commits its result, but install
+            # (docker build / first-run) must not create commits in cozy_root.
+            let arg = if $local { ['--local' '--no-commit'] } else { ['--no-commit'] }
             ^nu --no-config-file ($cozy_root | path join 'toolkit' 'vendor.nu') ...$arg
         }
         $dir
