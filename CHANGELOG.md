@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Dropped the `~/workspace/mounted` symlink — `$env.WORKSPACE_DIR` is now the single source of truth for the mounted workspace path. The autoload rewrites `WORKSPACE_DIR` in-place on Windows so consumers can read it directly without going through a symlink. `cozy dev-link` and `cozy sandbox-state {history,projects,global-claude} {export,import}` default to `$env.WORKSPACE_DIR/...` and hard-error when it's unset, instead of silently writing to a broken symlink path.
+- Vendored `nu-goodies` — `hist --all-codes` shows commands of any exit status (not just successful ones); `ansi-to-png` defaults to a pure-black (`#000000`) background. (b5ccdba)
 
 ## [0.2.4] - 2026-05-25
 
