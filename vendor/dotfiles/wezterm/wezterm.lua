@@ -18,6 +18,9 @@ local DEFAULTS = {
   initial_cols = 220,
   initial_rows = 220,
   max_fps = 255,
+  -- Why: deep navy distinguishes the host terminal at a glance from sandbox
+  -- sessions, which override to black '#0d0d0d' via SANDBOX_MODE below.
+  background = '#0a0e27',
 }
 
 for k, v in pairs(DEFAULTS) do
@@ -294,7 +297,7 @@ wezterm.on('user-var-changed', function(window, pane, name, value)
   if name == "ZEN_MODE" then
     overrides.font_size = value == "on" and local_settings.zen_font_size or nil
   elseif name == "SANDBOX_MODE" then
-    overrides.colors = value == "on" and { background = '#0d0d0d' } or nil
+    overrides.colors = value == "on" and { background = '#000000' } or nil
   end
   window:set_config_overrides(overrides)
 end)
