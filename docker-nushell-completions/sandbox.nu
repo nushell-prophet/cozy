@@ -19,17 +19,22 @@ const script_path = path self
 export def wezterm-cozy [
     sandbox_name: string@"nu-complete sandbox names"
     --config-file: path
+    --no-background
 ] {
     let conf = $config_file
         | default ($script_path | path dirname | path join ../vendor/dotfiles/wezterm/wezterm.lua)
 
-    ^wezterm --config-file $conf start --always-new-process -- ...[
-        docker sandbox exec -it $sandbox_name
-        nu --login --execute $'
-            print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\";
-            zellij attach -c ($sandbox_name)
-        '
-    ]
+    let closure = {
+        ^wezterm --config-file $conf start --always-new-process -- ...[
+            docker sandbox exec -it $sandbox_name
+            nu --login --execute $'
+                print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\";
+                zellij attach -c ($sandbox_name)
+            '
+        ]
+    }
+
+    if $no_background { do $closure } else { job spawn --tag cozy-1 $closure }
 }
 
 # Docker Sandbox -- local sandbox environments for AI agents
