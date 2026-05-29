@@ -1,8 +1,8 @@
 const agents = [cagent claude codex copilot gemini kiro shell]
 
 def "nu-complete sandbox names" [] {
-    ^docker sandbox ls --guess
-    | detect columns
+    ^docker sandbox ls
+    | detect columns --guess
     | each {|x| {value: $x.SANDBOX description: $"($x.STATUS) ($x.WORKSPACE)"} }
 }
 
