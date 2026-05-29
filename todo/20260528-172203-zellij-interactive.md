@@ -1,7 +1,7 @@
 ---
 status: 'in_progress'
 created: '20260528-172203 #yyyyMMdd-hhmmss'
-updated: '20260529-220157 #yyyyMMdd-hhmmss'
+updated: '20260529-221142 #yyyyMMdd-hhmmss'
 related_files:
   - vendor/dotfiles/zellij/config.kdl
   - vendor/dotfiles/zellij/todo-nu/todo.nu
@@ -86,24 +86,48 @@ Two consequences:
 - `subscribe` streams render updates but still needs a client for *new* input to
   render — not a workaround for #4508.
 
-## cozy's interactive surface — prioritized targets
+## Scope — two layers, only one is automated here
 
-1. **`Super e` -> todo-hx -> create-todo** (`config.kdl:89-94`, `todo.nu:25-63`).
-   Signature flow. Quitting helix *unmodified* deletes the new file (and the
-   `todo/` folder if just created). Invisible to any non-TTY test.
-2. **`lstd`** (`todo.nu:4-23`). fzf picker + `ctrl-e` (spawns `zellij edit`) +
-   pbcopy OSC52. Three interactive layers.
-3. **`Super Alt l` lazygit-helix round-trip** (`lazygit-helix.nu`). Sends `Esc`
-   to the focused helix pane before lazygit, `:reload-all` after. Pane-id
-   dependent, fragile.
-4. **`Super Alt b` broot-paste** (`broot-paste.nu`). Injects the selected path
-   into the originally-focused *tiled* pane in the same tab.
-5. **PWD tab auto-rename + `·N` dedup** (`hooks-config.nu:19-48`). Runs on every
-   `cd` inside a zellij session.
-6. **`Super Shift e` DumpScreen -> floating helix** (`config.kdl:50-60`).
-7. Nushell REPL fzf/broot keybinds (`Ctrl F`/`Alt F`/`Ctrl T`, `config.nu`).
-8. lazygit `E` -> `zellij edit` (`lazygit/config.yml:16-23`); broot
-   `e`/`vd`/`pb*` verbs (`verbs.hjson`).
+`zellij action send-keys`/`write` deliver bytes to the **program inside the
+pane** (its PTY), *not* to zellij's keybinding layer — that interception happens
+at the client's input stream, before actions exist. This splits the surface:
+
+- **Layer 1 — zellij's own keybind chords** (`config.kdl`: `Super e`,
+  `Super Alt l`, mode switches). NOT triggerable via `zellij action`; pressing
+  them programmatically needs key bytes injected into a *client's* input stream
+  (a controlled PTY we own). **Out of scope for this task.** Mainly breaks via
+  the `cozy ln` Super->Alt rewrite (`swap-zellij-super.nu`). Cover later with a
+  short **manual-testing protocol**.
+- **Layer 2 — everything that is a program reading the pane's stdin** (the nu
+  helpers and the TUIs' own shortcuts). Drivable via `send-keys`/`write-chars`
+  because those write to the pane PTY. **This is where the real logic and bug
+  risk live, and it is what we test now.** We invoke the command directly (e.g.
+  `zellij action new-pane -- todo-hx`) rather than via its `Super`-chord.
+
+## In-scope targets (Layer 2), prioritized
+
+1. **`create-todo` / `todo-hx`** (`todo.nu:25-63`). Run the command in a pane,
+   drive helix via send-keys; assert the new `todo/*.md` is created, then
+   deleted-on-unmodified-quit (and the `todo/` folder too if just created), and
+   persisted after an edit. Signature flow; the auto-delete is invisible to any
+   non-TTY test.
+2. **`lstd`** (`todo.nu:4-23`). fzf picker (a pane program -> drivable): type
+   query, `ctrl-e`, Enter; assert a `zellij edit` pane spawns for the
+   highlighted file + pbcopy OSC52 side effect.
+3. **`lazygit-helix.nu`**. Set up a helix pane, run the script; assert the
+   Esc-before / `:reload-all`-after pane-targeting (`list-panes`-based logic) is
+   correct. Pane-id dependent, fragile.
+4. **`broot-paste.nu`**. Tiled + floating panes; drive broot; assert the chosen
+   path lands at the originally-focused *tiled* pane's cursor (same tab).
+5. **PWD tab auto-rename + `·N` dedup** (`hooks-config.nu:19-48`). Cleanest, no
+   TUI: `cd` in a pane, assert via `query-tab-names`/`list-tabs`. Runs on every
+   `cd`.
+6. **Nushell REPL keybinds** (`Ctrl F`/`Alt F`/`Ctrl T`, `config.nu`) — these
+   are *reedline's* keybinds, read from the pane PTY -> `send-keys` triggers
+   them. (Distinct from Layer 1: reedline is the pane program, not zellij.)
+7. **Helix space-menu nu-pipeline ops**; **lazygit `E` -> `zellij edit`**
+   (`lazygit/config.yml:16-23`); **broot `e`/`vd`/`pb*` verbs**
+   (`verbs.hjson`) — program-level shortcuts, drivable.
 
 ## Side finding (out of scope, worth a test assertion)
 
