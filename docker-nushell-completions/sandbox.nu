@@ -15,6 +15,7 @@ def "nu-complete sandbox run-target" [] {
 
 const script_path = path self
 
+# Open a sandbox in a new WezTerm window and attach to its zellij session
 export def wezterm-cozy [
     sandbox_name: string@"nu-complete sandbox names"
     --config-file: path
@@ -31,96 +32,108 @@ export def wezterm-cozy [
     ]
 }
 
+# Docker Sandbox -- local sandbox environments for AI agents
 export extern "docker sandbox" [
-    --debug (-D)
+    --debug (-D)            # Enable debug logging
 ]
 
+# Create a sandbox for an agent
 export extern "docker sandbox create" [
     agent: string@$agents
     workspace?: path
-    --debug (-D)
-    --load-local-template
-    --name: string
-    --quiet (-q)
-    --template (-t): string
+    --debug (-D)            # Enable debug logging
+    --name: string          # Name for the sandbox (default: <agent>-<workdir>)
+    --pull-template: string@[always missing never] # Template image pull policy: always (always pull from registry), missing (pull only if not cached), never (use only cached images)
+    --quiet (-q)            # Suppress verbose output
+    --template (-t): string # Container image to use for the sandbox (default: agent-specific image)
 ]
 
+# Run an agent in a sandbox
 export extern "docker sandbox run" [
     target: string@"nu-complete sandbox run-target"
     workspace?: path
-    --debug (-D)
-    --load-local-template
-    --name: string
-    --template (-t): string
+    --debug (-D)            # Enable debug logging
+    --name: string          # Name for the sandbox (default: <agent>-<workdir>)
+    --pull-template: string@[always missing never] # Template image pull policy: always (always pull from registry), missing (pull only if not cached), never (use only cached images)
+    --template (-t): string # Container image to use for the sandbox (default: agent-specific image)
 ]
 
+# Execute a command inside a sandbox
 export extern "docker sandbox exec" [
     sandbox: string@"nu-complete sandbox names"
     ...args: string
-    --debug (-D)
-    --detach (-d)
-    --detach-keys: string
-    --env (-e): string
-    --env-file: string
-    --interactive (-i)
-    --privileged
-    --tty (-t)
-    --user (-u): string
-    --workdir (-w): string
+    --debug (-D)           # Enable debug logging
+    --detach (-d)          # Detached mode: run command in the background
+    --detach-keys: string  # Override the key sequence for detaching a container
+    --env (-e): string     # Set environment variables
+    --env-file: string     # Read in a file of environment variables
+    --interactive (-i)     # Keep STDIN open even if not attached
+    --privileged           # Give extended privileges to the command
+    --tty (-t)             # Allocate a pseudo-TTY
+    --user (-u): string    # Username or UID (format: <name|uid>[:<group|gid>])
+    --workdir (-w): string # Working directory inside the container
 ]
 
+# List VMs
 export extern "docker sandbox ls" [
-    --debug (-D)
-    --json
-    --no-trunc
-    --quiet (-q)
+    --debug (-D)           # Enable debug logging
+    --json                 # Output in JSON format
+    --quiet (-q)           # Only display VM names
 ]
 
+# Stop one or more sandboxes without removing them
 export extern "docker sandbox stop" [
     ...sandbox: string@"nu-complete sandbox names"
-    --debug (-D)
+    --debug (-D)           # Enable debug logging
 ]
 
+# Remove one or more sandboxes
 export extern "docker sandbox rm" [
     ...sandbox: string@"nu-complete sandbox names"
-    --debug (-D)
+    --debug (-D)           # Enable debug logging
 ]
 
+# Save a snapshot of the sandbox as a template
 export extern "docker sandbox save" [
     sandbox: string@"nu-complete sandbox names"
     tag: string
-    --debug (-D)
-    --output (-o): path
+    --debug (-D)           # Enable debug logging
+    --output (-o): path    # Save image to specified tar file instead of loading into host Docker
 ]
 
+# Reset all VM sandboxes and clean up state
 export extern "docker sandbox reset" [
-    --debug (-D)
-    --force (-f)
+    --debug (-D)           # Enable debug logging
+    --force (-f)           # Skip confirmation prompt
 ]
 
+# Manage sandbox networking
 export extern "docker sandbox network" [
-    --debug (-D)
+    --debug (-D)           # Enable debug logging
 ]
 
+# Manage proxy configuration for a sandbox
 export extern "docker sandbox network proxy" [
     sandbox: string@"nu-complete sandbox names"
-    --allow-cidr: string
-    --allow-host: string
-    --block-cidr: string
-    --block-host: string
-    --bypass-cidr: string
-    --bypass-host: string
-    --debug (-D)
-    --policy: string@[allow deny]
+    --allow-cidr: string   # Remove an IP range in CIDR notation from the block or bypass lists (can be specified multiple times)
+    --allow-host: string   # Permit access to a domain or IP (can be specified multiple times)
+    --block-cidr: string   # Block access to an IP range in CIDR notation (can be specified multiple times)
+    --block-host: string   # Block access to a domain or IP (can be specified multiple times)
+    --bypass-cidr: string  # Bypass MITM proxy for an IP range in CIDR notation (can be specified multiple times)
+    --bypass-host: string  # Bypass MITM proxy for a domain or IP (can be specified multiple times)
+    --debug (-D)           # Enable debug logging
+    --policy: string@[allow deny] # Set the default policy
 ]
 
+# Show network logs
 export extern "docker sandbox network log" [
-    --debug (-D)
-    --json
-    --limit: int
-    --quiet (-q)
+    --debug (-D)           # Enable debug logging
+    --json                 # Output in JSON format
+    --limit: int           # Maximum number of log entries to show
+    --quiet (-q)           # Only display log entries
 ]
 
+# Show sandbox version information
 export extern "docker sandbox version" [
-    --debug (-D)
+    --debug (-D)           # Enable debug logging
 ]
