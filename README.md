@@ -143,12 +143,12 @@ Changes from WezTerm defaults:
 - **Shell**: launches Nushell with Zellij instead of the system default shell
 - **Keybindings**: all defaults disabled; CMD+SHIFT+letter sends kitty-protocol escape sequences so Zellij and apps behind it can distinguish them
 - **QuickSelect patterns**: custom regexes for jj change IDs, Nushell error paths (`╭─[file:line:col]`), Nushell table headers/values, and filesystem paths
-- **Dynamic modes**: `ZEN_MODE` / `SANDBOX_MODE` user variables adjust font size and background at runtime
+- **Dynamic modes**: the `ZEN_MODE` user variable adjusts font size at runtime; the sandbox background is set at window creation via `--config` (see the launch command below)
 
 The launch command below targets `docker sandbox` — the entry point I test against. For other runtimes (`sbx`, Apple container, etc.) swap out the `docker sandbox exec` portion. Inside the sandbox, `$env.WORKSPACE_DIR` points at whichever workspace you mounted (the autoload normalizes Windows `C:\Users\…` paths into the `/c/Users/…` mount).
 
 ```
-wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua start -- docker sandbox exec -it cozy-test nu -l --execute 'print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\"; zellij attach -c cozy-test'
+wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua --config 'colors={background="#000000"}' start -- docker sandbox exec -it cozy-test nu -l --execute 'zellij attach -c cozy-test'
 ```
 
 ## Nushell modules loaded by default
