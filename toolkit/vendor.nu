@@ -11,6 +11,10 @@ def load-modules []: nothing -> list<record<repo: string, github: string, module
     open $vendor_yml
 }
 
+def "nu-complete vendor repos" []: nothing -> list<string> {
+    open $vendor_yml | get repo
+}
+
 # Curl args for the GitHub API: fail-fast on HTTP errors (so a JSON rate-
 # limit body never reaches `tar xz` as "not in gzip format"), show errors
 # even with -s, follow redirects. Bearer auth when GH_TOKEN/GITHUB_TOKEN
@@ -90,16 +94,29 @@ export def "main check" [--add (-a)] {
     }
 }
 
-export def main [--local (-l)] {
+export def main [
+    repo?: string@"nu-complete vendor repos" # vendor only this repo from vendor.yml; omit to refresh all
+    --local (-l)
+] {
     # Why: derive vendor_dir from the script's own location (path self)
     # so this script works regardless of caller's pwd. The script lives
     # at <cozy_root>/toolkit/vendor.nu.
     let vendor_dir = $cozy_root | path join vendor
 
-    rm -rf $vendor_dir
-    mkdir $vendor_dir
+    let all_groups = load-modules
+    let groups = if $repo == null { $all_groups } else { $all_groups | where repo == $repo }
+    if ($groups | is-empty) {
+        error make {msg: $"repo '($repo)' not found in vendor.yml"}
+    }
 
-    let groups = load-modules
+    # Wipe scope: the whole vendor/ when refreshing everything, else just the
+    # target repo's dir so the other vendored modules are left untouched.
+    if $repo == null {
+        rm -rf $vendor_dir
+        mkdir $vendor_dir
+    } else {
+        for $group in $groups { rm -rf ($vendor_dir | path join $group.repo) }
+    }
 
     if $local {
         let git_dir = $cozy_root | path dirname
