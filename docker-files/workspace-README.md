@@ -21,7 +21,7 @@ GitHub. Load a Nushell module with `use ~/repos/<repo>/<module>`.
 | `nu-kv` | Key-value store, autoloaded under the `kv` prefix |
 | `nu-cmd-stack` | Command-history stacking |
 | `numd` | Literate Markdown — `numd run <file>` |
-| `dotnu` | Literate `.nu` — `dotnu embeds`, module tooling |
+| `dotnu` | Literate `.nu` — `dotnu embeds-update`, module tooling |
 | `claude-nu` | Toolbox for Claude Code sessions (`claude-nu messages`, …) |
 | `nu-multiproof` | Multi-proof utilities |
 | `nutest` | Test framework (not autoloaded: `use ~/repos/nutest/nutest`) |
@@ -38,15 +38,16 @@ GitHub. Load a Nushell module with `use ~/repos/<repo>/<module>`.
 | Command | Does |
 |---|---|
 | `cozy logo` | Print the cozy logo |
-| `cozy install` | Build/install optional extras (Rust, plugins, rebuilds) |
+| `cozy install <tool>` | Build extras from source — `bootstrap` (full reinstall), `rust`, `nushell`, `zellij`, `topiary`, `polars`, `nu-plugin-image`, `claude` |
 | `cozy sync-repos` | Convert the `~/repos/` snapshots to git clones and pull the latest from GitHub (updates the VM, no image rebuild) |
 | `cozy dev-link` | Swap vendored `~/repos/` copies for symlinks to the mounted workspace (edit-and-test, no rebuild) |
 | `cozy mount init` | Register the workspace's git subdirs as submodules |
-| `cozy swap-zellij-super` | Remap Zellij's super key (Cmd → Alt, e.g. on Windows) |
+| `cozy swap-zellij-super` | Rewrite Zellij's Super-key bindings (→ Alt/Ctrl) for Windows hosts |
 | `cozy git-harden` | Apply safer git defaults |
 | `cozy configure claude-settings` | Write Claude Code settings |
 | `cozy sandbox-state export` / `import` | Snapshot/restore history + Claude sessions + global CLAUDE.md |
 | `cozy sandbox-state history export` / `import` | Just the Nushell history |
+| `cozy sandbox-state history seed` | Seed the Nushell history with useful commands from the bundled seed file |
 | `cozy sandbox-state projects export` / `import` | Just Claude Code session files |
 | `cozy sandbox-state global-claude export` / `import` | Just the global `~/.claude/CLAUDE.md` |
 
@@ -56,15 +57,16 @@ The rest of `~/repos/cozy/` holds the `Dockerfile`, the shared installer
 
 ## Config files cozy modified
 
-All of these come from `~/repos/dotfiles/`, except where noted. Edit them
-freely.
+Most come from `~/repos/dotfiles/`; a few Nushell autoload scripts come from
+cozy's own `docker-files/` (noted below). Edit them freely.
 
 **Nushell** — `~/.config/nushell/`
 
-- `config.nu`, `env.nu` — opinionated shell settings
-- `autoload/*.nu` — loaded on every shell start: `module-imports.nu`,
-  `mcp-server.nu`, `my-nu-completions.nu`, `carapace-config.nu`,
-  `hooks-config.nu`, `standard-aliasses.nu`, `br.nu`, `zzz_ignore_vars.nu`
+- `config.nu`, `env.nu` — opinionated shell settings (from dotfiles)
+- `autoload/*.nu` — loaded on every shell start. From cozy's `docker-files/`:
+  `module-imports.nu`, `mcp-server.nu`, `my-nu-completions.nu`,
+  `standard-aliasses.nu`. From dotfiles: `br.nu`, `carapace-config.nu`,
+  `hooks-config.nu`, `zzz_ignore_vars.nu`
 
 **Other tools** — under `~/.config/`
 
@@ -73,7 +75,7 @@ freely.
 | `~/.config/helix/` | Helix editor |
 | `~/.config/zellij/` | Zellij multiplexer |
 | `~/.config/lazygit/` | Lazygit |
-| `~/.config/broot/` | Broot file manager (+ `br --install` shell integration) |
+| `~/.config/broot/` | Broot file manager (+ `br` Nushell wrapper via `autoload/br.nu`) |
 | `~/.config/jj/` | Jujutsu VCS |
 | `~/.config/topiary/` | Topiary formatter (grammar + language config) |
 | `~/.config/git/` | `config` + `ignore`, written in XDG so they survive sandbox restarts |
