@@ -15,22 +15,31 @@ def "nu-complete sandbox run-target" [] {
 
 const script_path = path self
 
+def "nu-complete wezterm background" [] {
+    [
+        {value: "000000" description: "black (sandbox default)"}
+        {value: "0d0d0d" description: "near-black"}
+        {value: "0a0e27" description: "deep navy (host default)"}
+    ]
+}
+
 # Open a sandbox in a new WezTerm window and attach to its zellij session
 export def wezterm-cozy [
     sandbox_name: string@"nu-complete sandbox names"
     --config-file: path
+    --background: string@"nu-complete wezterm background" = "000000" # hex without '#'
     --no-background
 ] {
     let conf = $config_file
         | default ($script_path | path dirname | path join ../vendor/dotfiles/wezterm/wezterm.lua)
 
     let closure = {
-        ^wezterm --config-file $conf start --always-new-process -- ...[
+        # Why: set the background via --config at window creation rather than the
+        # SANDBOX_MODE OSC user-var trick, which applied it only after the shell
+        # started and briefly flashed the config-file default first.
+        ^wezterm --config-file $conf --config $'colors={background="#($background)"}' start --always-new-process -- ...[
             docker sandbox exec -it $sandbox_name
-            nu --login --execute $'
-                print -n $"\e]1337;SetUserVar=SANDBOX_MODE=b24=\e\\";
-                zellij attach -c ($sandbox_name)
-            '
+            nu --login --execute $'zellij attach -c ($sandbox_name)'
         ]
     }
 
