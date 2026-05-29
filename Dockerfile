@@ -43,4 +43,4 @@ RUN /home/agent/repos/cozy/cozy-module/install/ensure-nu.sh
 # file); pbcopy goes to ~/.local/bin and git identity into XDG ~/.config/git/.
 RUN nu /home/agent/repos/cozy/cozy-module/install/bootstrap.nu
 
-COPY --chown=agent:agent README.md /home/agent/workspace/README.md
+COPY --chown=agent:agent docker-files/workspace-README.md /home/agent/workspace/README.md
