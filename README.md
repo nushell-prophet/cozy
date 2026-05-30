@@ -8,7 +8,7 @@ This is a work-in-progress educational project; video demos are on the way.
 
 ## Quick start
 
-Cozy started on `docker sandbox` and that's still my primary target, so the quick start uses Docker. Internally the Dockerfile is a thin wrapper around `bootstrap.nu` — the same installer used by [Install elsewhere](#install-elsewhere) below. Every supported target (Docker, `sbx`, Apple container, macOS host) lands on the same environment.
+Cozy started on `docker sandbox` and that's still my primary target, so the quick start uses Docker. Internally the [Dockerfile](Dockerfile) is a thin wrapper around [`bootstrap.nu`](cozy-module/install/bootstrap.nu) — the same installer used by [Install elsewhere](#install-elsewhere) below. Every supported target (Docker, `sbx`, Apple container, macOS host) lands on the same environment.
 
 First, install Docker Desktop: https://www.docker.com/products/docker-desktop/
 
@@ -29,7 +29,7 @@ docker sandbox exec -it cozy-test nu --login --execute 'zellij attach -c cozy-te
 
 ## Install elsewhere
 
-`bootstrap.sh` exposes the same `bootstrap.nu` installer the Dockerfile runs, as a host-callable script. It deploys the full environment (nushell, modules, dotfiles, configs) into virtually any Ubuntu-based sandbox or directly onto a macOS host — for example `sbx` with a pure `shell` agent, an Apple container running Ubuntu, or a plain macOS install.
+[`bootstrap.sh`](bootstrap.sh) exposes the same `bootstrap.nu` installer the Dockerfile runs, as a host-callable script. It deploys the full environment (nushell, modules, dotfiles, configs) into virtually any Ubuntu-based sandbox or directly onto a macOS host — for example `sbx` with a pure `shell` agent, an Apple container running Ubuntu, or a plain macOS install.
 
 **Prerequisite:** Homebrew (https://brew.sh). `bootstrap.sh` uses `brew` for nushell and the rest of the toolchain, and exits early if it isn't on `PATH`.
 
@@ -42,7 +42,7 @@ cd cozy
 
 ### sbx kit
 
-For `sbx` specifically, cozy also ships as a [kit](https://docs.docker.com/ai/sandboxes/customize/kits/) — a single `kit/spec.yaml` that layers cozy on the standard `shell` agent. The kit clones this repo in-sandbox and runs the same `bootstrap.nu`, so no host-side `bootstrap.sh` is needed:
+For `sbx` specifically, cozy also ships as a [kit](https://docs.docker.com/ai/sandboxes/customize/kits/) — a single [`kit/spec.yaml`](kit/spec.yaml) that layers cozy on the standard `shell` agent. The kit clones this repo in-sandbox and runs the same `bootstrap.nu`, so no host-side `bootstrap.sh` is needed:
 
 ```sh
 git clone https://github.com/nushell-prophet/cozy
