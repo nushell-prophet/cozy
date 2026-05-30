@@ -10,7 +10,7 @@ This is a work-in-progress educational project; video demos are on the way.
 
 Cozy started on `docker sandbox` and that's still my primary target, so the quick start uses Docker. Internally the Dockerfile is a thin wrapper around `bootstrap.nu` — the same installer used by [Install elsewhere](#install-elsewhere) below. Every supported target (Docker, `sbx`, Apple container, macOS host) lands on the same environment.
 
-First, install Docker Desktop https://www.docker.com/products/docker-desktop/
+First, install Docker Desktop: https://www.docker.com/products/docker-desktop/
 
 ```sh
 # Clone the repo, cd into it
@@ -76,7 +76,7 @@ To apply this automatically, run inside the cozy sandbox: `cozy swap-zellij-supe
 
 A modern shell for the AI era: Nushell with sensible settings that I've chosen over 3 years of Nushell experience.
 
-Nushell has built-in MCP functionality that allows AI agents to use all of its rich functionality. The MCP server is activated for `claude code` out of the box.
+Nushell has built-in MCP functionality that lets AI agents use all of its rich capabilities. The MCP server is activated for `claude code` out of the box.
 
 ### Zellij
 
@@ -97,7 +97,7 @@ Shortcuts:
 
 ### Helix editor
 
-Helix is my terminal text editor. It plays nicely with Nushell and is quite newbie-friendly. `cmd+shift+e` opens the current pane's scrollback in Helix for easy copying.
+Helix is my terminal text editor. It plays nicely with Nushell and is quite newbie-friendly. `cmd+shift+e` opens the current pane's visible screen in Helix for easy copying (`cmd+alt+e` opens the full scrollback).
 
 In Helix, `+ s` (custom `+` menu, then `s`) copies the selected lines and wraps them into an XML tag for pasting into AI agents:
 
@@ -116,7 +116,7 @@ Lazygit is a godsend interface for git that greatly simplifies everyday operatio
 
 ### Broot
 
-Broot is a file manager with a tree-like structure and fuzzy search. `cmd+alt+b` opens it, and `alt+enter` to paste back to active pane the selected path.
+Broot is a file manager with a tree-like structure and fuzzy search. `cmd+alt+b` opens it, and `alt+enter` pastes the selected path back to the active pane.
 
 ### FZF
 
