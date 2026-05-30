@@ -7,10 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-05-30
+
+### Added
+
+- `cozy logo` prints the cozy banner on demand; bash login now shows it above the nushell-launch hint. (545f151, 19d05af)
+- `cozy sandbox-state` export/import now also carries the global `~/.claude/CLAUDE.md`, so user-level Claude instructions survive sandbox recreation alongside history and project sessions. (7a95bd7)
+
 ### Changed
 
-- Dropped the `~/workspace/mounted` symlink — `$env.WORKSPACE_DIR` is now the single source of truth for the mounted workspace path. The autoload rewrites `WORKSPACE_DIR` in-place on Windows so consumers can read it directly without going through a symlink. `cozy dev-link` and `cozy sandbox-state {history,projects,global-claude} {export,import}` default to `$env.WORKSPACE_DIR/...` and hard-error when it's unset, instead of silently writing to a broken symlink path.
-- Vendored `nu-goodies` — `hist --all-codes` shows commands of any exit status (not just successful ones); `ansi-to-png` defaults to a pure-black (`#000000`) background. (b5ccdba)
+- Dropped the `~/workspace/mounted` symlink — `$env.WORKSPACE_DIR` is now the single source of truth for the mounted workspace path; `cozy dev-link` and `cozy sandbox-state {history,projects,global-claude} {export,import}` default to it and hard-error when it's unset. (da9fb29)
+- `wezterm-cozy` sets the sandbox window background via `--config` at spawn (new `--background` flag, no startup color flash) and launches the sandbox as a background job. (2ff0d77, f5e34af, 3be2adf)
+- Zellij scrollback-edit keybindings reworked: `Super Shift e` edits the visible viewport in a floating Helix pane; full scrollback moves to `Super Alt e`. (7ddd1f8)
+- `~/workspace/README.md` is now a workspace-orientation note (where modules and config live) instead of cozy's build doc. (1c28ee9)
+- `vendor.nu` accepts a single repo name to refresh one module and auto-commits each refresh; `--no-commit` opts out. (af8e7f0, 0090e21)
+- Pinned nushell fallback bumped 0.112.2 → 0.113.0 (used by `ensure-nu.sh` when the latest brew nu can't parse `bootstrap.nu`). (0247c42)
+- Vendored `nu-goodies` — `hist --all-codes` shows commands of any exit status; `ansi-to-png` rewritten on ansisvg + rsvg-convert with a pure-black default background; `in-vd history` stashes the displayed history into the kv store for later recall. (b5ccdba, c1bbdc2, 55a1e84)
+- Vendored `nushell-skills` — `nushell-style` 1.3.0 (adds 0.113 migration notes) plus a new `nushell-history` skill. (772ede4)
+
+### Fixed
+
+- visidata clipboard copy (`y`) uses the pbcopy/OSC 52 shim instead of `xclip`, which isn't installed in the sandbox. (57dbe16)
+- Git `safe.directory='*'` re-asserted from the nushell autoload on shell start — `docker sandbox create` narrows it to the workspace root, tripping "dubious ownership" on the vendored repos beneath it. (c71afc5)
+- `cozy sync-repos` now refreshes `nu-multiproof` — it was vendored but missing from the sync list, so it never updated without a rebuild. (3ba1e13)
 
 ## [0.2.4] - 2026-05-25
 
@@ -275,7 +294,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.2.4...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.2.5...HEAD
+[0.2.5]: https://github.com/nushell-prophet/cozy/compare/0.2.4...0.2.5
 [0.2.4]: https://github.com/nushell-prophet/cozy/compare/0.2.3...0.2.4
 [0.2.3]: https://github.com/nushell-prophet/cozy/compare/0.2.2...0.2.3
 [0.2.2]: https://github.com/nushell-prophet/cozy/compare/0.2.1...0.2.2
