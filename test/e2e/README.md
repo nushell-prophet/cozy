@@ -54,7 +54,7 @@ session.
 | `run-cmd CTX ...cmd` / `run-nu CTX` | — | spawn a pane; `run-nu` waits for the nu prompt |
 | `type` / `key` / `focus` | input | `write-chars` / `send-keys` / `focus-pane-id` (optional `--pane`) |
 | `screen` / `wait-text` | **rendered** | `dump-screen` (needs the PTY client); `wait-text` polls until a regex matches |
-| `panes` / `wait-exit` / `wait-pane-command` | **clientless state** | `list-panes --json`; poll a pane until exited / its `pane_command` matches |
+| `panes` / `wait-pane-command` | **clientless state** | `list-panes --json`; poll a pane until its `pane_command` matches |
 | `tab-names` / `wait-tab` / `new-tab` | clientless state | `query-tab-names`; poll until a tab name appears; open a tab |
 
 Two assertion channels, per #4508: clientless state (`list-panes --json`,
@@ -86,18 +86,18 @@ See the todo for the full split.
 | target | suite | status |
 |---|---|---|
 | #1 create-todo / todo-hx | `suites/create-todo_test.nu` | passing |
-| #2 lstd (fzf picker) | `suites/lstd_test.nu` | passing (+1 ignored bug, +OSC-52 limit) |
+| #2 lstd (fzf picker) | `suites/lstd_test.nu` | passing (+OSC-52 limit) |
 | #5 PWD tab-rename + ·N dedup | `suites/tab-rename_test.nu` | passing |
 
 ### Known limitations / findings
 
-- **lstd status filter is broken on nu 0.113.** `lstd` does `open $i.name` on a
-  `.md` file, but nu now parses markdown into a *table*, so the `split row` errors
-  on every row, `try {...} | default "draft"` swallows it, and the
-  completed/rejected filter never hides anything (fzf items even become nu error
-  strings). The intended-contract test is `# [ignore]`-marked in
-  `lstd_test.nu` and documents the fix (`open --raw`). Not fixed here — it is the
-  command under test, not harness code.
+- **lstd status filter regressed on nu 0.113, now fixed.** `lstd` used `open
+  $i.name` on a `.md` file, but nu parses markdown into a *table*, so the `split
+  row` errored on every row, `try {...} | default "draft"` swallowed it, and the
+  completed/rejected filter never hid anything (fzf items even became nu error
+  strings). Fixed by `open --raw` in `todo.nu`; the intended-contract test is now
+  active and asserts the `2/2` count. Requires a build re-vendored at/after that
+  fix, since the test invokes the deployed `~/.config` copy.
 - **OSC-52 clipboard is not observable.** `pbcopy` emits an OSC-52 escape to
   `/dev/tty`; zellij consumes it, it never renders and leaves no filesystem trace.
   The lstd test asserts the selection/edit-pane path instead.
