@@ -72,16 +72,14 @@ def "ctrl-e spawns a zellij edit pane for the highlighted file" [] {
     assert ($edit_cmd =~ 'hx') "new pane should be running helix via `zellij edit`"
 }
 
-# [ignore]
-# SURFACES A REAL BUG (not flaky): lstd's status filter is broken on this nu
-# (0.113). lstd does `open $i.name` on a .md file, but nu now parses markdown into
-# a TABLE, so the subsequent `split row` errors on every row; the `try {...} |
-# default "draft"` swallows it, so every todo is treated as "draft" and the
-# `where status not-in [completed rejected]` filter never hides anything. The fzf
-# items even become nu error strings ("OnlySupportsThisInputType ...") instead of
-# filenames, which also breaks the bat preview and the ctrl-e edit target.
-# Intended contract (asserted here, currently failing → kept ignored): completed
-# todos are hidden. Fix is `open --raw $i.name` in todo.nu. Reported, not fixed.
+# [test]
+# Status filter: completed/rejected todos are hidden from the picker. This
+# regressed on nu 0.113 — `open` on a .md parses markdown into a TABLE, so the
+# `split row` over frontmatter errored on every todo, the `try {...} | default
+# "draft"` swallowed it, every todo became "draft", and nothing was filtered (the
+# fzf items even became nu error strings). Fixed by `open --raw $i.name` in
+# todo.nu. Requires a build re-vendored at/after that fix for the deployed
+# ~/.config copy this test invokes.
 def "lstd hides completed todos - intended contract" [] {
     let it = $in
     let rendered = launch-lstd $it
