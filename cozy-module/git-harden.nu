@@ -4,8 +4,8 @@
 # operation. Mitigates pack/index corruption from VirtioFS torn writes when
 # both sides hit .git concurrently (e.g. host lazygit while a sandbox is live).
 #
-# Why repo-local and not the sandbox's user config: the Dockerfile already
-# sets these in ~/.config/git/config inside the sandbox, but host-triggered
+# Why repo-local and not the sandbox's user config: bootstrap.nu already
+# sets gc.auto=0 in ~/.config/git/config inside the sandbox, but host-triggered
 # gc (including via lazygit, `git push file://...`, or plain `git gc`) runs
 # with the host's git binary and reads the host's ~/.config/git/ — not the
 # sandbox's. Repo-local config lives on the shared mount, so both sides
