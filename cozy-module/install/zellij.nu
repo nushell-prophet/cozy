@@ -40,10 +40,14 @@ export def install [
 
     print "  Building zellij without web_server_capability (this may take a while)..."
     # -j 1 + lto=false to avoid OOM in sandbox VMs (limited RAM).
-    # Why: zellij's release profile pins codegen-units=1, which keeps a single
-    # rustc's peak memory high; -j 1 + lto=false don't touch it. Raising
-    # codegen-units splits the crate into smaller units with lower peak RAM.
-    let low_resource_config = if $low_resource_compilation { [--config 'profile.release.codegen-units=16'] } else { [] }
+    # Why: zellij's release profile pins codegen-units=1 and opt-level=3, which
+    # keep a single rustc's peak memory high; -j 1 + lto=false don't touch it.
+    # Raising codegen-units splits the crate into smaller units, and dropping
+    # opt-level to 0 removes the dominant memory consumer (optimization passes).
+    # Together they trade runtime speed for a build that fits in a tiny VM.
+    let low_resource_config = if $low_resource_compilation {
+        [--config 'profile.release.codegen-units=256' --config 'profile.release.opt-level=0']
+    } else { [] }
     ^cargo build --release -j 1 --no-default-features --features plugins_from_target,vendored_curl --config 'profile.release.lto=false' ...$low_resource_config
 
     # Remove brew-installed zellij if present
