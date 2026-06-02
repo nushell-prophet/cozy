@@ -1,0 +1,10 @@
+{
+  "name": "git-intent-interface",
+  "version": "0.4.0",
+  "description": "Git as an instruction interface — deliver intent to an agent via `gi:` commit subjects and `!!` inline markers in any file type",
+  "author": {
+    "name": "maxim-uvarov"
+  },
+  "license": "MIT",
+  "keywords": ["git", "intent", "workflow", "markers", "instructions"]
+}
