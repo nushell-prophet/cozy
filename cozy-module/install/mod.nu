@@ -24,9 +24,12 @@ export def topiary [] {
     use topiary.nu [ install ]; install
 }
 
-# Build zellij from source without web session sharing
-export def zellij [] {
-    use zellij.nu [ install ]; install
+# Build zellij from source without web session sharing.
+# Pass --low-resource-compilation if the build is OOM-killed in a small VM.
+export def zellij [
+    --low-resource-compilation # Split codegen into smaller units to lower peak RAM (avoids OOM in small VMs)
+] {
+    use zellij.nu [ install ]; install --low-resource-compilation=$low_resource_compilation
 }
 
 # Build nushell from source (latest release or --dev for main)

@@ -9,7 +9,12 @@ export def main [] { help zellij }
 # with --no-default-features to exclude `web_server_capability`.
 # Installs Rust automatically if not already present.
 # Safe to re-run — pulls latest tag and rebuilds.
-export def install []: nothing -> nothing {
+#
+# If the compile is SIGKILL'd (OOM) in a small VM, re-run with
+# --low-resource-compilation to lower peak RAM at the cost of runtime speed.
+export def install [
+    --low-resource-compilation # Split codegen into smaller units to lower peak RAM (avoids OOM in small VMs)
+]: nothing -> nothing {
     let cargo_bin = $nu.home-dir | path join .cargo bin
 
     # Ensure Rust is installed
@@ -35,7 +40,11 @@ export def install []: nothing -> nothing {
 
     print "  Building zellij without web_server_capability (this may take a while)..."
     # -j 1 + lto=false to avoid OOM in sandbox VMs (limited RAM).
-    ^cargo build --release -j 1 --no-default-features --features plugins_from_target,vendored_curl --config 'profile.release.lto=false'
+    # Why: zellij's release profile pins codegen-units=1, which keeps a single
+    # rustc's peak memory high; -j 1 + lto=false don't touch it. Raising
+    # codegen-units splits the crate into smaller units with lower peak RAM.
+    let low_resource_config = if $low_resource_compilation { [--config 'profile.release.codegen-units=16'] } else { [] }
+    ^cargo build --release -j 1 --no-default-features --features plugins_from_target,vendored_curl --config 'profile.release.lto=false' ...$low_resource_config
 
     # Remove brew-installed zellij if present
     if (^brew list zellij | complete).exit_code == 0 {
