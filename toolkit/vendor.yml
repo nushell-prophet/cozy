@@ -48,7 +48,7 @@
 - repo: my-claude-skills
   github: maxim-uvarov/my-claude-skills
   modules:
-  - plugins/my-skills/skills
+  - plugins
 - repo: nushell-skills
   github: nushell-prophet/nushell-skills
   modules:
