@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Claude Code's "Show last response in external editor" is now on by default in built sandboxes (`externalEditorContext` in `~/.claude.json`). (d745e0d)
+
 ## [0.2.5] - 2026-05-30
 
 ### Added
