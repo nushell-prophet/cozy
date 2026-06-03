@@ -129,6 +129,13 @@ export def main [
     claude install
     ^claude mcp add --scope user --transport stdio nushell -- (which nu | get path.0) --mcp
 
+    # Enable "Show last response in external editor". externalEditorContext is a
+    # ~/.claude.json global-config field (not settings.json), so merge it into the
+    # file `claude mcp add --scope user` just wrote.
+    let claude_json = $nu.home-dir | path join '.claude.json'
+    let existing = if ($claude_json | path exists) { open $claude_json } else { {} }
+    $existing | upsert externalEditorContext true | save -f $claude_json
+
     # Stamp: tells check-no-clobber on re-runs that cozy owns these dirs
     # now, so its guard doesn't trip on cozy's own deployed files. Written
     # last so a partial failure leaves no stamp — user has to pass --force
