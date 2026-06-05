@@ -43,6 +43,7 @@
   - nushell
   - zellij
   - wezterm
+  - visidata
   - toolkit.nu
   - paths-docker.csv
 - repo: my-claude-skills
