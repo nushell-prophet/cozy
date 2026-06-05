@@ -19,8 +19,8 @@
 #                no GitHub fetching, no rsync.
 #   --force      Skip the host-install safety check that refuses to clobber
 #                existing user configs under XDG_CONFIG_HOME, ~/.claude/,
-#                ~/.visidatarc, and ~/repos/. Also needed to recover from
-#                a partial first-run failure (stamp file not yet written).
+#                and ~/repos/. Also needed to recover from a partial
+#                first-run failure (stamp file not yet written).
 
 use topiary.nu
 use claude.nu
@@ -77,7 +77,8 @@ export def main [
     populate-repos --local=$local
 
     # Sandbox-specific config (feature parity with Dockerfile):
-    # nushell autoload scripts and visidata config.
+    # nushell autoload scripts. (visidata config is deployed via dotfiles
+    # push-to-machine — see paths-docker.csv — not copied here.)
     # Wipe the autoload dir first: cozy owns it, any file not deployed by
     # the current run is stale (e.g. an entry removed upstream). Without
     # this, re-runs accumulated removed-upstream autoload files
@@ -88,7 +89,6 @@ export def main [
     for f in (glob ($cozy_root | path join 'docker-files' 'nushell-autoload' '*.nu')) {
         ^cp $f $autoload_dst
     }
-    ^cp ($cozy_root | path join 'docker-files' '.visidatarc') ($nu.home-dir | path join '.visidatarc')
 
     # Steps 4 & 5 — deploy dotfiles and Claude skills from ~/repos/dotfiles.
     # Spawn nu so toolkit.nu's `use`/cwd-relative paths work as in the existing
@@ -180,7 +180,6 @@ def check-no-clobber [] {
         ($xdg_config | path join 'jj')
         ($xdg_config | path join 'git')
         ($nu.home-dir | path join '.claude')
-        ($nu.home-dir | path join '.visidatarc')
         ($nu.home-dir | path join 'repos')
     ]
     let existing = $candidates | where {|p|
