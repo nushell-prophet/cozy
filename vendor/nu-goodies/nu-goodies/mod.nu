@@ -38,7 +38,8 @@ export use commands.nu [
 ]
 
 export use arrange.nu [
-    "center"
+    "screen center"
+    "screen splash"
     "tile-right"
     "tile-left"
     "tile-down"
