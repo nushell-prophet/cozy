@@ -56,3 +56,11 @@ A Nushell MCP server is registered in `~/.claude.json`. It provides `evaluate`, 
 
 - Docker socket is available for container operations
 - Home directory is at `/home/agent`; the mounted workspace is at `$env.WORKSPACE_DIR` (host path, bind-mounted at the same absolute path on macOS/Linux; on Windows the autoload rewrites `C:\Users\…` → `/c/Users/…`)
+
+## Privacy
+
+Mounted folders may contain the user's personal data. Treat the workspace as private by default:
+
+- Don't send file contents or personal details to external services (web search, third-party APIs) unless the task clearly requires it.
+- When sending data out is needed, send the minimum — a snippet or a schema, not whole files.
+- Keep personal data out of commit messages, issue text, and anything pushed to a remote.
