@@ -5,7 +5,7 @@ You are running inside a Docker sandbox (Ubuntu, arm64 or amd64). The workspace 
 ## Available Tools
 
 - `nu` (Nushell) — prefer over bash when reasonable
-- `hx` (Helix) — Nushell as shell backend
+- `hx` (Helix)
 - `zellij`
 - `git`, `delta` (git-delta), `git-lfs`
 - `jj` — `hx` as editor
