@@ -4,34 +4,20 @@ You are running inside a Docker sandbox (Ubuntu, arm64 or amd64). The workspace 
 
 ## Available Tools
 
-### Shell & Editors
-- **Nushell** (`nu`) — structured-data shell with pipelines, tables, and closures
-- **Helix** (`hx`) — modal editor, configured with Nushell as shell backend
-- **Zellij** — terminal multiplexer
-
-### Git
-- **git** + **git-delta** (`delta`) — syntax-highlighted diffs; **git-lfs** available
-- **jj** — Jujutsu VCS, configured with `hx` as editor
-- **Lazygit** — TUI for git
-
-### File Navigation & Search
-- **Broot** (`broot`, `br` in Nushell) — tree file manager
-- **fzf** — fuzzy finder
-- **ripgrep** (`rg`) — fast grep
-- **bat** — syntax-highlighted file viewer
-- **fd** — fast `find` alternative
-
-### Data & Languages
-- **visidata** (`vd`) — terminal spreadsheet for CSV, JSON, SQLite, etc.
-- **Python 3**, **Node.js**, **Go** — available via base image and Homebrew
-- **jq** — JSON processor
-
-### Code Formatting
-- **topiary** — universal code formatter with Nushell grammar support
-
-### Package Managers
-- **brew**, **pip**, **uv**, **npm** — install additional packages as needed
-- **sudo** — passwordless
+- `nu` (Nushell) — prefer over bash when reasonable
+- `hx` (Helix) — Nushell as shell backend
+- `zellij`
+- `git`, `delta` (git-delta), `git-lfs`
+- `jj` — `hx` as editor
+- `lazygit`
+- `broot` / `br` (in Nushell)
+- `fzf`, `rg` (ripgrep), `bat`, `fd`
+- `vd` (visidata)
+- `python3`, `node`, `go` — via base image and Homebrew
+- `jq`
+- `topiary` — Nushell grammar support
+- `brew`, `pip`, `uv`, `npm` — install more as needed
+- `sudo` — passwordless
 
 ## Nushell
 
