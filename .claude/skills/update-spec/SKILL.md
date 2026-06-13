@@ -21,8 +21,9 @@ is the canonical FORMAT reference — match it.
 
 ## Entry format (per command/script)
 
-- **Purpose** = the FIRST LINE of the command's own doc comment, VERBATIM. Do not paraphrase.
-  If a command has no doc comment, write a precise one-liner and flag it in the report.
+- **Purpose** = the first line of the command's own doc comment, reused as-is. Keep it
+  identical to the source — the reconcile compares the two directly, so a paraphrase silently
+  breaks that check. If a command has no doc comment, write a precise one-liner and flag it.
 - One optional behavior/side-effect sentence MAY follow the Purpose — only when it adds
   non-obvious information (what the command does to the system), never a restatement of the
   name or a step-by-step of the code. The full rationale stays at the code anchor.
@@ -78,6 +79,10 @@ touched for the order change.
 6. **Patch** — fix in place, preserve wording, reset `human-check: pending` on every file you
    edit. In ambiguous cases (a doc comment that contradicts behavior, a command that looks
    misplaced), ask rather than guess.
+7. **Verify your own edits** — for every file you changed, re-check that each `Code:` anchor
+   still resolves (file exists, symbol present) and that `human-check` is back to `pending`.
+   Reordering and rewrites are exactly when an anchor quietly goes stale; this catches it
+   before the user does.
 
 ## Vendored modules (modules.md)
 
