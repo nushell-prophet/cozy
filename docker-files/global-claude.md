@@ -23,14 +23,14 @@ You are running inside a Docker sandbox (Ubuntu, arm64 or amd64). The workspace 
 
 Nushell is the primary shell. Modules are in `~/repos/`:
 
-- `nu-goodies` — data wrangling helpers
-- `dotnu` — module management
-- `numd` — Nushell-native markdown processor
-- `nu-cmd-stack` — command history stacking
-- `nu-kv` — key-value store
-- `claude-nu` — Claude Code integration
+- `nu-goodies` — the user's personal nushell commands, gathered over time from many areas; some may be outdated
+- `dotnu` — literate programming for Nushell: executable scripts that embed their own output, plus commands to work with Nushell code
+- `numd` — Nushell-native markdown processor that updates `nu` code blocks
+- `nu-cmd-stack` — command history stacking for interactive use in the REPL
+- `nu-kv` — key-value store for any nushell data; kept in a host-mounted folder, so it's available on the host too
+- `claude-nu` — Claude Code commands for extracting session data and for easier REPL interaction
 - `nutest` — test framework
-- `nu-multiproof` — multi-proof utilities
+- `nu-multiproof` — multi-proof utilities to timestamp and sign git repo contents
 
 Use `use ~/repos/<module>/<module>` to load a module. Autoload scripts are in `~/.config/nushell/autoload/`.
 
