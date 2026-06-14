@@ -39,17 +39,26 @@ Rewrites `~/.config/zellij/config.kdl` in place to remove the Super modifier (Su
 cozy swap-zellij-super
 ```
 
+### `cozy git-harden`
+
+Sets `gc.auto=0` and `receive.autoGc=false` in a repo's own `.git/config` so both the host and the sandbox git honor them, regardless of which side runs an operation. Mitigates pack/index corruption from VirtioFS torn writes when both sides hit `.git` on the shared mount at once.
+
+```nushell
+cozy git-harden                  # harden the repo in the current dir
+cozy git-harden ~/workspace -a   # harden every git repo one level under the path
+```
+
 ### `cozy configure claude-settings`
 
 Merges default Claude settings (effortLevel, cleanupPeriodDays) into sandbox `~/.claude/settings.json`. Existing user values take precedence.
 
 ### `cozy sandbox-state export` / `cozy sandbox-state import`
 
-Combined export/import of both Nushell history and Claude Code project sessions.
+Combined export/import of Nushell history, Claude Code project sessions, and the global `~/.claude/CLAUDE.md`.
 
 ```nushell
-cozy sandbox-state export        # exports history + projects
-cozy sandbox-state import        # imports history + projects
+cozy sandbox-state export        # exports history + projects + global-claude
+cozy sandbox-state import        # imports history + projects + global-claude
 ```
 
 ### `cozy sandbox-state history export` / `import`
@@ -68,6 +77,10 @@ Seeds history from the bundled `history-seed.nuon` file.
 ### `cozy sandbox-state projects export` / `import`
 
 Copies Claude Code project sessions (`~/.claude/projects/`) to/from `$env.WORKSPACE_DIR/sandbox-state/projects/`. The workspace directory survives sandbox recreation.
+
+### `cozy sandbox-state global-claude export` / `import`
+
+Copies the global `~/.claude/CLAUDE.md` to/from `$env.WORKSPACE_DIR/sandbox-state/`, so the agent's persistent instructions survive sandbox recreation. The combined `cozy sandbox-state export` / `import` runs this alongside history and projects.
 
 ### `cozy install ...`
 
