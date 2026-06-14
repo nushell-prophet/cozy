@@ -56,7 +56,7 @@ export def export [
 # command_line, cwd, start_timestamp, duration_ms, exit_status.
 # Without a path, imports from the most recent history-*.nuon in sandbox-state.
 # Deduplicates incoming rows and skips entries already in the DB.
-# Re-sorts the DB by start_timestamp after import.
+# New rows are inserted oldest-first so recall stays chronological.
 export def import [
     path?: path # Input file (default: latest history-*.nuon in $env.WORKSPACE_DIR/sandbox-state/)
 ]: nothing -> nothing {
@@ -95,7 +95,27 @@ export def import [
         return
     }
 
-    $new_items | each {|row|
+    # Insert oldest-first. reedline's recall query orders by `id`, so seeding
+    # an empty history (the common case: restoring into a fresh sandbox) in
+    # timestamp order is enough to make recall chronological — no global
+    # re-sequencing needed.
+    #
+    # Not re-sorting the whole table afterwards: the old code did
+    # `DELETE FROM history` then reinserted every row to renumber ids. That
+    # had two faults. (1) It could not be atomic — nushell's `query db`
+    # runs one statement per call and rejects multi-statement strings, so
+    # there is no way to wrap the delete + reinserts in a transaction; a
+    # crash mid-reinsert truncated the user's entire history. (2) It reinserted
+    # only 5 of the table's 9 columns, silently nulling session_id, hostname,
+    # and more_info on every import. Appending is safe by contrast: it never
+    # removes existing rows, and a partial run is fully recoverable on re-run
+    # via the dedup above. The tradeoff is that when merging into an already
+    # populated history, older imported entries recall after existing ones
+    # rather than being globally interleaved — acceptable to remove a
+    # data-loss path.
+    $new_items
+    | sort-by start_timestamp
+    | each {|row|
         open $db
         | query db $"INSERT INTO history \(($history_columns)\) VALUES \(?, ?, ?, ?, ?)" --params [
             $row.command_line
@@ -106,21 +126,7 @@ export def import [
         ]
     } | ignore
 
-    # Re-sort: extract all rows sorted, delete, reinsert with sequential IDs
-    let sorted = open $db
-        | query db $"SELECT ($history_columns) FROM history ORDER BY start_timestamp ASC"
-    open $db | query db "DELETE FROM history"
-    $sorted | each {|row|
-        open $db
-        | query db $"INSERT INTO history \(($history_columns)\) VALUES \(?, ?, ?, ?, ?)" --params [
-            $row.command_line
-            $row.cwd
-            $row.start_timestamp
-            $row.duration_ms
-            $row.exit_status
-        ]
-    } | ignore
-
+    let total = open $db | query db "SELECT count(*) AS n FROM history" | get 0.n
     let skipped = ($items | length) - ($new_items | length)
-    print $"Imported ($new_items | length) new entries, ($skipped) duplicates skipped. History: ($sorted | length) total, sorted by timestamp"
+    print $"Imported ($new_items | length) new entries, ($skipped) duplicates skipped. History: ($total) total"
 }
