@@ -25,13 +25,13 @@ This file walks the `Dockerfile` top to bottom, then `bootstrap.nu`'s steps 0–
 
 The Dockerfile is deliberately thin — it stages bits and hands off. In order:
 
-1. **`FROM docker/sandbox-templates:shell`** — Ubuntu base with git, curl, Python, Node.js, Go, ripgrep, jq, gh. `USER agent`.
+1. `FROM docker/sandbox-templates:shell` — Ubuntu base with git, curl, Python, Node.js, Go, ripgrep, jq, gh. `USER agent`.
 2. **Install Homebrew** — `bootstrap.nu` is a nushell script, so brew (which provides `nu`) must exist before the hand-off. Host install assumes brew is already present.
 3. **`ENV` blocks** — `PATH` puts `~/.local/bin` first (so a pinned `nu` shadows brew's), then linuxbrew; plus `HELIX_RUNTIME`, `HOME`, `TERM*`, `LANG`, and the `XDG_*` dirs. `bootstrap.nu` Step 0 mirrors this block into `/etc/sandbox-persistent.sh` for in-sandbox re-runs; `kit/spec.yaml`'s `environment.variables` mirrors it for the kit.
-4. **`brew install nushell`** — pre-installed as its own cached layer so `ensure-nu.sh` (next) has a `nu` to smoke-test.
+4. `brew install nushell` — pre-installed as its own cached layer so `ensure-nu.sh` (next) has a `nu` to smoke-test.
 5. **`COPY` repo bits** — `vendor/` → `/tmp/vendor/` (bootstrap fans it out under `~/repos/`); `cozy-module/` + `docker-files/` → `~/repos/cozy/`, so `bootstrap.nu` resolves `cozy_root` from `path self` (three dirnames up).
-6. **`RUN ensure-nu.sh`** — see below.
-7. **`RUN nu bootstrap.nu`** — all install logic; steps 0–9 below.
+6. `RUN ensure-nu.sh` — see below.
+7. `RUN nu bootstrap.nu` — all install logic; steps 0–9 below.
 8. **`COPY workspace-README.md` → `~/workspace/README.md`** — the only step after bootstrap. See `autoload.md`.
 
 ## ensure-nu.sh
@@ -55,11 +55,11 @@ Gated on the `/etc/sandbox-persistent.sh` marker the base image ships. **Docker:
 Writes `~/.config/git/{config,ignore}`: identity `Agent <agent@sandbox>` (so Step 4 can commit), `safe.directory=*`, `gc.auto=0`, `core.fsync=all`. XDG (not `/etc/gitconfig`) avoids sudo and is overridden by a real user's `~/.gitconfig`, so a personal identity still wins.
 
 ### Step 3 — populate ~/repos/
-`populate-repos --local=$local` mirrors `cozy-module/` + `docker-files/` to `~/repos/cozy/` (skipped in Docker, where the `COPY` already did it), then fans out every vendored module from `/tmp/vendor` (Docker) or `cozy_root/vendor/` into `~/repos/`. See **`modules.md`**.
+`populate-repos --local=$local` mirrors `cozy-module/` + `docker-files/` to `~/repos/cozy/` (skipped in Docker, where the `COPY` already did it), then fans out every vendored module from `/tmp/vendor` (Docker) or `cozy_root/vendor/` into `~/repos/`. See `modules.md`.
 **Code:** `bootstrap.nu` → `def populate-repos`
 
 ### Step 3.5 — nushell autoload
-Wipes `~/.config/nushell/autoload/` (cozy owns it; stale files from removed-upstream scripts must not accumulate), then copies `docker-files/nushell-autoload/*.nu` into it. See **`autoload.md`**.
+Wipes `~/.config/nushell/autoload/` (cozy owns it; stale files from removed-upstream scripts must not accumulate), then copies `docker-files/nushell-autoload/*.nu` into it. See `autoload.md`.
 
 ### Steps 4 & 5 — dotfiles + skills
 From `~/repos/dotfiles`, spawns nu to run `toolkit push-to-machine --force --create-dirs --docker --commit-changes` (deploys helix/zellij/lazygit/broot/nushell/jj/wezterm configs) then `toolkit install-skills --all`. Always `--docker` because cozy only vendors the docker paths file. Config sources live in the `dotfiles` repo — see `modules.md`.
@@ -71,7 +71,7 @@ Appends `docker-files/global-claude.md` (the tool catalog) to `~/.claude/CLAUDE.
 `broot --write-default-conf` + `--set-install-state installed` (moved here from the Dockerfile so host installs get it too).
 
 ### Step 8 — topiary install
-Symlinks the vendored `~/repos/topiary-nushell` to `~/git/topiary-nushell` (where `topiary.nu` looks), then runs `topiary install`. No clone fallback — if the vendored grammar is missing it fails loudly (fail-fast). See **`install.md`** for what `topiary install` does.
+Symlinks the vendored `~/repos/topiary-nushell` to `~/git/topiary-nushell` (where `topiary.nu` looks), then runs `topiary install`. No clone fallback — if the vendored grammar is missing it fails loudly (fail-fast). See `install.md` for what `topiary install` does.
 **Code:** `bootstrap.nu` (Step 8 block) → `topiary install`
 
 ### Step 9 — Claude Code + nushell MCP

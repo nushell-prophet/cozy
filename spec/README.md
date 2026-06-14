@@ -14,22 +14,22 @@ This spec sits between `../CLAUDE.md` (terse ops facts) and the code. Read it *i
 
 The build sequence, in order:
 
-- **`build.md`** — the spine. Walks the `Dockerfile` top to bottom, then `bootstrap.nu`'s steps 0–9 in order. The single installer is shared by the Docker build, the host `bootstrap.sh`, and the `sbx` kit; `ensure-nu.sh` handles the nu version fallback. Every other subsystem below is reached from a step here.
+- `build.md` — the spine. Walks the `Dockerfile` top to bottom, then `bootstrap.nu`'s steps 0–9 in order. The single installer is shared by the Docker build, the host `bootstrap.sh`, and the `sbx` kit; `ensure-nu.sh` handles the nu version fallback. Every other subsystem below is reached from a step here.
 
-- **`install.md`** — the per-tool builders, some of which `bootstrap.nu` invokes (and that `cozy install` re-runs on demand), in `install/mod.nu` export order: `claude`, `rust`, `polars`, `topiary`, `zellij`, `nushell`, `nu-plugin-image`.
+- `install.md` — the per-tool builders, some of which `bootstrap.nu` invokes (and that `cozy install` re-runs on demand), in `install/mod.nu` export order: `claude`, `rust`, `polars`, `topiary`, `zellij`, `nushell`, `nu-plugin-image`.
 
-- **`modules.md`** — vendored Nushell modules fanned out under `~/repos/` by `bootstrap.nu` Step 3 (nu-goodies, claude-nu, nu-kv, dotnu, numd, nu-cmd-stack, nutest, nu-multiproof) — pointers plus the in-sandbox command surface the user actually touches. Internals live in each module's own repo.
+- `modules.md` — vendored Nushell modules fanned out under `~/repos/` by `bootstrap.nu` Step 3 (nu-goodies, claude-nu, nu-kv, dotnu, numd, nu-cmd-stack, nutest, nu-multiproof) — pointers plus the in-sandbox command surface the user actually touches. Internals live in each module's own repo.
   > Per-module specs are expected to move *into the modules themselves* over time and be reconciled back here. The modules are separate repos for distribution and historical reasons, but cozy is their main customer now — their development follows cozy's needs.
 
-- **`autoload.md`** — the `docker-files/` bits shipped into the sandbox by `bootstrap.nu` Step 3.5 onward: nushell autoload scripts (MCP server, module imports, completions, aliases, git-safe-directory), the `pbcopy` shim, and the global CLAUDE.md tool catalog.
+- `autoload.md` — the `docker-files/` bits shipped into the sandbox by `bootstrap.nu` Step 3.5 onward: nushell autoload scripts (MCP server, module imports, completions, aliases, git-safe-directory), the `pbcopy` shim, and the global CLAUDE.md tool catalog.
 
 After the build — used inside the running sandbox:
 
-- **`cozy-command.md`** — the `cozy` command surface: `sync-repos`, `mount init`, `dev-link`, `git-harden`, `swap-zellij-super`, `configure`, `sandbox-state`, `logo`.
+- `cozy-command.md` — the `cozy` command surface: `sync-repos`, `mount init`, `dev-link`, `git-harden`, `swap-zellij-super`, `configure`, `sandbox-state`, `logo`.
 
 Outside the build — run on the host:
 
-- **`toolkit.md`** — dev kit: `sandbox` (build/recreate images), `vendor` (refresh `vendor/` from GitHub or sibling repos), `docs`, and `test` (smoke-test a fresh sandbox).
+- `toolkit.md` — dev kit: `sandbox` (build/recreate images), `vendor` (refresh `vendor/` from GitHub or sibling repos), `docs`, and `test` (smoke-test a fresh sandbox).
 
 ## Maintaining this spec
 
