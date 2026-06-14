@@ -16,7 +16,7 @@ hand-written wording, fix only what drifted. Do not regenerate from scratch.
 
 The spec is progressive disclosure: `spec/README.md` is the Tier-1 map (one paragraph per
 subsystem + link); the per-subsystem files (`build.md`, `install.md`, `modules.md`,
-`autoload.md`, `cozy-command.md`, `toolkit.md`) hold the Tier-2 entries. `spec/cozy-command.md`
+`autoload.md`, `cozy-module.md`, `toolkit.md`) hold the Tier-2 entries. `spec/cozy-module.md`
 is the canonical FORMAT reference — match it.
 
 ## Entry format (per command/script)
