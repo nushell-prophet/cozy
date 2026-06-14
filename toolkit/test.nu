@@ -31,14 +31,18 @@ const tools = [
     ["apt: file" file "--version"]
 ]
 
+# [owner, path] — owner names the repo to fix when the check fails. Some
+# autoload scripts ship from cozy (docker-files/nushell-autoload), others from
+# the dotfiles repo (deployed in bootstrap.nu Step 4); a bare path can't tell
+# you which one to go edit.
 const files = [
-    "/home/agent/.local/bin/pbcopy"
-    "/home/agent/.config/nushell/autoload/module-imports.nu"
-    "/home/agent/.config/nushell/autoload/hooks-config.nu"
-    "/home/agent/.config/nushell/autoload/my-nu-completions.nu"
-    "/home/agent/.config/nushell/autoload/standard-aliases.nu"
-    "/home/agent/.config/nushell/autoload/mcp-server.nu"
-    "/home/agent/.claude.json"
+    [cozy "/home/agent/.local/bin/pbcopy"]
+    [cozy "/home/agent/.config/nushell/autoload/module-imports.nu"]
+    [dotfiles "/home/agent/.config/nushell/autoload/hooks-config.nu"]
+    [cozy "/home/agent/.config/nushell/autoload/my-nu-completions.nu"]
+    [cozy "/home/agent/.config/nushell/autoload/standard-aliases.nu"]
+    [cozy "/home/agent/.config/nushell/autoload/mcp-server.nu"]
+    [cozy "/home/agent/.claude.json"]
 ]
 
 # Repo dirs are derived from vendor.yml (the single source of truth for what
@@ -150,12 +154,14 @@ def check-tools []: nothing -> list {
 
 def check-files []: nothing -> list {
     $files | each {|f|
-        let name = $f | path basename
+        let owner = $f.0
+        let path = $f.1
+        let name = $path | path basename
         try {
-            exec test -f $f | ignore
-            ok $"file: ($name)"
+            exec test -f $path | ignore
+            ok $"file: ($name)" $"[($owner)]"
         } catch {
-            fail $"file: ($name)" $f
+            fail $"file: ($name)" $"missing — fix in ($owner): ($path)"
         }
     }
 }
