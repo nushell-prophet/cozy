@@ -16,7 +16,7 @@ covers:                # source paths update-spec reconciles this file against
 
 The `docker-files/` bits that land in the running sandbox. `bootstrap.nu` Step 3.5 copies `docker-files/nushell-autoload/*.nu` → `~/.config/nushell/autoload/` (loaded on every shell start), Step 6 appends `global-claude.md` to `~/.claude/CLAUDE.md`, and the `pbcopy` shim is installed to `~/.local/bin` (Step 0). The `Dockerfile`'s final `COPY` places `workspace-README.md` at `~/workspace/README.md`. `logo.ans` stays in place and is read by `cozy logo` and the build MOTD.
 
-Each entry: **Purpose** is the script's leading comment (verbatim when one exists) or a precise one-liner. **Code** points at the file; the rationale stays there.
+Each entry records why the file ships — the self-healing or workaround it exists for. **Code** points at the file.
 
 ## Autoload scripts (`~/.config/nushell/autoload/`)
 
