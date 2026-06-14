@@ -15,8 +15,6 @@ The build/dev kit run **on the host**, not inside the sandbox. It builds and rec
 
 Each entry: **Purpose** is the first line of the command's own doc comment (verbatim). **Flags** are derived from the signature. **Code** points at the symbol; the full rationale stays there.
 
-> NOTE: `cozy/CLAUDE.md` and `spec/README.md` reference `toolkit/pack-kit.nu` (said to generate `kit/files/`) and a `toolkit docs` command for the `sbx` kit. No `pack-kit.nu` exists under `toolkit/` (or anywhere in `cozy/`). Stale doc reference — see summary.
-
 ## toolkit sandbox
 No doc comment; `export def main [] { help sandbox }` just prints sub-help.
 > NOTE: missing Purpose doc comment on `sandbox.nu` `main`.
