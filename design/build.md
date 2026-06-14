@@ -1,6 +1,6 @@
 ---
 human-check: pending   # pending | verified — flip to verified after you read it
-covers:                # source paths update-spec reconciles this file against
+covers:                # source paths update-design reconciles this file against
   - Dockerfile
   - bootstrap.sh
   - cozy-module/install/ensure-nu.sh
@@ -17,7 +17,7 @@ covers:                # source paths update-spec reconciles this file against
 - **Host** — `../bootstrap.sh` → `ensure-nu.sh` → `bootstrap.nu`
 - **sbx kit** — `../kit/spec.yaml` clones the repo in-sandbox → same chain
 
-This file walks the `Dockerfile` top to bottom, then `bootstrap.nu`'s steps 0–9 in order, and links out to the other spec files at the step where each is reached. **This order is the canonical order for the whole project** — README, CLAUDE.md, and every other spec file mirror it. Change the order here and propagate it everywhere.
+This file walks the `Dockerfile` top to bottom, then `bootstrap.nu`'s steps 0–9 in order, and links out to the other design files at the step where each is reached. **This order is the canonical order for the whole project** — README, CLAUDE.md, and every other design file mirror it. Change the order here and propagate it everywhere.
 
 `bootstrap.nu` auto-detects its mode (no flags): `/etc/sandbox-persistent.sh` present → run the Docker system setup (Step 0); `/tmp/vendor` present → use the Docker-staged vendor as-is; else → use the committed `vendor/`. Re-run = clean setup; idempotency is not a goal.
 

@@ -1,6 +1,6 @@
 ---
 human-check: pending   # pending | verified — flip to verified after you read it
-covers:                # source paths update-spec reconciles this file against
+covers:                # source paths update-design reconciles this file against
   - cozy-module/install/mod.nu
   - cozy-module/install/claude.nu
   - cozy-module/install/rust.nu

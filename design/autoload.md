@@ -1,6 +1,6 @@
 ---
 human-check: pending   # pending | verified — flip to verified after you read it
-covers:                # source paths update-spec reconciles this file against
+covers:                # source paths update-design reconciles this file against
   - docker-files/nushell-autoload/module-imports.nu
   - docker-files/nushell-autoload/mcp-server.nu
   - docker-files/nushell-autoload/git-safe-directory.nu
