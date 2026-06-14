@@ -36,7 +36,7 @@ const files = [
     "/home/agent/.config/nushell/autoload/module-imports.nu"
     "/home/agent/.config/nushell/autoload/hooks-config.nu"
     "/home/agent/.config/nushell/autoload/my-nu-completions.nu"
-    "/home/agent/.config/nushell/autoload/standard-aliasses.nu"
+    "/home/agent/.config/nushell/autoload/standard-aliases.nu"
     "/home/agent/.config/nushell/autoload/mcp-server.nu"
     "/home/agent/.claude.json"
 ]

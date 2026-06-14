@@ -5,7 +5,7 @@ covers:                # source paths update-design reconciles this file against
   - docker-files/nushell-autoload/mcp-server.nu
   - docker-files/nushell-autoload/git-safe-directory.nu
   - docker-files/nushell-autoload/my-nu-completions.nu
-  - docker-files/nushell-autoload/standard-aliasses.nu
+  - docker-files/nushell-autoload/standard-aliases.nu
   - docker-files/global-claude.md
   - docker-files/pbcopy
   - docker-files/logo.ans
@@ -20,7 +20,7 @@ Each entry records why the file ships — the self-healing or workaround it exis
 
 ## Autoload scripts (`~/.config/nushell/autoload/`)
 
-Nushell loads autoload scripts alphabetically; they're listed below in that order (`git-safe-directory` → `mcp-server` → `module-imports` → `my-nu-completions` → `standard-aliasses`). There is no ordering dependency between them.
+Nushell loads autoload scripts alphabetically; they're listed below in that order (`git-safe-directory` → `mcp-server` → `module-imports` → `my-nu-completions` → `standard-aliases`). There is no ordering dependency between them.
 
 ### git-safe-directory.nu
 Re-assert git `safe.directory = '*'` on shell start. Self-healing: `docker sandbox` create overwrites the global setting with just the workspace-root path, so submodule repos beneath it trip "dubious ownership" under VirtioFS. Guarded so the normal path writes nothing.
@@ -39,9 +39,9 @@ Resolve `$env.WORKSPACE_DIR` to the in-VM mount path, then overlay/use the vendo
 Custom completions for external tools — defines the `tte` extern with style-name completion.
 **Code:** `docker-files/nushell-autoload/my-nu-completions.nu` → `export extern tte`
 
-### standard-aliasses.nu
+### standard-aliases.nu
 Defines the `lg` → `lazygit` alias (the only alias in the file today).
-**Code:** `docker-files/nushell-autoload/standard-aliasses.nu` → `alias lg = lazygit`
+**Code:** `docker-files/nushell-autoload/standard-aliases.nu` → `alias lg = lazygit`
 
 ## global-claude.md
 The tool catalog appended to `~/.claude/CLAUDE.md` by `bootstrap.nu` Step 6. A markdown brief that tells the agent what cozy built around it: available tools (shell, editors, git, search, data/languages, formatting, package managers), where Nushell modules live, the registered Nushell MCP server, sandbox constraints, and a privacy section.

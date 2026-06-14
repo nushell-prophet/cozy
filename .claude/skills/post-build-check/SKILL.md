@@ -73,7 +73,7 @@ Both lists empty = pass.
 
 ```nu
 let expected = ['module-imports.nu' 'hooks-config.nu' 'my-nu-completions.nu'
-                'standard-aliasses.nu' 'mcp-server.nu']
+                'standard-aliases.nu' 'mcp-server.nu']
 let actual = (ls ~/.config/nushell/autoload | get name | path basename)
 $expected | where $it not-in $actual
 ```
