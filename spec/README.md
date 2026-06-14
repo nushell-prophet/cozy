@@ -25,7 +25,7 @@ The build sequence, in order:
 
 After the build — used inside the running sandbox:
 
-- `cozy-command.md` — the `cozy` command surface: `sync-repos`, `mount init`, `dev-link`, `git-harden`, `swap-zellij-super`, `configure`, `sandbox-state`, `logo`.
+- `cozy-command.md` — the `cozy` command surface: `sync-repos`, `mount init`, `dev-link`, `git-harden`, `swap-zellij-super`, `configure`, `sandbox-state`, `logo`. (`cozy install` is its own sub-surface — see `install.md`.)
 
 Outside the build — run on the host:
 
