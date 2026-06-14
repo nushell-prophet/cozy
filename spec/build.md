@@ -26,13 +26,13 @@ This file walks the `Dockerfile` top to bottom, then `bootstrap.nu`'s steps 0–
 The Dockerfile is deliberately thin — it stages bits and hands off. In order:
 
 1. `FROM docker/sandbox-templates:shell` — Ubuntu base with git, curl, Python, Node.js, Go, ripgrep, jq, gh. `USER agent`.
-2. **Install Homebrew** — `bootstrap.nu` is a nushell script, so brew (which provides `nu`) must exist before the hand-off. Host install assumes brew is already present.
-3. **`ENV` blocks** — `PATH` puts `~/.local/bin` first (so a pinned `nu` shadows brew's), then linuxbrew; plus `HELIX_RUNTIME`, `HOME`, `TERM*`, `LANG`, and the `XDG_*` dirs. `bootstrap.nu` Step 0 mirrors this block into `/etc/sandbox-persistent.sh` for in-sandbox re-runs; `kit/spec.yaml`'s `environment.variables` mirrors it for the kit.
+2. Install Homebrew — `bootstrap.nu` is a nushell script, so brew (which provides `nu`) must exist before the hand-off. Host install assumes brew is already present.
+3. `ENV` blocks — `PATH` puts `~/.local/bin` first (so a pinned `nu` shadows brew's), then linuxbrew; plus `HELIX_RUNTIME`, `HOME`, `TERM*`, `LANG`, and the `XDG_*` dirs. `bootstrap.nu` Step 0 mirrors this block into `/etc/sandbox-persistent.sh` for in-sandbox re-runs; `kit/spec.yaml`'s `environment.variables` mirrors it for the kit.
 4. `brew install nushell` — pre-installed as its own cached layer so `ensure-nu.sh` (next) has a `nu` to smoke-test.
-5. **`COPY` repo bits** — `vendor/` → `/tmp/vendor/` (bootstrap fans it out under `~/repos/`); `cozy-module/` + `docker-files/` → `~/repos/cozy/`, so `bootstrap.nu` resolves `cozy_root` from `path self` (three dirnames up).
+5. `COPY` repo bits — `vendor/` → `/tmp/vendor/` (bootstrap fans it out under `~/repos/`); `cozy-module/` + `docker-files/` → `~/repos/cozy/`, so `bootstrap.nu` resolves `cozy_root` from `path self` (three dirnames up).
 6. `RUN ensure-nu.sh` — see below.
 7. `RUN nu bootstrap.nu` — all install logic; steps 0–9 below.
-8. **`COPY workspace-README.md` → `~/workspace/README.md`** — the only step after bootstrap. See `autoload.md`.
+8. `COPY workspace-README.md` → `~/workspace/README.md` — the only step after bootstrap. See `autoload.md`.
 
 ## ensure-nu.sh
 
