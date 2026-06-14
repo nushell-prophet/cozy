@@ -16,7 +16,7 @@ The build sequence, in order:
 
 - `build.md` — the spine. Walks the `Dockerfile` top to bottom, then `bootstrap.nu`'s steps 0–9 in order. The single installer is shared by the Docker build, the host `bootstrap.sh`, and the `sbx` kit; `ensure-nu.sh` handles the nu version fallback. Every other subsystem below is reached from a step here.
 
-- `install.md` — the per-tool builders, some of which `bootstrap.nu` invokes (and that `cozy install` re-runs on demand), in `install/mod.nu` export order: `claude`, `rust`, `polars`, `topiary`, `zellij`, `nushell`, `nu-plugin-image`.
+- `install.md` — the per-tool builders, some of which `bootstrap.nu` invokes (and all of which are available to the user in the environment via `cozy install`), in `install/mod.nu` export order: `claude`, `rust`, `polars`, `topiary`, `zellij`, `nushell`, `nu-plugin-image`.
 
 - `modules.md` — vendored Nushell modules fanned out under `~/repos/` by `bootstrap.nu` Step 3 (nu-goodies, claude-nu, nu-kv, dotnu, numd, nu-cmd-stack, nutest, nu-multiproof) — pointers plus the in-sandbox command surface the user actually touches. Internals live in each module's own repo.
   > Per-module specs are expected to move *into the modules themselves* over time and be reconciled back here. The modules are separate repos for distribution and historical reasons, but cozy is their main customer now — their development follows cozy's needs.
