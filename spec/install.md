@@ -14,7 +14,7 @@ covers:                # source paths update-spec reconciles this file against
 
 # cozy install sub-surface
 
-The per-tool builders `bootstrap.nu` invokes during the build (and that `cozy install <tool>` re-runs on demand). Exposing them as `cozy install` is deliberate: it lets the user compile and install an up-to-date app on demand inside the running sandbox (just-in-time compilation), instead of being limited to the versions baked into the image at build time. Exports are wired in `../cozy-module/install/mod.nu`. The boot sequence that calls these lives in `build.md`.
+The per-tool builders `bootstrap.nu` invokes during the build (and that `cozy install <tool>` re-runs on demand). Exposing them as `cozy install` is deliberate: it lets the user build and install an up-to-date app on demand inside the running sandbox — compiled from source when asked, instead of being limited to the versions baked into the image at build time. The trade-off is build time: a large crate like polars takes a while to compile. Exports are wired in `../cozy-module/install/mod.nu`. The boot sequence that calls these lives in `build.md`.
 
 Each entry: **Purpose** is the first line of the command's own doc comment (verbatim). **Flags** are derived from the signature. **Code** points at the symbol; the full rationale stays there. Each `cozy install <tool>` is a thin wrapper that imports the tool's own `install` and forwards flags — the contract below is the `install` it calls.
 
