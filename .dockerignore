@@ -1,3 +1,9 @@
-.git
-.claude
-CLAUDE.md
+# Whitelist: ignore everything, then un-ignore only what the Dockerfile COPYs
+# (vendor/, cozy-module/, docker-files/). A new sibling dir (todo/, design/,
+# docs.docker.com/, …) is then excluded from the build context automatically —
+# no .dockerignore edit needed. If a future COPY needs another path, the build
+# fails loud ("file not found") rather than silently re-bloating the context.
+*
+!vendor/
+!cozy-module/
+!docker-files/
