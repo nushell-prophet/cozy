@@ -29,6 +29,17 @@ export def main [--force (-f)] {
     $repos
     | items {|name url|
         let dir = $base | path join $name
+
+        # Why: `cozy dev-link` replaces ~/repos/<name> with a symlink into the
+        # mounted workspace. The destructive git ops below (clean -fd, reset
+        # --hard, checkout -f) would then follow that symlink and run inside the
+        # user's live host repo. Refuse to touch dev-linked repos — they're the
+        # user's working tree, not a vendored copy for sync-repos to reset.
+        if ($dir | path type) == 'symlink' {
+            print $"  (ansi yellow)($name)(ansi reset): dev-linked, skipping \(managed in workspace, not by sync-repos)"
+            return
+        }
+
         mkdir $dir
 
         if ($dir | path join '.git' | path exists) {
