@@ -8,7 +8,7 @@ This is a work-in-progress educational project; video demos are on the way.
 
 ## Quick start
 
-Cozy started on `docker sandbox` and that's still my primary target, so the quick start uses Docker. Internally the [Dockerfile](Dockerfile) is a thin wrapper around [`bootstrap.nu`](cozy-module/install/bootstrap.nu) — the same installer used by [Install elsewhere](#install-elsewhere) below. Every supported target (Docker, `sbx`, Apple container, macOS host) lands on the same environment.
+Cozy started on `docker sandbox` and that's still my primary target, so the quick start uses Docker. Internally the [Dockerfile](Dockerfile) is a thin wrapper around [`bootstrap.nu`](cozy-module/install/bootstrap.nu) — the same installer used by [Install elsewhere](#install-elsewhere) below. Every supported target (Docker, `sbx`, Apple container, macOS host) lands on the same environment. For *why* it's built this way — the build order and why each tool is compiled from source, vendored, or shipped — see `design/`.
 
 First, install Docker Desktop: https://www.docker.com/products/docker-desktop/
 

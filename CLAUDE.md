@@ -73,6 +73,7 @@ After Dockerfile changes: rebuild image, then recreate sandbox (delete + run).
 
 ## Sources of truth
 
+- Build order + rationale (why each tool compiles from source / module is vendored / file ships): `design/` — one map (`design/README.md`) + per-subsystem files; run `/update-design` to reconcile against code
 - Keybindings: `vendor/dotfiles/zellij/config.kdl` (README keybinding docs drift from this)
 - Vendored modules: `toolkit/vendor.yml` via `toolkit/vendor.nu` (not the CLAUDE.md architecture list)
 - `cozy` command surface: `cozy-module/mod.nu` exports
