@@ -41,17 +41,10 @@ const files = [
     "/home/agent/.claude.json"
 ]
 
-const dirs = [
-    "/home/agent/repos/cozy/cozy-module"
-    "/home/agent/repos/nu-goodies"
-    "/home/agent/repos/nu-kv"
-    "/home/agent/repos/dotnu"
-    "/home/agent/repos/numd"
-    "/home/agent/repos/claude-nu"
-    "/home/agent/repos/nu-cmd-stack"
-    "/home/agent/repos/dotfiles"
-    "/home/agent/.config/broot"
-]
+# Repo dirs are derived from vendor.yml (the single source of truth for what
+# cozy vendors) so a newly vendored module is verified automatically — the old
+# hardcoded list had silently drifted to a stale subset. See expected-dirs.
+const vendor_yml = (path self | path dirname | path join vendor.yml)
 
 const envs = {
     HOME: "/home/agent"
@@ -167,8 +160,19 @@ def check-files []: nothing -> list {
     }
 }
 
+# Sandbox dirs expected to exist: every vendored repo lands at ~/repos/<repo>,
+# cozy ships its module under ~/repos/cozy/cozy-module, plus broot's config dir.
+def expected-dirs []: nothing -> list<string> {
+    open $vendor_yml | get repo
+    | each {|r| $"/home/agent/repos/($r)" }
+    | append [
+        "/home/agent/repos/cozy/cozy-module"
+        "/home/agent/.config/broot"
+    ]
+}
+
 def check-dirs []: nothing -> list {
-    $dirs | each {|d|
+    expected-dirs | each {|d|
         let name = $d | path basename
         try {
             exec test -d $d | ignore

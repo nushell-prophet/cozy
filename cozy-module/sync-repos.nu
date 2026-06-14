@@ -1,18 +1,9 @@
-const repos = {
-    claude-nu: "https://github.com/nushell-prophet/claude-nu.git"
-    cozy: "https://github.com/nushell-prophet/cozy.git"
-    dotnu: "https://github.com/nushell-prophet/dotnu.git"
-    nu-cmd-stack: "https://github.com/nushell-prophet/nu-cmd-stack.git"
-    nu-goodies: "https://github.com/nushell-prophet/nu-goodies.git"
-    numd: "https://github.com/nushell-prophet/numd.git"
-    nu-kv: "https://github.com/nushell-prophet/nu-kv.git"
-    nu-multiproof: "https://github.com/nushell-prophet/nu-multiproof.git"
-    topiary-nushell: "https://github.com/blindFS/topiary-nushell.git"
-    dotfiles: "https://github.com/nushell-prophet/my-dotfiles.git"
-    nutest: "https://github.com/vyadh/nutest.git"
-    nushell-skills: "https://github.com/nushell-prophet/nushell-skills.git"
-    my-claude-skills: "https://github.com/maxim-uvarov/my-claude-skills.git"
-}
+# Repo → clone URL list, read from the generated manifest derived from
+# toolkit/vendor.yml (the single source of truth for what cozy vendors).
+# vendored-repos.nuon ships next to this file under ~/repos/cozy/cozy-module/
+# (cozy-module is COPYed into the image), so this in-sandbox command resolves
+# it via `path self` — the host-only toolkit/vendor.yml is not reachable here.
+const manifest = path self | path dirname | path join vendored-repos.nuon
 
 const base = $nu.home-dir | path join repos
 
@@ -26,8 +17,10 @@ def remote-head-branch []: nothing -> string {
 
 # Convert vendor directories to git repos if needed, pull latest from all
 export def main [--force (-f)] {
-    $repos
-    | items {|name url|
+    open $manifest
+    | each {|row|
+        let name = $row.name
+        let url = $row.url
         let dir = $base | path join $name
 
         # Why: `cozy dev-link` replaces ~/repos/<name> with a symlink into the

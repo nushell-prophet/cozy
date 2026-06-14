@@ -6,6 +6,7 @@ covers:
   - toolkit/vendor.yml
   - toolkit/docs.nu
   - toolkit/test.nu
+  - cozy-module/vendored-repos.nuon
 ---
 
 # toolkit — host-side vendor tooling
@@ -19,6 +20,7 @@ Runs **on the host**, not inside the sandbox. The commands themselves are self-d
 - Default pulls GitHub tarballs; `--local` rsyncs from sibling `~/repos/` instead — the edit-locally-then-vendor loop.
 - Refreshing all wipes the whole `vendor/`; naming one repo wipes just that dir. Auto-commits unless `--no-commit`.
 - `toolkit vendor check` lists `nushell-prophet` repos not yet in `vendor.yml`.
+- Each run regenerates `../cozy-module/vendored-repos.nuon` — a repo→clone-URL projection of `vendor.yml` (plus `cozy` itself). `cozy sync-repos` runs **inside** the sandbox, where the host-only `vendor.yml` isn't shipped, so it reads this generated manifest instead. `vendor.yml` stays the single authored source; the manifest is derived and committed alongside the `vendor/` bump.
 
 Wired in `toolkit/vendor.nu`.
 
