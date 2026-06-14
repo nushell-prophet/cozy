@@ -1,5 +1,5 @@
 ---
-human-check: pending   # pending | verified — flip to verified after you read it
+human-check: verified # pending | verified — flip to verified after you read it
 ---
 
 # cozy spec
