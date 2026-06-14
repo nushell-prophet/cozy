@@ -113,17 +113,23 @@ export def import [
     # populated history, older imported entries recall after existing ones
     # rather than being globally interleaved — acceptable to remove a
     # data-loss path.
+    # Batched: one multi-row INSERT per chunk opens the DB once per chunk
+    # instead of once per row. Chunk size 100 keeps the bound-parameter count
+    # (5 per row) well under SQLite's limit on every build (999 before 3.32,
+    # 32766 after).
     $new_items
     | sort-by start_timestamp
-    | each {|row|
-        open $db
-        | query db $"INSERT INTO history \(($history_columns)\) VALUES \(?, ?, ?, ?, ?)" --params [
+    | chunks 100
+    | each {|batch|
+        let placeholders = $batch | each { "(?, ?, ?, ?, ?)" } | str join ', '
+        let params = $batch | each {|row| [
             $row.command_line
             $row.cwd
             $row.start_timestamp
             ($row.duration_ms | default 0)
             ($row.exit_status | default 0)
-        ]
+        ] } | flatten
+        open $db | query db $"INSERT INTO history \(($history_columns)\) VALUES ($placeholders)" --params $params
     } | ignore
 
     let total = open $db | query db "SELECT count(*) AS n FROM history" | get 0.n
