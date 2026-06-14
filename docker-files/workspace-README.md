@@ -1,18 +1,10 @@
 # You're inside a cozy sandbox
 
-This file describes the environment **cozy** built around you — where things
-live and which config files it touched. It is not about the project mounted in
-this workspace. For cozy itself (build, install, full feature tour) see
-`~/repos/cozy/README.md`.
+This file describes the environment **cozy** built around you — where things live and which config files it touched. It is not about the project mounted in this workspace. For cozy itself (build, install, full feature tour) see `~/repos/cozy/README.md`.
 
 ## `~/repos/` — downloaded modules
 
-cozy ships a set of upstream modules *vendored* into `~/repos/` — committed in
-`cozy/vendor/` and copied in at build time, not fetched from the network. They
-are flat snapshots (no `.git`), so edit them in place freely. To pull upstream
-updates later without rebuilding the image, run `cozy sync-repos` — it turns
-these snapshots into git clones and fast-forwards each to the latest from
-GitHub. Load a Nushell module with `use ~/repos/<repo>/<module>`.
+cozy ships a set of upstream modules *vendored* into `~/repos/` — committed in `cozy/vendor/` and copied in at build time, not fetched from the network. They are flat snapshots (no `.git`), so edit them in place freely. To pull upstream updates later without rebuilding the image, run `cozy sync-repos` — it turns these snapshots into git clones and fast-forwards each to the latest from GitHub. Load a Nushell module with `use ~/repos/<repo>/<module>`.
 
 | Repo | What it gives you |
 |---|---|
@@ -32,8 +24,7 @@ GitHub. Load a Nushell module with `use ~/repos/<repo>/<module>`.
 
 ## The `cozy` module
 
-`~/repos/cozy/` is the project that built this environment. Its module
-(`cozy-module/`) is autoloaded, so `cozy` is a command:
+`~/repos/cozy/` is the project that built this environment. Its module (`cozy-module/`) is autoloaded, so `cozy` is a command:
 
 | Command | Does |
 |---|---|
@@ -51,22 +42,16 @@ GitHub. Load a Nushell module with `use ~/repos/<repo>/<module>`.
 | `cozy sandbox-state projects export` / `import` | Just Claude Code session files |
 | `cozy sandbox-state global-claude export` / `import` | Just the global `~/.claude/CLAUDE.md` |
 
-The rest of `~/repos/cozy/` holds the `Dockerfile`, the shared installer
-(`cozy-module/install/bootstrap.nu`), and `docker-files/` (autoload scripts,
-`.visidatarc`, the appended Claude tool catalog).
+The rest of `~/repos/cozy/` holds the `Dockerfile`, the shared installer (`cozy-module/install/bootstrap.nu`), and `docker-files/` (autoload scripts, `.visidatarc`, the appended Claude tool catalog).
 
 ## Config files cozy modified
 
-Most come from `~/repos/dotfiles/`; a few Nushell autoload scripts come from
-cozy's own `docker-files/` (noted below). Edit them freely.
+Most come from `~/repos/dotfiles/`; a few Nushell autoload scripts come from cozy's own `docker-files/` (noted below). Edit them freely.
 
 **Nushell** — `~/.config/nushell/`
 
 - `config.nu`, `env.nu` — opinionated shell settings (from dotfiles)
-- `autoload/*.nu` — loaded on every shell start. From cozy's `docker-files/`:
-  `module-imports.nu`, `mcp-server.nu`, `my-nu-completions.nu`,
-  `standard-aliasses.nu`. From dotfiles: `br.nu`, `carapace-config.nu`,
-  `hooks-config.nu`, `zzz_ignore_vars.nu`
+- `autoload/*.nu` — loaded on every shell start. From cozy's `docker-files/`: `git-safe-directory.nu`, `mcp-server.nu`, `module-imports.nu`, `my-nu-completions.nu`, `standard-aliasses.nu`. From dotfiles: `br.nu`, `carapace-config.nu`, `hooks-config.nu`, `zzz_ignore_vars.nu`
 
 **Other tools** — under `~/.config/`
 
@@ -84,5 +69,4 @@ cozy's own `docker-files/` (noted below). Edit them freely.
 
 - `~/.visidatarc` — VisiData config
 - `~/.claude/CLAUDE.md` — cozy's tool catalog is appended here
-- `~/.claude.json` — the vendored Nushell MCP server is registered (gives the
-  agent `evaluate` / `list_commands` / `command_help`)
+- `~/.claude.json` — the vendored Nushell MCP server is registered (gives the agent `evaluate` / `list_commands` / `command_help`)
