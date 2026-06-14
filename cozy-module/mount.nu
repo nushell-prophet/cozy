@@ -15,6 +15,9 @@ def non-git-subdirs []: nothing -> list<string> {
 # Safe to re-run after adding new dirs.
 export def init []: nothing -> nothing {
     # sandbox mounts have different ownership — trust all dirs
+    # safe.directory='*' is asserted in three places: here, bootstrap.nu's XDG
+    # config (Step 2), and the git-safe-directory.nu autoload (self-heals after
+    # sandbox create narrows it). Edit one, check the other two.
     ^git config --global safe.directory '*'
 
     let repos = git-subdirs

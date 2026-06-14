@@ -60,6 +60,10 @@ export def main [
     # personal email wins; XDG only kicks in when nothing else is set.
     let git_xdg = $nu.home-dir | path join '.config' 'git'
     mkdir $git_xdg
+    # safe.directory='*' is asserted in three places: here, mount.nu's `init`,
+    # and the git-safe-directory.nu autoload (self-heals after sandbox create
+    # narrows it). gc.auto=0 also lives in cozy-module/git-harden.nu (repo-local,
+    # for host git). Edit one, check the others.
     '[user]
 	name = Agent
 	email = agent@sandbox
