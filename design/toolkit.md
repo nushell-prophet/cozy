@@ -2,20 +2,15 @@
 human-check: pending   # pending | verified — flip to verified after you read it
 covers:
   - toolkit/mod.nu
-  - toolkit/sandbox.nu
   - toolkit/vendor.nu
   - toolkit/vendor.yml
   - toolkit/docs.nu
   - toolkit/test.nu
 ---
 
-# toolkit — host-side build & vendor tooling
+# toolkit — host-side vendor tooling
 
-Runs **on the host**, not inside the sandbox. The commands themselves are self-documenting (`help toolkit ...`); this file records only the build/packaging mechanism behind them.
-
-## Building the image
-
-`toolkit sandbox build` builds the Docker image with an auto-incremented `vN` tag and can recreate existing sandboxes onto it. The other `sandbox` subcommands (`run`, `ls`, `stop`, `rm`) are thin wrappers over `docker sandbox`. Wired in `toolkit/sandbox.nu`.
+Runs **on the host**, not inside the sandbox. The commands themselves are self-documenting (`help toolkit ...`); this file records only the packaging mechanism behind them.
 
 ## Vendoring modules
 
