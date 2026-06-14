@@ -14,14 +14,9 @@ covers:                # source paths update-spec reconciles this file against
 
 # cozy command surface
 
-The `cozy` command, available inside a running sandbox (the module is autoloaded from
-`~/repos/cozy/cozy-module/`). Exports are wired in
-[`cozy-module/mod.nu`](../cozy-module/mod.nu). The `install` sub-surface lives in its own
-file: [install.md](install.md).
+The `cozy` command, available inside a running sandbox (the module is autoloaded from `~/repos/cozy/cozy-module/`). Exports are wired in [`cozy-module/mod.nu`](../cozy-module/mod.nu). The `install` sub-surface lives in its own file: [install.md](install.md).
 
-Each entry: **Purpose** is the first line of the command's own doc comment (verbatim).
-**Flags** are derived from the signature. **Code** points at the symbol; the full
-rationale stays there.
+Each entry: **Purpose** is the first line of the command's own doc comment (verbatim). **Flags** are derived from the signature. **Code** points at the symbol; the full rationale stays there.
 
 ## cozy sync-repos
 Convert vendor directories to git repos if needed, pull latest from all.
@@ -29,19 +24,16 @@ Convert vendor directories to git repos if needed, pull latest from all.
 **Code:** `cozy-module/sync-repos.nu` → `export def main`
 
 ## cozy mount init
-Idempotent git init for multi-repo workspaces. Registers git subdirs as submodules,
-ignores non-git subdirs.
+Idempotent git init for multi-repo workspaces. Registers git subdirs as submodules, ignores non-git subdirs.
 **Code:** `cozy-module/mount.nu` → `export def init`
 
 ## cozy dev-link
-Replace vendored `~/repos/` copies with symlinks to the mounted workspace — edit-and-test
-without rebuild.
+Replace vendored `~/repos/` copies with symlinks to the mounted workspace — edit-and-test without rebuild.
 **Flags:** `--workspace (-w): path` — defaults to `$env.WORKSPACE_DIR`
 **Code:** `cozy-module/dev-link.nu` → `export def main`
 
 ## cozy git-harden
-Harden a git repo against concurrent-access corruption on a shared mount (sets
-`gc.auto=0`, `receive.autoGc=false` in the repo's own `.git/config`).
+Harden a git repo against concurrent-access corruption on a shared mount (sets `gc.auto=0`, `receive.autoGc=false` in the repo's own `.git/config`).
 **Flags:** `--all (-a)` — harden every git repo in immediate subdirs; positional `path` (default `.`)
 **Code:** `cozy-module/git-harden.nu` → `export def main`
 
@@ -59,29 +51,23 @@ Prints the cozy ANSI logo.
 
 ## cozy sandbox-state
 
-Export/import nushell history, Claude Code sessions, and global CLAUDE.md across sandbox
-recreation. The workspace mount survives recreation, so state round-trips through
-`$env.WORKSPACE_DIR/sandbox-state/`. Wired in
-[`cozy-module/sandbox-state/mod.nu`](../cozy-module/sandbox-state/mod.nu).
+Export/import nushell history, Claude Code sessions, and global CLAUDE.md across sandbox recreation. The workspace mount survives recreation, so state round-trips through `$env.WORKSPACE_DIR/sandbox-state/`. Wired in [`cozy-module/sandbox-state/mod.nu`](../cozy-module/sandbox-state/mod.nu).
 
 ### cozy sandbox-state export / import
 Export (or import) all three state kinds at once — runs the per-kind export/import below.
 **Code:** `cozy-module/sandbox-state/mod.nu` → `export def export`, `export def import`
 
 ### cozy sandbox-state history export / import / seed
-Nushell SQLite history ↔ timestamped `history-*.nuon` in sandbox-state. `seed` loads the
-bundled `history-seed.nuon`.
+Nushell SQLite history ↔ timestamped `history-*.nuon` in sandbox-state. `seed` loads the bundled `history-seed.nuon`.
 **Flags:** `export`/`import` take optional `path?: path`
 **Code:** `cozy-module/sandbox-state/history.nu` → `export def export`, `import`, `seed`
 
 ### cozy sandbox-state projects export / import
-Copies `~/.claude/projects/` ↔ sandbox-state. Import skips sessions whose UUID already
-exists (no overwrite).
+Copies `~/.claude/projects/` ↔ sandbox-state. Import skips sessions whose UUID already exists (no overwrite).
 **Flags:** optional `path?: path`
 **Code:** `cozy-module/sandbox-state/projects.nu` → `export def export`, `import`
 
 ### cozy sandbox-state global-claude export / import
-`~/.claude/CLAUDE.md` ↔ timestamped `global-claude-*.md`. Import picks the most recent
-by name and overwrites the current file.
+`~/.claude/CLAUDE.md` ↔ timestamped `global-claude-*.md`. Import picks the most recent by name and overwrites the current file.
 **Flags:** optional `path?: path`
 **Code:** `cozy-module/sandbox-state/global-claude.nu` → `export def export`, `import`

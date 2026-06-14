@@ -14,20 +14,11 @@ covers:                # source paths update-spec reconciles this file against
 
 # cozy install sub-surface
 
-The per-tool builders `bootstrap.nu` invokes during the build (and that `cozy install
-<tool>` re-runs on demand). Exports are wired in
-[`cozy-module/install/mod.nu`](../cozy-module/install/mod.nu). The boot sequence that
-calls these lives in [build.md](build.md).
+The per-tool builders `bootstrap.nu` invokes during the build (and that `cozy install <tool>` re-runs on demand). Exports are wired in [`cozy-module/install/mod.nu`](../cozy-module/install/mod.nu). The boot sequence that calls these lives in [build.md](build.md).
 
-Each entry: **Purpose** is the first line of the command's own doc comment (verbatim).
-**Flags** are derived from the signature. **Code** points at the symbol; the full
-rationale stays there. Each `cozy install <tool>` is a thin wrapper that imports the
-tool's own `install` and forwards flags — the contract below is the `install` it calls.
+Each entry: **Purpose** is the first line of the command's own doc comment (verbatim). **Flags** are derived from the signature. **Code** points at the symbol; the full rationale stays there. Each `cozy install <tool>` is a thin wrapper that imports the tool's own `install` and forwards flags — the contract below is the `install` it calls.
 
-Entries follow `mod.nu` export order. Every Rust-based builder is idempotent (safe to
-re-run, skips steps already done), installs Rust on demand, and compiles with `-j 1` plus
-`profile.release.lto=false` to survive the small sandbox VM's RAM. Each clone goes through
-the `_clone-or-fail` helper (last entry).
+Entries follow `mod.nu` export order. Every Rust-based builder is idempotent (safe to re-run, skips steps already done), installs Rust on demand, and compiles with `-j 1` plus `profile.release.lto=false` to survive the small sandbox VM's RAM. Each clone goes through the `_clone-or-fail` helper (last entry).
 
 ## cozy install bootstrap
 End-to-end install: brew tools, vendored modules, dotfiles, skills, broot, topiary, Claude Code + nushell MCP.
