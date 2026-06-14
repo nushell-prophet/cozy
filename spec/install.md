@@ -14,7 +14,7 @@ covers:                # source paths update-spec reconciles this file against
 
 # cozy install sub-surface
 
-The per-tool builders `bootstrap.nu` invokes during the build (and that `cozy install <tool>` re-runs on demand). Exports are wired in [`cozy-module/install/mod.nu`](../cozy-module/install/mod.nu). The boot sequence that calls these lives in [build.md](build.md).
+The per-tool builders `bootstrap.nu` invokes during the build (and that `cozy install <tool>` re-runs on demand). Exports are wired in `../cozy-module/install/mod.nu`. The boot sequence that calls these lives in `build.md`.
 
 Each entry: **Purpose** is the first line of the command's own doc comment (verbatim). **Flags** are derived from the signature. **Code** points at the symbol; the full rationale stays there. Each `cozy install <tool>` is a thin wrapper that imports the tool's own `install` and forwards flags — the contract below is the `install` it calls.
 
@@ -24,7 +24,7 @@ Entries follow `mod.nu` export order. Every Rust-based builder is idempotent (sa
 End-to-end install: brew tools, vendored modules, dotfiles, skills, broot, topiary, Claude Code + nushell MCP.
 **Flags:** `--local` forces a vendor refresh from sibling repos; Docker vs. host is auto-detected via filesystem markers
 **Code:** `cozy-module/install/mod.nu` → `export use bootstrap.nu`
-See [build.md](build.md) for the step-by-step boot sequence.
+See `build.md` for the step-by-step boot sequence.
 
 ## cozy install claude
 Install claude using official install script.

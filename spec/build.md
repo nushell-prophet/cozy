@@ -11,11 +11,11 @@ covers:                # source paths update-spec reconciles this file against
 
 # build — the boot sequence (the spine)
 
-**Everything starts here.** Three entry paths converge on the same installer, [`bootstrap.nu`](../cozy-module/install/bootstrap.nu) — so the environment is identical whether you build the image, install on a host, or layer the `sbx` kit:
+**Everything starts here.** Three entry paths converge on the same installer, `../cozy-module/install/bootstrap.nu` — so the environment is identical whether you build the image, install on a host, or layer the `sbx` kit:
 
-- **Docker** — [`Dockerfile`](../Dockerfile) → `ensure-nu.sh` → `bootstrap.nu`
-- **Host** — [`bootstrap.sh`](../bootstrap.sh) → `ensure-nu.sh` → `bootstrap.nu`
-- **sbx kit** — [`kit/spec.yaml`](../kit/spec.yaml) clones the repo in-sandbox → same chain
+- **Docker** — `../Dockerfile` → `ensure-nu.sh` → `bootstrap.nu`
+- **Host** — `../bootstrap.sh` → `ensure-nu.sh` → `bootstrap.nu`
+- **sbx kit** — `../kit/spec.yaml` clones the repo in-sandbox → same chain
 
 This file walks the `Dockerfile` top to bottom, then `bootstrap.nu`'s steps 0–9 in order, and links out to the other spec files at the step where each is reached. **This order is the canonical order for the whole project** — README, CLAUDE.md, and every other spec file mirror it. Change the order here and propagate it everywhere.
 
@@ -32,11 +32,11 @@ The Dockerfile is deliberately thin — it stages bits and hands off. In order:
 5. **`COPY` repo bits** — `vendor/` → `/tmp/vendor/` (bootstrap fans it out under `~/repos/`); `cozy-module/` + `docker-files/` → `~/repos/cozy/`, so `bootstrap.nu` resolves `cozy_root` from `path self` (three dirnames up).
 6. **`RUN ensure-nu.sh`** — see below.
 7. **`RUN nu bootstrap.nu`** — all install logic; steps 0–9 below.
-8. **`COPY workspace-README.md` → `~/workspace/README.md`** — the only step after bootstrap. See [autoload.md](autoload.md).
+8. **`COPY workspace-README.md` → `~/workspace/README.md`** — the only step after bootstrap. See `autoload.md`.
 
 ## ensure-nu.sh
 
-Ensure `nu` can parse `bootstrap.nu`. Tries latest brew `nu` first; if it can't parse (nushell is pre-1.0 and syntax drifts between releases), downloads the pinned version from [`.nushell-version`](../cozy-module/install/.nushell-version) into `~/.local/bin/nu`, which shadows brew's `nu` via the `PATH` order above. If even the pinned version can't parse it, `bootstrap.nu` has a real bug — fail loudly rather than install a broken environment.
+Ensure `nu` can parse `bootstrap.nu`. Tries latest brew `nu` first; if it can't parse (nushell is pre-1.0 and syntax drifts between releases), downloads the pinned version from `../cozy-module/install/.nushell-version` into `~/.local/bin/nu`, which shadows brew's `nu` via the `PATH` order above. If even the pinned version can't parse it, `bootstrap.nu` has a real bug — fail loudly rather than install a broken environment.
 **Code:** `cozy-module/install/ensure-nu.sh`
 
 ## bootstrap.nu — install steps
@@ -45,7 +45,7 @@ Entry: `export def main [--local --force]`. `--local` force-refreshes `vendor/` 
 **Code:** `cozy-module/install/bootstrap.nu` → `export def main`
 
 ### Step 0 — system setup (Docker) / clobber guard (host)
-Gated on the `/etc/sandbox-persistent.sh` marker the base image ships. **Docker:** `setup-docker-system` wipes colliding `config.nu`/`env.nu`, rewrites apt sources `http://` → `https://` (the VM allows :443, not :80), `apt-get install` procps/file/gcc/libc6-dev (gcc + libc6-dev are needed for the tree-sitter-nu compile in Step 8), installs the [`pbcopy`](autoload.md) shim to `~/.local/bin`, and writes the runtime env-export block (marker-wrapped) into `/etc/sandbox-persistent.sh`. **Host** (marker absent): `check-no-clobber` refuses to overwrite existing user configs unless `--force` or the `~/.cozy-installed` stamp is present.
+Gated on the `/etc/sandbox-persistent.sh` marker the base image ships. **Docker:** `setup-docker-system` wipes colliding `config.nu`/`env.nu`, rewrites apt sources `http://` → `https://` (the VM allows :443, not :80), `apt-get install` procps/file/gcc/libc6-dev (gcc + libc6-dev are needed for the tree-sitter-nu compile in Step 8), installs the `pbcopy` shim to `~/.local/bin`, and writes the runtime env-export block (marker-wrapped) into `/etc/sandbox-persistent.sh`. **Host** (marker absent): `check-no-clobber` refuses to overwrite existing user configs unless `--force` or the `~/.cozy-installed` stamp is present.
 **Code:** `bootstrap.nu` → `def setup-docker-system`, `def check-no-clobber`
 
 ### Step 1 — brew installs
@@ -55,27 +55,27 @@ Gated on the `/etc/sandbox-persistent.sh` marker the base image ships. **Docker:
 Writes `~/.config/git/{config,ignore}`: identity `Agent <agent@sandbox>` (so Step 4 can commit), `safe.directory=*`, `gc.auto=0`, `core.fsync=all`. XDG (not `/etc/gitconfig`) avoids sudo and is overridden by a real user's `~/.gitconfig`, so a personal identity still wins.
 
 ### Step 3 — populate ~/repos/
-`populate-repos --local=$local` mirrors `cozy-module/` + `docker-files/` to `~/repos/cozy/` (skipped in Docker, where the `COPY` already did it), then fans out every vendored module from `/tmp/vendor` (Docker) or `cozy_root/vendor/` into `~/repos/`. See **[modules.md](modules.md)**.
+`populate-repos --local=$local` mirrors `cozy-module/` + `docker-files/` to `~/repos/cozy/` (skipped in Docker, where the `COPY` already did it), then fans out every vendored module from `/tmp/vendor` (Docker) or `cozy_root/vendor/` into `~/repos/`. See **`modules.md`**.
 **Code:** `bootstrap.nu` → `def populate-repos`
 
 ### Step 3.5 — nushell autoload
-Wipes `~/.config/nushell/autoload/` (cozy owns it; stale files from removed-upstream scripts must not accumulate), then copies `docker-files/nushell-autoload/*.nu` into it. See **[autoload.md](autoload.md)**.
+Wipes `~/.config/nushell/autoload/` (cozy owns it; stale files from removed-upstream scripts must not accumulate), then copies `docker-files/nushell-autoload/*.nu` into it. See **`autoload.md`**.
 
 ### Steps 4 & 5 — dotfiles + skills
-From `~/repos/dotfiles`, spawns nu to run `toolkit push-to-machine --force --create-dirs --docker --commit-changes` (deploys helix/zellij/lazygit/broot/nushell/jj/wezterm configs) then `toolkit install-skills --all`. Always `--docker` because cozy only vendors the docker paths file. Config sources live in the `dotfiles` repo — see [modules.md](modules.md).
+From `~/repos/dotfiles`, spawns nu to run `toolkit push-to-machine --force --create-dirs --docker --commit-changes` (deploys helix/zellij/lazygit/broot/nushell/jj/wezterm configs) then `toolkit install-skills --all`. Always `--docker` because cozy only vendors the docker paths file. Config sources live in the `dotfiles` repo — see `modules.md`.
 
 ### Step 6 — global Claude instructions
-Appends [`docker-files/global-claude.md`](autoload.md) (the tool catalog) to `~/.claude/CLAUDE.md`.
+Appends `docker-files/global-claude.md` (the tool catalog) to `~/.claude/CLAUDE.md`.
 
 ### Step 7 — broot init
 `broot --write-default-conf` + `--set-install-state installed` (moved here from the Dockerfile so host installs get it too).
 
 ### Step 8 — topiary install
-Symlinks the vendored `~/repos/topiary-nushell` to `~/git/topiary-nushell` (where `topiary.nu` looks), then runs `topiary install`. No clone fallback — if the vendored grammar is missing it fails loudly (fail-fast). See **[install.md](install.md)** for what `topiary install` does.
+Symlinks the vendored `~/repos/topiary-nushell` to `~/git/topiary-nushell` (where `topiary.nu` looks), then runs `topiary install`. No clone fallback — if the vendored grammar is missing it fails loudly (fail-fast). See **`install.md`** for what `topiary install` does.
 **Code:** `bootstrap.nu` (Step 8 block) → `topiary install`
 
 ### Step 9 — Claude Code + nushell MCP
-`claude install` (see [install.md](install.md)), then `claude mcp add --scope user --transport stdio nushell -- nu --mcp`, then merges `externalEditorContext: true` into `~/.claude.json`. Finally writes the `~/.cozy-installed` stamp (last, so a partial failure leaves no stamp and forces `--force` to recover) and, if env exports were just written but the current shell predates them, prints a "run `exec bash -l`" note.
+`claude install` (see `install.md`), then `claude mcp add --scope user --transport stdio nushell -- nu --mcp`, then merges `externalEditorContext: true` into `~/.claude.json`. Finally writes the `~/.cozy-installed` stamp (last, so a partial failure leaves no stamp and forces `--force` to recover) and, if env exports were just written but the current shell predates them, prints a "run `exec bash -l`" note.
 
 ## bootstrap.sh (host entry)
 

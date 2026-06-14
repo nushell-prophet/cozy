@@ -11,7 +11,7 @@ covers:                # source paths update-spec reconciles this file against
 
 # toolkit (host-side dev kit)
 
-The build/dev kit run **on the host**, not inside the sandbox. It builds and recreates images, refreshes the vendored modules, syncs docs, and smoke-tests a fresh sandbox. Exports are wired in [`toolkit/mod.nu`](../toolkit/mod.nu), which re-exports three sub-surfaces in this order: `sandbox`, `vendor`, `docs`. `test` lives in its own file, run directly (`nu toolkit/test.nu test`).
+The build/dev kit run **on the host**, not inside the sandbox. It builds and recreates images, refreshes the vendored modules, syncs docs, and smoke-tests a fresh sandbox. Exports are wired in `../toolkit/mod.nu`, which re-exports three sub-surfaces in this order: `sandbox`, `vendor`, `docs`. `test` lives in its own file, run directly (`nu toolkit/test.nu test`).
 
 Each entry: **Purpose** is the first line of the command's own doc comment (verbatim). **Flags** are derived from the signature. **Code** points at the symbol; the full rationale stays there.
 

@@ -17,7 +17,7 @@ covers:
 
 The Nushell modules fanned out under `~/repos/` by `bootstrap.nu` Step 3. Each entry is a **pointer + in-sandbox surface**: what the module is for, the handful of commands the user actually touches in-sandbox, and where the code lives. Internals are not documented here — they live in each module's own repo.
 
-[`toolkit/vendor.yml`](../toolkit/vendor.yml) is the source of truth for *which* modules are vendored and which subdir of each repo is copied. The autoloaded ones are imported by [`docker-files/nushell-autoload/module-imports.nu`](../docker-files/nushell-autoload/module-imports.nu); its `overlay use` / `use` order is followed below. Modules that are vendored but **not** autoloaded (nutest, nu-multiproof) come last — they need a manual `use`. Most user-facing descriptions here are reused verbatim from [`README.md`](../README.md)'s "Nushell modules loaded by default" section.
+`../toolkit/vendor.yml` is the source of truth for *which* modules are vendored and which subdir of each repo is copied. The autoloaded ones are imported by `../docker-files/nushell-autoload/module-imports.nu`; its `overlay use` / `use` order is followed below. Modules that are vendored but **not** autoloaded (nutest, nu-multiproof) come last — they need a manual `use`. Most user-facing descriptions here are reused verbatim from `../README.md`'s "Nushell modules loaded by default" section.
 
 > Per-module specs are expected to move *into the modules themselves* over time and be reconciled back here. The modules are separate repos for distribution and historical reasons, but cozy is their main customer now — their development follows cozy's needs.
 
@@ -80,6 +80,6 @@ Multi-proof utilities: seal a worktree with a content manifest, SSH signature, a
 
 ## Also vendored — not command modules
 These appear in `vendor.yml` but are configs or Claude skills, not Nushell command modules:
-- **dotfiles** (`nushell-prophet/my-dotfiles`) — personal configs (helix, zellij, lazygit, broot, nushell, claude, jj, wezterm, visidata). Deployed by `bootstrap.nu` Steps 4–5; see [autoload.md](autoload.md) and `dotfiles/CLAUDE.md`.
+- **dotfiles** (`nushell-prophet/my-dotfiles`) — personal configs (helix, zellij, lazygit, broot, nushell, claude, jj, wezterm, visidata). Deployed by `bootstrap.nu` Steps 4–5; see `autoload.md` and `dotfiles/CLAUDE.md`.
 - **my-claude-skills** (`maxim-uvarov/my-claude-skills`) and **nushell-skills** (`nushell-prophet/nushell-skills`) — Claude Code skills installed by `toolkit install-skills`.
-- **topiary-nushell** (`blindFS/topiary-nushell`) — Nushell grammar + queries for the topiary formatter, wired up in `bootstrap.nu` Step 8; see [install.md](install.md).
+- **topiary-nushell** (`blindFS/topiary-nushell`) — Nushell grammar + queries for the topiary formatter, wired up in `bootstrap.nu` Step 8; see `install.md`.

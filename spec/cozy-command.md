@@ -14,7 +14,7 @@ covers:                # source paths update-spec reconciles this file against
 
 # cozy command surface
 
-The `cozy` command, available inside a running sandbox (the module is autoloaded from `~/repos/cozy/cozy-module/`). Exports are wired in [`cozy-module/mod.nu`](../cozy-module/mod.nu). The `install` sub-surface lives in its own file: [install.md](install.md).
+The `cozy` command, available inside a running sandbox (the module is autoloaded from `~/repos/cozy/cozy-module/`). Exports are wired in `../cozy-module/mod.nu`. The `install` sub-surface lives in its own file: `install.md`.
 
 Each entry: **Purpose** is the first line of the command's own doc comment (verbatim). **Flags** are derived from the signature. **Code** points at the symbol; the full rationale stays there.
 
@@ -51,7 +51,7 @@ Prints the cozy ANSI logo.
 
 ## cozy sandbox-state
 
-Export/import nushell history, Claude Code sessions, and global CLAUDE.md across sandbox recreation. The workspace mount survives recreation, so state round-trips through `$env.WORKSPACE_DIR/sandbox-state/`. Wired in [`cozy-module/sandbox-state/mod.nu`](../cozy-module/sandbox-state/mod.nu).
+Export/import nushell history, Claude Code sessions, and global CLAUDE.md across sandbox recreation. The workspace mount survives recreation, so state round-trips through `$env.WORKSPACE_DIR/sandbox-state/`. Wired in `../cozy-module/sandbox-state/mod.nu`.
 
 ### cozy sandbox-state export / import
 Export (or import) all three state kinds at once — runs the per-kind export/import below.
