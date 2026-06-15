@@ -137,7 +137,7 @@ VisiData is a tabular viewer and data multitool by Saul Pwanson — years of han
 
 ### Wezterm
 
-I use Wezterm to connect to this environment. The config is vendored at [vendor/dotfiles/wezterm/wezterm.lua](vendor/dotfiles/wezterm/wezterm.lua); install Wezterm with `brew install wezterm --cask`.
+I use Wezterm to connect to this environment on my Mac (on Windows, see the note at the end of this section). The config is vendored at [vendor/dotfiles/wezterm/wezterm.lua](vendor/dotfiles/wezterm/wezterm.lua); install Wezterm with `brew install wezterm --cask`.
 
 Its killer feature is `ctrl+shift+space` — highlights paths and Nushell's structured output elements for quick copying.
 
@@ -152,6 +152,8 @@ The launch command below targets `docker sandbox` — the entry point I test aga
 ```
 wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua --config 'colors={background="#000000"}' start -- docker sandbox exec -it cozy-test nu -l --execute 'zellij attach -c cozy-test'
 ```
+
+**On Windows I'd use the standard terminal instead.** I use Wezterm on Mac because it lets me disable the default shortcuts. On Windows: I've heard Wezterm is flakier, and since `cozy swap-zellij-super` already remaps the Zellij shortcuts from Super to Alt for Windows users, few conflicts are expected anyway. There are also likely more caveats I haven't tested.
 
 ## Nushell modules loaded by default
 
