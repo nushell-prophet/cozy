@@ -4,7 +4,11 @@
 # brew tools, XDG git config, vendored modules under ~/repos/, dotfiles,
 # Claude skills, broot, topiary, and Claude Code with the nushell MCP.
 #
-# Re-run = clean setup. Idempotency is not a goal.
+# Safe to re-run: every step converges to the same clean setup. Cozy-owned
+# config is replaced in place (the /etc env block, the autoload dir,
+# config.nu/env.nu) while user state is preserved (shell history, plugin
+# data). Steps re-do their work rather than skip it — not strictly idempotent,
+# but each run lands on the same end state.
 #
 # Mode auto-detection (no flags needed):
 #   /etc/sandbox-persistent.sh present → run setup-docker-system (apt
