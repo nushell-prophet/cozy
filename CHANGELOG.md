@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `cozy verify` — run post-build checks against the sandbox you're in (binaries, vendored repos, autoload, env, MCP, topiary, git config). The same checks back `nu toolkit/test.nu test` from the host, deriving every expected value from the repo so they can't drift. (763d780)
+
 ### Changed
 
 - `sbx` kit directory renamed `kit/` → `sbx-kit/`; the name now says which tool it's for. Invoke with `sbx run shell --kit cozy/sbx-kit/`.
