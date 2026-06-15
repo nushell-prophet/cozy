@@ -143,7 +143,6 @@ Its killer feature is `ctrl+shift+space` — highlights paths and Nushell's stru
 
 Changes from WezTerm defaults:
 
-- **Shell**: launches Nushell with Zellij instead of the system default shell
 - **Keybindings**: all defaults disabled; CMD+SHIFT+letter sends kitty-protocol escape sequences so Zellij and apps behind it can distinguish them
 - **QuickSelect patterns**: custom regexes for jj change IDs, Nushell error paths (`╭─[file:line:col]`), Nushell table headers/values, and filesystem paths
 - **Dynamic modes**: the `ZEN_MODE` user variable adjusts font size at runtime; the sandbox background is set at window creation via `--config` (see the launch command below)
