@@ -27,7 +27,30 @@ if nu -c "use '$BOOTSTRAP'" >/dev/null 2>&1; then
     exit 0
 fi
 
-echo "nu $(nu --version 2>/dev/null || echo unknown) can't parse bootstrap.nu — falling back to pinned $VERSION" >&2
+# Loud banner, not a one-line note: the fallback isn't a build detail, it
+# changes the whole environment. ~/.local/bin is first on PATH, so the pinned
+# nu shadows brew's nu for EVERY nu the sandbox runs — easy to miss in a long
+# build log, so make it impossible to miss.
+current_nu="$(nu --version 2>/dev/null || echo unknown)"
+{
+    echo
+    echo "================================================================"
+    echo "  cozy: FALLING BACK TO PINNED NUSHELL"
+    echo "----------------------------------------------------------------"
+    echo "  Latest nu ($current_nu) cannot parse bootstrap.nu."
+    echo "  Installing pinned nu $VERSION into ~/.local/bin/nu."
+    echo
+    echo "  ~/.local/bin is FIRST on PATH, so this pinned nu shadows"
+    echo "  brew's nu for the ENTIRE environment — every nu in this"
+    echo "  sandbox is $VERSION, not the latest, until bootstrap.nu"
+    echo "  parses under latest nu again."
+    echo
+    echo "  Fix: update bootstrap.nu for the new nu syntax, re-vendor,"
+    echo "  rebuild, then bump .nushell-version. Until then you are on"
+    echo "  the pinned nu by design."
+    echo "================================================================"
+    echo
+} >&2
 
 # Architecture / OS detection — same triples brew uses to pick bottles.
 case "$(uname -s)" in
@@ -55,3 +78,5 @@ if ! nu -c "use '$BOOTSTRAP'" >/dev/null 2>&1; then
     echo "even pinned nu $VERSION can't parse bootstrap.nu — likely a real bug" >&2
     exit 1
 fi
+
+echo "cozy: pinned nu $VERSION installed and verified — this environment now runs the pinned nushell, not brew's latest." >&2
