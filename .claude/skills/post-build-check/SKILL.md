@@ -72,8 +72,8 @@ Both lists empty = pass.
 ### 3. Nushell autoload populated
 
 ```nu
-let expected = ['module-imports.nu' 'hooks-config.nu' 'my-nu-completions.nu'
-                'standard-aliases.nu' 'mcp-server.nu']
+let expected = ['git-safe-directory.nu' 'mcp-server.nu' 'module-imports.nu'
+                'my-nu-completions.nu' 'standard-aliases.nu']
 let actual = (ls ~/.config/nushell/autoload | get name | path basename)
 $expected | where $it not-in $actual
 ```
