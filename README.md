@@ -139,12 +139,10 @@ VisiData is a tabular viewer and data multitool by Saul Pwanson — years of han
 
 I use Wezterm to connect to this environment on my Mac (on Windows, see the note at the end of this section). The config is vendored at [vendor/dotfiles/wezterm/wezterm.lua](vendor/dotfiles/wezterm/wezterm.lua); install Wezterm with `brew install wezterm --cask`.
 
-Its killer feature is `ctrl+shift+space` — highlights paths and Nushell's structured output elements for quick copying.
-
 Changes from WezTerm defaults:
 
+- **QuickSelect** (the killer feature): `ctrl+shift+space` highlights matches on screen for quick copying. Custom regexes extend it to paths, jj change IDs, Nushell error locations (`╭─[file:line:col]`), and Nushell table headers and values.
 - **Keybindings**: all defaults disabled; CMD+SHIFT+letter sends kitty-protocol escape sequences so Zellij and apps behind it can distinguish them
-- **QuickSelect patterns**: custom regexes for jj change IDs, Nushell error paths (`╭─[file:line:col]`), Nushell table headers/values, and filesystem paths
 - **Dynamic modes**: the `ZEN_MODE` user variable adjusts font size at runtime; the sandbox background is set at window creation via `--config` (see the launch command below)
 
 The launch command below targets `docker sandbox` — the entry point I test against. For other runtimes (`sbx`, Apple container, etc.) swap out the `docker sandbox exec` portion.
