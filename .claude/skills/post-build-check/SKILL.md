@@ -1,86 +1,43 @@
 ---
 name: post-build-check
 description: >
-  Verify a freshly-built cozy sandbox from inside it: binaries on PATH, vendored
-  modules under ~/repos/, nushell autoload, claude MCP wiring, bootstrap.nu
-  idempotency, ~/workspace/ shape. Use after `docker build` + `docker sandbox
-  create`, when the user says "I built it, what to test", "verify the build",
-  "smoke test the sandbox", "post-build check", or "is everything wired up".
+  Verify a freshly-built cozy sandbox. The full check is `nu toolkit/test.nu
+  test` from the host — it spawns a sandbox and verifies binaries, vendored
+  repos, autoload scripts, env vars, MCP wiring and pbcopy, every value derived
+  from vendor.yml and the repo. This skill adds the inside-the-sandbox checks
+  test.nu can't reach. Use after `docker build` + `docker sandbox create`, or
+  when the user says "I built it, what to test", "verify the build", "smoke
+  test the sandbox", "post-build check", "is everything wired up".
 ---
 
 # Post-build verification
 
-Run this **inside** a freshly-built cozy sandbox to confirm `bootstrap.nu`
-completed correctly and the runtime matches expectations. Auto-runs everything
-that can be checked from inside the container, then emits a host-side checklist
-for items the agent cannot reach.
+## Run the host verifier first
 
-## Preflight
-
-Confirm we are inside the sandbox: `/etc/sandbox-persistent.sh` exists. If not,
-stop and tell the user to `docker sandbox exec -it <name> nu` (or `sbx exec`)
-into the new sandbox first.
-
-## Auto-checks
-
-Run each in sequence; collect a `{check, status, detail}` row per item and
-print one markdown table at the end. Don't stop on the first failure — surface
-all of them.
-
-### 1. Binaries on PATH
+`toolkit/test.nu` is the single source of truth for what a correct build looks
+like. From the host (the cozy repo, not inside a sandbox):
 
 ```nu
-['nu' 'fd' 'bat' 'rg' 'delta' 'jj' 'vd' 'gh' 'hx' 'lazygit' 'zellij'
- 'topiary' 'claude' 'broot' 'git-lfs' 'pbcopy']
-| each {|b| {bin: $b, found: (which $b | is-not-empty)} }
+nu toolkit/test.nu test -t <tag>    # tag defaults to `latest`
 ```
 
-Any `found: false` is a fail. `pbcopy` is the OSC 52 shim from
-`docker-files/`, not macOS.
+It spawns a fresh sandbox and checks binaries, vendored repos, autoload
+scripts, runtime env vars, MCP wiring and pbcopy — every expected value derived
+from `vendor.yml` and the repo, so the checklist can't drift out of sync with
+the build. Read its final table; any `pass: false` row names the file and the
+owning repo to fix.
 
-### 2. Vendored modules under ~/repos/
+Everything below is only the handful of checks `test.nu` can't reach from the
+host. They are kept list-free on purpose — no hardcoded sets to keep in sync.
 
-Expected names come from `toolkit/vendor.yml` `repo:` keys plus `cozy` itself
-(staged by the Dockerfile). At time of writing: `claude-nu`, `cozy`,
-`dotfiles`, `dotnu`, `my-claude-skills`, `nu-cmd-stack`, `nu-goodies`,
-`nu-kv`, `nu-multiproof`, `numd`, `nushell-skills`, `nutest`,
-`topiary-nushell`.
+## Inside-the-sandbox checks
 
-Read the live list from vendor.yml rather than hardcoding — the set drifts.
-The Dockerfile only COPYs `docker-files/` and `cozy-module/` into
-`~/repos/cozy/`, so `vendor.yml` is not under `~/repos/cozy/toolkit/`. Read it
-from the workspace mount where this skill is invoked (typically the cozy
-workspace itself):
+Run these when you are already inside a freshly-built sandbox — confirm with
+`/etc/sandbox-persistent.sh` exists; if not, `docker sandbox exec -it <name> nu`
+(or `sbx exec`) in first. Collect a `{check, status, detail}` row each and
+print one table; don't stop on the first failure.
 
-```nu
-let vendor_yml = (
-  ['./toolkit/vendor.yml' ($env.WORKSPACE_DIR? | default '' | path join 'toolkit/vendor.yml')]
-  | each { |p| $p | path expand }
-  | where { |p| $p | path exists }
-  | first
-)
-if ($vendor_yml | is-empty) {
-  error make { msg: 'vendor.yml not found — re-invoke from the cozy workspace mount' }
-}
-let expected = (open $vendor_yml | get repo | append 'cozy' | sort)
-let actual = (ls ~/repos | get name | path basename | sort)
-{missing: ($expected | where $it not-in $actual), extra: ($actual | where $it not-in $expected)}
-```
-
-Both lists empty = pass.
-
-### 3. Nushell autoload populated
-
-```nu
-let expected = ['git-safe-directory.nu' 'mcp-server.nu' 'module-imports.nu'
-                'my-nu-completions.nu' 'standard-aliases.nu']
-let actual = (ls ~/.config/nushell/autoload | get name | path basename)
-$expected | where $it not-in $actual
-```
-
-Empty result = pass.
-
-### 4. bootstrap.nu parses on shipped nu
+### bootstrap.nu parses on the shipped nu
 
 ```nu
 ^nu --ide-check 0 ~/repos/cozy/cozy-module/install/bootstrap.nu
@@ -90,16 +47,16 @@ Hints OK; any line containing `"severity":"error"` is a fail. If this fails,
 `ensure-nu.sh`'s pinned fallback should have caught it during build — surface
 loudly.
 
-### 5. Claude MCP nushell server registered
+### Claude MCP nushell server connected
 
 ```nu
 ^claude mcp list
 ```
 
-Must contain a `nushell` entry; ideally `✓ Connected`. A `not connected` line
-is a fail.
+Must show a `nushell` entry as `✓ Connected`. `test.nu` confirms the config was
+patched; only a live `claude` confirms the server actually starts.
 
-### 6. ~/.claude/CLAUDE.md catalog appended
+### ~/.claude/CLAUDE.md catalog appended
 
 ```nu
 open --raw ~/.claude/CLAUDE.md | str contains 'fd'
@@ -110,27 +67,7 @@ Greps for one tool that step 6 of bootstrap.nu appends from
 `--raw` flag is required — without it `open` auto-parses the markdown into a
 record and `str contains` errors on a non-string input.
 
-### 7. ~/workspace/ shape
-
-```nu
-ls ~/workspace | get name | path basename | sort
-```
-
-Must be exactly `[README.md]`. `README.md` comes from the final Dockerfile
-COPY. Anything else — e.g. a `mounted` symlink — is a stale leftover from
-before the symlink was dropped in favor of `$env.WORKSPACE_DIR`.
-
-### 8. XDG / runtime env survives a fresh shell
-
-```nu
-^nu -lc 'echo $env.XDG_CONFIG_HOME $env.XDG_DATA_HOME $env.HELIX_RUNTIME $env.LANG'
-```
-
-All four must be non-empty; `LANG` must be `C.UTF-8`. Empty values mean the
-`# >>> cozy env >>>` block in `/etc/sandbox-persistent.sh` isn't being
-sourced.
-
-### 9. setup-docker-system is idempotent
+### setup-docker-system is idempotent
 
 ```nu
 ^grep -c '# >>> cozy env >>>' /etc/sandbox-persistent.sh   # expect 1
@@ -141,7 +78,7 @@ sourced.
 A second `1` proves the marker-bounded block is replaced in place, not
 appended (the 0.2.0 fix from commit 45cc3d9).
 
-### 10. Topiary end-to-end on a .nu file
+### Topiary formats a .nu file end-to-end
 
 ```nu
 'def main [] { 1 }' | save -f /tmp/t.nu
@@ -155,37 +92,25 @@ Must reformat without error. A grammar-not-found error means the
 and `[FILES]` as mutually exclusive (exits 2). Auto-detection via the `.nu`
 extension is the supported form.
 
-### 11. XDG git config in place
+### Runtime git config comes from XDG
 
 ```nu
 ^git config --list --show-origin | str contains '.config/git/config'
 ```
 
-Confirms 0.2.0's move of runtime git settings from `/etc/gitconfig` (which
-brew git ignores) to XDG.
-
-## Report
-
-Print a single markdown table:
-
-| Check | Status | Detail |
-|---|---|---|
-| 1. Binaries on PATH | ✓ / ✗ | (missing bins, if any) |
-| 2. Vendored modules | ✓ / ✗ | (missing / extra repos) |
-| ... | ... | ... |
-
-Then print the host-only checklist below verbatim.
+Confirms 0.2.0's move of runtime git settings from `/etc/gitconfig` (which brew
+git ignores) to XDG.
 
 ## Host-only checklist (user runs these)
 
-Print these as a bulleted to-do list. Agent inside the sandbox cannot reach
-them — they need either macOS shell, registry network, or a fresh rebuild.
+Print these as a bulleted to-do list. The agent inside the sandbox cannot reach
+them — they need either a macOS shell, registry network, or a fresh rebuild.
 
 - [ ] On macOS host: `./host-install.sh` from clean state succeeds; `claude mcp
       list` afterwards shows a brew-resolved `nu` path (`/opt/homebrew/bin/nu`
       on Apple Silicon, `/home/linuxbrew/.linuxbrew/bin/nu` on Intel).
 - [ ] `./host-install.sh --local` rsyncs from sibling `../<repo>/` clones rather
-      than fetching tarballs; `~/repos/` reflects sibling tree.
+      than fetching tarballs; `~/repos/` reflects the sibling tree.
 - [ ] Pre-existing host `~/.gitconfig` (user's real identity) survives — XDG
       `~/.config/git/config` only fills unset keys.
 - [ ] Cold `docker build --no-cache -t cozy:v<N> .` succeeds end-to-end.
@@ -198,13 +123,10 @@ them — they need either macOS shell, registry network, or a fresh rebuild.
 
 ## When to escalate
 
-If multiple unrelated auto-checks fail simultaneously, suspect `bootstrap.nu`
-didn't complete. Re-run it manually to surface the first error:
+If multiple unrelated checks fail simultaneously, suspect `bootstrap.nu` didn't
+complete. Re-run it manually to surface the first error — do not patch
+bootstrap.nu from inside the sandbox; the source of truth is the host cozy repo:
 
 ```nu
 ^nu ~/repos/cozy/cozy-module/install/bootstrap.nu
 ```
-
-Read the output for the first error and surface to the user — do not patch
-bootstrap.nu from inside the sandbox; the source of truth is the host cozy
-repo.
