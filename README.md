@@ -145,10 +145,12 @@ Changes from WezTerm defaults:
 - **Keybindings**: all defaults disabled; CMD+SHIFT+letter sends kitty-protocol escape sequences so Zellij and apps behind it can distinguish them
 - **Dynamic modes**: the `ZEN_MODE` user variable adjusts font size at runtime; the sandbox background is set at window creation via `--config` (see the launch command below)
 
-The launch command below targets `docker sandbox` — the entry point I test against. For other runtimes (`sbx`, Apple container, etc.) swap out the `docker sandbox exec` portion.
+The launch command below targets `docker sandbox`, the entry point I test against:
 
 ```
-wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua --config 'colors={background="#000000"}' start -- docker sandbox exec -it cozy-test nu -l --execute 'zellij attach -c cozy-test'
+# NAME = your sandbox name (from `docker sandbox create --name`) — replace both
+# on another runtime, swap the `docker sandbox exec -it NAME` part (sbx, Apple container, …)
+wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua --config 'colors={background="#000000"}' start -- docker sandbox exec -it NAME nu --login --execute 'zellij attach -c NAME'
 ```
 
 **On Windows I'd use the standard terminal instead.** I use Wezterm on Mac because it lets me disable the default shortcuts that would otherwise clash with Zellij's bindings. On Windows: I've heard Wezterm is flakier, and since `cozy swap-zellij-super` already remaps those bindings from Super to Alt, few conflicts are expected anyway. There are also likely more caveats I haven't tested.
