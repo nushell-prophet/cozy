@@ -71,8 +71,8 @@ export def install []: nothing -> nothing {
             match $nu.os-info.name {
                 "linux" => {
                     print "  Installing gcc (needed to compile tree-sitter grammar)..."
-                    ^sudo apt-get update -qq
-                    ^sudo apt-get install -y -qq gcc libc6-dev
+                    ^sudo apt-get update
+                    ^sudo apt-get install -y gcc libc6-dev
                 }
                 "macos" => {
                     error make {msg: "gcc not found — install Xcode Command Line Tools: xcode-select --install"}
