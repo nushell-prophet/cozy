@@ -9,16 +9,16 @@ const vendor_yml = ($cozy_root | path join toolkit vendor.yml)
 const manifest = ($cozy_root | path join cozy-module vendored-repos.nuon)
 const dockerfile = ($cozy_root | path join Dockerfile)
 const bootstrap = ($cozy_root | path join cozy-module install bootstrap.nu)
-const kit_spec = ($cozy_root | path join kit spec.yaml)
+const kit_spec = ($cozy_root | path join sbx-kit spec.yaml)
 
 # Env vars that MUST agree across the three injection points: the Dockerfile
-# ENV block, kit/spec.yaml's environment.variables, and the export block
+# ENV block, sbx-kit/spec.yaml's environment.variables, and the export block
 # bootstrap.nu writes to /etc/sandbox-persistent.sh. Their formats differ
 # (Docker directive vs YAML vs shell), so they can't share one literal — this
 # guard turns silent drift into a loud failure instead.
 const shared_env_keys = [XDG_CONFIG_HOME XDG_DATA_HOME XDG_CACHE_HOME HELIX_RUNTIME LANG]
 
-# The PATH prefix the Dockerfile prepends (before its `${PATH}`) — kit/spec.yaml
+# The PATH prefix the Dockerfile prepends (before its `${PATH}`) — sbx-kit/spec.yaml
 # has no ${PATH} to expand, so it must start with this exact prefix.
 const path_prefix = '/home/agent/.local/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin'
 
@@ -88,7 +88,7 @@ def "main env" []: nothing -> table {
     let bad = $all | where not ok
     if ($bad | is-not-empty) {
         print ($all | select key dockerfile bootstrap kit ok)
-        error make {msg: $"env drift: ($bad | get key | str join ', ') disagree across Dockerfile / kit/spec.yaml / bootstrap.nu"}
+        error make {msg: $"env drift: ($bad | get key | str join ', ') disagree across Dockerfile / sbx-kit/spec.yaml / bootstrap.nu"}
     }
     $all | select key ok
 }

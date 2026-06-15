@@ -55,7 +55,7 @@ network:
 # github.com is already required at runtime (topiary clones tree-sitter-nu,
 # ensure-nu downloads release tarballs, claude.ai/install.sh runs), so
 # adding the cozy clone doesn't expand the trust surface — it just removes
-# the pack-kit.nu staging step and the gitignored kit/files/ tree.
+# the pack-kit.nu staging step and the gitignored sbx-kit/files/ tree.
 
 commands:
   install:

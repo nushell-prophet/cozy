@@ -79,7 +79,7 @@ After Dockerfile changes: rebuild image, then recreate sandbox (delete + run).
 - `cozy` command surface: `cozy-module/mod.nu` exports
 - Install step order (host + docker + kit): `cozy-module/install/bootstrap.nu` — single entry point for all build paths
 - Pinned nushell fallback: `cozy-module/install/.nushell-version` — consumed by `ensure-nu.sh` when latest `nu` can't parse `bootstrap.nu`
-- Kit spec for `sbx run shell --kit ./kit/`: `kit/spec.yaml` — environment + commands.install mirror the Dockerfile ENV + RUN block; the kit clones cozy in-sandbox and runs the same `bootstrap.nu`. The shared env values (Dockerfile ENV / kit / `bootstrap.nu` exports) can't share one literal across the three formats — `toolkit check` guards them against drift
+- Kit spec for `sbx run shell --kit ./sbx-kit/`: `sbx-kit/spec.yaml` — environment + commands.install mirror the Dockerfile ENV + RUN block; the kit clones cozy in-sandbox and runs the same `bootstrap.nu`. The shared env values (Dockerfile ENV / kit / `bootstrap.nu` exports) can't share one literal across the three formats — `toolkit check` guards them against drift
 - CHANGELOG entries are historical — cross-reference sequential versions for contradictions
 
 ## Notes

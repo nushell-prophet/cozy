@@ -6,7 +6,7 @@ covers:                # source paths update-design reconciles this file against
   - cozy-module/install/ensure-nu.sh
   - cozy-module/install/.nushell-version
   - cozy-module/install/bootstrap.nu
-  - kit/spec.yaml
+  - sbx-kit/spec.yaml
 ---
 
 # build — the boot sequence (the spine)
@@ -15,7 +15,7 @@ covers:                # source paths update-design reconciles this file against
 
 - **Docker** — `../Dockerfile` → `ensure-nu.sh` → `bootstrap.nu`
 - **Host** — `../host-install.sh` → `ensure-nu.sh` → `bootstrap.nu`
-- **sbx kit** — `../kit/spec.yaml` clones the repo in-sandbox → same chain
+- **sbx kit** — `../sbx-kit/spec.yaml` clones the repo in-sandbox → same chain
 
 This file walks the `Dockerfile` top to bottom, then `bootstrap.nu`'s steps 0–9 in order, and links out to the other design files at the step where each is reached. **This order is the canonical order for the whole project** — README, CLAUDE.md, and every other design file mirror it. Change the order here and propagate it everywhere.
 
@@ -27,7 +27,7 @@ The Dockerfile is deliberately thin — it stages bits and hands off. In order:
 
 1. `FROM docker/sandbox-templates:shell` — Ubuntu base with git, curl, Python, Node.js, Go, ripgrep, jq, gh. `USER agent`.
 2. Install Homebrew — `bootstrap.nu` is a nushell script, so brew (which provides `nu`) must exist before the hand-off. Host install assumes brew is already present.
-3. `ENV` blocks — `PATH` puts `~/.local/bin` first (so a pinned `nu` shadows brew's), then linuxbrew; plus `HELIX_RUNTIME`, `HOME`, `TERM*`, `LANG`, and the `XDG_*` dirs. `bootstrap.nu` Step 0 mirrors this block into `/etc/sandbox-persistent.sh` for in-sandbox re-runs; `kit/spec.yaml`'s `environment.variables` mirrors it for the kit.
+3. `ENV` blocks — `PATH` puts `~/.local/bin` first (so a pinned `nu` shadows brew's), then linuxbrew; plus `HELIX_RUNTIME`, `HOME`, `TERM*`, `LANG`, and the `XDG_*` dirs. `bootstrap.nu` Step 0 mirrors this block into `/etc/sandbox-persistent.sh` for in-sandbox re-runs; `sbx-kit/spec.yaml`'s `environment.variables` mirrors it for the kit.
 4. `brew install nushell` — pre-installed as its own cached layer so `ensure-nu.sh` (next) has a `nu` to smoke-test.
 5. `COPY` repo bits — `vendor/` → `/tmp/vendor/` (bootstrap fans it out under `~/repos/`); `cozy-module/` + `docker-files/` → `~/repos/cozy/`, so `bootstrap.nu` resolves `cozy_root` from `path self` (three dirnames up).
 6. `RUN ensure-nu.sh` — see below.
@@ -82,7 +82,7 @@ Symlinks the vendored `~/repos/topiary-nushell` to `~/git/topiary-nushell` (wher
 Host-callable wrapper for the same installer. Auto-installs Homebrew only on Linux with passwordless sudo; on macOS it fails fast with a copy-paste snippet (keeps password prompts out of the no-prompt flow). Runs `ensure-nu.sh` then `nu bootstrap.nu "$@"`, then appends an `XDG_CONFIG_HOME` export to the user's shell rc (so macOS `nu` reads `~/.config/nushell/` instead of `~/Library/Application Support/`).
 **Code:** `host-install.sh`
 
-## kit/spec.yaml (sbx kit)
+## sbx-kit/spec.yaml (sbx kit)
 
 A `mixin` kit that layers cozy on the standard `shell` agent. `environment.variables` mirrors the Dockerfile `ENV`; `commands.install` mirrors the Dockerfile `RUN` block: clone cozy → install Homebrew → `brew install nushell` → `ensure-nu.sh` → `nu bootstrap.nu`. No `files/` tree — the repo is cloned in-sandbox, so `cozy_root` lines up via `path self`. `network.allowedDomains` is provisional (derived by walking the install path; verify on a real `sbx run`).
-**Code:** `kit/spec.yaml`
+**Code:** `sbx-kit/spec.yaml`

@@ -29,7 +29,7 @@ Wired in `toolkit/vendor.nu`.
 
 `toolkit check` (in `toolkit/check.nu`) is a host-side guard, no sandbox needed — run it before building. Two invariants that nothing else enforces:
 
-- The env block (XDG dirs, `HELIX_RUNTIME`, `LANG`, the `PATH` prefix) is spelled out three times — `../Dockerfile` `ENV`, `../kit/spec.yaml` `environment.variables`, and the `export` block `bootstrap.nu` writes to `/etc/sandbox-persistent.sh`. The three formats can't share one literal, so the check asserts they agree and fails loud on drift.
+- The env block (XDG dirs, `HELIX_RUNTIME`, `LANG`, the `PATH` prefix) is spelled out three times — `../Dockerfile` `ENV`, `../sbx-kit/spec.yaml` `environment.variables`, and the `export` block `bootstrap.nu` writes to `/etc/sandbox-persistent.sh`. The three formats can't share one literal, so the check asserts they agree and fails loud on drift.
 - `vendored-repos.nuon` matches `vendor.yml` (catches a manifest left stale).
 
 ## Standalone (not wired into `mod.nu`)
