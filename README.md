@@ -151,7 +151,7 @@ The launch command below targets `docker sandbox` — the entry point I test aga
 wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua --config 'colors={background="#000000"}' start -- docker sandbox exec -it cozy-test nu -l --execute 'zellij attach -c cozy-test'
 ```
 
-**On Windows I'd use the standard terminal instead.** I use Wezterm on Mac because it lets me disable the default shortcuts. On Windows: I've heard Wezterm is flakier, and since `cozy swap-zellij-super` already remaps the Zellij shortcuts from Super to Alt for Windows users, few conflicts are expected anyway. There are also likely more caveats I haven't tested.
+**On Windows I'd use the standard terminal instead.** I use Wezterm on Mac because it lets me disable the default shortcuts that would otherwise clash with Zellij's bindings. On Windows: I've heard Wezterm is flakier, and since `cozy swap-zellij-super` already remaps those bindings from Super to Alt, few conflicts are expected anyway. There are also likely more caveats I haven't tested.
 
 ## Nushell modules loaded by default
 
