@@ -20,8 +20,11 @@ cd cozy
 # Build the image — runs the shared bootstrap.nu installer inside the image
 docker build --tag cozy:latest .
 
-# create local container. Base images for the agents are provided by Docker.
-docker sandbox create --name cozy-test --tag cozy:latest shell example-workspace
+# Create a local container. `shell` is the agent (base images come from Docker);
+# the last argument is the folder to mount as your workspace. Here `.` is the
+# cozy repo you just cloned, so you land in something to explore — point it at
+# your own project (e.g. `~/my-project`) once you're set up.
+docker sandbox create --name cozy-test --tag cozy:latest shell .
 
 # connect to the sandbox and start Zellij session
 docker sandbox exec -it cozy-test nu --login --execute 'zellij attach -c cozy-test'
