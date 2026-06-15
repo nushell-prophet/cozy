@@ -7,15 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-15
+
 ### Added
 
 - `cozy verify` — run post-build checks against the sandbox you're in (binaries, vendored repos, autoload, env, MCP, topiary, git config). The same checks back `nu toolkit/test.nu test` from the host, deriving every expected value from the repo so they can't drift. (763d780)
+- `zellij install --low-resource-compilation` builds zellij from source in a memory-tight VM by dropping optimization (opt-level=0, more codegen units) — trades runtime speed for a build that fits. Default build unchanged. (591d352, c789ae7)
+- cozy now ships every `my-claude-skills` plugin, adding the `git-intent`, `git-intent-squash-archive`, and `gnuplot` skills to the sandbox. (5cc439b, 5747d3a)
 
 ### Changed
 
-- `sbx` kit directory renamed `kit/` → `sbx-kit/`; the name now says which tool it's for. Invoke with `sbx run shell --kit cozy/sbx-kit/`.
-- Host installer renamed `bootstrap.sh` → `host-install.sh`. The name now says its role (host-only wrapper) and no longer collides with the core `bootstrap.nu`; `ensure-nu.sh` and `bootstrap.nu` are unchanged.
+- Host installer no longer fetches modules from GitHub or rsyncs from sibling repos — it uses the committed `vendor/` snapshot as-is and fails fast if it's missing. Refreshing `vendor/` is `toolkit/vendor.nu`'s job before a build. (14b2941)
+- `sbx` kit directory renamed `kit/` → `sbx-kit/`; the name now says which tool it's for. Invoke with `sbx run shell --kit cozy/sbx-kit/`. (8b3c9bf)
+- Host installer renamed `bootstrap.sh` → `host-install.sh`. The name now says its role (host-only wrapper) and no longer collides with the core `bootstrap.nu`; `ensure-nu.sh` and `bootstrap.nu` are unchanged. (c0f2a74)
 - Claude Code's "Show last response in external editor" is now on by default in built sandboxes (`externalEditorContext` in `~/.claude.json`). (d745e0d)
+- visidata config now comes from the dotfiles repo (single source of truth) instead of a cozy-owned `.visidatarc`; the bundled config adds `zy` to copy a cell to both the internal and system clipboard. (77b372a, ba7f5e5, 6479476)
+- Default Helix theme switched to `ayu_evolve`. (6e87c69)
+- Vendored `claude-nu` — session commands reworked around a pipeline-native `projects | sessions | messages` flow; `parse-session` folded into `sessions`, plus per-message token usage as a cost signal for subscription users. (f91214d, 1b2aeb7)
+- Vendored `nu-goodies` — `fzf-preview` gains `--content` (browse cell values) and `--column` (pick the path column); new `screen center` / `screen splash` center text in the terminal. (8f0dcf9, 746afb7)
+- Vendored `nu-multiproof` — new `seal` runs the full timestamp-and-sign pipeline in one command. (fa88a4d)
+- Vendored `nushell-skills` — `nushell-style` 1.5.0 and `nushell-completions` 1.1.1. (bd48206)
 
 ### Fixed
 
@@ -308,7 +319,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.2.5...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.0...HEAD
+[0.3.0]: https://github.com/nushell-prophet/cozy/compare/0.2.5...0.3.0
 [0.2.5]: https://github.com/nushell-prophet/cozy/compare/0.2.4...0.2.5
 [0.2.4]: https://github.com/nushell-prophet/cozy/compare/0.2.3...0.2.4
 [0.2.3]: https://github.com/nushell-prophet/cozy/compare/0.2.2...0.2.3
