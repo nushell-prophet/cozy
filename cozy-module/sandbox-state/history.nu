@@ -18,7 +18,7 @@ def sandbox-state-path [filename: string]: nothing -> path {
 # Seed nushell history with useful commands from the bundled seed file.
 #
 # Initializes the history database if needed, then imports history-seed.nuon
-# from the toolkit directory.
+# from the cozy-module directory.
 export def seed []: nothing -> nothing {
     if not ($seed_file | path exists) {
         error make {msg: $"seed file not found: ($seed_file)"}
