@@ -42,13 +42,13 @@ export def 'bar' [
         )
 
     let result = $"($whole_part)($fraction)"
-        | fill --character ' ' -w $width
+        | fill --character ' ' --width $width
         | if ($foreground == 'default') and ($background == 'default') { } else {
-            $"(ansi -e {fg: ($foreground) bg: ($background)})($in)(ansi reset)"
+            $"(ansi --escape {fg: ($foreground) bg: ($background)})($in)(ansi reset)"
         }
 
     if $progress {
-        print -n $"($result)\r"
+        print --no-newline $"($result)\r"
     } else {
         $result
     }
@@ -71,7 +71,7 @@ export def 'example' [
         | if $no_comment { } else { into string | ansi strip }
 
     let command = get-last-commands-from-sql 1
-        | str replace -r '\| example.*' ''
+        | str replace --regex '\| example.*' ''
         | if $no_comment {
             nu-highlight # for making screnshots
         } else { }
@@ -84,7 +84,7 @@ export def 'example' [
                 $'nu -c "($in)"'
             } else {
                 # both quotes or bash-unsafe chars — bash-only fallback
-                $"nu -c '($in | str replace -a "'" "'\\''")'"
+                $"nu -c '($in | str replace --all "'" "'\\''")'"
             }
         }
         | str c $in (char nl)
@@ -114,12 +114,7 @@ export def 'fill non-exist' [
 ]: table -> table {
     let table = $in
 
-    $table
-    | columns
-    | reduce --fold $table {|i acc|
-        $acc
-        | default $value_to_replace $i
-    }
+    $table | default $value_to_replace ...($table | columns)
 }
 
 # use normalize.nu
@@ -138,7 +133,7 @@ export def 'format profile' []: table -> table {
     } else { }
     | insert fullspan {|i|
         view span $i.span.start $i.span.end
-        | str replace -ar '(^|\n)\s+' ''
+        | str replace --all --regex '(^|\n)\s+' ''
         | str substring 0..((term size).columns - 40 - ($i.depth * 2))
     }
     | insert hier {|i|
@@ -246,15 +241,10 @@ export def --env mc [
     path2?: path
 ]: nothing -> nothing {
     let path = ($nu.temp-dir | path join (random chars))
-    if $path2 != null {
-        ^mc --nosubshell $path1 $path2 -P $path
-    } else if $path1 != null {
-        ^mc --nosubshell $path1 -P $path
-    } else {
-        ^mc --nosubshell -P $path
-    }
+    let dirs = [$path1 $path2] | compact
+    ^mc --nosubshell ...$dirs -P $path
     if ($path | path exists) {
-        cd (open -r $path)
+        cd (open --raw $path)
         rm $path
     }
 }
@@ -267,7 +257,7 @@ export def --env md [
 ]: nothing -> nothing {
     let dir = (
         if $d or ($dest_dir != '~/temp') {
-            $dest_dir | path join ($target_dir | str replace -a ' ' '_')
+            $dest_dir | path join ($target_dir | str replace --all ' ' '_')
         } else { $target_dir }
         | path expand
     )
@@ -284,21 +274,17 @@ export def 'mv1' [
     file: path
 ]: nothing -> nothing {
     if ($file | str ends-with '_back') {
-        mv $file $"($file | str replace -r '_back$' '')"
+        mv $file $"($file | str replace --regex '_back$' '')"
     } else {
         mv $file $'($file)_back'
     }
 }
 
 # Backup dotfiles and config directories to their git repos
-export def 'mygit log' [
-    --message (-m): string
-]: nothing -> nothing {
-    let message = $message | default (date now | format date "%Y-%m-%d")
-
+export def 'mygit log' []: nothing -> nothing {
     $nu.home-dir
     | path join '.*'
-    | glob $in -d 1 --no-dir --exclude ['.CFUserTextEncoding']
+    | glob $in --depth 1 --no-dir --exclude ['.CFUserTextEncoding']
     | cp --update ...$in '~/.config/dot_home_dir'
 
     nu ~/.config/nushell/toolkit.nu history backup
@@ -374,7 +360,7 @@ export def 'nu-test install' [
         print 'test nushell updated' ''
     }
 
-    commandline edit -r $'^($cargo_test_path | path join bin nu) --plugin-config ($plugin_config)'
+    commandline edit --replace $'^($cargo_test_path | path join bin nu) --plugin-config ($plugin_config)'
 }
 
 # Launch the test-installed Nushell binary
@@ -402,7 +388,7 @@ export def --env download-nushell-nightly [
     --destination-dir (-d): directory = $nightly_path # Destination directory in which to save the download
 ]: nothing -> nothing {
     let most_recent_nightly = (http get https://api.github.com/repos/nushell/nightly/releases | get 0)
-    let nightly_name = ($most_recent_nightly.name | str replace -r '^Nu-nightly-' '')
+    let nightly_name = ($most_recent_nightly.name | str replace --regex '^Nu-nightly-' '')
     let asset = http get $most_recent_nightly.assets_url
         | where name =~ $arch
         | where name =~ $'($ext)$'
@@ -410,8 +396,8 @@ export def --env download-nushell-nightly [
 
     let filename = (
         $asset.name
-        | str replace -r $ext $'-($nightly_name)($ext)'
-        | str replace -r '^nu-' 'nu-nightly-'
+        | str replace --regex $ext $'-($nightly_name)($ext)'
+        | str replace --regex '^nu-' 'nu-nightly-'
     )
 
     let destination_file = ($destination_dir | path join $filename)
@@ -425,7 +411,7 @@ export def --env download-nushell-nightly [
 # Launch the most recent downloaded nightly Nushell
 export def 'launch-downloaded' []: nothing -> nothing {
     let path = glob ($nightly_path | path join *darwin *nu) | sort | last
-    commandline edit -r $path
+    commandline edit --replace $path
 }
 
 # use number-format.nu
@@ -519,12 +505,12 @@ export def 'number-format' [
     let whole_part = $formatted.0
         | split chars
         | reverse
-        | window 3 -s 3 --remainder
+        | window 3 --stride 3 --remainder
         | each { reverse | str join }
         | reverse
         | str join $thousands_delim
         | if $integers == 0 { } else {
-            fill -w $integers -c ' ' -a r
+            fill --width $integers --character ' ' --alignment r
         }
 
     let dec_part = if $decimals == 0 {
@@ -570,12 +556,12 @@ export def 'select-i' []: table -> nothing {
     let tgt = $in
     let choices = $tgt
         | columns
-        | input list -m "Pick columns to get: "
+        | input list --multi "Pick columns to get: "
         | str join " "
 
     get-last-commands-from-sql 1
     | str replace 'select-i' $'select ($choices)'
-    | commandline edit -r $in
+    | commandline edit --replace $in
 }
 
 # The same version as https://github.com/nushell/nu_scripts/blob/significant-digits/stdlib-candidate/std-rfc/math/mod.nu
@@ -654,7 +640,7 @@ export def 'significant-digits' [
 # so I use what I have now.
 
 # checks for toolkit.nu file in the dir, and puts into commandline `overlay use as tk`
-export def 'tt' --env [] {
+export def --env 'tt' [] {
     if ('toolkit.nu' | path exists) {
         commandline edit "overlay use 'toolkit.nu' --prefix as tk; commandline edit 'tk'"
     } else {
@@ -731,7 +717,7 @@ export def 'replace-in-all-files' [
     let files_found = if (which rg | is-empty) or $no_rg {
         $files_total
         | each {|i|
-            open -r $i
+            open --raw $i
             | if ($in | str contains $find) { $i }
         }
         | compact
@@ -745,9 +731,9 @@ export def 'replace-in-all-files' [
             if not $no_git_check { git-check-file-clean $i }
 
             $i | open
-            | str replace -a $find $replace
-            | str replace -r '\n*$' (char nl)
-            | save -f $i
+            | str replace --all $find $replace
+            | str replace --regex '\n*$' (char nl)
+            | save --force $i
         }
         | length
 
@@ -810,7 +796,7 @@ export def 'nu-format' [
     }
     | topiary format --language nu
     | if $input == null {
-        commandline edit -r $in
+        commandline edit --replace $in
         return
     } else { }
 }
@@ -822,7 +808,7 @@ def 'completions-files-modified' [context: string]: nothing -> record {
     | if ($in | path type) == 'dir' and $in != '' {
         path join '*' | into glob | ls $in
     } else { ls }
-    | sort-by modified -r
+    | sort-by modified --reverse
     | select name modified
     | update name { if $in has ' ' { $'`($in)`' } else { } }
     | update modified { date humanize }
@@ -867,8 +853,41 @@ export def 'fs' [...files: path@completions-files-modified]: nothing -> any {
 # Pipe files into fzf with bat preview in the right pane. Returns the selected path.
 # Lines like `file:line` or `file:line:col` (e.g. from `rgv`) highlight that line.
 # Binary files show `file --brief` info instead of bat output.
-export def 'fzf-preview' []: [list<string> -> path list<path> -> path table -> path nothing -> path] {
+# With --content the preview shows the cell value itself (for long texts),
+# and the selection returns the whole row as a record.
+export def 'fzf-preview' [
+    --column: string # column to take values from (table input); defaults to `name`, `path`, or the first column
+    --content # preview cell values themselves instead of files; return the selected row as a record
+]: [list<string> -> path list<path> -> path table -> path table -> record nothing -> path] {
     let input = $in | default { ls }
+
+    let values = $input
+        | if ($in | describe | str starts-with 'list') { } else {
+            if $column != null {
+                get $column
+            } else if 'name' in ($in | columns) {
+                get name
+            } else if 'path' in ($in | columns) {
+                get path
+            } else {
+                get ($in | columns | first)
+            }
+        }
+
+    if $content {
+        # Why --read0: NUL-separated items keep their newlines, so {} carries
+        # the full value to the preview while --no-multi-line flattens the list
+        # display; {n} (input index) maps the selection back to the row.
+        # Not a temp json file + jq because: leaks files and adds a dependency.
+        let idx = $values
+            | each { into string }
+            | str join (char --integer 0)
+            | fzf --read0 --no-multi-line --preview 'printf %s {}' --preview-window 'right:70%:wrap' --bind 'enter:become(echo {n})'
+            | into int
+
+        return ($input | get $idx)
+    }
+
     let preview = 'f={}
 l=0
 if ! [ -r "$f" ]; then
@@ -891,10 +910,7 @@ case $(file --brief --mime -- "$f") in
   *) bat --wrap=auto --terminal-width=${FZF_PREVIEW_COLUMNS:-80} --color=always --pager=never --style=numbers --line-range=$start: --highlight-line=$l -- "$f" ;;
 esac'
 
-    $input
-    | if ($in | describe | str starts-with 'list') { } else {
-        if 'name' in ($in | columns) { get name } else { get path }
-    }
+    $values
     | to text
     | fzf --preview $preview --preview-window 'right:70%'
     | str trim
@@ -902,13 +918,13 @@ esac'
 
 # Helper function initially from nupm/utils/dirs.nu
 #
-# Try to find the package root directory by looking for nupm.nuon in parent
+# Try to find the repository root directory by looking for .git in parent
 # directories.
 export def find-root [dir?: path]: [nothing -> path nothing -> nothing] {
     let dir2 = $dir | default { pwd }
 
     let root_candidate = 1..($dir2 | path split | length)
-        | reduce -f $dir2 {|_ acc|
+        | reduce --fold $dir2 {|_ acc|
             if ($acc | path join '.git' | path exists) {
                 $acc
             } else {
@@ -917,7 +933,7 @@ export def find-root [dir?: path]: [nothing -> path nothing -> nothing] {
         }
 
     # We need to do the last check in case the reduce loop ran to the end
-    # without finding nupm.nuon
+    # without finding .git
     if ($root_candidate | path join '.git' | path exists) {
         $root_candidate
     } else {
@@ -927,7 +943,7 @@ export def find-root [dir?: path]: [nothing -> path nothing -> nothing] {
 
 # Change directory to git repository root
 export def --env cd-root [dir?: path]: [nothing -> nothing] {
-    cd (find-root)
+    cd (find-root $dir)
 }
 
 # Rename Zellij tab, auto-incrementing duplicates
@@ -937,7 +953,7 @@ export def rename-tab [name: string = '']: nothing -> nothing {
     let name_with_index = zellij action query-tab-names
         | lines
         | where $it =~ $"^($name)\(·|\$)"
-        | [($in | length) ($in | parse --regex '(\d+)$' | get -o capture0 | default [0] | into int)]
+        | [($in | length) ($in | parse --regex '(\d+)$' | get --optional capture0 | default [0] | into int)]
         | flatten
         | math max
         | if $in > 0 { $'($name)·($in + 1)' } else { $name }

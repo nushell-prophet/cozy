@@ -1,12 +1,20 @@
-alias std_append = append
-alias std_prepend = prepend
-
 # Repeat a string n times
 export def 'str repeat' [
     n: int
 ]: string -> string {
     let text = $in
     seq 1 $n | each { $text } | str join
+}
+
+# Build the separator between input and rest from the convenience flags
+def 'build-concatenator' [
+    new_line: bool
+    tab: bool
+    two_space: bool
+    space: bool
+    extra: string
+]: nothing -> string {
+    $"(if $new_line { char nl })(if $tab { char tab })(if $two_space { '  ' })(if $space { ' ' })($extra)"
 }
 
 # Append strings with optional separators
@@ -20,17 +28,7 @@ export def 'str append' [
     --rest-el: string = ' ' # Rest elements concatenator
 ]: string -> string {
     let input = $in
-    let concatenator = $"(
-        if $new_line { (char nl) }
-    )(
-        if $tab { (char tab) }
-    )(
-        if $2space { '  ' }
-    )(
-        if $space { ' ' }
-    )(
-        $concatenator
-    )"
+    let concatenator = build-concatenator $new_line $tab $2space $space $concatenator
 
     $"($input)($concatenator)($text | str join $rest_el)"
 }
@@ -46,33 +44,14 @@ export def 'str prepend' [
     --rest-el: string = ' ' # Rest elements concatenator
 ]: string -> string {
     let input = $in
-    let concatenator = $"(
-        if $new_line { (char nl) }
-    )(
-        if $tab { (char tab) }
-    )(
-        if $2space { '  ' }
-    )(
-        if $space { ' ' }
-    )(
-        $concatenator
-    )"
+    let concatenator = build-concatenator $new_line $tab $2space $space $concatenator
 
     $"($text | str join $rest_el)($concatenator)($input)"
 }
 
-# Add indentation to text (not implemented)
-export def 'indent' []: string -> string { $in }
-
-# Remove indentation from text (not implemented)
-export def 'dedent' []: string -> string { $in }
-
 # Escape regex special characters in a string
 export def 'escape-regex' []: string -> string {
-    let input = $in
-    let regex = '\.^$*+?{}()[]|/' | split chars | each { $'\($in)' } | str join '|' | $"\(($in))"
-
-    $input | str replace --all --regex $regex '\$1'
+    str replace --all --regex '([\\.^$*+?{}()\[\]|/])' '\$1'
 }
 
 # Escape Nushell special characters for string interpolation
@@ -91,8 +70,8 @@ export def 'to-safe-filename' [
     --regex: string = '[^A-Za-z0-9_А-Яа-я+]' # Characters to replace
     --date # Prepend timestamp for uniqueness
 ]: string -> string {
-    str replace -ra $regex '_'
-    | str replace -ra '__+' '_'
+    str replace --all --regex $regex '_'
+    | str replace --all --regex '__+' '_'
     | if $date {
         $'(now-fn)+($in | str substring ..30)' # make string uniq
     } else if (($in | str length) > 30) {

@@ -9,20 +9,19 @@ export def 'wez-to-ansi' []: nothing -> string {
 # Record Wezterm session to asciicast format
 export def 'wez-to-asciicast' [
     command: string = '' # Command to record
-    --filename: path # Output file path (unused)
 ]: nothing -> path {
     let err = ^wezterm record --cwd (pwd) -- $nu.current-exe --execute $'source $nu.env-path; clear; ($command)'
         | complete
         | get stderr
 
     let wezrec = $err
-        | str replace -r '\s+$' ''
-        | parse -r '(?<path>\S+$)'
+        | str replace --regex '\s+$' ''
+        | parse --regex '(?<path>\S+$)'
         | get path.0
 
     let target_folder = '~/temp/wezterm-asciinemas'
         | path join $'gif_(pwd | path split | last)'
-        | $'($in)(mkdir $in)'
+        | tee { mkdir $in }
 
     try { mv $wezrec $target_folder } catch { print "wasn't moved, the original err with path is:" $err }
 
@@ -63,7 +62,7 @@ def 'default-image-path' [
 ]: nothing -> path {
     ['~/temp/freeze_images/' (pwd | path split | last)]
     | path join
-    | $'($in)(mkdir $in)'
+    | tee { mkdir $in }
     | path join $filename
 }
 
@@ -170,13 +169,13 @@ def 'completions-copy-out' []: nothing -> list<record<value: int, description: s
     let width = term size | get columns | $in - 5
 
     open $nu.history-path
-    | query db "SELECT command_line FROM history WHERE session_id = ? ORDER BY id DESC LIMIT 20" -p [$session]
+    | query db "SELECT command_line FROM history WHERE session_id = ? ORDER BY id DESC LIMIT 20" --params [$session]
     | get command_line
     | enumerate
     | each {|i|
         {
             value: ($i.index + 1)
-            description: ($i.item | str replace -a (char nl) '·' | str substring --grapheme-clusters 0..$width)
+            description: ($i.item | str replace --all (char nl) '·' | str substring --grapheme-clusters 0..$width)
         }
     }
 }
@@ -204,6 +203,21 @@ def 'zellij-dump-prompts' [
     {raw_lines: $raw_lines reversed_prompts: ($prompts | reverse)}
 }
 
+# Slice scrollback lines between two prompts (indices into reversed_prompts)
+def 'prompt-block' [
+    lines: list<string>
+    reversed_prompts: list<int>
+    from: int
+    to: int
+]: nothing -> list<string> {
+    let start = $reversed_prompts | get $from
+    let end = $reversed_prompts | get $to
+
+    $lines
+    | skip $start
+    | first ($end - $start)
+}
+
 def 'extract-by-prompts' [
     indices: list<int>
     lines: list<string>
@@ -211,34 +225,14 @@ def 'extract-by-prompts' [
     --flatten
 ]: nothing -> list<string> {
     if ($indices | length) == 1 {
-        let start = $reversed_prompts | get ($indices | first)
-        let end = $reversed_prompts | get 0
-
-        $lines
-        | skip $start
-        | first ($end - $start)
+        prompt-block $lines $reversed_prompts ($indices | first) 0
     } else if $flatten {
         $indices
-        | each {|n|
-            let start = $reversed_prompts | get $n
-            let end = $reversed_prompts | get ($n - 1)
-
-            $lines
-            | skip $start
-            | first ($end - $start)
-        }
+        | each {|n| prompt-block $lines $reversed_prompts $n ($n - 1) }
         | flatten
     } else {
         $indices
-        | each {|n|
-            let start = $reversed_prompts | get $n
-            let end = $reversed_prompts | get ($n - 1)
-
-            $lines
-            | skip $start
-            | first ($end - $start)
-            | str join (char nl)
-        }
+        | each {|n| prompt-block $lines $reversed_prompts $n ($n - 1) | str join (char nl) }
         | str join "\n\n"
         | lines
     }
@@ -252,9 +246,9 @@ def 'match-history-command' [
 
     let session = history session
     let match = open $nu.history-path
-        | query db "SELECT command_line FROM history WHERE session_id = ? ORDER BY id DESC LIMIT 100" -p [$session]
+        | query db "SELECT command_line FROM history WHERE session_id = ? ORDER BY id DESC LIMIT 100" --params [$session]
         | get command_line
-        | where { ($in | lines | first | str trim -r) == ($first_line | str trim -r) }
+        | where { ($in | lines | first | str trim --right) == ($first_line | str trim --right) }
         | get 0?
 
     if ($match == null) { return null }
@@ -270,7 +264,7 @@ def 'format-block' [
         return ($block | str join (char nl))
     }
 
-    let cmd_first_line = $block | first | str replace -r '^> ' ''
+    let cmd_first_line = $block | first | str replace --regex '^> ' ''
     let hist = match-history-command $cmd_first_line
 
     if ($hist != null) {
@@ -281,8 +275,8 @@ def 'format-block' [
             }
         $command_text | append $output | str join (char nl)
     } else {
-        print -e "note: command not found in history, outputting raw"
-        $block | each { str replace -r '^> ' '' } | str join (char nl)
+        print --stderr "note: command not found in history, outputting raw"
+        $block | each { str replace --regex '^> ' '' } | str join (char nl)
     }
 }
 
@@ -304,20 +298,17 @@ export def 'copy-out' [
 
     # Build per-command blocks for history-assisted formatting
     let block_indices = if ($indices | length) == 1 {
-        1..($indices | first) | each {} | reverse
+        ($indices | first)..1
     } else {
         $indices
     }
 
     $block_indices
     | each {|n|
-        let start = $dump.reversed_prompts | get $n
-        let end = $dump.reversed_prompts | get ($n - 1)
-        $output_lines | skip $start | first ($end - $start)
+        format-block (prompt-block $output_lines $dump.reversed_prompts $n ($n - 1)) $no_comment
     }
-    | each {|block| format-block $block $no_comment }
     | str join "\n\n"
-    | str replace -ra '\n+$' ''
+    | str replace --all --regex '\n+$' ''
     | if $echo { } else { pbcopy }
 }
 
@@ -346,7 +337,7 @@ export def 'delete-prompts' [
     let start = [($target_line - 1) 0] | math max
     let lines_up = $current_line - $start + 1
 
-    print -n $"\e[($lines_up)A\e[0J"
+    print --no-newline $"\e[($lines_up)A\e[0J"
 }
 
 # Capture commands from Zellij pane scrollback and render to PNG
