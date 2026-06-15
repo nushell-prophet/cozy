@@ -17,6 +17,13 @@ The checks live in `cozy-module/verify.nu` and run two ways:
 - **From the host** (also builds + spawns a throwaway sandbox):
   `nu toolkit/test.nu test -t <tag>`
 
+`cozy` is a Nushell overlay loaded by the `module-imports.nu` autoload, not a
+PATH binary. Autoloads fire in an interactive shell and in the nushell MCP
+`evaluate` tool, but **not** in non-interactive `nu -c '...'`. So run `cozy
+verify` through the nushell MCP tool or an interactive shell. From plain `nu -c`
+the overlay is absent (`command not found`) — load it first with `overlay use
+~/repos/cozy/cozy-module/ as cozy --prefix`.
+
 Both run the identical check set and derive every expected value from sources
 that ship into the sandbox — `vendored-repos.nuon` (repos), the
 `docker-files/nushell-autoload/` glob (autoload scripts), and the export block
