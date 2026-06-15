@@ -7,7 +7,7 @@ description: >
   helix, zellij, lazygit, broot, topiary, jj, …), vendored nu modules
   under ~/repos/, dotfiles via `toolkit push-to-machine`, Claude skills,
   Claude Code with the nushell MCP. Same bootstrap.nu the Dockerfile and
-  bootstrap.sh paths use — see cozy-module/install/bootstrap.nu.
+  host-install.sh paths use — see cozy-module/install/bootstrap.nu.
 
 # Mirrors the Dockerfile ENV block. PATH is fully expanded (no ${PATH}
 # reference) — kit-level value substitution behaviour is undocumented;

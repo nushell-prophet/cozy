@@ -2,7 +2,7 @@
 human-check: pending   # pending | verified — flip to verified after you read it
 covers:                # source paths update-design reconciles this file against
   - Dockerfile
-  - bootstrap.sh
+  - host-install.sh
   - cozy-module/install/ensure-nu.sh
   - cozy-module/install/.nushell-version
   - cozy-module/install/bootstrap.nu
@@ -14,7 +14,7 @@ covers:                # source paths update-design reconciles this file against
 **Everything starts here.** Three entry paths converge on the same installer, `../cozy-module/install/bootstrap.nu` — so the environment is identical whether you build the image, install on a host, or layer the `sbx` kit:
 
 - **Docker** — `../Dockerfile` → `ensure-nu.sh` → `bootstrap.nu`
-- **Host** — `../bootstrap.sh` → `ensure-nu.sh` → `bootstrap.nu`
+- **Host** — `../host-install.sh` → `ensure-nu.sh` → `bootstrap.nu`
 - **sbx kit** — `../kit/spec.yaml` clones the repo in-sandbox → same chain
 
 This file walks the `Dockerfile` top to bottom, then `bootstrap.nu`'s steps 0–9 in order, and links out to the other design files at the step where each is reached. **This order is the canonical order for the whole project** — README, CLAUDE.md, and every other design file mirror it. Change the order here and propagate it everywhere.
@@ -77,10 +77,10 @@ Symlinks the vendored `~/repos/topiary-nushell` to `~/git/topiary-nushell` (wher
 ### Step 9 — Claude Code + nushell MCP
 `claude install` (see `install.md`), then `claude mcp add --scope user --transport stdio nushell -- nu --mcp`, then merges `externalEditorContext: true` into `~/.claude.json`. Finally writes the `~/.cozy-installed` stamp (last, so a partial failure leaves no stamp and forces `--force` to recover) and, if env exports were just written but the current shell predates them, prints a "run `exec bash -l`" note.
 
-## bootstrap.sh (host entry)
+## host-install.sh (host entry)
 
 Host-callable wrapper for the same installer. Auto-installs Homebrew only on Linux with passwordless sudo; on macOS it fails fast with a copy-paste snippet (keeps password prompts out of the no-prompt flow). Runs `ensure-nu.sh` then `nu bootstrap.nu "$@"`, then appends an `XDG_CONFIG_HOME` export to the user's shell rc (so macOS `nu` reads `~/.config/nushell/` instead of `~/Library/Application Support/`).
-**Code:** `bootstrap.sh`
+**Code:** `host-install.sh`
 
 ## kit/spec.yaml (sbx kit)
 

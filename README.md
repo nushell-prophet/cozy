@@ -29,20 +29,20 @@ docker sandbox exec -it cozy-test nu --login --execute 'zellij attach -c cozy-te
 
 ## Install elsewhere
 
-[`bootstrap.sh`](bootstrap.sh) exposes the same `bootstrap.nu` installer the Dockerfile runs, as a host-callable script. It deploys the full environment (nushell, modules, dotfiles, configs) into virtually any Ubuntu-based sandbox or directly onto a macOS host — for example `sbx` with a pure `shell` agent, an Apple container running Ubuntu, or a plain macOS install.
+[`host-install.sh`](host-install.sh) exposes the same `bootstrap.nu` installer the Dockerfile runs, as a host-callable script. It deploys the full environment (nushell, modules, dotfiles, configs) into virtually any Ubuntu-based sandbox or directly onto a macOS host — for example `sbx` with a pure `shell` agent, an Apple container running Ubuntu, or a plain macOS install.
 
-**Prerequisite:** Homebrew (https://brew.sh). `bootstrap.sh` uses `brew` for nushell and the rest of the toolchain, and exits early if it isn't on `PATH`.
+**Prerequisite:** Homebrew (https://brew.sh). `host-install.sh` uses `brew` for nushell and the rest of the toolchain, and exits early if it isn't on `PATH`.
 
 ```sh
 git clone https://github.com/nushell-prophet/cozy
 cd cozy
-./bootstrap.sh             # install
-./bootstrap.sh --local     # refresh vendor/ from sibling repos (development)
+./host-install.sh             # install
+./host-install.sh --local     # refresh vendor/ from sibling repos (development)
 ```
 
 ### sbx kit
 
-For `sbx` specifically, cozy also ships as a [kit](https://docs.docker.com/ai/sandboxes/customize/kits/) — a single [`kit/spec.yaml`](kit/spec.yaml) that layers cozy on the standard `shell` agent. The kit clones this repo in-sandbox and runs the same `bootstrap.nu`, so no host-side `bootstrap.sh` is needed:
+For `sbx` specifically, cozy also ships as a [kit](https://docs.docker.com/ai/sandboxes/customize/kits/) — a single [`kit/spec.yaml`](kit/spec.yaml) that layers cozy on the standard `shell` agent. The kit clones this repo in-sandbox and runs the same `bootstrap.nu`, so no host-side `host-install.sh` is needed:
 
 ```sh
 git clone https://github.com/nushell-prophet/cozy

@@ -39,11 +39,11 @@ Removed from the actionable list — done in conversation. For audit:
 
 ### macOS-host fixes (need a Mac shell, outside Docker)
 
-- [ ] **F2 on macOS.** From a clean macOS shell, run `./bootstrap.sh`. After it finishes, `claude mcp list` should show a brew-resolved `nu` path (e.g. `/opt/homebrew/bin/nu`), **not** `/home/linuxbrew/...`.
+- [ ] **F2 on macOS.** From a clean macOS shell, run `./host-install.sh`. After it finishes, `claude mcp list` should show a brew-resolved `nu` path (e.g. `/opt/homebrew/bin/nu`), **not** `/home/linuxbrew/...`.
 - [ ] **F5 on macOS.** From a directory that is *not* this repo: `cd /tmp && nu /Users/user/git/ai-sandbox-dev-container/cozy/toolkit/vendor.nu --local`. Confirm `vendor/` is written under `cozy/`, **not** under `/tmp/vendor/`.
 - [ ] **F17 on macOS.** On a Mac without Xcode CLT (or temporarily hide `gcc`), trigger `topiary.nu`'s "gcc missing" branch. Should print the Xcode-CLT hint and exit cleanly — no `sudo apt-get` attempt.
-- [ ] **`./bootstrap.sh` from arbitrary cwd.** Script-level `cd "$(dirname "$0")"` lets it run from anywhere on the host.
-- [ ] **`./bootstrap.sh --local`** triggers `toolkit/vendor.nu --local` (rsync from sibling repos), not github tarball; `~/repos/` reflects sibling-repo source tree.
+- [ ] **`./host-install.sh` from arbitrary cwd.** Script-level `cd "$(dirname "$0")"` lets it run from anywhere on the host.
+- [ ] **`./host-install.sh --local`** triggers `toolkit/vendor.nu --local` (rsync from sibling repos), not github tarball; `~/repos/` reflects sibling-repo source tree.
 - [ ] **`~/.gitconfig` preserved.** Pre-existing host `~/.gitconfig` (user's real identity) not overwritten. Git precedence is global > XDG; XDG `~/.config/git/config` only fills unset keys.
 - [ ] **No `/etc/` writes on host.** No `/etc/apt/apt.conf.d/90proxy`, no `/etc/sandbox-persistent.sh` written — `setup-docker-system` stays off because the marker is absent.
 - [ ] **`ensure-nu.sh` happy path on macOS.** Latest brew `nu` parses `bootstrap.nu` cleanly; no fallback download to `~/.local/bin/nu`.
@@ -51,7 +51,7 @@ Removed from the actionable list — done in conversation. For audit:
 ### Rebuild / re-run path
 
 - [ ] **F4 — stale vendor files removed.** Drop one module from `toolkit/vendor.yml`, re-vendor, rebuild image. Confirm the removed module is gone from the image's `~/repos/`. (Inside-container test impossible: needs full image rebuild.)
-- [ ] **F15 — autoload dir cleaned on host re-run.** Drop one `.nu` from `docker-files/nushell-autoload/`, re-run `./bootstrap.sh` on host. Confirm the removed file is gone from `~/.config/nushell/autoload/`. (Inside-container test impossible: this is the host branch of the wipe.)
+- [ ] **F15 — autoload dir cleaned on host re-run.** Drop one `.nu` from `docker-files/nushell-autoload/`, re-run `./host-install.sh` on host. Confirm the removed file is gone from `~/.config/nushell/autoload/`. (Inside-container test impossible: this is the host branch of the wipe.)
 - [ ] **Cold `docker build --no-cache -t cozy:v1 .`** succeeds from scratch (no cached layers).
 - [ ] **`/tmp/vendor` fallback.** After build, delete `/tmp/vendor` inside the running container and re-run `cozy install bootstrap` → falls back to committed `vendor/` under `~/repos/cozy/`, no surprise GitHub fetch.
 

@@ -4,7 +4,7 @@ Modern, beginner-friendly terminal environment for AI agents, running inside `do
 
 ## Architecture
 
-The Dockerfile is thin: install Homebrew, pre-install nushell as a cached layer, COPY repo bits, then hand off to `bootstrap.nu`. All install logic lives in `cozy-module/install/bootstrap.nu`, which serves both the docker-build path and the host-install path (via `bootstrap.sh`).
+The Dockerfile is thin: install Homebrew, pre-install nushell as a cached layer, COPY repo bits, then hand off to `bootstrap.nu`. All install logic lives in `cozy-module/install/bootstrap.nu`, which serves both the docker-build path and the host-install path (via `host-install.sh`).
 
 ```
 Dockerfile (thin)
@@ -14,7 +14,7 @@ Dockerfile (thin)
 ├── RUN ensure-nu.sh — smoke-test latest nu against bootstrap.nu, fall back to pinned version if pre-1.0 syntax drifted
 └── RUN nu bootstrap.nu — all install logic below
 
-bootstrap.nu (also entry point for host install via bootstrap.sh)
+bootstrap.nu (also entry point for host install via host-install.sh)
 ├── Step 0: setup-docker-system (gated on /etc/sandbox-persistent.sh) — apt deps, pbcopy shim, apt proxy, runtime env exports
 ├── Step 1: brew install rest of tools (fzf, helix, lazygit, zellij, broot, git-delta, visidata, bat, topiary, fd, jj, git-lfs)
 ├── Step 2: XDG git config (~/.config/git/{config,ignore})

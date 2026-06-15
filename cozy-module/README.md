@@ -86,7 +86,7 @@ Copies the global `~/.claude/CLAUDE.md` to/from `$env.WORKSPACE_DIR/sandbox-stat
 
 Installer subcommands used during image build or inside a running sandbox: `bootstrap`, `claude`, `topiary`, `nushell`, `polars`, `rust`, `zellij`, `nu-plugin-image`.
 
-`bootstrap` is the single entry point that sets up the sandbox (or host) end-to-end — brew tools, XDG git config, vendored modules, dotfiles, Claude skills, broot, topiary, and Claude Code with the nushell MCP. Same code path is used by the Dockerfile and by `bootstrap.sh` on the host.
+`bootstrap` is the single entry point that sets up the sandbox (or host) end-to-end — brew tools, XDG git config, vendored modules, dotfiles, Claude skills, broot, topiary, and Claude Code with the nushell MCP. Same code path is used by the Dockerfile and by `host-install.sh` on the host.
 
 ## License
 

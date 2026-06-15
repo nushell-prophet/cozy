@@ -3,7 +3,7 @@
 # nushell); if latest can't parse it (nushell is pre-1.0 and syntax drifts
 # between releases), falls back to the pinned version in `.nushell-version`
 # by downloading the matching github release into ~/.local/bin/nu — both
-# bootstrap.sh and the Dockerfile put that dir first on PATH, so the pinned
+# host-install.sh and the Dockerfile put that dir first on PATH, so the pinned
 # binary shadows brew's `nu` once it lands.
 set -euo pipefail
 

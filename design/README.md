@@ -14,7 +14,7 @@ This is not a command reference. The Nushell modules are self-documenting — `h
 
 The build sequence, in order:
 
-- `build.md` — the spine. Walks the `Dockerfile` top to bottom, then `bootstrap.nu`'s steps 0–9. The single installer is shared by the Docker build, the host `bootstrap.sh`, and the `sbx` kit. Every other file is reached from a step here.
+- `build.md` — the spine. Walks the `Dockerfile` top to bottom, then `bootstrap.nu`'s steps 0–9. The single installer is shared by the Docker build, the host `host-install.sh`, and the `sbx` kit. Every other file is reached from a step here.
 
 - `install.md` — why the per-tool builders compile from source (and why they're exposed as `cozy install` for on-demand rebuilds inside the sandbox).
 

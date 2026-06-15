@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Host installer renamed `bootstrap.sh` → `host-install.sh`. The name now says its role (host-only wrapper) and no longer collides with the core `bootstrap.nu`; `ensure-nu.sh` and `bootstrap.nu` are unchanged.
 - Claude Code's "Show last response in external editor" is now on by default in built sandboxes (`externalEditorContext` in `~/.claude.json`). (d745e0d)
 
 ### Fixed
