@@ -31,19 +31,26 @@ const tools = [
     ["apt: file" file "--version"]
 ]
 
-# [owner, path] — owner names the repo to fix when the check fails. Some
-# autoload scripts ship from cozy (docker-files/nushell-autoload), others from
-# the dotfiles repo (deployed in bootstrap.nu Step 4); a bare path can't tell
-# you which one to go edit.
-const files = [
-    [cozy "/home/agent/.local/bin/pbcopy"]
-    [cozy "/home/agent/.config/nushell/autoload/module-imports.nu"]
-    [dotfiles "/home/agent/.config/nushell/autoload/hooks-config.nu"]
-    [cozy "/home/agent/.config/nushell/autoload/my-nu-completions.nu"]
-    [cozy "/home/agent/.config/nushell/autoload/standard-aliases.nu"]
-    [cozy "/home/agent/.config/nushell/autoload/mcp-server.nu"]
-    [cozy "/home/agent/.claude.json"]
-]
+# Files a built sandbox must have, each tagged with the repo that owns it so a
+# failure names where to go fix it (a bare path can't tell you which repo to
+# edit). The cozy-owned autoload scripts are derived from
+# docker-files/nushell-autoload/ — the same set bootstrap.nu copies in — so a
+# newly added script is verified automatically instead of silently skipped, the
+# way the old hardcoded list let git-safe-directory.nu slip through. Only
+# hooks-config.nu stays explicit: it ships from the dotfiles repo, not this glob.
+const autoload_dir = "/home/agent/.config/nushell/autoload"
+const cozy_autoload_src = (path self | path dirname | path join .. docker-files nushell-autoload)
+
+def expected-files []: nothing -> list {
+    let cozy_autoload = glob ($cozy_autoload_src | path join '*.nu')
+        | each {|f| [cozy ($autoload_dir | path join ($f | path basename))] }
+    [
+        [cozy "/home/agent/.local/bin/pbcopy"]
+        ...$cozy_autoload
+        [dotfiles ($autoload_dir | path join hooks-config.nu)]
+        [cozy "/home/agent/.claude.json"]
+    ]
+}
 
 # Repo dirs are derived from vendor.yml (the single source of truth for what
 # cozy vendors) so a newly vendored module is verified automatically — the old
@@ -153,7 +160,7 @@ def check-tools []: nothing -> list {
 }
 
 def check-files []: nothing -> list {
-    $files | each {|f|
+    expected-files | each {|f|
         let owner = $f.0
         let path = $f.1
         let name = $path | path basename
