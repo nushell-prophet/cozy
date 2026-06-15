@@ -69,6 +69,7 @@ Write code that an experienced nushell user can quickly apprehend. Leverage impl
 | Field extraction | `get --optional` | `each {$in.field?} \| compact` |
 | Negation | `$x !~ ...` | `not ($x =~ ...)` |
 | List element ops | `$list \| str trim` | `$list \| each { str trim }` |
+| Flags in code | `save --force` | `save -f` (short flags) |
 
 ### Skip `each` When Commands Accept `list<string>`
 
@@ -77,9 +78,9 @@ Many commands accept both `string` and `list<string>` input — they operate on 
 **Heuristic:** Check `input_output` types. If a command lists both `string` and `list<string>` as input, pipe the list directly.
 
 ```nushell
-# Check a command's accepted input types
-help str trim | get input_output
-# => [{input: string, output: string}, {input: list<string>, output: list<string>}, ...]
+# Check a command's accepted input types (help <cmd> returns rendered text, not data)
+help commands | where name == 'str trim' | get input_output.0
+# => [[input, output]; [string, string], [list<string>, list<string>], ...]
 ```
 
 Common command families that accept `list<string>` directly: `str` (19 commands), `path` (9), `split` (4), `into` (4), `ansi` (3), `url` (2), `fill`.
@@ -90,11 +91,12 @@ $list | str trim                     # $list | each { str trim }
 $list | path expand                  # $list | each { path expand }
 $list | ansi strip                   # $list | each { ansi strip }
 $list | str replace 'a' 'b'         # $list | each { str replace 'a' 'b' }
-$list | split row ','                # $list | each { split row ',' }
 $list | url encode                   # $list | each { url encode }
 ```
 
 `each` IS needed when the command does not accept `list` input, or when the closure does more than a single command call.
+
+**Shape caveat:** `split row` on a list flattens all results into a single list (`['a,b' 'c,d'] | split row ','` → `[a b c d]`), unlike `each { split row ',' }` which keeps one sublist per element. Other `split` commands (`chars`, `words`) keep sublists.
 
 ---
 
@@ -223,6 +225,8 @@ After `use greet.nu`, call it as `greet "world"` — `main` is replaced by the m
 - Remove existing comments (preserve user's context)
 - Remove `export` from helpers to "make them private" (use mod.nu instead)
 - Name a command the same as its file (use `main` instead — see Module Naming Rule)
+- Use short flags in code (`save -f`, `open -r`) — write the long form (`save --force`, `open --raw`); short flags are for interactive typing
+- Declare short flag aliases (`--force (-f)`) in command signatures unless the user explicitly asks for them
 
 ---
 
@@ -231,7 +235,7 @@ After `use greet.nu`, call it as `greet "world"` — `main` is replaced by the m
 - Run `topiary format <file>` when available — it is the canonical formatter
 - Empty blocks: `{ }` with space
 - Closures: `{ expr }` with spaces
-- Flags: `--flag (-f)` with space
+- Flags: `--flag (-f)` with space (declare a short alias only on explicit user request)
 - Records: multi-line, no trailing comma
 - Variables: `let x =` (no `$` on left)
 

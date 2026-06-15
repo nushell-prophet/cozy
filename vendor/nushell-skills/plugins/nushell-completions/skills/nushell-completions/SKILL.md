@@ -70,9 +70,10 @@ def "nu-complete branches" [] {
 
 # Context-aware (uses previous arguments)
 def "nu-complete git branches" [context: string] {
-    let remote = $context | split words | get 2?
+    # split row ' ', not split words — split words breaks on hyphens (my-cmd → [my, cmd])
+    let remote = $context | split row ' ' | get 1?
     if $remote != null {
-        git branch -r | lines | str trim | where { str starts-with $remote }
+        git branch --remotes | lines | str trim | where { str starts-with $remote }
     } else {
         git branch | lines | str trim
     }
@@ -120,8 +121,8 @@ def "nu-complete commands" [] {
 export extern "git push" [
     remote?: string@"nu-complete git remotes"
     refspec?: string@"nu-complete git branches"
-    --force(-f)
-    --set-upstream(-u)
+    --force (-f)
+    --set-upstream (-u)
 ]
 ```
 
