@@ -116,10 +116,9 @@ record and `str contains` errors on a non-string input.
 ls ~/workspace | get name | path basename | sort
 ```
 
-Must be exactly `[README.md, mounted]`. `README.md` comes from the final
-Dockerfile COPY; `mounted` is the host-folder symlink. Anything else is
-likely a stale `mkdir` left over by an earlier bootstrap.nu version (see
-CHANGELOG 0.2.0).
+Must be exactly `[README.md]`. `README.md` comes from the final Dockerfile
+COPY. Anything else — e.g. a `mounted` symlink — is a stale leftover from
+before the symlink was dropped in favor of `$env.WORKSPACE_DIR`.
 
 ### 8. XDG / runtime env survives a fresh shell
 
