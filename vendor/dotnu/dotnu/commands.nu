@@ -500,67 +500,6 @@ export def 'embed-add' [
     if $pipe_further or $dry_run { return $input }
 }
 
-# start capturing commands and their outputs into a file
-export def --env 'embeds-capture-start' [
-    file: path = 'dotnu-capture.nu'
-]: nothing -> nothing {
-    cprint $'dotnu commands capture has been started.
-        Commands and their outputs of the current nushell instance
-        will be appended to the *($file)* file.
-
-        Beware that your `display_output` hook has been changed.
-        It will be reverted when you use `dotnu embeds-capture-stop`'
-
-    $env.dotnu.status = 'running'
-    $env.dotnu.embeds-capture-path = ($file | path expand)
-
-    $env.backup.hooks.display_output = (
-        $env.config.hooks?.display_output?
-        | if $in == null {
-            if (term size).columns >= 100 { table -e } else { table }
-        } else { }
-    )
-
-    $env.config.hooks.display_output = {
-        let input = $in
-        let command = get-command-from-hist | get current
-
-        $input
-        | default ''
-        | if (term size).columns >= 100 { table -e } else { table }
-        | into string
-        | ansi strip
-        | if $in == '' { $"\n($command)\n" } else {
-            comment-hash-colon
-            | $"\n($command) | print $in\n($in)\n\n"
-        }
-        | str replace --regex "\n{3,}$" "\n\n"
-        | if ($in !~ 'dotnu capture') {
-            # don't save dotnu capture managing commands
-            save --append --raw $env.dotnu.embeds-capture-path
-        }
-
-        print -n $input # without the `-n` flag new line is added to an output
-    }
-}
-
-# stop capturing commands and their outputs
-export def --env 'embeds-capture-stop' []: nothing -> nothing {
-
-    if $env.dotnu?.status? != 'running' {
-        cprint "dotnu capture hasn't been active"
-        return
-    }
-
-    $env.config.hooks.display_output = $env.backup.hooks.display_output
-
-    let file = $env.dotnu.embeds-capture-path
-
-    cprint $'dotnu commands capture to the *($file)* file has been stopped.'
-
-    $env.dotnu.status = 'stopped'
-}
-
 #### helpers
 # they used to be separate from the main code, but I want to experiment with structure
 # so all the commands are in one file now, and all are exported, to be available in my scripts
@@ -795,34 +734,15 @@ export def list-module-commands [
 export def 'module-commands-code-to-record' [
     module_path: path # path to a Nushell module file
 ] {
-    let script_content = open $module_path -r
-
-    $script_content
-    | lines
-    | wrap line
-    | insert command {|i|
-        if $i.line =~ '^(export )?def ' {
-            $i.line
-            | extract-command-name
-            | replace-main-with-module-name $module_path
-        } else { null }
-    }
-    | merge (
-        $in.command
-        # Why: std `scan` with a null seed now errors — its internal `generate` treats
-        # null as "no initial value". Forward-fill the last non-null name manually instead.
-        | reduce --fold [] {|i acc|
-            let prev = $acc | last
-            $acc | append (if $i == null { $prev } else { $i })
-        }
-        | wrap command
-    )
-    | group-by command
-    | items {|k v|
-        $v.line | reverse | skip until {|i| $i == '}' }
-        | reverse
-        | to text
-        | {$k: $in}
+    open $module_path -r
+    | if $nu.os-info.family == windows { str replace --all (char crlf) "\n" } else { }
+    | split-statements
+    | where statement =~ '^(export )?def '
+    | each {|s|
+        let name = $s.statement | lines | first
+        | extract-command-name
+        | replace-main-with-module-name $module_path
+        {$name: $s.statement}
     }
     | into record
 }
