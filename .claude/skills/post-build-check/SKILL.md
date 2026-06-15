@@ -44,20 +44,23 @@ A few things `verify` deliberately leaves out:
 
 ## Host-only checklist (a human runs these)
 
-These need a macOS shell, registry network, or a fresh rebuild — none reachable
-from inside the sandbox or from `verify`:
+The host and rebuild paths `verify` can't reach. Where a step produces a
+sandbox, run `cozy verify` (or `nu toolkit/test.nu test`) on the result instead
+of re-checking by hand — only the host-specific nuances below need eyes:
 
-- [ ] On macOS host: `./host-install.sh` from clean state succeeds; `claude mcp
-      list` afterwards shows a brew-resolved `nu` path (`/opt/homebrew/bin/nu`
-      on Apple Silicon, `/home/linuxbrew/.linuxbrew/bin/nu` on Intel).
-- [ ] Pre-existing host `~/.gitconfig` (user's real identity) survives — XDG
+- [ ] Cold `docker build --no-cache -t cozy:v<N> .` succeeds, then `nu
+      toolkit/test.nu test -t v<N>` passes.
+- [ ] Drop a module from `toolkit/vendor.yml`, rebuild, recreate — `test.nu
+      test` reports the dropped module absent from `~/repos/`.
+- [ ] On macOS: `./host-install.sh` from a clean state succeeds and `cozy
+      verify` passes. Then confirm `claude mcp list` resolves a brew `nu` path
+      (`/opt/homebrew/bin/nu` on Apple Silicon, `/home/linuxbrew/...` on Intel)
+      — host-specific, not covered by `verify`.
+- [ ] Pre-existing host `~/.gitconfig` (the user's real identity) survives — XDG
       `~/.config/git/config` only fills unset keys.
-- [ ] Cold `docker build --no-cache -t cozy:v<N> .` succeeds end-to-end.
-- [ ] Remove a module from `toolkit/vendor.yml`, rebuild, recreate sandbox —
-      the dropped module is absent from `~/repos/` in the new image.
 - [ ] `hx`, `lazygit`, `zellij` open into their TUIs on a real TTY and quit
-      cleanly. `cmd+t`, `cmd+n`, `cmd+shift+g` keybindings respond as documented
-      in `vendor/dotfiles/zellij/config.kdl`.
+      cleanly; `cmd+t`, `cmd+n`, `cmd+shift+g` respond as documented in
+      `vendor/dotfiles/zellij/config.kdl`.
 
 ## When to escalate
 
