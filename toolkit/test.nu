@@ -213,7 +213,7 @@ def check-config []: nothing -> list {
         if ($cmd | default "" | str ends-with "nu") {
             ok "mcp: nushell" "autoload patched"
         } else if $cmd == null {
-            fail "mcp: nushell" "autoload script did not patch settings.json"
+            fail "mcp: nushell" "autoload script did not patch .claude.json"
         } else {
             fail "mcp: nushell" $"unexpected command: ($cmd)"
         }
