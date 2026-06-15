@@ -75,8 +75,9 @@ After Dockerfile changes: rebuild image, then recreate sandbox (delete + run).
 
 - Build order + rationale (why each tool compiles from source / module is vendored / file ships): `design/` — one map (`design/README.md`) + per-subsystem files; run `/update-design` to reconcile against code
 - Keybindings: `vendor/dotfiles/zellij/config.kdl` (README keybinding docs drift from this)
-- Vendored modules: `toolkit/vendor.yml` via `toolkit/vendor.nu` (not the CLAUDE.md architecture list). `toolkit/vendor.nu` also projects it into `cozy-module/vendored-repos.nuon` (read by in-sandbox `cozy sync-repos`) and `toolkit/test.nu` reads it directly — both derive from `vendor.yml`, never hardcode the list
+- Vendored modules: `toolkit/vendor.yml` via `toolkit/vendor.nu` (not the CLAUDE.md architecture list). `toolkit/vendor.nu` also projects it into `cozy-module/vendored-repos.nuon` — the manifest that ships into the sandbox, read by `cozy sync-repos` and `cozy-module/verify.nu`. `toolkit check` guards the manifest against `vendor.yml`; never hardcode the list
 - `cozy` command surface: `cozy-module/mod.nu` exports
+- Post-build verification: `cozy-module/verify.nu` — one check set, run by `cozy verify` (inside a sandbox) and `nu toolkit/test.nu test` (host, via `docker sandbox exec`). Checks take a transport closure so the same code runs both ways; expected values derive from `vendored-repos.nuon`, the `docker-files/nushell-autoload/` glob and `bootstrap.nu`'s env exports — never hand-listed
 - Install step order (host + docker + kit): `cozy-module/install/bootstrap.nu` — single entry point for all build paths
 - Pinned nushell fallback: `cozy-module/install/.nushell-version` — consumed by `ensure-nu.sh` when latest `nu` can't parse `bootstrap.nu`
 - Kit spec for `sbx run shell --kit ./sbx-kit/`: `sbx-kit/spec.yaml` — environment + commands.install mirror the Dockerfile ENV + RUN block; the kit clones cozy in-sandbox and runs the same `bootstrap.nu`. The shared env values (Dockerfile ENV / kit / `bootstrap.nu` exports) can't share one literal across the three formats — `toolkit check` guards them against drift
