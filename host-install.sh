@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Host entry to the same installer the Dockerfile runs.
-# Usage: ./host-install.sh [--local] [--force]
-#   --local : forwarded to bootstrap.nu, which then calls toolkit/vendor.nu --local
-#             (rsync from sibling repos instead of github tarball clone).
+# Usage: ./host-install.sh [--force]
 #   --force : skip the host-install safety check that refuses to clobber
 #             existing user configs (see bootstrap.nu's check-no-clobber).
 set -euo pipefail

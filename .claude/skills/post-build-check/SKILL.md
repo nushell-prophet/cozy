@@ -50,8 +50,6 @@ from inside the sandbox or from `verify`:
 - [ ] On macOS host: `./host-install.sh` from clean state succeeds; `claude mcp
       list` afterwards shows a brew-resolved `nu` path (`/opt/homebrew/bin/nu`
       on Apple Silicon, `/home/linuxbrew/.linuxbrew/bin/nu` on Intel).
-- [ ] `./host-install.sh --local` rsyncs from sibling `../<repo>/` clones rather
-      than fetching tarballs; `~/repos/` reflects the sibling tree.
 - [ ] Pre-existing host `~/.gitconfig` (user's real identity) survives — XDG
       `~/.config/git/config` only fills unset keys.
 - [ ] Cold `docker build --no-cache -t cozy:v<N> .` succeeds end-to-end.

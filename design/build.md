@@ -41,7 +41,7 @@ Ensure `nu` can parse `bootstrap.nu`. Tries latest brew `nu` first; if it can't 
 
 ## bootstrap.nu — install steps
 
-Entry: `export def main [--local --force]`. `--local` force-refreshes `vendor/` from sibling repos via `toolkit/vendor.nu --local`; `--force` skips the host-install clobber guard.
+Entry: `export def main [--force]`. `--force` skips the host-install clobber guard. The installer consumes the committed `vendor/` snapshot as-is and never fetches modules — refreshing `vendor/` (from upstream or siblings) is `toolkit/vendor.nu`'s job, run before a build.
 **Code:** `cozy-module/install/bootstrap.nu` → `export def main`
 
 ### Step 0 — system setup (Docker) / clobber guard (host)
@@ -55,7 +55,7 @@ Gated on the `/etc/sandbox-persistent.sh` marker the base image ships. **Docker:
 Writes `~/.config/git/{config,ignore}`: identity `Agent <agent@sandbox>` (so Step 4 can commit), `safe.directory=*`, `gc.auto=0`, `core.fsync=all`. XDG (not `/etc/gitconfig`) avoids sudo and is overridden by a real user's `~/.gitconfig`, so a personal identity still wins.
 
 ### Step 3 — populate ~/repos/
-`populate-repos --local=$local` mirrors `cozy-module/` + `docker-files/` to `~/repos/cozy/` (skipped in Docker, where the `COPY` already did it), then fans out every vendored module from `/tmp/vendor` (Docker) or `cozy_root/vendor/` into `~/repos/`. See `modules.md`.
+`populate-repos` mirrors `cozy-module/` + `docker-files/` to `~/repos/cozy/` (skipped in Docker, where the `COPY` already did it), then fans out every vendored module from `/tmp/vendor` (Docker) or `cozy_root/vendor/` into `~/repos/`. The source is used as-is; an empty source is a corrupt checkout and errors out. See `modules.md`.
 **Code:** `bootstrap.nu` → `def populate-repos`
 
 ### Step 3.5 — nushell autoload

@@ -43,7 +43,6 @@ Removed from the actionable list — done in conversation. For audit:
 - [ ] **F5 on macOS.** From a directory that is *not* this repo: `cd /tmp && nu /Users/user/git/ai-sandbox-dev-container/cozy/toolkit/vendor.nu --local`. Confirm `vendor/` is written under `cozy/`, **not** under `/tmp/vendor/`.
 - [ ] **F17 on macOS.** On a Mac without Xcode CLT (or temporarily hide `gcc`), trigger `topiary.nu`'s "gcc missing" branch. Should print the Xcode-CLT hint and exit cleanly — no `sudo apt-get` attempt.
 - [ ] **`./host-install.sh` from arbitrary cwd.** Script-level `cd "$(dirname "$0")"` lets it run from anywhere on the host.
-- [ ] **`./host-install.sh --local`** triggers `toolkit/vendor.nu --local` (rsync from sibling repos), not github tarball; `~/repos/` reflects sibling-repo source tree.
 - [ ] **`~/.gitconfig` preserved.** Pre-existing host `~/.gitconfig` (user's real identity) not overwritten. Git precedence is global > XDG; XDG `~/.config/git/config` only fills unset keys.
 - [ ] **No `/etc/` writes on host.** No `/etc/apt/apt.conf.d/90proxy`, no `/etc/sandbox-persistent.sh` written — `setup-docker-system` stays off because the marker is absent.
 - [ ] **`ensure-nu.sh` happy path on macOS.** Latest brew `nu` parses `bootstrap.nu` cleanly; no fallback download to `~/.local/bin/nu`.

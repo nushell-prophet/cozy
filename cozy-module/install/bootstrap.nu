@@ -16,11 +16,13 @@
 #   /tmp/vendor present                → use Docker-staged vendor as-is.
 #   else                               → use committed cozy_root/vendor/.
 #
+# Either way the installer consumes the committed vendor/ snapshot as-is — it
+# never fetches modules. Refreshing vendor/ from upstream (GitHub tarballs) or
+# from sibling repos (rsync) is toolkit/vendor.nu's job, run before a build —
+# not the installer's. host-install.sh only exists inside a checkout, which
+# always ships vendor/, so an empty source means a corrupt checkout: fail fast.
+#
 # Flags:
-#   --local      Force-refresh vendor/ from sibling repos via
-#                `toolkit/vendor.nu --local` (rsync) before mirroring it
-#                under ~/repos/. Without this flag, vendor/ is used as-is —
-#                no GitHub fetching, no rsync.
 #   --force      Skip the host-install safety check that refuses to clobber
 #                existing user configs under XDG_CONFIG_HOME, ~/.claude/,
 #                and ~/repos/. Also needed to recover from a partial
@@ -34,7 +36,6 @@ use claude.nu
 const cozy_root = path self | path dirname | path dirname | path dirname
 
 export def main [
-    --local # force-refresh vendor/ from sibling repos via vendor.nu --local
     --force # skip the host-install safety check that refuses to clobber existing user configs
 ] {
     # Step 0 — Docker-sandbox system setup, gated on the marker file the
@@ -82,7 +83,7 @@ export def main [
     ".DS_Store\nThumbs.db\ndesktop.ini\n" | save -f ($git_xdg | path join 'ignore')
 
     # Step 3 — populate ~/repos/ with vendored modules
-    populate-repos --local=$local
+    populate-repos
 
     # Sandbox-specific config (feature parity with Dockerfile):
     # nushell autoload scripts. (visidata config is deployed via dotfiles
@@ -301,12 +302,11 @@ export LANG="C.UTF-8"
 }
 
 # Place vendored modules under ~/repos/<repo>/<module>/.
-# Source priority:
-#   1. /tmp/vendor (Dockerfile COPY staged it) — used as-is, unless --local.
-#   2. cozy_root/vendor/ — committed in the repo, regenerated via vendor.nu
-#      only when empty (first-ever run) or --local forces a refresh from
-#      sibling repos. Avoids re-downloading tarballs on every clone.
-def populate-repos [--local] {
+# Source: /tmp/vendor (Dockerfile COPY staged it) when present, else the
+# committed cozy_root/vendor/. Both are the vendored snapshot, used as-is —
+# the installer never fetches. Refreshing the snapshot is toolkit/vendor.nu's
+# job (run before a build). An empty source means a corrupt checkout: fail fast.
+def populate-repos [] {
     let repos_dir = $nu.home-dir | path join 'repos'
     mkdir $repos_dir
 
@@ -325,18 +325,12 @@ def populate-repos [--local] {
         }
     }
 
-    let vendor_src = if not $local and ('/tmp/vendor' | path exists) {
-        '/tmp/vendor'
-    } else {
-        let dir = $cozy_root | path join 'vendor'
-        let populated = ($dir | path exists) and ((glob ($dir | path join '*')) | is-not-empty)
-        if $local or not $populated {
-            # --no-commit: vendor.nu now auto-commits its result, but install
-            # (docker build / first-run) must not create commits in cozy_root.
-            let arg = if $local { ['--local' '--no-commit'] } else { ['--no-commit'] }
-            ^nu --no-config-file ($cozy_root | path join 'toolkit' 'vendor.nu') ...$arg
-        }
-        $dir
+    let vendor_src = if ('/tmp/vendor' | path exists) { '/tmp/vendor' } else { $cozy_root | path join 'vendor' }
+    if (glob ($vendor_src | path join '*') | is-empty) {
+        # Why: vendor/ is committed and ships with every checkout; host-install.sh
+        # only runs from inside one. Empty here can only mean a corrupt checkout —
+        # surface it, don't silently re-fetch (that masks the corruption).
+        error make {msg: $"vendor source is empty: ($vendor_src) — corrupt checkout; run toolkit/vendor.nu to repopulate vendor/"}
     }
     for entry in (glob ($vendor_src | path join '*')) {
         let dst = $repos_dir | path join ($entry | path basename)
