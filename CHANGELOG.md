@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Nushell modules load in a non-interactive `nu -c` via `nu --config ~/.config/nushell/autoload/modules-core.nu -c …` (runs even in `-c`, unlike autoload). Helix's `shell` uses it, so its `:pipe`/snippet commands can call `kv`, `cozy`, `nu-goodies`, etc. (d99607c)
+
 ## [0.3.0] - 2026-06-15
 
 ### Added
