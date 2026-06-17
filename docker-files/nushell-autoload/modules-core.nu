@@ -1,3 +1,12 @@
+# modules-core.nu — cozy modules loaded in BOTH contexts:
+#   • autoload — every interactive nushell session, and
+#   • non-interactive nu via `nu --config ~/.config/nushell/autoload/modules-core.nu -c …`.
+#     `--config` runs even in `-c` mode, unlike the default config.nu / autoload,
+#     which a one-shot `-c` skips. Consumers: Helix's `shell`, agent `nu -c`.
+# Why: everything here MUST be safe in a one-shot `-c` — no prompt hooks, no REPL
+# state. Interactive-only module additions live in modules-repl.nu (autoload sorts
+# it after this file, so anything here is available to it).
+
 # WORKSPACE_DIR is the host-rendered path. On macOS/Linux it's also valid in-VM
 # (sbx bind-mounts at the same absolute path). On Windows sbx leaves it as
 # "C:\Users\..." (or "C:/Users/...") while the actual mount lives at
@@ -38,9 +47,3 @@ overlay use ~/repos/nu-kv/kv --prefix
 
 overlay use ~/repos/dotnu/dotnu --prefix
 overlay use ~/repos/numd/numd --prefix
-
-use ~/repos/claude-nu/claude-nu/
-
-use ~/.config/zellij/todo-nu/todo.nu lstd
-
-use ~/repos/nu-cmd-stack/cmd-stack

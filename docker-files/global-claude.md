@@ -32,7 +32,7 @@ Nushell is the primary shell. Modules are in `~/repos/`:
 - `nutest` — test framework
 - `nu-multiproof` — multi-proof utilities to timestamp and sign git repo contents
 
-Autoload scripts in `~/.config/nushell/autoload/` load these modules — and the `cozy` command — for you, but only when nu starts an **interactive** session. The nushell MCP `evaluate` tool runs such a session, so the modules are ready there too. A one-shot `nu -c '…'` (e.g. run from Bash) is not interactive and skips autoloads, so `cozy`, `nu-goodies`, `kv` and the rest are absent — you'll get `command not found`. Prefer the MCP `evaluate` tool for nushell. If you must use `nu -c`, load what you need first: `use ~/repos/<module>/<module>` for a module, or `overlay use ~/repos/cozy/cozy-module/ as cozy --prefix` for the `cozy` command.
+Autoload scripts in `~/.config/nushell/autoload/` load these modules — and the `cozy` command — for you, but only when nu starts an **interactive** session. The nushell MCP `evaluate` tool runs such a session, so the modules are ready there too. A one-shot `nu -c '…'` (e.g. run from Bash) is not interactive and skips autoloads, so `cozy`, `nu-goodies`, `kv` and the rest are absent — you'll get `command not found`. Prefer the MCP `evaluate` tool for nushell. If you must use `nu -c`, load the modules with `--config`: `nu --config ~/.config/nushell/autoload/modules-core.nu -c '…'` — `--config` runs even in `-c` mode (unlike autoload), so the full core module set (`cozy`, `nu-goodies`, `kv`, `dotnu`, `numd`) is available.
 
 ## Nushell MCP Server
 

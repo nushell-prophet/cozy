@@ -1,7 +1,8 @@
 ---
 human-check: pending   # pending | verified — flip to verified after you read it
 covers:                # source paths update-design reconciles this file against
-  - docker-files/nushell-autoload/module-imports.nu
+  - docker-files/nushell-autoload/modules-core.nu
+  - docker-files/nushell-autoload/modules-repl.nu
   - docker-files/nushell-autoload/mcp-server.nu
   - docker-files/nushell-autoload/git-safe-directory.nu
   - docker-files/nushell-autoload/my-nu-completions.nu
@@ -20,7 +21,7 @@ Each entry records why the file ships — the self-healing or workaround it exis
 
 ## Autoload scripts (`~/.config/nushell/autoload/`)
 
-Nushell loads autoload scripts alphabetically; they're listed below in that order (`git-safe-directory` → `mcp-server` → `module-imports` → `my-nu-completions` → `standard-aliases`). There is no ordering dependency between them.
+Nushell loads autoload scripts alphabetically; they're listed below in that order (`git-safe-directory` → `mcp-server` → `modules-core` → `modules-repl` → `my-nu-completions` → `standard-aliases`). The only ordering dependency is `modules-core` before `modules-repl` — alphabetical naming guarantees it, so the REPL-only modules can build on the core overlays.
 
 ### git-safe-directory.nu
 Re-assert git `safe.directory = '*'` on shell start. Self-healing: `docker sandbox` create overwrites the global setting with just the workspace-root path, so submodule repos beneath it trip "dubious ownership" under VirtioFS. Guarded so the normal path writes nothing.
@@ -31,9 +32,13 @@ Ensure the nushell MCP server is registered in Claude Code user config. Self-hea
 > NOTE: registered in `~/.claude.json` (user scope), NOT `~/.claude/settings.json`.
 **Code:** `docker-files/nushell-autoload/mcp-server.nu`
 
-### module-imports.nu
-Resolve `$env.WORKSPACE_DIR` to the in-VM mount path, then overlay/use the vendored `~/repos/` modules on every shell start (nu-goodies, cozy, nu-kv, dotnu, numd, claude-nu, cmd-stack, plus zellij's todo.nu). Sets `$env.kv.path` under the workspace sandbox-state dir when mounted. Windows hosts get `C:\Users\…` → `/c/Users/…` rewritten here.
-**Code:** `docker-files/nushell-autoload/module-imports.nu` → `def resolve-workspace-mount`
+### modules-core.nu
+Resolve `$env.WORKSPACE_DIR` to the in-VM mount path, then overlay the vendored `~/repos/` modules that must work in any context: nu-goodies, cozy, nu-kv, dotnu, numd. Sets `$env.kv.path` under the workspace sandbox-state dir when mounted. Windows hosts get `C:\Users\…` → `/c/Users/…` rewritten here. **Also loaded outside autoload:** non-interactive `nu --config ~/.config/nushell/autoload/modules-core.nu -c …` runs it (Helix's `shell`, agent `nu -c` from the Bash tool), because a one-shot `-c` skips autoload but honours `--config`. Everything here must stay safe in a one-shot `-c` — no prompt hooks, no REPL state.
+**Code:** `docker-files/nushell-autoload/modules-core.nu` → `def resolve-workspace-mount`
+
+### modules-repl.nu
+Interactive-only module additions, `use`d on every interactive shell start: claude-nu, zellij's todo.nu, nu-cmd-stack. Split out from the core set so non-interactive `-c` consumers don't load session tools that have no meaning there.
+**Code:** `docker-files/nushell-autoload/modules-repl.nu`
 
 ### my-nu-completions.nu
 Custom completions for external tools — defines the `tte` extern with style-name completion.
