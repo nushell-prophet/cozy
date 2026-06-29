@@ -1,0 +1,10 @@
+{
+  "name": "canvas-output-style",
+  "version": "0.1.0",
+  "description": "Output style only: a version-controlled .md file is the interface; chat carries only pointers",
+  "author": {
+    "name": "maxim-uvarov"
+  },
+  "license": "MIT",
+  "keywords": ["output-style", "canvas", "git", "interface"]
+}
