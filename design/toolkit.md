@@ -32,7 +32,10 @@ Wired in `toolkit/vendor.nu`.
 - The env block (XDG dirs, `HELIX_RUNTIME`, `LANG`, the `PATH` prefix) is spelled out three times — `../Dockerfile` `ENV`, `../sbx-kit/spec.yaml` `environment.variables`, and the `export` block `bootstrap.nu` writes to `/etc/sandbox-persistent.sh`. The three formats can't share one literal, so the check asserts they agree and fails loud on drift.
 - `vendored-repos.nuon` matches `vendor.yml` (catches a manifest left stale).
 
+## Local docs
+
+`toolkit docs` (in `toolkit/docs.nu`, wired into `mod.nu` alongside `vendor` and `check`) syncs Docker sandbox docs into `docs.docker.com/` (its own gitignored repo). Idempotent.
+
 ## Standalone (not wired into `mod.nu`)
 
-- `toolkit/docs.nu` — syncs Docker sandbox docs into `docs.docker.com/` (its own gitignored repo). Idempotent.
-- `toolkit/test.nu` — smoke-tests a fresh sandbox (`nu toolkit/test.nu test`): tools launch, files/dirs/env exist, MCP + pbcopy wiring is in place.
+- `toolkit/test.nu` — smoke-tests a fresh sandbox (`nu toolkit/test.nu test`): tools launch, files/dirs/env exist, MCP + pbcopy wiring is in place. Run directly; not exported from `mod.nu`.
