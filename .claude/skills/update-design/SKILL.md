@@ -60,24 +60,30 @@ Every design file (except the map, which omits `covers`) carries:
 human-check: pending   # pending | verified
 covers:
   - <source paths this file is reconciled against, relative to cozy/ root>
+reconciled-at: <sha>   # commit this file was last reconciled against; absent = never
 ---
 ```
 
-`covers:` drives reconciliation — diff exactly those paths. A directory entry means "all source
-files under it." **When you patch a file's content, reset its `human-check` to `pending`** — the
-field means "a human has read the current content," and your edits invalidate that. Leave
-`verified` files untouched if their `covers:` sources haven't changed.
+`covers:` drives reconciliation — diff exactly those paths. A directory entry means "all source files under it." `reconciled-at:` is the incremental baseline — the commit whose tree this file was last checked against (see *Incremental baseline*). **When you patch a file's content, reset its `human-check` to `pending`** — the field means "a human has read the current content," and your edits invalidate that. `reconciled-at` is the orthogonal machine axis ("code this file was checked against"), so advance it on every clean reconcile but never let it stand in for a human read.
+
+## Incremental baseline
+
+Default to incremental — only reconcile files whose `covers:` sources actually moved.
+
+1. Capture `HEAD` once at the start of the run; this is the SHA you will stamp.
+2. If a file has no `reconciled-at` (or the user asked for a **full** check), reconcile it in full — this establishes the baseline.
+3. Otherwise run `git log <reconciled-at>..HEAD -- <covers paths>`. **Empty ⇒ skip the file**, it is still in sync. Non-empty ⇒ reconcile against that diff.
+4. After a file is reconciled — whether you patched it or confirmed it clean — set its `reconciled-at:` to the captured `HEAD`. A skipped file keeps its old value.
+
+The stamp only advances on a real reconcile, so it always means "this file's claims held against the code at that commit." A `--full` run ignores every `reconciled-at`, re-checks all files, then re-stamps them — that is how you rebuild a baseline you no longer trust. Stamp the run-start `HEAD`, not the commit you are about to make: your commit touches only `design/`, never a `covers:` path, so the next run's `git log` over those paths stays empty for unchanged sources and nothing re-reconciles by mistake.
 
 ## Process
 
 1. **Read** `design/README.md`, then each subsystem file and its frontmatter.
-2. **For each file**, read the `covers:` sources and run the four checks above (anchors,
-   rationale, coverage, order).
+2. **For each file the *Incremental baseline* didn't skip**, read the `covers:` sources and run the four checks above (anchors, rationale, coverage, order).
 3. **Check the map** — does `README.md` still point at every file, in build order, no dead links?
 4. **Report** — numbered list grouped by file: what the notes say vs. what the code says.
-5. **Patch** — fix in place, preserve wording, reset `human-check: pending` on every file you
-   edit. When a doc claim and the code genuinely contradict (a stale rationale you can't resolve
-   from the code alone), ask rather than guess.
+5. **Patch** — fix in place, preserve wording, reset `human-check: pending` on every file you edit, and set `reconciled-at` to the run-start `HEAD` on every file you reconciled (patched or confirmed clean). When a doc claim and the code genuinely contradict (a stale rationale you can't resolve from the code alone), ask rather than guess.
 6. **Verify your own edits** — re-check that each `Code:` anchor you touched still resolves and
    `human-check` is back to `pending`. Reordering and rewrites are exactly when an anchor quietly
    goes stale.
