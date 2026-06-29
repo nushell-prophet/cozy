@@ -8,6 +8,7 @@ covers:
   - toolkit/docs.nu
   - toolkit/test.nu
   - cozy-module/vendored-repos.nuon
+reconciled-at: 03a87ce2f81ce9eadf5835c34f9e6f4288a050c5
 ---
 
 # toolkit — host-side vendor tooling

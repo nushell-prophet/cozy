@@ -7,6 +7,7 @@ covers:                # source paths update-design reconciles this file against
   - cozy-module/install/.nushell-version
   - cozy-module/install/bootstrap.nu
   - sbx-kit/spec.yaml
+reconciled-at: 03a87ce2f81ce9eadf5835c34f9e6f4288a050c5
 ---
 
 # build — the boot sequence (the spine)
