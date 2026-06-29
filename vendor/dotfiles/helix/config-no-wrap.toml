@@ -14,7 +14,7 @@ insert-final-newline = true
 line-number = "relative"
 mouse = false
 preview-completion-insert = true
-shell = ["nu", "--login", "--no-newline", "--stdin", "-c"]
+shell = ["hx-nu", "--no-newline", "--stdin", "-c"]
 
 [editor.whitespace.render]
 nbsp = "all"
@@ -55,9 +55,8 @@ C-right = "move_next_word_start"
 C-left = "move_prev_word_end"
 tab = "move_parent_node_end"
 S-tab = "move_parent_node_start"
-A-l = [":w", ":new", ":insert-output lazygit", ":buffer-close!", ":reload"]
 
-'C-w' = ":write!"
+# 'C-w' = ":write!"
 'C-r' = ":reload"
 'C-S-g' = ":pipe-to git add '%{buffer_name}'; git commit -m 'version %{buffer_name}' '%{buffer_name}'; sleep 0.8sec"
 
@@ -74,7 +73,7 @@ pageup = "no_op"
 pagedown = "no_op"
 home = "no_op"
 end = "no_op"
-"A-'" = [":append-output '$\"\"'", "collapse_selection"] 
+# "A-'" = [":append-output '$\"\"'", "collapse_selection"] 
 
 [keys.select]
 y = ["yank_main_selection_to_clipboard", "yank"]
@@ -93,7 +92,7 @@ right = ["selections", "primary-selection-length", "position", "position-percent
 [keys.normal."+"]
 a = '''
 :append-output #append-commented-results→
-nu -c r###########'%{selection}'########### o+e>| lines
+hx-nu -c r###########'%{selection}'########### o+e>| lines
 | each { $"# => ($in)"}
 | if r###########'%{selection}'########### ends-with "\n" {} else {prepend ''}
 | to text
@@ -102,7 +101,7 @@ nu -c r###########'%{selection}'########### o+e>| lines
 
 A = '''
 :append-output #append-abreviated-results→
-let lines = nu -c r###########'%{selection}'########### o+e>| lines
+let lines = hx-nu -c r###########'%{selection}'########### o+e>| lines
 
 let len = $lines | length;
 
@@ -114,6 +113,21 @@ $lines
 | if r###########'%{selection}'########### ends-with "\n" {} else {prepend ''}
 | to text
 '''
+
+# Select a nu expression, press `+ b`: it evaluates the selection and grows the
+# result as a RECTANGLE on the line(s) BELOW the command, aligned to the command's
+# indent — overwriting only the columns it covers, keeping each line's right side,
+# padding past EOF with blank lines (the column-respect Helix's built-in `!` lacks).
+# The command stays as a label. Seamless because it's a key sequence, not a prompt:
+# write the buffer, run it, reload. hx-block edits the file on disk (same as the `g`
+# git key), so the buffer is flushed first and re-read after.
+b = [
+  ":write",
+  ''':pipe-to #block-below-command→
+hx-nu -c r###########'%{selection}'###########
+| hx-block --below r###########'%{buffer_name}'########### %{selection_line_end}''',
+  ":reload",
+]
 
 c = '''
 :pipe #correct english→
@@ -127,24 +141,38 @@ C = '''
 lines | where $it !~ "^# =>" | to text
 '''
 
-d = ":pipe word-diff apply"
-
 e = '''
 :pipe dotnu-embeds-update.nu
 '''
 
 f = '''
 :pipe #flatten-to-nuon
-nu -c r###########'%{selection}'########### o+e>| to nuon
+hx-nu -c r###########'%{selection}'########### o+e>| to nuon
 '''
 
 g = "@<C-w><C-S-g><C-r>"
 
 n = ":append-output date now | format date %%J-%%Q" # timestamp 
-p = ":pipe pandoc --from markdown --to markdown"
-t = ':pipe $"<user>\n($in)</user>"'
 
+# useful for formatting markdown tables
+p = ":pipe pandoc --from markdown --to markdown"
+
+# `s` copies the selection as an <selected-text> tag with a REPO-RELATIVE path
+# (from the repo root), `S` (below) with the ABSOLUTE path. The relative path is
+# computed in nushell — `%sh{}` runs through hx-nu (nushell), so POSIX `$(...)`
+# command substitution does NOT work there; we compute it in the pipeline instead.
+# Relative path = <dir relative to repo root> (git show-prefix) + <basename>;
+# show-prefix is empty when the file is at the repo root or outside any git repo,
+# so it then falls back to just the basename. %{selection} stays in its own raw
+# string so its contents need no escaping.
 s = [ '''
+:pipe-to #xml-coordinate-references→
+let bn = r#'%{buffer_name}'#
+let pre = (^git -C ($bn | path dirname) rev-parse --show-prefix | complete | get stdout | str trim)
+$'<selected-text file="($pre)($bn | path basename)" lines="%{selection_line_start}-%{selection_line_end}">' + r#'%{selection}'# + '</selected-text>' | pbcopy
+''', ":write" ]
+
+S = [ '''
 :pipe-to #xml-coordinate-references→
 r#'<selected-text file="%sh{realpath %{buffer_name}}" lines="%{selection_line_start}-%{selection_line_end}">%{selection}</selected-text>'# | pbcopy
 ''', ":write" ]

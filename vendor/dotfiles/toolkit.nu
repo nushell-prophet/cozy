@@ -54,10 +54,38 @@ def check-dirty-files [paths: table field: string context: string] {
     if ($dirty | is-not-empty) {
         print $"(ansi red)Error: The following ($context) have uncommitted changes:(ansi reset)"
         $dirty | get $field | each { print $"  ($in)" }
-        print $"\nCommit or stash changes first, or use --force to overwrite."
+        print $"\nCommit or stash changes first, or use --commit-existing / --force to overwrite."
         true
     } else {
         false
+    }
+}
+
+# Commit the given files in whatever git repo contains each, grouped by repo root.
+# Why: lets push-to-machine snapshot the machine's current config before it
+# overwrites it, so the prior state stays recoverable in git history instead of
+# being lost. Commits each file with an explicit pathspec, so unrelated dirty
+# files in the same repo are left untouched.
+# Contract: caller passes only in-repo files (filtered via has-uncommitted-changes),
+# so every group has a non-empty repo root and something to commit.
+def commit-in-own-repo [files: list<path> message: string] {
+    $files
+    | group-by {|f| do { cd ($f | path dirname); ^git rev-parse --show-toplevel } | complete | get stdout | str trim }
+    | items {|toplevel group|
+        ^git -C $toplevel add ...$group
+        ^git -C $toplevel commit -m $message -- ...$group
+    }
+}
+
+# Ensure each config target dir exists and is a git repo. Idempotent — a no-op
+# for dirs that are already repos. Without --create-dirs, a missing dir is skipped.
+def init-target-repos [create_dirs: bool] {
+    $commit_target_dirs | each {|target_dir|
+        let target_dir = $target_dir | path expand --no-symlink
+        if not ($target_dir | path exists) {
+            if $create_dirs { mkdir $target_dir } else { return }
+        }
+        if not ($target_dir | path join '.git' | path exists) { ^git init $target_dir }
     }
 }
 
@@ -173,6 +201,7 @@ def show-push-diff [paths: table] {
 export def push-to-machine [
     --create-dirs # in case of missing directories - create them in place
     --force # overwrite files with uncommitted changes
+    --commit-existing # snapshot dirty destination/orphan files in git before pushing (instead of erroring)
     --dry-run # show diff of what would change without copying
     --docker # use paths-docker.csv for Docker sandbox setup
     --commit-changes # git add + commit in target directories after push
@@ -194,8 +223,22 @@ export def push-to-machine [
         return
     }
 
-    if not $force and (check-dirty-files $to_copy full-path "destination files") { return }
-    if not $force and (check-dirty-files $to_delete full-path "orphans") { return }
+    if $commit_existing {
+        # Why: on a fresh machine the target dirs aren't git repos yet, so their
+        # pre-existing files wouldn't register as "uncommitted" and would be lost
+        # on overwrite. Init first — then those files count as untracked and get
+        # snapshotted below, before we copy over them.
+        init-target-repos $create_dirs
+        let dirty = $to_copy | append $to_delete
+            | get full-path
+            | where { has-uncommitted-changes $in }
+        if ($dirty | is-not-empty) {
+            commit-in-own-repo $dirty "push-to-machine: snapshot before overwrite"
+        }
+    } else {
+        if not $force and (check-dirty-files $to_copy full-path "destination files") { return }
+        if not $force and (check-dirty-files $to_delete full-path "orphans") { return }
+    }
 
     $to_copy
     | group-by { $in.full-path | path dirname }
@@ -210,11 +253,12 @@ export def push-to-machine [
 
     $to_delete | each { rm $in.full-path }
 
-    # Create symlinks for PATH-accessible commands
     [
         [target link];
         ['~/.config/zellij/todo-nu/todo-hx.nu' '~/.local/bin/todo-hx']
         ['~/.config/zellij/hx-scrollback.nu' '~/.local/bin/hx-scrollback']
+        ['~/.config/helix/hx-nu' '~/.local/bin/hx-nu'] # to execute nushell in the environment with chosen modules (if the file exist)
+        ['~/.config/helix/hx-block' '~/.local/bin/hx-block'] # column-aware block writer, called by the `+ b` keybinding
     ] | each {|s|
         let target = $s.target | path expand
         let link = $s.link | path expand --no-symlink
@@ -224,14 +268,8 @@ export def push-to-machine [
         }
     }
 
-    # Initialize git repos for config directories
-    $commit_target_dirs | each {|target_dir|
-        let target_dir = $target_dir | path expand --no-symlink
-        if not ($target_dir | path exists) {
-            if $create_dirs { mkdir $target_dir } else { return }
-        }
-        if not ($target_dir | path join '.git' | path exists) { ^git init $target_dir }
-    }
+    # Initialize git repos for config directories (idempotent if --commit-existing already did)
+    init-target-repos $create_dirs
 
     if $commit_changes {
         $commit_target_dirs | each {|target_dir|
