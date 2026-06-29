@@ -82,6 +82,16 @@ Copies Claude Code project sessions (`~/.claude/projects/`) to/from `$env.WORKSP
 
 Copies the global `~/.claude/CLAUDE.md` to/from `$env.WORKSPACE_DIR/sandbox-state/`, so the agent's persistent instructions survive sandbox recreation. The combined `cozy sandbox-state export` / `import` runs this alongside history and projects.
 
+### `cozy verify`
+
+Runs the post-build checks against the sandbox you are inside: tools launch, expected files/dirs/env vars exist, and the nushell MCP, pbcopy, topiary, and git-XDG wiring is in place. Every expected value is derived from repo sources (`vendored-repos.nuon`, the autoload glob, `bootstrap.nu`), so the checklist can't drift from the build. The same checks run from the host via `nu toolkit/test.nu test`.
+
+```nushell
+cozy verify
+```
+
+The `cozy` module is autoloaded only in an interactive nushell session, so run this from an interactive shell or the nushell MCP `evaluate` tool — a one-shot `nu -c` skips autoloads and won't have `cozy`.
+
 ### `cozy install ...`
 
 Installer subcommands used during image build or inside a running sandbox: `bootstrap`, `claude`, `topiary`, `nushell`, `polars`, `rust`, `zellij`, `nu-plugin-image`.
