@@ -7,111 +7,81 @@ const UUID_JSONL_PATTERN = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9
 # `<project>/<session-uuid>/subagents/agent-<id>.jsonl`)
 const AGENT_JSONL_PATTERN = 'agent-[0-9a-f]+\.jsonl$'
 
-# System-generated message prefixes to filter out
+# System-generated message prefixes to filter out.
+# Why: `!`-command wrappers (<bash-input>/<bash-stdout>/<bash-stderr>) are NOT
+# here — they're a real user action, rendered as readable markdown by
+# render-bash-wrapper instead of dropped. Only Claude Code's synthesized
+# slash-command and caveat wrappers are filtered.
 const SYSTEM_PREFIXES = [
     "<command-name>"
     "<command-message>"
     "<local-command-caveat>"
     "<local-command-stdout>"
     "<local-command-stderr>"
-    "<bash-input>"
-    "<bash-stdout>"
     "Caveat:"
 ]
 
-# All selectable session columns, in output order
+# All selectable session columns, paired with overview membership (the fixed
+# set `sessions` returns when no columns are requested). Single source of truth:
+# the --columns completer, --all-columns, and the default set all read from it;
+# parse-session-columns computes each name. Adding a column means one row here
+# plus its computation there — no flag list to keep in sync.
 const SESSION_COLUMNS = [
-    summary
-    first_timestamp
-    last_timestamp
-    user_msg_count
-    user_msg_length
-    response_length
-    agent_count
-    agents
-    mentioned_files
-    read_files
-    edited_files
-    user_messages
-    session_id
-    slug
-    version
-    cwd
-    git_branch
-    thinking_level
-    bash_commands
-    bash_count
-    skill_invocations
-    tool_errors
-    ask_user_count
-    plan_mode_used
-    tool_counts
-    turn_count
-    assistant_msg_count
-    tool_call_count
-    token_usage
+    [name default];
+    [summary true]
+    [first_timestamp false]
+    [last_timestamp true]
+    [user_msg_count false]
+    [user_msg_length false]
+    [response_length false]
+    [agent_count false]
+    [agents false]
+    [mentioned_files false]
+    [read_files false]
+    [edited_files false]
+    [user_messages true]
+    [session_id false]
+    [slug false]
+    [version false]
+    [cwd false]
+    [git_branch false]
+    [thinking_level false]
+    [bash_commands false]
+    [bash_count false]
+    [skill_invocations false]
+    [tool_errors false]
+    [ask_user_count false]
+    [plan_mode_used false]
+    [tool_counts false]
+    [turn_count false]
+    [assistant_msg_count false]
+    [tool_call_count false]
+    [token_usage false]
 ]
-
-# Overview returned when no column flags are given — the fixed set `sessions`
-# always returned before columns became selectable
-const DEFAULT_SESSION_COLUMNS = [
-    summary
-    first_timestamp
-    last_timestamp
-    user_msg_count
-    user_msg_length
-    response_length
-    agent_count
-    agents
-    mentioned_files
-    read_files
-    edited_files
-]
-
-# Default output directory for Claude Code documentation
-const CLAUDE_DOCS_DIR = 'claude-code-docs'
-
-# Nushell documentation settings
-const NUSHELL_DOCS_DIR = 'nushell-docs'
-const NUSHELL_DOCS_REPO = 'https://github.com/nushell/nushell.github.io.git'
-const NUSHELL_DOCS_FOLDERS = ['blog' 'book' 'cookbook']
 
 # Root of Claude Code session storage: ~/.claude/projects
 def projects-root []: nothing -> path {
     $env.HOME | path join ".claude" "projects"
 }
 
-# Helper to get project sessions directory
-export def get-sessions-dir [
-    project?: path # Project path, or `parent/name` shorthand (default: $env.PWD)
-]: nothing -> path {
-    let projects_root = projects-root
-    let direct = ($project | default $env.PWD) | path expand | str replace --all '/' '-'
-    let direct_dir = $projects_root | path join $direct
+# Sessions directory for the current project: ~/.claude/projects/<encoded-pwd>
+export def get-sessions-dir []: nothing -> path {
+    projects-root | path join ($env.PWD | path expand | str replace --all '/' '-')
+}
 
-    # Why: the completer inserts a `parent/name` shorthand, which `path expand`
-    # would wrongly anchor to $PWD. A real path always resolves directly, so
-    # only fall back to shorthand matching when the expanded dir is absent.
-    if $project == null or ($direct_dir | path exists) {
-        return $direct_dir
-    }
-
-    # Why: only the completer's `parent/name` shape may suffix-match. A bare
-    # or path-like value (e.g. `--project foo` meaning ./foo) must fail on
-    # the missing dir, not silently resolve to another project whose encoded
-    # name happens to end in the same suffix.
-    if not ($project =~ '^[^/~.][^/]*/[^/]+$') {
-        return $direct_dir
-    }
-
-    let encoded = $project | str replace --all '/' '-'
-    let matches = ls $projects_root
-        | where type == dir
-        | where {|row| $row.name | path basename | str ends-with $"-($encoded)" }
-    match ($matches | length) {
-        0 => $direct_dir # let downstream report the missing dir
-        1 => ($matches | get 0.name)
-        _ => (error make {msg: $"Ambiguous project shorthand '($project)' matches: (($matches | get name | path basename | str join ', '))"})
+# Project directory name a session file belongs to — the first path segment
+# under ~/.claude/projects. Why: `path dirname` is right for top-level files
+# (<root>/<proj>/<uuid>.jsonl) but wrong for subagent transcripts
+# (<root>/<proj>/<uuid>/subagents/agent-*.jsonl), where it yields "subagents" —
+# that mislabels rows and falsely trips multi-project tagging inside one
+# project. Files outside the root fall back to their parent directory name.
+def project-dir-name []: path -> string {
+    let file = $in
+    let rel = try { $file | path relative-to (projects-root) } catch { null }
+    if $rel == null {
+        $file | path dirname | path basename
+    } else {
+        $rel | path split | first
     }
 }
 
@@ -157,14 +127,6 @@ export def projects []: nothing -> table {
     | compact
 }
 
-# Completer for --project: existing projects by recency, shown as `parent/name`
-export def "nu-complete claude projects" []: nothing -> record {
-    {
-        options: {sort: false}
-        completions: (projects | each {|p| {value: $p.name description: ($p.modified | date humanize)} })
-    }
-}
-
 # Resolve session file path from UUID, path, or default to most recent
 export def resolve-session-file [
     session?: string # Session UUID or path (null = most recent)
@@ -194,20 +156,36 @@ export def resolve-session-file [
         error make {msg: "No sessions directory found for current project"}
     }
 
-    let files = ls $dir
-        | where name =~ $UUID_JSONL_PATTERN
-        | sort-by modified --reverse
+    # Why: one discoverer owns the listing and recency order, so "most recent
+    # session" is the first top-level (non-subagent) row it yields.
+    let files = discover-session-files $dir | where parent_session_id == null
 
     if ($files | is-empty) {
         error make {msg: "No session files found"}
     }
 
-    $files | first | get name
+    $files | first | get path
 }
 
 # Session UUID from a session file path
 def session-id-from-path []: path -> string {
     path basename | str replace '.jsonl' ''
+}
+
+# Read a session JSONL file into a table of records, one record per line. The
+# single decode point for a session's raw records: every full-file parser goes
+# through here, so "a session is one JSON object per line" lives in one place
+# (and any future empty/corrupt-line handling has a single home).
+# Why (speed): `from json --objects` decodes the whole NDJSON stream in one call
+# instead of `lines | each { from json }`, which restarts the parser per line —
+# ~1.25x faster across every session parse. --contains pre-screens the raw lines
+# by substring before decoding, so a caller wanting one record type (messages
+# wants user turns — only ~30% of lines) never parses the rest; the caller still
+# re-filters the decoded `type`, so a line merely quoting the marker can't slip in.
+def read-session-records [--contains: string]: path -> table {
+    open --raw $in
+    | if $contains == null { } else { lines | where ($it | str contains $contains) | str join "\n" }
+    | from json --objects
 }
 
 # Completion for session UUIDs
@@ -252,67 +230,40 @@ export def "nu-complete claude sessions" []: nothing -> record {
     }
 }
 
-# Extract user messages from Claude Code session files
+# Extract user messages from Claude Code session files.
+# Scope by piping session rows in — `sessions | messages` for one project,
+# `sessions --all-projects | messages` for every project. `sessions` lists only
+# top-level human sessions by default, so these carry no agent turns; add
+# `sessions --subagents` if you deliberately want subagent transcripts too. With
+# no input it reads the current project's most recent session.
+# Why: selection lives in one place (`sessions`); messages just reads what it's
+# handed. This also kills the old `--all-projects` take-1 footgun (see
+# todo/20260618-225035) — "all" now means all, because the caller controls it.
 export def messages [
     regex?: string # Filter messages by regex pattern
     --session: string@"nu-complete claude sessions" # Session UUID (uses most recent if not specified)
-    --all-sessions # Search across all project sessions
-    --project: path@"nu-complete claude projects" # Project path to search in (default: current directory)
-    --all-projects # Search across all projects
     --include-system # Include system/meta messages (not just user-typed)
     --include-thinking # Include assistant thinking blocks (prefixed with [thinking])
     --raw # Return raw message records instead of just content
     --include-responses # Include assistant responses (text only, interleaved)
-]: [nothing -> table table -> table] {
+]: [nothing -> table record -> table table -> table] {
     let input = $in
     let piped_files = resolve-piped-sessions $input
 
-    if $piped_files != null {
-        if $session != null { error make {msg: "Piped input conflicts with --session"} }
-        if $all_sessions { error make {msg: "Piped input conflicts with --all-sessions"} }
-        if $all_projects { error make {msg: "Piped input conflicts with --all-projects"} }
-        if $project != null { error make {msg: "Piped input conflicts with --project"} }
+    if $piped_files != null and $session != null {
+        error make {msg: "Piped input conflicts with --session"}
     }
 
     let session_files = if $piped_files != null {
         $piped_files
-    } else if $all_projects {
-        if $session != null {
-            error make {msg: "--all-projects and --session are mutually exclusive"}
-        }
-        if $project != null {
-            error make {msg: "--all-projects and --project are mutually exclusive"}
-        }
-        let projects_dir = projects-root
-        if not ($projects_dir | path exists) {
-            error make {msg: "No projects directory found"}
-        }
-        ls $projects_dir
-        | where type == dir
-        | each {|dir|
-            ls $dir.name
-            | where name =~ $UUID_JSONL_PATTERN
-            | sort-by modified --reverse
-            | if $all_sessions { } else { take 1 }
-            | get name
-        }
-        | flatten
-    } else if $all_sessions {
-        if $session != null {
-            error make {msg: "--all-sessions and --session are mutually exclusive"}
-        }
-        let dir = get-sessions-dir $project
-        if not ($dir | path exists) {
-            error make {msg: $"Sessions directory not found: ($dir)"}
-        }
-        ls $dir
-        | where name =~ $UUID_JSONL_PATTERN
-        | sort-by modified --reverse
-        | get name
     } else {
-        let dir = get-sessions-dir $project
-        [(resolve-session-file $session --sessions-dir $dir)]
+        [(resolve-session-file $session)]
     }
+
+    # Why: when the piped sessions span more than one project, tag each row with
+    # its project so cross-project search stays traceable; a single-project
+    # scope keeps the lean output.
+    let multi_project = ($session_files | each { project-dir-name } | uniq | length) > 1
 
     $session_files
     | each {|session_file|
@@ -323,59 +274,34 @@ export def messages [
         let session_uuid = $session_file | session-id-from-path
 
         # Why: --include-thinking surfaces thinking-only assistant turns
-        # (otherwise dropped by the visible-text filter below). Keep
-        # extract-text-content's contract intact for other callers.
+        # (otherwise dropped by the empty-text filter). User text always goes
+        # through extract-text-content, keeping its contract for other callers.
         let extract_assistant = if $include_thinking {
             {|r| $r | extract-text-with-thinking }
         } else {
             {|r| $r | extract-text-content }
         }
+        let extract_text = {|r|
+            match $r.type? {
+                "assistant" => (do $extract_assistant $r)
+                _ => ($r | extract-text-content)
+            }
+        }
 
-        # Parse and filter messages
-        let messages = open --raw $session_file
-            | lines
-            | each { from json }
-            | if $include_responses {
-                where type in ["user" "assistant"]
-            } else {
-                where type == "user"
-            }
-            | if $include_system { } else {
-                where {|r|
-                    match $r.type? {
-                        "assistant" => true
-                        _ => {
-                            if $r.isMeta? == true { false } else {
-                                let content = $r.message?.content?
-                                match ($content | describe) {
-                                    "string" if ($content | is-not-empty) => {
-                                        $SYSTEM_PREFIXES | all {|p| not ($content | str starts-with $p) }
-                                    }
-                                    _ => false
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            # Extract visible text once; the regex filter and output read it
-            | insert text {|r|
-                match $r.type? {
-                    "assistant" => (do $extract_assistant $r)
-                    _ => {
-                        let content = $r.message?.content?
-                        if ($content | describe) =~ '^(list|table)' {
-                            $content | get content --optional | str join "\n"
-                        } else {
-                            $content
-                        }
-                    }
-                }
-            }
-            # Drop assistant messages with no visible text
-            | where {|r| $r.type? != "assistant" or ($r.text | str trim | is-not-empty) }
+        # Why (speed): the default keeps only user turns, so pre-screen the raw
+        # JSONL for the user-type marker before decoding — assistant turns, tool
+        # results, and summaries (the ~70% bulk) never reach the JSON parser. The
+        # `where type? == "user"` below still runs, so the prefilter only narrows.
+        let records = if $include_responses {
+            $session_file | read-session-records
+        } else {
+            $session_file | read-session-records --contains '"type":"user"'
+        }
+        let dialogue = $records
+            | if $include_responses { } else { where type? == "user" }
+            | extract-dialogue $extract_text --keep-system=$include_system
 
-        let filtered = $messages
+        let filtered = $dialogue
             | if $regex == null { } else { where text =~ $regex }
 
         if $raw {
@@ -390,19 +316,62 @@ export def messages [
         # output a valid session selector for resolve-piped-sessions, so it
         # can pipe back into messages/export-session/sessions.
         | each { insert session $session_uuid }
-        | if $all_projects {
-            insert project ($session_file | path dirname | path basename)
+        | if $multi_project {
+            insert project ($session_file | project-dir-name)
         } else { }
     }
     | flatten
 }
 
+# Reverse the HTML entity escaping Claude Code applies to `!`-command output
+# (the `<`/`>`/`&` inside <bash-stdout>/<bash-stderr> arrive as &lt;/&gt;/&amp;).
+# &amp; is undone last so a literal "&amp;lt;" decodes to "&lt;", not "<".
+def unescape-html []: string -> string {
+    str replace --all '&lt;' '<'
+    | str replace --all '&gt;' '>'
+    | str replace --all '&quot;' '"'
+    | str replace --all '&#39;' "'"
+    | str replace --all '&amp;' '&'
+}
+
+# Render a `!`-command user record's string content as readable markdown.
+# `<bash-input>CMD</bash-input>` -> a `sh` code block; the paired
+# `<bash-stdout>OUT</bash-stdout><bash-stderr>ERR</bash-stderr>` record -> the
+# captured output as a plain code block (stderr flagged). Non-bash strings pass
+# through untouched. Tags are split by literal string (not regex): real output
+# has its own `<`/`>` HTML-escaped, so the wrapper tags are the only literal
+# ones, and a missing closing tag (test fixtures) still degrades cleanly.
+# Why: a `!` command is a real user action, but Claude Code stores it in these
+# wrappers; without rendering, export-session/messages drop the user's command.
+def render-bash-wrapper []: string -> string {
+    let s = $in
+    if ($s | str starts-with "<bash-input>") {
+        let cmd = $s
+            | str replace "<bash-input>" "" | str replace "</bash-input>" ""
+            | unescape-html | str trim
+        $"```sh\n($cmd)\n```"
+    } else if ($s | str starts-with "<bash-stdout>") {
+        let parts = $s | split row "<bash-stderr>"
+        let out = $parts.0
+            | str replace "<bash-stdout>" "" | str replace "</bash-stdout>" ""
+            | unescape-html | str trim
+        let err = $parts.1? | default ""
+            | str replace "</bash-stderr>" ""
+            | unescape-html | str trim
+        [
+            (if ($out | is-not-empty) { $"```\n($out)\n```" })
+            (if ($err | is-not-empty) { $"```\n[stderr]\n($err)\n```" })
+        ] | compact | str join "\n\n"
+    } else { $s }
+}
+
 # Shared dispatch on message content shape: string content passes through
-# as-is, content block lists go through $render, anything else yields "".
+# render-bash-wrapper (a no-op unless it's a `!`-command wrapper), content block
+# lists go through $render, anything else yields "".
 def render-message-content [render: closure]: record -> string {
     let content = $in.message?.content?
     match ($content | describe) {
-        "string" => { $content }
+        "string" => { $content | render-bash-wrapper }
         $t if ($t =~ '^(list|table)') => { $content | do $render }
         _ => { "" }
     }
@@ -422,6 +391,44 @@ export def extract-text-content []: record -> string {
 # the visible-text filter would otherwise drop.
 export def extract-text-with-thinking []: record -> string {
     render-content --thinking
+}
+
+# False when text is one of the command/tool/caveat wrappers Claude Code
+# synthesizes around a turn — i.e. not a human-typed message (see SYSTEM_PREFIXES).
+def is-user-text []: string -> bool {
+    let text = $in
+    $SYSTEM_PREFIXES | all {|p| not ($text | str starts-with $p) }
+}
+
+# Build a dialogue table from raw session records: the user and assistant turns
+# with their visible text. Drops meta turns, empty-text turns, and the user-side
+# system/command wrappers Claude Code synthesizes. `extract` renders each record's
+# text, so callers pick plain text, +thinking, or tool placeholders. Pass
+# --keep-system to retain meta and system-wrapper turns (messages --include-system).
+# Why: messages and export-session both built this same dialogue+filter pass; one
+# source keeps the system-prefix rule from drifting between them.
+def extract-dialogue [extract: closure --keep-system]: table -> table {
+    where type? in ["user" "assistant"]
+    | if $keep_system { } else { where isMeta? != true }
+    | insert text {|r| do $extract $r }
+    | where {|r| $r.text | str trim | is-not-empty }
+    | if $keep_system { } else {
+        where {|r| $r.type? != "user" or ($r.text | is-user-text) }
+    }
+}
+
+# Authored user-message text from a record set — exactly the user messages
+# `messages` returns: tool-result records (render to ""), meta turns, and the
+# command/caveat wrappers Claude Code synthesizes are all dropped (via
+# extract-dialogue / is-user-text).
+# Why: the user_msg_* columns and turn_count must agree with `messages` on what
+# a user message is. The old "any non-empty user record" rule counted /clear and
+# <local-command-caveat> wrappers as messages, inflating every count and dumping
+# that wrapper text into the default `user_messages` column.
+def user-message-texts []: table -> list<string> {
+    where type? == "user"
+    | extract-dialogue {|r| $r | extract-text-content }
+    | get text
 }
 
 # Helper to extract tool calls from assistant messages
@@ -548,7 +555,10 @@ export def extract-derived-metrics [
     tool_calls: table
 ]: table -> record {
     {
-        turn_count: ($in | where isMeta? != true | length)
+        # Why: a turn is one authored user message — same definition as the
+        # user_msg_* columns and `messages` (tool-result, meta, and command/
+        # caveat wrapper records all excluded), so the metrics can't disagree.
+        turn_count: ($in | user-message-texts | length)
         assistant_msg_count: ($assistant_records | length)
         tool_call_count: ($tool_calls | length)
     }
@@ -582,7 +592,7 @@ export def extract-token-usage []: table -> record {
 # ("", 0, []) on an empty record set, so empty JSONL files flow through.
 def parse-session-columns [selected: list<string>]: path -> record {
     let file_path = $in
-    let records = open --raw $file_path | lines | each { from json }
+    let records = $file_path | read-session-records
 
     let user_records = $records | where type? == "user"
     let assistant_records = $records | where type? == "assistant"
@@ -597,9 +607,13 @@ def parse-session-columns [selected: list<string>]: path -> record {
         $assistant_records | each { extract-tool-calls } | flatten
     } else { [] }
 
-    # Why: user_msg_length sums these texts, so both columns share one pass
-    let user_messages = if (do $need [user_messages user_msg_length]) {
-        $user_records | each { extract-text-content }
+    # Why: user_msg_count/length/list all describe user-authored text, so one
+    # pass feeds all three. user-message-texts is the single definition of "a
+    # user message" shared with `messages` and turn_count — it drops tool-result
+    # records (render to ""), meta turns, and command/caveat wrappers, so none of
+    # the three count tool replies or a /clear invocation as a message.
+    let user_messages = if (do $need [user_messages user_msg_length user_msg_count]) {
+        $user_records | user-message-texts
     } else { [] }
 
     let user_msg_length = $user_messages
@@ -665,7 +679,7 @@ def parse-session-columns [selected: list<string>]: path -> record {
         {name: summary value: $summary}
         {name: first_timestamp value: $timestamps.first}
         {name: last_timestamp value: $timestamps.last}
-        {name: user_msg_count value: ($user_records | length)}
+        {name: user_msg_count value: ($user_messages | length)}
         {name: user_msg_length value: $user_msg_length}
         {name: response_length value: $response_length}
         {name: agent_count value: ($agent_list | length)}
@@ -673,7 +687,7 @@ def parse-session-columns [selected: list<string>]: path -> record {
         {name: mentioned_files value: $mentioned_files}
         {name: read_files value: $file_ops.read_files?}
         {name: edited_files value: $file_ops.edited_files?}
-        {name: user_messages value: ($user_messages | where $it != "")}
+        {name: user_messages value: $user_messages}
         {name: session_id value: $meta.session_id?}
         {name: slug value: $meta.slug?}
         {name: version value: $meta.version?}
@@ -697,86 +711,170 @@ def parse-session-columns [selected: list<string>]: path -> record {
     | insert path $file_path
 }
 
+# True when a value is a record (which is a 1-row table once piped). Strips the
+# `<...>` type detail so `record<a: int>` and a bare `record` both match.
+def is-record []: any -> bool {
+    ($in | describe | str replace --regex '<.*' '') == "record"
+}
+
 # Extract session file paths from piped input
 # Returns null when input is not a table
 export def resolve-piped-sessions [input: any]: nothing -> any {
     if ($input | describe) == "nothing" { return null }
+    # Why: a record is a 1-row table (e.g. `sessions | first`); widen it here so
+    # every piped command accepts a single row without the caller re-wrapping it.
+    let input = if ($input | is-record) { [$input] } else { $input }
     let cols = $input | columns
+    # Why: `find` is handy for searching every column at once (it recurses into
+    # nested cells like user_messages), but it marks matches by injecting ansi
+    # codes into the string values themselves — which corrupts the path/session
+    # selectors so `path exists`/`open` then fail. `find --no-highlight` (-n)
+    # skips the injection, but stripping ansi here — the one chokepoint every
+    # piped command shares — is more forgiving than asking callers to remember
+    # the flag, so plain `find … | export-session` works too.
     if "path" in $cols {
-        $input | get path | compact | uniq
+        $input | get path | compact | ansi strip | uniq
     } else if "session" in $cols {
-        $input | get session | uniq | each {|s| resolve-session-file $s }
+        $input | get session | ansi strip | uniq | each {|s| resolve-session-file $s }
     } else {
         error make {msg: "Piped input must have 'path' or 'session' column"}
     }
 }
 
-# Discover session files inside a single directory.
-# Returns rows {path, parent_session_id} where parent_session_id is the
-# parent session UUID for subagent files (basename of `<uuid>/subagents/`),
-# null for top-level session files.
+# Discover session files in a directory, newest first. Returns rows
+# {path, parent_session_id, modified}; parent_session_id is the parent session
+# UUID for subagent files (`<uuid>/subagents/agent-*.jsonl`), null for top-level
+# files. Single source of truth for the on-disk session layout — every command
+# that lists or picks session files goes through here, so the name patterns, the
+# subagent walk, and the recency order live in one place. Callers wanting only
+# human-driven sessions filter `where parent_session_id == null`.
 export def discover-session-files [dir: path]: nothing -> table {
-    let top_level = glob ($dir | path join "*.jsonl")
-        | where $it =~ $UUID_JSONL_PATTERN
-        | each {|p| {path: $p parent_session_id: null} }
+    # Why: top-level files sit directly in $dir, so one `ls` lists them with
+    # their mtimes; an empty dir is just [], whereas `ls` on a no-match glob
+    # errors — keeping the empty case graceful without a special branch.
+    let top_level = ls $dir
+        | where name =~ $UUID_JSONL_PATTERN
+        | each {|f| {path: $f.name parent_session_id: null modified: $f.modified} }
 
-    let subagent_files = glob ($dir | path join "*/subagents/*.jsonl")
-        | where $it =~ $AGENT_JSONL_PATTERN
-        | each {|p|
-            # Why: layout is `<dir>/<uuid>/subagents/agent-*.jsonl`,
-            # so the parent UUID is two levels up from the file.
-            {path: $p parent_session_id: ($p | path dirname | path dirname | path basename)}
+    # Why: subagent transcripts are nested out of reach of a flat `ls`, so a glob
+    # descends to them. The `**` is load-bearing: Workflow agents nest deeper, at
+    # `<uuid>/subagents/workflows/wf_*/agent-*.jsonl`, so a single-level
+    # `*/subagents/*.jsonl` silently misses them. The parent UUID is therefore the
+    # first path segment under $dir (depth-independent), not "two levels up" —
+    # two-up would yield `workflows` for the nested ones.
+    # Why (speed): one `ls <glob>` stats every transcript in a single directory
+    # walk; the old `glob | each { ls }` re-stated each file individually (~10x
+    # slower on a project with many subagents). `ls` errors on a no-match glob, so
+    # try/catch keeps the empty case graceful (matching `glob`'s old behavior).
+    let subagent_files = try { ls (($dir | path join "*/subagents/**/*.jsonl") | into glob) } catch { [] }
+        | where name =~ $AGENT_JSONL_PATTERN
+        | each {|f|
+            {path: $f.name parent_session_id: ($f.name | path relative-to $dir | path split | first) modified: $f.modified}
         }
 
-    $top_level | append $subagent_files
+    $top_level | append $subagent_files | sort-by modified --reverse
+}
+
+# Session files (current project, or every project with --all-projects) whose
+# raw JSONL contains `pattern`, newest first. Uses ripgrep to skip files that
+# cannot match before the costly JSON parse; without rg it returns every
+# top-level session file and lets the caller's structured filter do the work.
+# Subagent transcripts are excluded — they carry no human-typed messages.
+# Why: rg scans the raw, escaped JSON, so it can't honor line anchors or match a
+# JSON-escaped quote/backslash the way the structured regex on extracted text
+# does. That only ever costs recall for such patterns; it never yields a wrong
+# hit, because `claude-nu -f` re-applies the real regex to the parsed text. For
+# ordinary word/phrase/regex searches rg and the structured filter agree (both
+# use Rust's regex engine), and we open only the few files that can match
+# instead of parsing every session in every project. --no-rg forces the full
+# enumeration so the caller's regex runs against the extracted text with exact
+# semantics — the escape hatch for a pattern rg's raw scan would under-match.
+export def find-session-files [
+    pattern: string # Regex (Rust syntax) matched against raw session JSONL
+    --all-projects # Search every project under ~/.claude/projects, not just the current one
+    --no-rg # Skip the ripgrep pre-filter; return every top-level file for the caller to filter
+]: nothing -> list<path> {
+    let rows = if $no_rg or (which rg | is-empty) {
+        top-level-session-files --all-projects=$all_projects
+    } else {
+        rg-session-files $pattern --all-projects=$all_projects
+    }
+    if ($rows | is-empty) { return [] }
+    $rows | sort-by modified --reverse | get path
+}
+
+# Top-level session files in scope as {path, modified} rows (no content filter).
+# The rg-less fallback for find-session-files, and the single place the
+# project-vs-all-projects enumeration lives.
+def top-level-session-files [--all-projects]: nothing -> table {
+    let dirs = if $all_projects {
+        let root = projects-root
+        if not ($root | path exists) { return [] }
+        ls $root | where type == dir | get name
+    } else {
+        let dir = get-sessions-dir
+        if not ($dir | path exists) { return [] }
+        [$dir]
+    }
+    $dirs
+    | each {|d| discover-session-files $d | where parent_session_id == null | select path modified }
+    | flatten
+}
+
+# Top-level session files whose raw JSONL matches `pattern`, as {path, modified}.
+# Why: --no-ignore --hidden so a stray .gitignore or the dot in ~/.claude can't
+# hide a session; the subagents glob keeps us to human dialogue; the UUID-name
+# guard mirrors discover-session-files' definition of a session file. The pattern
+# goes through --regexp (which allows a leading `-`), not as a bare arg. rg exit
+# 1 means "no match" (empty); only a real failure (exit 2+) errors — fail fast on
+# a broken pattern instead of silently returning nothing.
+def rg-session-files [pattern: string --all-projects]: nothing -> table {
+    let root = if $all_projects { projects-root } else { get-sessions-dir }
+    if not ($root | path exists) { return [] }
+    let res = rg --no-ignore --hidden --files-with-matches --glob '*.jsonl' --glob '!**/subagents/**' --regexp $pattern -- $root | complete
+    let files = match $res.exit_code {
+        0 => ($res.stdout | lines)
+        1 => []
+        _ => (error make {msg: $"rg failed \(exit ($res.exit_code)): ($res.stderr | str trim)"})
+    }
+    $files
+    | where ($it | path basename) =~ $UUID_JSONL_PATTERN
+    | each {|p| {path: $p modified: (ls $p | get 0.modified) } }
+}
+
+# Completer for --columns: comma-separated session column names. Returns full
+# comma-joined values (e.g. `slug,version`) so the menu re-spawns after each
+# comma and accumulates; names already chosen in the token are excluded.
+# Why: --columns is a string, not list<string>, because Nushell completes a
+# list-typed flag only outside its `[ ]` — where a bare value won't parse — and
+# offers nothing inside the brackets. A string flag completes at the value
+# position, where the inserted text is valid, so the menu actually works.
+export def "nu-complete claude session-columns" [context: string]: nothing -> list<string> {
+    let token = $context | split row ' ' | last
+    let parts = $token | split row ','
+    let chosen = $parts | drop 1
+    let prefix = $chosen | str join ','
+    $SESSION_COLUMNS
+    | get name
+    | where $it not-in $chosen
+    | each {|c| if ($prefix | is-empty) { $c } else { $"($prefix),($c)" } }
 }
 
 # Parse Claude Code sessions for structured information.
-# Column flags select what to compute (lazy — only requested extractions run);
-# no column flags returns the default overview set, --all-columns everything.
+# `--columns` selects what to compute (lazy — only requested extractions run);
+# omit it for the default overview set, `--all-columns` for everything. Column
+# names are listed in SESSION_COLUMNS (and tab-complete on --columns).
+# By default only top-level (human-driven) sessions are listed; pass --subagents
+# to also include subagent transcripts (those rows carry a non-null parent_session_id).
 export def sessions [
     ...paths: path # Session files or directories to parse (default: current project sessions)
     --session: string@"nu-complete claude sessions" # Single session UUID or path
     --last # Only the most recent session of the current project
     --all-projects # Enumerate sessions across every project under ~/.claude/projects
-    # Session info
-    --summary # Include summary column
-    --first-timestamp # Include first_timestamp column
-    --last-timestamp # Include last_timestamp column
-    --user-msg-count # Include user_msg_count column
-    --user-msg-length # Include user_msg_length column (total chars typed by user)
-    --response-length # Include response_length column (total chars of assistant text)
-    --agent-count # Include agent_count column
-    --agents # Include agents column
-    # File operations
-    --mentioned-files # Include mentioned_files column (@-mentions in user messages)
-    --read-files # Include read_files column
-    --edited-files # Include edited_files column
-    --user-messages # Include user_messages column (list of user message texts)
-    # Session metadata
-    --session-id # Include session_id column
-    --slug # Include slug column (human-readable session name)
-    --version # Include version column (Claude Code version)
-    --cwd # Include cwd column (working directory)
-    --git-branch # Include git_branch column
-    # Thinking
-    --thinking-level # Include thinking_level column
-    # Tool statistics
-    --bash-commands # Include bash_commands column (list of commands)
-    --bash-count # Include bash_count column
-    --skill-invocations # Include skill_invocations column
-    --tool-errors # Include tool_errors column (count of failed tool calls)
-    --ask-user-count # Include ask_user_count column
-    --plan-mode-used # Include plan_mode_used column (bool)
-    --tool-counts # Include tool_counts column (record keyed by tool name: TaskCreate/Update/Stop, Monitor, ToolSearch)
-    # Derived metrics
-    --turn-count # Include turn_count column (user→assistant turns)
-    --assistant-msg-count # Include assistant_msg_count column
-    --tool-call-count # Include tool_call_count column
-    # Token usage
-    --token-usage # Include token_usage column (record: input/output/cache_creation/cache_read tokens)
+    --subagents # Also list subagent transcripts (<uuid>/subagents/agent-*.jsonl); off by default
+    --columns (-c): string@"nu-complete claude session-columns" # Comma-separated columns to include (default: overview set)
     --all-columns # Include all columns
-]: [nothing -> table string -> table table -> table] {
+]: [nothing -> table string -> table record -> table table -> table] {
     let input = $in
     # Why: piped string is a target path (`"dir" | sessions`); piped table
     # carries path/session columns like the other commands accept.
@@ -796,6 +894,11 @@ export def sessions [
     }
     if ($piped_files != null or $piped_path != null) and ($session != null or $last or $all_projects or ($paths | is-not-empty)) {
         error make {msg: "Piped input conflicts with --session/--last/--all-projects/paths"}
+    }
+    # Why: --last/--session resolve to a single top-level file, so there are no
+    # subagents to include — flag it as a no-op rather than silently ignore.
+    if $subagents and ($last or $session != null) {
+        print -e "claude-nu sessions: --subagents has no effect with --last/--session — those select a single top-level session"
     }
 
     let session_rows = if $piped_files != null {
@@ -847,48 +950,46 @@ export def sessions [
         | flatten
     }
 
+    # Why: subagent transcripts hold agent-driven turns, not human messages, so
+    # they are opt-in — the default scope is top-level sessions only. Explicitly
+    # named/piped files carry parent_session_id == null, so they always pass.
+    let session_rows = $session_rows
+        | if $subagents { } else { where parent_session_id == null }
+
     if ($session_rows | is-empty) {
         error make {msg: "No session files found"}
     }
 
-    let requested = [
-        [include name];
-        [$summary summary]
-        [$first_timestamp first_timestamp]
-        [$last_timestamp last_timestamp]
-        [$user_msg_count user_msg_count]
-        [$user_msg_length user_msg_length]
-        [$response_length response_length]
-        [$agent_count agent_count]
-        [$agents agents]
-        [$mentioned_files mentioned_files]
-        [$read_files read_files]
-        [$edited_files edited_files]
-        [$user_messages user_messages]
-        [$session_id session_id]
-        [$slug slug]
-        [$version version]
-        [$cwd cwd]
-        [$git_branch git_branch]
-        [$thinking_level thinking_level]
-        [$bash_commands bash_commands]
-        [$bash_count bash_count]
-        [$skill_invocations skill_invocations]
-        [$tool_errors tool_errors]
-        [$ask_user_count ask_user_count]
-        [$plan_mode_used plan_mode_used]
-        [$tool_counts tool_counts]
-        [$turn_count turn_count]
-        [$assistant_msg_count assistant_msg_count]
-        [$tool_call_count tool_call_count]
-        [$token_usage token_usage]
-    ] | where include | get name
+    let all_names = $SESSION_COLUMNS | get name
+
+    # Why: --columns is a comma-separated string (see the completer) — split,
+    # trim, and drop empties so "slug, cwd" and a trailing comma are forgiving.
+    let requested = $columns
+        | default ""
+        | split row ','
+        | each { str trim }
+        | where $it != ""
+
+    if $all_columns and ($requested | is-not-empty) {
+        error make {msg: "--columns and --all-columns are mutually exclusive"}
+    }
 
     let selected = if $all_columns {
-        $SESSION_COLUMNS
+        $all_names
     } else if ($requested | is-empty) {
-        $DEFAULT_SESSION_COLUMNS
-    } else { $requested }
+        $SESSION_COLUMNS | where default | get name
+    } else {
+        # Why: fail fast on a typo'd column name — parse-session-columns would
+        # otherwise silently omit it, hiding the mistake.
+        let unknown = $requested | where $it not-in $all_names
+        if ($unknown | is-not-empty) {
+            error make {
+                msg: $"Unknown session column\(s): ($unknown | str join ', ')"
+                help: $"valid columns: ($all_names | str join ', ')"
+            }
+        }
+        $requested
+    }
 
     $session_rows | each {|row|
         if not ($row.path | path exists) {
@@ -977,7 +1078,7 @@ export def export-session [
     topic?: string # Topic for filename (default: session summary)
     --session: string@"nu-complete claude sessions" # Session UUID (uses most recent if not specified)
     --tools # Render tool_use/tool_result blocks as one-line blockquote placeholders (default: drop)
-]: [nothing -> record table -> table] {
+]: [nothing -> record record -> table table -> table] {
     let input = $in
     let piped_files = resolve-piped-sessions $input
 
@@ -988,10 +1089,10 @@ export def export-session [
 
     let export_one = {|session_file|
         if not ($session_file | path exists) {
-            error make {msg: $"Session file not found: ($session_file)"}
+            error make --unspanned {msg: $"Session file not found: ($session_file)"}
         }
 
-        let records = open --raw $session_file | lines | each { from json }
+        let records = $session_file | read-session-records
 
         if ($records | is-empty) {
             error make {msg: "Session file is empty"}
@@ -1015,12 +1116,7 @@ export def export-session [
 
         # Extract dialogue: user messages and assistant responses
         let dialogue = $records
-            | where type? in ["user" "assistant"]
-            | where isMeta? != true
-            | insert text { if $tools { render-content --tools } else { extract-text-content } }
-            | where { $in.text | str trim | is-not-empty }
-            # Keep assistant messages; filter user messages starting with system prefixes
-            | where {|r| $r.type != "user" or ($SYSTEM_PREFIXES | all {|p| not ($r.text | str starts-with $p) }) }
+            | extract-dialogue {|r| if $tools { $r | render-content --tools } else { $r | extract-text-content }}
             | select type text
             | rename role content
             # Merge consecutive same-role messages
@@ -1038,13 +1134,14 @@ export def export-session [
         let session_id = $session_file | session-id-from-path
         let date_formatted = $first_timestamp | into datetime | format date '%Y-%m-%d'
 
-        let frontmatter = [
-            '---'
-            $"date: ($date_formatted)"
-            $"session: ($session_id)"
-            ...(if $summary != "" { [$"summary: ($summary)"] } else { [] })
-            '---'
-        ] | str join "\n"
+        let frontmatter = {
+            date: $date_formatted
+            session: $session_id
+        }
+        | if $summary != "" {insert summary $summary} else {}
+        | to yaml
+        | $"---\n($in)---\n"
+
 
         let title = $"# ($resolved_topic | str replace --all '-' ' ' | str title-case)"
 
@@ -1078,7 +1175,7 @@ export def save-markdown [
 ]: [record -> string table -> table] {
     let input = $in
     let out_dir = $output_dir | default "docs/sessions"
-    let was_record = ($input | describe | str replace --regex '<.*' '') == "record"
+    let was_record = $input | is-record
 
     # Normalize to table
     let rows = if $was_record { [$input] } else { $input }
@@ -1124,95 +1221,245 @@ export def save-markdown [
     }
 }
 
-# Download Claude Code documentation from sitemap
-export def download-claude-docs [
-    --output-dir: path = $CLAUDE_DOCS_DIR # Output directory for downloaded docs
-]: nothing -> table {
-    # Fetch and parse sitemap
-    let sitemap_xml = http get https://code.claude.com/docs/sitemap.xml
+# =============================================================================
+# gi-hook — a per-repo Stop hook that keeps the chat terse (gi protocol)
+#
+# The gi protocol moves all "what/why" into git: the diff and the commit body
+# carry the record, the chat carries almost nothing. That rule rests on prose
+# alone and fights the model's training — the agent drifts back to long chat
+# answers. This installs a structural barrier instead of self-control: a
+# Claude Code Stop hook that blocks the turn when the final chat message is
+# more than `done`/`noted` or a short pointer, and tells the agent to move the
+# answer into a document. Opt-in and per-repo, so the classic mode is untouched.
+# =============================================================================
 
-    let urls = $sitemap_xml
-        | get content.content
-        | each { get content.0.content.0 }
-        | where $it =~ 'docs/en/'
-        | each { $in + '.md' }
+# Substring that identifies our Stop entry inside settings.local.json. Why: the
+# command line is the only stable signature to match on for idempotent enable
+# and surgical disable — see `gi-hook disable`.
+const GI_HOOK_MARKER = "gi-hook check"
 
-    # Ensure output directory exists
-    mkdir $output_dir
+# The output-style name gi-hook installs. Why a const: enable writes it into
+# settings.local.json (outputStyle) and disable removes it only if it still
+# matches — so a user's own outputStyle is never clobbered. Matches the `name:`
+# frontmatter in the seeded style file.
+const GI_HOOK_STYLE = "Canvas"
 
-    # Download files in parallel
-    $urls
-    | par-each --threads 4 {|url|
-        let filename = $url | path split | skip 4 | str join '_'
-        let dest_path = [$output_dir $filename] | path join
+# Absolute path to this module's directory, resolved at parse time. Why a const:
+# `path self` only runs at parse time, and the hook needs an absolute `use`
+# target — relative paths are not resolved when Claude Code runs the hook.
+const GI_HOOK_MODULE_DIR = (path self | path dirname)
 
-        try {
-            http get $url | save -f $dest_path
-            {url: $url status: "ok" dest: $dest_path error: null}
-        } catch {|e|
-            {url: $url status: "failed" dest: $dest_path error: ($e.msg? | default "unknown error")}
+# Root of the current repo (git top-level), falling back to PWD outside a repo.
+def gi-hook-repo-root []: nothing -> path {
+    let top = do { ^git rev-parse --show-toplevel } | complete
+    if $top.exit_code == 0 { $top.stdout | str trim } else { $env.PWD | path expand }
+}
+
+# Path to the per-repo, per-machine settings file the hook lives in. Why this
+# file: it is already gitignored by Claude Code, so the hook stays local — it
+# never reaches another checkout or the classic mode.
+def gi-hook-settings-path [root: path]: nothing -> path {
+    $root | path join ".claude" "settings.local.json"
+}
+
+# The shell command Claude Code runs for the Stop event. Single-quote the `-c`
+# body so the outer shell does not expand `$in`; `--stdin` feeds the event JSON
+# to nushell as `$in`. The absolute module path is required — relative paths are
+# not resolved at hook time. `path self` anchors it to this file's directory.
+def gi-hook-command []: nothing -> string {
+    $"nu --stdin -c 'use \"($GI_HOOK_MODULE_DIR)\"; $in | claude-nu gi-hook check'"
+}
+
+# The Stop hook entry as stored under hooks.Stop[].
+def gi-hook-entry [command: string]: nothing -> record {
+    { hooks: [ { type: "command", command: $command } ] }
+}
+
+# The gi working-doc template that ships inside the module (so it vendors with
+# it) and the place `enable` drops it in a target repo. Why a repo-local `gi/`:
+# the gi protocol keeps the live working doc under version control, so it sits
+# next to the code it drives, not in a dotfile.
+def gi-hook-template-src []: nothing -> path {
+    $GI_HOOK_MODULE_DIR | path join "gi" "canvas-header.md"
+}
+
+def gi-hook-template-dst [root: path]: nothing -> path {
+    $root | path join "gi" "canvas-header.md"
+}
+
+# The output style gi-hook distributes: the template that ships inside the module
+# and the project-level path it lands at. Why distribute a local copy: gi-hook is
+# vendored on its own, so it must carry the style itself rather than depend on a
+# Claude plugin being installed — `enable` drops it as a per-repo project style.
+def gi-hook-style-src []: nothing -> path {
+    $GI_HOOK_MODULE_DIR | path join "gi" "canvas-output-style.md"
+}
+
+def gi-hook-style-dst [root: path]: nothing -> path {
+    $root | path join ".claude" "output-styles" "canvas.md"
+}
+
+# True if a Stop entry is one we installed (matches by command signature).
+def gi-hook-is-ours []: record -> bool {
+    $in.hooks?
+    | default []
+    | any {|h| ($h.command? | default "") | str contains $GI_HOOK_MARKER }
+}
+
+def gi-hook-open-settings [path: path]: nothing -> record {
+    if ($path | path exists) { open $path } else { {} }
+}
+
+# The four gi-hook actions, surfaced as tab completions on the positional below.
+def "nu-complete gi-hook-actions" []: nothing -> table {
+    [
+        [value description];
+        [enable  "install the Stop hook in this repo"]
+        [disable "remove it (leaves any other hooks intact)"]
+        [status  "show whether it is installed"]
+        [check   "hook body — reads the Stop event JSON on stdin"]
+    ]
+}
+
+# gi-hook — install/remove a per-repo Stop hook that enforces terse chat (gi
+# protocol). One command, one positional action (tab-completes); with no action
+# it reports status. Why one command, not four subcommands: the four were just
+# verbs on the same object — a positional with a completer is the same call
+# surface (`gi-hook enable` still parses) with a single export to maintain.
+export def "gi-hook" [
+    action?: string@"nu-complete gi-hook-actions" # enable | disable | status | check (default: status)
+    --root: path # Repo root (default: git top-level); ignored by check
+]: any -> any {
+    let event = $in # check reads the Stop event here; the others ignore it
+    match $action {
+        null | "status" => (gi-hook-status --root $root)
+        "enable" => (gi-hook-enable --root $root)
+        "disable" => (gi-hook-disable --root $root)
+        "check" => ($event | gi-hook-check)
+        _ => {
+            error make {
+                msg: $"unknown gi-hook action: ($action)"
+                label: { text: "expected enable, disable, status, or check", span: (metadata $action).span }
+            }
         }
     }
 }
 
-# Download Claude Code documentation pages from the sitemap, print results, and optionally commit
-@example "Fetch docs" { claude-nu fetch-claude-docs }
-@example "Fetch and commit" { claude-nu fetch-claude-docs --commit }
-export def fetch-claude-docs [
-    --commit # Create a git commit after downloading
-]: nothing -> nothing {
-    let results = download-claude-docs
+# Install the Stop hook into this repo's .claude/settings.local.json.
+# Idempotent: a second enable does not add a duplicate.
+def gi-hook-enable [
+    --root: path # Repo root to install into (default: git top-level)
+]: nothing -> record {
+    let root = $root | default (gi-hook-repo-root)
+    let path = gi-hook-settings-path $root
+    let command = gi-hook-command
+    let settings = gi-hook-open-settings $path
 
-    # Print results
-    $results | each {|r|
-        let icon = if $r.status == "ok" { $"(ansi green)✓(ansi reset)" } else { $"(ansi red)✗(ansi reset)" }
-        print $"($icon) ($r.url)"
+    let stop = $settings.hooks?.Stop? | default []
+    let already = $stop | any {|e| $e | gi-hook-is-ours }
+    let stop = if $already { $stop } else { $stop | append (gi-hook-entry $command) }
+
+    let hooks = $settings.hooks? | default {} | upsert Stop $stop
+    mkdir ($path | path dirname)
+    # Set outputStyle alongside the hook so the proactive style and the reactive
+    # hook turn on together. Why both: the style shapes what gets written, the
+    # hook is the hard floor — LLMs are non-deterministic, so the floor stays.
+    $settings | upsert hooks $hooks | upsert outputStyle $GI_HOOK_STYLE | save --force $path
+
+    # Seed the gi working-doc template. Why not clobber: once it exists it is
+    # the user's live doc — refreshing it would destroy their edits.
+    let template = gi-hook-template-dst $root
+    if not ($template | path exists) {
+        mkdir ($template | path dirname)
+        cp (gi-hook-template-src) $template
     }
+    # Distribute the output style as a per-repo project style. Same no-clobber
+    # rule: the user may have edited their local copy.
+    let style = gi-hook-style-dst $root
+    if not ($style | path exists) {
+        mkdir ($style | path dirname)
+        cp (gi-hook-style-src) $style
+    }
+    # The style is read once at session start, so it won't apply until /clear or
+    # a new session; the hook takes effect immediately.
+    print "gi-hook enabled. Run /clear or start a new session for the Canvas output style to load."
+    gi-hook-status --root $root
+}
 
-    # Summary
-    let ok = $results | where status == "ok" | length
-    let failed = $results | where status == "failed" | length
-    print $"\n(ansi green_bold)($ok) ok(ansi reset), (ansi red_bold)($failed) failed(ansi reset)"
+# Remove our Stop hook, leaving any other hooks intact. No-op if absent.
+def gi-hook-disable [
+    --root: path # Repo root to remove from (default: git top-level)
+]: nothing -> record {
+    let root = $root | default (gi-hook-repo-root)
+    let path = gi-hook-settings-path $root
+    if not ($path | path exists) { return (gi-hook-status --root $root) }
 
-    if $commit {
-        # Stage and commit if there are changes
-        let status = git status --porcelain $CLAUDE_DOCS_DIR | str trim
-        if $status != "" {
-            git add $CLAUDE_DOCS_DIR
-            let date = date now | format date "%Y-%m-%d"
-            git commit -m $"docs: update claude-code-docs \(($date)\)"
-            print $"(ansi green)Committed documentation updates(ansi reset)"
-        } else {
-            print $"(ansi attr_dimmed)No changes to commit(ansi reset)"
-        }
+    let settings = gi-hook-open-settings $path
+    let stop = $settings.hooks?.Stop? | default [] | where {|e| not ($e | gi-hook-is-ours) }
+    # Prune emptied containers so disable leaves no orphan keys behind.
+    let hooks = $settings.hooks? | default {}
+    let hooks = if ($stop | is-empty) { $hooks | reject Stop? } else { $hooks | upsert Stop $stop }
+    let settings = if ($hooks | is-empty) { $settings | reject hooks? } else { $settings | upsert hooks $hooks }
+    # Drop outputStyle only if it is still ours — never clobber a value the user
+    # set themselves. The seeded style and working doc are left in place (user files).
+    let settings = if ($settings.outputStyle? == $GI_HOOK_STYLE) { $settings | reject outputStyle? } else { $settings }
+    $settings | save --force $path
+    gi-hook-status --root $root
+}
+
+# Report whether the hook is installed in this repo. Pipeline-friendly record.
+def gi-hook-status [
+    --root: path # Repo root to inspect (default: git top-level)
+]: nothing -> record {
+    let root = $root | default (gi-hook-repo-root)
+    let path = gi-hook-settings-path $root
+    let settings = gi-hook-open-settings $path
+    let stop = $settings.hooks?.Stop? | default []
+    let template = gi-hook-template-dst $root
+    let style = gi-hook-style-dst $root
+    {
+        enabled: ($stop | any {|e| $e | gi-hook-is-ours })
+        settings_path: $path
+        command: (gi-hook-command)
+        template_path: $template
+        template_present: ($template | path exists)
+        style_path: $style
+        style_present: ($style | path exists)
+        output_style_set: ($settings.outputStyle? == $GI_HOOK_STYLE)
     }
 }
 
-# Fetch Nushell documentation (book, cookbook, blog) via shallow sparse checkout
-@example "Fetch/update Nushell docs" { claude-nu fetch-nushell-docs }
-export def fetch-nushell-docs []: nothing -> nothing {
-    let dest = $NUSHELL_DOCS_DIR
+# Stop-hook body. Reads the event JSON on stdin and returns either nothing
+# (allow the turn to end) or the block-decision JSON string. `nu -c` renders
+# the return value to stdout, which is the Stop hook's control channel; the
+# command always exits 0, per the contract. Returning (not printing) keeps it
+# unit-testable.
+def gi-hook-check []: string -> any {
+    let payload = try { $in | default "" | from json } catch { {} }
+    # Already continuing from a prior block — let it end to avoid a loop.
+    if ($payload.stop_hook_active? | default false) { return }
 
-    if ($dest | path exists) {
-        # Update existing checkout
-        print $"(ansi attr_dimmed)Updating nushell-docs...(ansi reset)"
-        cd $dest
-        git pull
-        cd -
-    } else {
-        # Fresh shallow sparse clone
-        print $"(ansi attr_dimmed)Cloning nushell.github.io \(shallow sparse\)...(ansi reset)"
-        git clone --depth 1 --filter=blob:none --sparse $NUSHELL_DOCS_REPO $dest
-        cd $dest
-        git sparse-checkout set --no-cone ...($NUSHELL_DOCS_FOLDERS | each { $'/($in)/*' })
-        cd -
-    }
+    let message = $payload.last_assistant_message? | default ""
+    if (gi-hook-allowed $message) { return }
 
-    # Show what we have
-    let sizes = $NUSHELL_DOCS_FOLDERS
-        | each {|f| {folder: $f size: (du $"($dest)/($f)" | get apparent | first)} }
+    let reason = "Chat may carry only `done`/`noted` or a short pointer (one line with a path/link). Move the full answer into the working document and commit it; leave only a pointer in chat."
+    { decision: "block", reason: $reason } | to json --raw
+}
 
-    print ""
-    print ($sizes | table)
-    print $"\n(ansi green)✓(ansi reset) Nushell docs ready at (ansi cyan)($dest)/(ansi reset)"
+# The allow-rule: what may stand alone in chat. True (allowed) when, after trim:
+# empty; or `done`/`noted` (trailing punctuation ok); or a short pointer — one
+# line, within the length budget, carrying a link signal (backtick, `→`, or a
+# filename). Everything else (prose, long unanchored lines) is blocked.
+# Why a budget env-var: "short pointer" is fuzzy; GI_HOOK_MAX_LEN makes the
+# threshold tunable without editing the hook. Default is strict — prose fails.
+export def gi-hook-allowed [message: string]: nothing -> bool {
+    let text = $message | str trim
+    if ($text | is-empty) { return true }
+    if (($text | str downcase | str replace -r '[.!…]+$' '') in ["done" "noted"]) { return true }
+
+    let max = $env.GI_HOOK_MAX_LEN? | default 120 | into int
+    let single_line = not ($text | str contains "\n")
+    let within = ($text | str length) <= $max
+    let has_signal = ($text =~ '`') or ($text =~ '→') or ($text =~ '[\w./-]+\.\w+')
+    $single_line and $within and $has_signal
 }
