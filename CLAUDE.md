@@ -74,6 +74,7 @@ After Dockerfile changes: rebuild image, then recreate sandbox (delete + run).
 ## Sources of truth
 
 - Build order + rationale (why each tool compiles from source / module is vendored / file ships): `design/` — one map (`design/README.md`) + per-subsystem files; run `/update-design` to reconcile against code
+- Last-validated baseline for the doc/design checks: each check records where it last passed, so re-runs only inspect the diff since. `make-a-release` off the previous version tag; `update-design` off each design file's `reconciled-at:` frontmatter (scoped to that file's `covers:` paths); `validate-docs` off the local ref `refs/cozy/docs-validated` (a ref, not a tag, so `git push --tags` leaves it alone). A marker means "a clean full pass happened at this commit" — only a full pass advances it (`--full`, or a full scan, rebuilds a baseline you no longer trust). Never advance a marker on a partial, user-named-subset check
 - Keybindings: `vendor/dotfiles/zellij/config.kdl` (README keybinding docs drift from this)
 - Vendored modules: `toolkit/vendor.yml` via `toolkit/vendor.nu` (not the CLAUDE.md architecture list). `toolkit/vendor.nu` also projects it into `cozy-module/vendored-repos.nuon` — the manifest that ships into the sandbox, read by `cozy sync-repos` and `cozy-module/verify.nu`. `toolkit check` guards the manifest against `vendor.yml`; never hardcode the list
 - `cozy` command surface: `cozy-module/mod.nu` exports
