@@ -12,13 +12,26 @@ description: >
 
 # Validate Docs
 
-Cross-reference all documentation files against the actual codebase and fix inconsistencies.
-Code is the source of truth. Docs are claims to verify.
+Cross-reference all documentation files against the actual codebase and fix inconsistencies. Code is the source of truth. Docs are claims to verify.
 
-Always scan the full project, even if the user mentions specific files — inconsistencies
-hide in unexpected places like vendored copies and test files.
+## Incremental baseline
+
+Two modes, with a git marker recording the last clean full pass.
+
+- **Incremental (default).** The local ref `refs/cozy/docs-validated` points at the commit whose tree was last fully validated. Get the changed set with `git diff --name-only refs/cozy/docs-validated..HEAD` and check only what it touches: re-verify every changed doc, and for every changed code/config path, grep the docs for references the change may have broken. If the ref does not exist yet there is no baseline — fall through to a full scan.
+- **Full (on request, or when no marker exists).** Scan the whole project. Inconsistencies hide in unexpected places — vendored copies, test files, inline component lists — so a narrow ask still means a full sweep here. This is the mode that *earns* trust in the baseline.
+
+After a clean pass — incremental or full, once any fixes are committed — move the marker to the validated commit:
+
+```sh
+git update-ref refs/cozy/docs-validated HEAD
+```
+
+This is a **local-only** ref by design: it lives outside `refs/tags/` and `refs/heads/`, so `git push` and `git push --tags` leave it alone — it records *your* validation state, not something to share. The baseline is only as good as the last full pass that set it, so when in doubt, run a full scan to re-establish it.
 
 ## Process
+
+In incremental mode every step below is scoped to the changed set from the baseline; in full mode, to the whole project.
 
 1. **Read code first** — Dockerfile, scripts, configs, test files, directory structure,
    `git log --oneline -20` for recent renames. Extract the facts.
@@ -41,6 +54,8 @@ hide in unexpected places like vendored copies and test files.
 
 5. **Fix** — edit the docs to match code. Preserve the author's style. In ambiguous
    cases, ask the user.
+
+6. **Advance the marker** — once fixes are committed and the pass is clean, `git update-ref refs/cozy/docs-validated HEAD`. Skip this if you only checked a subset the user named rather than the full changed set — a partial check must not move the baseline.
 
 ## Guidelines
 
