@@ -42,7 +42,7 @@ cozy ships a set of upstream modules *vendored* into `~/repos/` — committed in
 | `cozy sandbox-state projects export` / `import` | Just Claude Code session files |
 | `cozy sandbox-state global-claude export` / `import` | Just the global `~/.claude/CLAUDE.md` |
 
-The rest of `~/repos/cozy/` holds the `Dockerfile`, the shared installer (`cozy-module/install/bootstrap.nu`), and `docker-files/` (autoload scripts, `.visidatarc`, the appended Claude tool catalog).
+The rest of `~/repos/cozy/` holds the `Dockerfile`, the shared installer (`cozy-module/install/bootstrap.nu`), and `docker-files/` (autoload scripts, the appended Claude tool catalog).
 
 ## Config files cozy modified
 
@@ -64,9 +64,9 @@ Most come from `~/repos/dotfiles/`; a few Nushell autoload scripts come from coz
 | `~/.config/jj/` | Jujutsu VCS |
 | `~/.config/topiary/` | Topiary formatter (grammar + language config) |
 | `~/.config/git/` | `config` + `ignore`, written in XDG so they survive sandbox restarts |
+| `~/.config/visidata/` | VisiData (`config.py`) |
 
 **Home & Claude**
 
-- `~/.visidatarc` — VisiData config
 - `~/.claude/CLAUDE.md` — cozy's tool catalog is appended here
 - `~/.claude.json` — the vendored Nushell MCP server is registered (gives the agent `evaluate` / `list_commands` / `command_help`)
