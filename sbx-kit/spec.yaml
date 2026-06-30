@@ -27,7 +27,9 @@ environment:
     # Silence Homebrew's "Do you want to proceed?" install prompt — without a
     # TTY brew hangs on it forever. NONINTERACTIVE (above) only covers the brew
     # installer, not package installs; HOMEBREW_NO_ASK covers `brew install`.
+    # NO_AUTO_UPDATE skips the implicit `brew update` before each install.
     HOMEBREW_NO_ASK: 1
+    HOMEBREW_NO_AUTO_UPDATE: 1
 
 # Provisional list — derived by walking the install path; needs verification
 # on a real `sbx run`. Add what fails, prune what doesn't fire.
