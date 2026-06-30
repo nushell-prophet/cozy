@@ -183,9 +183,12 @@ export def local-runner []: nothing -> closure {
     }
 }
 
-# Print the results table and a pass/fail summary.
-export def report [results: table]: nothing -> nothing {
-    print ($results | select label pass detail)
+# Print a colored pass/fail summary as a side effect, then return the results
+# table. Why: a printed-only result is unconsumable — the nushell MCP captures
+# the return value, not stdout, so `cozy verify` surfaced `[]` while the table
+# went nowhere a caller could reach. Humans still see the full table via the
+# returned value's auto-view; only the summary line needs an explicit print.
+export def report [results: table]: nothing -> table {
     let failed = $results | where not pass
     if ($failed | is-not-empty) {
         print $"(ansi red)($failed | length)/($results | length) checks failed(ansi reset)"
@@ -193,10 +196,13 @@ export def report [results: table]: nothing -> nothing {
     } else {
         print $"(ansi green)All ($results | length) checks passed(ansi reset)"
     }
+    $results | select label pass detail
 }
 
 # `cozy verify` — run the post-build checks against the sandbox we are inside.
-export def main []: nothing -> nothing {
+# Returns the results table (and prints a summary) so callers can act on it,
+# e.g. `cozy verify | where not pass`.
+export def main []: nothing -> table {
     if not ('/etc/sandbox-persistent.sh' | path exists) {
         error make {msg: 'not inside a cozy sandbox (no /etc/sandbox-persistent.sh)'}
     }
