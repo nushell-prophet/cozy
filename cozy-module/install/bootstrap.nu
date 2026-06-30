@@ -38,6 +38,11 @@ const cozy_root = path self | path dirname | path dirname | path dirname
 export def main [
     --force # skip the host-install safety check that refuses to clobber existing user configs
 ] {
+    # Why: recent Homebrew prompts "Do you want to proceed?" on `brew install`
+    # when it would also upgrade outdated deps; with no TTY brew hangs forever.
+    # Set here so the host-install path (no Dockerfile/kit ENV) is covered too.
+    $env.HOMEBREW_NO_ASK = "1"
+
     # Step 0 — Docker-sandbox system setup, gated on the marker file the
     # base image ships (/etc/sandbox-persistent.sh — what we append claude
     # env exports to below). Present in docker-build AND in-sandbox re-runs,

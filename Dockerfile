@@ -21,6 +21,12 @@ ENV XDG_CONFIG_HOME=$HOME/.config \
     XDG_DATA_HOME=$HOME/.local/share \
     XDG_CACHE_HOME=$HOME/.cache
 
+# Why: recent Homebrew prompts "Do you want to proceed?" on brew install when
+# it would also upgrade outdated deps. The build has no TTY, so brew hangs
+# forever. NONINTERACTIVE=1 only covers the brew installer script, not package
+# installs — HOMEBREW_NO_ASK is the one that silences the install prompt.
+ENV HOMEBREW_NO_ASK=1
+
 # Pre-install latest nushell as a cached layer. ensure-nu.sh below smoke-
 # tests it against bootstrap.nu and falls back to the pinned version if
 # pre-1.0 syntax has drifted in latest.
