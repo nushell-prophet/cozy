@@ -1,5 +1,5 @@
 # Re-assert git safe.directory = '*' on shell start.
-# Self-healing: `docker sandbox` create overwrites the global safe.directory
+# Self-healing: sandbox creation overwrites the global safe.directory
 # (set to '*' by bootstrap.nu / `cozy mount init`) with just the workspace-root
 # path. git does NOT extend that to the submodule repos beneath it (dotnu,
 # numd, …), so each repo trips "dubious ownership" whenever the VirtioFS mount

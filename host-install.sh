@@ -11,7 +11,7 @@ cd "$(dirname "$0")"
 # not bypass sudo. So on a normal macOS host we'd either prompt for a
 # password or fail outright, which breaks the no-prompts flow this script
 # is built around. Auto-install only on Linux with passwordless sudo (e.g.
-# `docker sandbox` `shell` agent); on macOS, always fail-fast with the
+# `sbx` `shell` agent); on macOS, always fail-fast with the
 # copy-paste snippet so the user's password prompt stays out of the script.
 command -v brew >/dev/null || {
     if [ "$(uname)" = Linux ] && sudo -n true 2>/dev/null; then

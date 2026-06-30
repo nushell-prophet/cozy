@@ -25,7 +25,7 @@ Each entry records why the file ships — the self-healing or workaround it exis
 Nushell loads autoload scripts alphabetically; they're listed below in that order (`git-safe-directory` → `mcp-server` → `modules-core` → `modules-repl` → `my-nu-completions` → `standard-aliases`). The only ordering dependency is `modules-core` before `modules-repl` — alphabetical naming guarantees it, so the REPL-only modules can build on the core overlays.
 
 ### git-safe-directory.nu
-Re-assert git `safe.directory = '*'` on shell start. Self-healing: `docker sandbox` create overwrites the global setting with just the workspace-root path, so submodule repos beneath it trip "dubious ownership" under VirtioFS. Guarded so the normal path writes nothing.
+Re-assert git `safe.directory = '*'` on shell start. Self-healing: sandbox creation overwrites the global setting with just the workspace-root path, so submodule repos beneath it trip "dubious ownership" under VirtioFS. Guarded so the normal path writes nothing.
 **Code:** `docker-files/nushell-autoload/git-safe-directory.nu`
 
 ### mcp-server.nu

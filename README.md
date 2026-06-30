@@ -8,7 +8,7 @@ This is a work-in-progress educational project; video demos are on the way.
 
 ## Quick start
 
-Cozy started on `docker sandbox` and that's still my primary target, so the quick start uses Docker. Internally the [Dockerfile](Dockerfile) is a thin wrapper around [`bootstrap.nu`](cozy-module/install/bootstrap.nu) — the same installer used by [Install elsewhere](#install-elsewhere) below. Every supported target (Docker, `sbx`, Apple container, macOS host) lands on the same environment. For *why* it's built this way — the build order and why each tool is compiled from source, vendored, or shipped — see `design/`.
+Cozy started on `docker sandbox`, now `sbx` (Docker's standalone sandbox runtime) — that's my primary target, so the quick start uses the `sbx` kit. Internally both the kit and the [Dockerfile](Dockerfile) wrap [`bootstrap.nu`](cozy-module/install/bootstrap.nu) — the same installer used by [Install elsewhere](#install-elsewhere) below. Every supported target (`sbx`, Docker, Apple container, macOS host) lands on the same environment. For *why* it's built this way — the build order and why each tool is compiled from source, vendored, or shipped — see `design/`.
 
 First, install Docker Desktop: https://www.docker.com/products/docker-desktop/
 
@@ -17,17 +17,16 @@ First, install Docker Desktop: https://www.docker.com/products/docker-desktop/
 git clone https://github.com/nushell-prophet/cozy
 cd cozy
 
-# Build the image — runs the shared bootstrap.nu installer inside the image
-docker build --tag cozy:latest .
+# Launch a sandbox with the cozy kit. `shell` is the agent; `--kit sbx-kit/`
+# layers cozy on top — it clones this repo in-sandbox and runs the shared
+# bootstrap.nu installer (no image build needed). The last argument is the
+# folder to mount as your workspace. Here `.` is the cozy repo you just cloned,
+# so you land in something to explore — point it at your own project (e.g.
+# `~/my-project`) once you're set up.
+sbx run shell --kit sbx-kit/ .
 
-# Create a local container. `shell` is the agent (base images come from Docker);
-# the last argument is the folder to mount as your workspace. Here `.` is the
-# cozy repo you just cloned, so you land in something to explore — point it at
-# your own project (e.g. `~/my-project`) once you're set up.
-docker sandbox create --name cozy-test --tag cozy:latest shell .
-
-# connect to the sandbox and start Zellij session
-docker sandbox exec -it cozy-test nu --login --execute 'zellij attach -c cozy-test'
+# connect to the sandbox and start the Zellij session (NAME from `sbx ls`)
+sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
 ```
 
 ## Install elsewhere
@@ -45,14 +44,9 @@ cd cozy
 
 ### sbx kit
 
-For `sbx` specifically, cozy also ships as a [kit](https://docs.docker.com/ai/sandboxes/customize/kits/) — a single [`sbx-kit/spec.yaml`](sbx-kit/spec.yaml) that layers cozy on the standard `shell` agent. The kit clones this repo in-sandbox and runs the same `bootstrap.nu`, so no host-side `host-install.sh` is needed:
+The [Quick start](#quick-start) above uses the cozy [kit](https://docs.docker.com/ai/sandboxes/customize/kits/) — a single [`sbx-kit/spec.yaml`](sbx-kit/spec.yaml) that layers cozy on the standard `shell` agent, clones this repo in-sandbox, and runs the same `bootstrap.nu`. So for `sbx` no host-side `host-install.sh` is needed; `host-install.sh` is for the other targets (Apple container, macOS host).
 
-```sh
-git clone https://github.com/nushell-prophet/cozy
-sbx run shell --kit sbx-kit/ ~/path/to/workspace
-```
-
-The only piece that varies per environment is the Wezterm launch command — see the [Wezterm](#wezterm) section for the `docker sandbox` example I test against.
+The only piece that varies per environment is the Wezterm launch command — see the [Wezterm](#wezterm) section for the `sbx` example I test against.
 
 ## Technologies
 
@@ -62,9 +56,9 @@ The only piece that varies per environment is the Wezterm launch command — see
 
 **Rebuild from source** (`cozy install`): Nushell, Zellij (without web sharing), topiary
 
-### Docker sandbox
+### sbx
 
-Cozy is based on [docker sandbox](https://docs.docker.com/ai/sandboxes/), so it is:
+Cozy is based on [Docker's sandbox runtime](https://docs.docker.com/ai/sandboxes/) (`sbx`, formerly `docker sandbox`), so it is:
 - macOS and Windows* (experimental) compatible — the image provides both `arm64` and `amd64` architectures
 - isolated
 - with built-in AI agent (I personally tested it with `claude code`)
@@ -145,12 +139,12 @@ Changes from WezTerm defaults:
 - **Keybindings**: all defaults disabled; CMD+SHIFT+letter sends kitty-protocol escape sequences so Zellij and apps behind it can distinguish them
 - **Dynamic modes**: the `ZEN_MODE` user variable adjusts font size at runtime; the sandbox background is set at window creation via `--config` (see the launch command below)
 
-The launch command below targets `docker sandbox`, the entry point I test against:
+The launch command below targets `sbx`, the entry point I test against:
 
 ```
-# NAME = your sandbox name (from `docker sandbox create --name`) — replace both
-# on another runtime, swap the `docker sandbox exec -it NAME` part (sbx, Apple container, …)
-wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua --config 'colors={background="#000000"}' start -- docker sandbox exec -it NAME nu --login --execute 'zellij attach -c NAME'
+# NAME = your sandbox name (from `sbx ls`) — replace both
+# on another runtime, swap the `sbx exec -it NAME` part (Apple container, …)
+wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua --config 'colors={background="#000000"}' start -- sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
 ```
 
 **On Windows I'd use the standard terminal instead.** I use Wezterm on Mac because it lets me disable the default shortcuts that would otherwise clash with Zellij's bindings. On Windows: I've heard Wezterm is flakier, and since `cozy swap-zellij-super` already remaps those bindings from Super to Alt, few conflicts are expected anyway. There are also likely more caveats I haven't tested.

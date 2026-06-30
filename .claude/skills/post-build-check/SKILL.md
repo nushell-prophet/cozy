@@ -4,7 +4,7 @@ description: >
   Verify a freshly-built cozy sandbox. Inside the sandbox run `cozy verify`;
   from the host run `nu toolkit/test.nu test`. Both run the same checks
   (cozy-module/verify.nu), deriving every expected value from the repo. Use
-  after `docker build` + `docker sandbox create`, or when the user says "I
+  after building the image and creating a sandbox, or when the user says "I
   built it, what to test", "verify the build", "smoke test the sandbox",
   "post-build check", "is everything wired up".
 ---

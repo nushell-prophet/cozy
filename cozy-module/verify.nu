@@ -3,7 +3,7 @@
 # One set of checks, two entry points:
 #   - `cozy verify`             runs them locally, from inside a sandbox.
 #   - `nu toolkit/test.nu test` runs them from the host against a freshly
-#     spawned sandbox, via `docker sandbox exec`.
+#     spawned sandbox, via `sbx exec`.
 # Both pass a `run` closure that executes an argv list in the target and returns
 # {stdout, exit}; the checks never know which transport carried the command.
 #
@@ -114,7 +114,7 @@ def check-envs [run: closure]: nothing -> list {
     }
 }
 
-# A bare `docker sandbox exec` doesn't start a nushell session, so the autoload
+# A bare `sbx exec` doesn't start a nushell session, so the autoload
 # may not have patched ~/.claude.json yet. Run it explicitly first (idempotent
 # self-heal), then list. Registered-but-not-connected is a real fault, not a
 # cold-start artifact — `claude mcp list` actively probes the server.
