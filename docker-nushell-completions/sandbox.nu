@@ -1,16 +1,13 @@
 const agents = [cagent claude codex copilot gemini kiro shell]
 
 def "nu-complete sandbox names" [] {
-    ^docker sandbox ls # we don't use --json because it reports wrong status
+    ^sbx ls # we don't use --json because it reports wrong status
     | detect columns --guess
     | each {|x| {value: $x.SANDBOX description: $"($x.STATUS) ($x.WORKSPACE)"} }
 }
 
 def "nu-complete sandbox run-target" [] {
-    let vms = ^docker sandbox ls --json | from json | get vms
-        | each {|x| {value: $x.name description: $x.status} }
-    let new = $agents | each {|a| {value: $a description: "new"} }
-    $new | append $vms
+    ^sbx ls --json | from json | get sandboxes | each {|x| {value: $x.name description: ($x.status | $x.workspaces | str join ' ')} }
 }
 
 const script_path = path self
@@ -38,8 +35,7 @@ export def wezterm-cozy [
         # SANDBOX_MODE OSC user-var trick, which applied it only after the shell
         # started and briefly flashed the config-file default first.
         ^wezterm --config-file $conf --config $'colors={background="#($background)"}' start --always-new-process -- ...[
-            docker
-            sandbox
+            sbx
             exec
             -it
             $sandbox_name
