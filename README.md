@@ -42,12 +42,6 @@ cd cozy
 ./host-install.sh --force     # reinstall over existing user configs
 ```
 
-### sbx kit
-
-The [Quick start](#quick-start) above uses the cozy [kit](https://docs.docker.com/ai/sandboxes/customize/kits/) — a single [`sbx-kit/spec.yaml`](sbx-kit/spec.yaml) that layers cozy on the standard `shell` agent, clones this repo in-sandbox, and runs the same `bootstrap.nu`. So for `sbx` no host-side `host-install.sh` is needed; `host-install.sh` is for the other targets (Apple container, macOS host).
-
-The only piece that varies per environment is the Wezterm launch command — see the [Wezterm](#wezterm) section for the `sbx` example I test against.
-
 ## Technologies
 
 **Installed**: [Nushell](#nushell), [Helix](#helix-editor), [Zellij](#zellij), [Lazygit](#lazygit), [Broot](#broot), [FZF](#fzf), git-delta, [VisiData](#visidata), bat, topiary, fd, jj, git-lfs, Claude Code, procps, file, gcc, libc6-dev (base image adds git, curl, Python, Node.js, Go, ripgrep, jq, gh)
