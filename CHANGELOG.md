@@ -7,9 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-07-01
+
 ### Added
 
 - Nushell modules load in a non-interactive `nu -c` via `nu --config ~/.config/nushell/autoload/modules-core.nu -c …` (runs even in `-c`, unlike autoload). Helix's `shell` uses it, so its `:pipe`/snippet commands can call `kv`, `cozy`, `nu-goodies`, etc. (d99607c)
+
+### Changed
+
+- `sbx` is now the only documented run path; the deprecated `docker sandbox` command is dropped from completions and docs. Run with `sbx run shell --kit sbx-kit/` (in-sandbox build) — a local `docker build` image can't be fed to `sbx`. (8251c9f, 028d088)
+- `cozy verify` returns the check table as a value instead of only printing it, so the nushell MCP, tests, and `cozy verify | where not pass` get structured data. (b8731de)
+- Vendored `claude-nu` — new `claude-nu -f` regex search over project messages (`--all-projects`, `--no-rg`); session columns collapse to one `--columns` string; `ask` one-shot Claude wrapper split out. (ce11989)
+- Vendored `dotfiles` — helix `s`/`S` copy repo-relative vs absolute file paths, `+ b` inserts nushell output as a table column; new `hx-nu` launcher loads cozy's nu modules; lazygit copies agent-ready file pointers. (610da85, c7c8c81)
+- Vendored `my-claude-skills` — adds the Canvas output style. (c68f436)
+
+### Fixed
+
+- `brew install` no longer hangs the build — `HOMEBREW_NO_ASK=1` silences Homebrew's new confirmation prompt (no TTY in build); `HOMEBREW_NO_AUTO_UPDATE=1` also speeds and pins builds. (3645ca8, 3c23179)
 
 ## [0.3.0] - 2026-06-15
 
@@ -323,7 +337,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.0...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.1...HEAD
+[0.3.1]: https://github.com/nushell-prophet/cozy/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/nushell-prophet/cozy/compare/0.2.5...0.3.0
 [0.2.5]: https://github.com/nushell-prophet/cozy/compare/0.2.4...0.2.5
 [0.2.4]: https://github.com/nushell-prophet/cozy/compare/0.2.3...0.2.4
