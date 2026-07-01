@@ -1,9 +1,8 @@
 ---
 name: post-build-check
 description: >
-  Verify a freshly-built cozy sandbox. Inside the sandbox run `cozy verify`;
-  from the host run `nu toolkit/test.nu test`. Both run the same checks
-  (cozy-module/verify.nu), deriving every expected value from the repo. Use
+  Verify a freshly-built cozy sandbox by running `cozy verify` inside it. The
+  checks (cozy-module/verify.nu) derive every expected value from the repo. Use
   after building the image and creating a sandbox, or when the user says "I
   built it, what to test", "verify the build", "smoke test the sandbox",
   "post-build check", "is everything wired up".
@@ -11,11 +10,8 @@ description: >
 
 # Post-build verification
 
-The checks live in `cozy-module/verify.nu` and run two ways:
-
-- **Inside a freshly-built sandbox:** `cozy verify`
-- **From the host** (also builds + spawns a throwaway sandbox):
-  `nu toolkit/test.nu test -t <tag>`
+The checks live in `cozy-module/verify.nu`. Run them inside a freshly-built
+sandbox with `cozy verify`.
 
 `cozy` is a Nushell overlay loaded by the `module-imports.nu` autoload, not a
 PATH binary. Autoloads fire in an interactive shell and in the nushell MCP
@@ -24,8 +20,8 @@ verify` through the nushell MCP tool or an interactive shell. From plain `nu -c`
 the overlay is absent (`command not found`) — load it first with `overlay use
 ~/repos/cozy/cozy-module/ as cozy --prefix`.
 
-Both run the identical check set and derive every expected value from sources
-that ship into the sandbox — `vendored-repos.nuon` (repos), the
+The checks derive every expected value from sources that ship into the sandbox
+— `vendored-repos.nuon` (repos), the
 `docker-files/nushell-autoload/` glob (autoload scripts), and the export block
 in `bootstrap.nu` (env vars) — so the checklist can't drift from the build.
 They cover binaries on PATH, vendored repos, autoload scripts, runtime env, MCP
@@ -52,13 +48,13 @@ A few things `verify` deliberately leaves out:
 ## Host-only checklist (a human runs these)
 
 The host and rebuild paths `verify` can't reach. Where a step produces a
-sandbox, run `cozy verify` (or `nu toolkit/test.nu test`) on the result instead
-of re-checking by hand — only the host-specific nuances below need eyes:
+sandbox, run `cozy verify` on the result instead of re-checking by hand — only
+the host-specific nuances below need eyes:
 
-- [ ] Cold `docker build --no-cache -t cozy:v<N> .` succeeds, then `nu
-      toolkit/test.nu test -t v<N>` passes.
-- [ ] Drop a module from `toolkit/vendor.yml`, rebuild, recreate — `test.nu
-      test` reports the dropped module absent from `~/repos/`.
+- [ ] Cold `docker build --no-cache -t cozy:v<N> .` succeeds, then a sandbox
+      built from that image passes `cozy verify`.
+- [ ] Drop a module from `toolkit/vendor.yml`, rebuild, recreate — `cozy verify`
+      reports the dropped module absent from `~/repos/`.
 - [ ] On macOS: `./host-install.sh` from a clean state succeeds and `cozy
       verify` passes. Then confirm `claude mcp list` resolves a brew `nu` path
       (`/opt/homebrew/bin/nu` on Apple Silicon, `/home/linuxbrew/...` on Intel)

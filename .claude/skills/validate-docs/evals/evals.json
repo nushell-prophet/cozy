@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "validate my docs against the code",
-      "expected_output": "Should identify all inconsistencies between documentation files (CLAUDE.md, README.md, etc.) and source-of-truth files (Dockerfile, test.nu, toolkit README), then fix them. Should NOT flag changelog entries about past renames.",
+      "expected_output": "Should identify all inconsistencies between documentation files (CLAUDE.md, README.md, etc.) and source-of-truth files (Dockerfile, verify.nu, toolkit README), then fix them. Should NOT flag changelog entries about past renames.",
       "files": []
     },
     {

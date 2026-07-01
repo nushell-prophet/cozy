@@ -6,7 +6,6 @@ covers:
   - toolkit/vendor.yml
   - toolkit/check.nu
   - toolkit/docs.nu
-  - toolkit/test.nu
   - cozy-module/vendored-repos.nuon
 reconciled-at: 03a87ce2f81ce9eadf5835c34f9e6f4288a050c5
 ---
@@ -36,7 +35,3 @@ Wired in `toolkit/vendor.nu`.
 ## Local docs
 
 `toolkit docs` (in `toolkit/docs.nu`, wired into `mod.nu` alongside `vendor` and `check`) syncs Docker sandbox docs into `docs.docker.com/` (its own gitignored repo). Idempotent.
-
-## Standalone (not wired into `mod.nu`)
-
-- `toolkit/test.nu` — smoke-tests a fresh sandbox (`nu toolkit/test.nu test`): tools launch, files/dirs/env exist, MCP + pbcopy wiring is in place. Run directly; not exported from `mod.nu`.

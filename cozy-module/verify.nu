@@ -1,11 +1,8 @@
 # Shared post-build verification for cozy sandboxes.
 #
-# One set of checks, two entry points:
-#   - `cozy verify`             runs them locally, from inside a sandbox.
-#   - `nu toolkit/test.nu test` runs them from the host against a freshly
-#     spawned sandbox, via `sbx exec`.
-# Both pass a `run` closure that executes an argv list in the target and returns
-# {stdout, exit}; the checks never know which transport carried the command.
+# Run from inside a sandbox via `cozy verify`. The checks take a `run` closure
+# that executes an argv list in the target and returns {stdout, exit}, so the
+# check logic stays independent of how the command is carried.
 #
 # Every expected value is derived from repo sources that ship into the sandbox
 # (vendored-repos.nuon, docker-files/nushell-autoload/, install/bootstrap.nu),
