@@ -10,7 +10,7 @@ This is a work-in-progress educational project; video demos are on the way.
 
 Cozy started on `docker sandbox`, now `sbx` (Docker's standalone sandbox runtime) — that's my primary target, so the quick start uses the `sbx` kit. Internally both the kit and the [Dockerfile](Dockerfile) wrap [`bootstrap.nu`](cozy-module/install/bootstrap.nu) — the same installer used by [Install elsewhere](#install-elsewhere) below. Every supported target (`sbx`, Docker, Apple container, macOS host) lands on the same environment. For *why* it's built this way — the build order and why each tool is compiled from source, vendored, or shipped — see `design/`.
 
-First, install `sbx` cli: https://docs.docker.com/ai/sandboxes/#get-started
+First, install the `sbx` CLI: https://docs.docker.com/ai/sandboxes/#get-started
 
 ```sh
 # Clone the repo, cd into it
@@ -52,7 +52,7 @@ cd cozy
 
 ### sbx
 
-Cozy is based on [Docker's sandbox runtime](https://docs.docker.com/ai/sandboxes/) (`sbx`, formerly `docker sandbox`), so it is:
+Cozy is based on [Docker's sandbox runtime](https://docs.docker.com/ai/sandboxes/) (`sbx`), so it is:
 - macOS and Windows* (experimental) compatible — the image provides both `arm64` and `amd64` architectures
 - isolated
 - with built-in AI agent (I personally tested it with `claude code`)
@@ -61,7 +61,7 @@ Cozy is based on [Docker's sandbox runtime](https://docs.docker.com/ai/sandboxes
 
 I develop and use `cozy` on macOS, but I expect some of my students to use Windows. After brief testing, the main issue turned out to be the keyboard layout: Windows doesn't have a Cmd key, and its Win key combinations are reserved by the OS — so simply replacing Cmd with Win isn't possible. The best option I've found so far is to replace Cmd with Alt.
 
-To apply this automatically, run inside the cozy sandbox: `cozy swap-zellij-super`.
+To apply this automatically, run `cozy swap-zellij-super` inside the sandbox.
 
 ### Nushell
 
@@ -172,13 +172,13 @@ Command history stacking module.
 
 A Nushell toolbox for working with Claude Code sessions. Main commands:
 
+- `claude-nu -f 'regex'` — search user messages across sessions (add `--all-projects` to widen); with no `--find` it points at the subcommands
+- `claude-nu projects` — list projects under `~/.claude/projects`, most recent first
 - `claude-nu messages` — extract user messages from sessions (supports filtering, multi-session search, and assistant responses)
-- `claude-nu sessions` — parse session files into structured summaries
-- `claude-nu parse-session` — detailed session analysis with selectable columns (file ops, tool stats, agents, etc.)
+- `claude-nu sessions` — parse session files into structured summaries, with selectable columns (`--columns`/`--all-columns`: file ops, tool stats, agents, etc.)
 - `claude-nu export-session` — export session dialogue as markdown
 - `claude-nu save-markdown` — save exported sessions to files
-- `claude-nu fetch-claude-docs` — download Claude Code docs for offline use
-- `claude-nu fetch-nushell-docs` — download Nushell docs (from the Nushell book) for offline use
+- `claude-nu gi-hook enable`/`disable`/`status` — manage the git-intent Stop hook in the current repo
 
 The environment also includes Claude Code skills for building Nushell completions and writing opinionated Nushell code.
 
