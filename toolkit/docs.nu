@@ -3,49 +3,38 @@
 
 const base_url = "https://docs.docker.com"
 
-const pages = [
-    # Sandbox docs
-    ai/sandboxes/get-started
-    ai/sandboxes/usage
-    ai/sandboxes/agents
-    ai/sandboxes/customize
-    ai/sandboxes/customize/templates
-    ai/sandboxes/customize/kits
-    ai/sandboxes/customize/build-an-agent
-    ai/sandboxes/architecture
-    ai/sandboxes/security
-    ai/sandboxes/governance
-    ai/sandboxes/governance/org
-    ai/sandboxes/workflows
-    ai/sandboxes/troubleshooting
-    ai/sandboxes/faq
-    # CLI reference (sbx)
-    reference/cli/sbx
-    reference/cli/sbx/create
-    reference/cli/sbx/run
-    reference/cli/sbx/exec
-    reference/cli/sbx/cp
-    reference/cli/sbx/ls
-    reference/cli/sbx/stop
-    reference/cli/sbx/rm
-    reference/cli/sbx/reset
-    reference/cli/sbx/login
-    reference/cli/sbx/logout
-    reference/cli/sbx/secret
-    reference/cli/sbx/secret/set
-    reference/cli/sbx/secret/ls
-    reference/cli/sbx/secret/rm
-    reference/cli/sbx/policy
-    reference/cli/sbx/policy/allow
-    reference/cli/sbx/policy/ls
-    reference/cli/sbx/version
-]
+# Page-path prefixes we mirror. Every page under these is synced.
+const prefixes = [ai/sandboxes reference/cli/sbx]
+
+# Discover the pages to sync from Docker's generated page index.
+# Why: llms-full.txt is the full page index (llms.txt is only a curated
+# top-level guide and lists sandboxes once). Parsing it means new sandbox / sbx
+# pages appear automatically -- no hardcoded list to keep in sync.
+def discover-pages []: nothing -> list<string> {
+    # Why: http get doesn't work through Docker sandbox proxy, curl does
+    let index = do { ^curl -sfL $"($base_url)/llms-full.txt" } | complete
+    if $index.exit_code != 0 {
+        error make {msg: $"failed to fetch llms-full.txt \(curl exit ($index.exit_code)\)"}
+    }
+    $index.stdout
+    | lines
+    | parse --regex '^Markdown:\s+(?<url>\S+\.md)\s*$'
+    | get url
+    | where {|u| $u | str starts-with $"($base_url)/" }
+    | each {|u| $u | str replace $"($base_url)/" '' | str replace --regex '\.md$' '' }
+    | where {|p| $prefixes | any {|pre| $p | str starts-with $pre } }
+    | uniq
+    | sort
+}
 
 # Sync Docker sandbox docs to local markdown.
 # Run from the cozy/ directory.
 export def main [] {
     let dir = pwd | path join docs.docker.com
     init $dir
+
+    let pages = discover-pages
+    print $"Discovered ($pages | length) pages from llms-full.txt"
 
     let results = $pages | par-each {|page|
             let url = $"($base_url)/($page).md"
