@@ -178,7 +178,7 @@ A Nushell toolbox for working with Claude Code sessions. Main commands:
 - `claude-nu sessions` — parse session files into structured summaries, with selectable columns (`--columns`/`--all-columns`: file ops, tool stats, agents, etc.)
 - `claude-nu export-session` — export session dialogue as markdown
 - `claude-nu save-markdown` — save exported sessions to files
-- `claude-nu gi-hook enable`/`disable`/`status` — manage the git-intent Stop hook in the current repo
+- `claude-nu gi-hook enable/disable/status` — manage the git-intent Stop hook in the current repo
 
 The environment also includes Claude Code skills for building Nushell completions and writing opinionated Nushell code.
 
