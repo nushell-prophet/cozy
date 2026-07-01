@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-07-01
+
+### Changed
+
+- `toolkit docs` auto-discovers sandbox doc pages from Docker's `llms-full.txt` index instead of a hardcoded list, so new or renamed pages sync with no edit; it now also returns a `{discovered, ok, failed}` summary readable through the nushell MCP. (58cea01, 439b3aa)
+
+### Removed
+
+- Removed the host-side `nu toolkit/test.nu test` build check — `sbx` runs only registry images and can't test a local `docker build`, so `cozy verify` (run inside a sandbox) is now the only verification path. (e7d3811)
+
+### Fixed
+
+- `toolkit docs` no longer fails on sync — repointed from the retired `docker sandbox` doc URLs (now 404) to the current `sbx` pages. (bc174b0)
+
 ## [0.3.1] - 2026-07-01
 
 ### Added
@@ -337,7 +351,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.1...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.2...HEAD
+[0.3.2]: https://github.com/nushell-prophet/cozy/compare/0.3.1...0.3.2
 [0.3.1]: https://github.com/nushell-prophet/cozy/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/nushell-prophet/cozy/compare/0.2.5...0.3.0
 [0.2.5]: https://github.com/nushell-prophet/cozy/compare/0.2.4...0.2.5
