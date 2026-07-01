@@ -2,7 +2,7 @@
 
 A convenient terminal environment for AI sandboxes (and macOS hosts).
 
-Years of tuning my own terminal setup, packaged so others can pick it up as inspiration or as a working starting point. I still encourage everyone to roll their own eventually — it's the only path to mastery.
+Years (from 2022) of tuning my own terminal setup, packaged so others can pick it up as inspiration or as a working starting point. I still encourage everyone to roll their own eventually — it's the only path to mastery.
 
 This is a work-in-progress educational project; video demos are on the way.
 
