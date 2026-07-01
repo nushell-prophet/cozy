@@ -51,15 +51,16 @@ export def main [] {
             }
         } | sort-by page
 
-    let ok = $results | where status == "ok" | length
-    let failed = $results | where status == "failed"
-    print $"Downloaded ($ok)/($results | length) pages"
-    if ($failed | is-not-empty) {
-        print "Failed:"
-        print ($failed | get page | to text)
-    }
-
     commit $dir
+
+    # Why: return the summary as structured data -- a bare `print` only reaches
+    # stdout, which the nushell MCP doesn't capture, so callers got an empty
+    # result. The record renders in the REPL and survives through the MCP.
+    {
+        discovered: ($pages | length)
+        ok: ($results | where status == "ok" | length)
+        failed: ($results | where status == "failed" | get page)
+    }
 }
 
 def init [dir: path] {
