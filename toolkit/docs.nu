@@ -5,27 +5,40 @@ const base_url = "https://docs.docker.com"
 
 const pages = [
     # Sandbox docs
-    ai/sandboxes/architecture
     ai/sandboxes/get-started
+    ai/sandboxes/usage
     ai/sandboxes/agents
+    ai/sandboxes/customize
+    ai/sandboxes/customize/templates
+    ai/sandboxes/customize/kits
+    ai/sandboxes/customize/build-an-agent
+    ai/sandboxes/architecture
+    ai/sandboxes/security
+    ai/sandboxes/governance
+    ai/sandboxes/governance/org
     ai/sandboxes/workflows
-    ai/sandboxes/templates
-    ai/sandboxes/network-policies
     ai/sandboxes/troubleshooting
-    ai/sandboxes/migration
-    # CLI reference
-    reference/cli/docker/sandbox
-    reference/cli/docker/sandbox/create
-    reference/cli/docker/sandbox/exec
-    reference/cli/docker/sandbox/inspect
-    reference/cli/docker/sandbox/ls
-    reference/cli/docker/sandbox/network
-    reference/cli/docker/sandbox/reset
-    reference/cli/docker/sandbox/rm
-    reference/cli/docker/sandbox/run
-    reference/cli/docker/sandbox/save
-    reference/cli/docker/sandbox/stop
-    reference/cli/docker/sandbox/version
+    ai/sandboxes/faq
+    # CLI reference (sbx)
+    reference/cli/sbx
+    reference/cli/sbx/create
+    reference/cli/sbx/run
+    reference/cli/sbx/exec
+    reference/cli/sbx/cp
+    reference/cli/sbx/ls
+    reference/cli/sbx/stop
+    reference/cli/sbx/rm
+    reference/cli/sbx/reset
+    reference/cli/sbx/login
+    reference/cli/sbx/logout
+    reference/cli/sbx/secret
+    reference/cli/sbx/secret/set
+    reference/cli/sbx/secret/ls
+    reference/cli/sbx/secret/rm
+    reference/cli/sbx/policy
+    reference/cli/sbx/policy/allow
+    reference/cli/sbx/policy/ls
+    reference/cli/sbx/version
 ]
 
 # Sync Docker sandbox docs to local markdown.
