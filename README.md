@@ -67,7 +67,7 @@ To apply this automatically, run inside the cozy sandbox: `cozy swap-zellij-supe
 
 A modern shell for the AI era: Nushell with sensible settings that I've chosen over 3 years of Nushell experience.
 
-Nushell has built-in MCP functionality that lets AI agents use all of its rich capabilities. The MCP server is activated for `claude code` out of the box.
+Nushell has built-in MCP functionality that lets AI agents use all of its rich capabilities with persistent session state: variables an agent sets survive across calls. The MCP server is activated for `claude code` out of the box.
 
 ### Zellij
 
