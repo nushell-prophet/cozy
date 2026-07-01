@@ -10,7 +10,7 @@ This is a work-in-progress educational project; video demos are on the way.
 
 Cozy started on `docker sandbox`, now `sbx` (Docker's standalone sandbox runtime) — that's my primary target, so the quick start uses the `sbx` kit. Internally both the kit and the [Dockerfile](Dockerfile) wrap [`bootstrap.nu`](cozy-module/install/bootstrap.nu) — the same installer used by [Install elsewhere](#install-elsewhere) below. Every supported target (`sbx`, Docker, Apple container, macOS host) lands on the same environment. For *why* it's built this way — the build order and why each tool is compiled from source, vendored, or shipped — see `design/`.
 
-First, install Docker Desktop: https://www.docker.com/products/docker-desktop/
+First, install `sbx` cli: https://docs.docker.com/ai/sandboxes/#get-started
 
 ```sh
 # Clone the repo, cd into it
