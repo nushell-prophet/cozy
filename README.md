@@ -39,7 +39,7 @@ sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
 git clone https://github.com/nushell-prophet/cozy
 cd cozy
 ./host-install.sh             # install
-./host-install.sh --local     # refresh vendor/ from sibling repos (development)
+./host-install.sh --force     # reinstall over existing user configs
 ```
 
 ### sbx kit
