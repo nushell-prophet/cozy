@@ -71,6 +71,23 @@ export def main [
         error make {msg: "gcc not found — install build deps first (sudo apt-get install gcc libc6-dev), then re-run"}
     }
 
+    # pbcopy shim — OSC 52 escape sequences push copied text to the host
+    # terminal's clipboard. Installed on every Linux (container or host, not
+    # only step 0): the dotfiles deployed in step 4 (helix, lazygit, broot,
+    # nushell keybindings) call pbcopy, and Linux has no native one. macOS
+    # keeps its system pbcopy. Refreshes only cozy's own copy, so a user's
+    # non-cozy pbcopy on PATH is never shadowed. Goes to ~/.local/bin — on
+    # PATH already, no sudo needed.
+    if $nu.os-info.name == 'linux' {
+        let local_bin = $nu.home-dir | path join '.local' 'bin'
+        let shim = $local_bin | path join 'pbcopy'
+        let existing = which pbcopy | get --optional path.0
+        if ($existing == null) or ($existing == $shim) {
+            mkdir $local_bin
+            ^install -m 755 ($cozy_root | path join 'docker-files' 'pbcopy') $shim
+        }
+    }
+
     # Step 1 — brew installs
     if (which brew | is-empty) {
         error make {msg: "brew not found — install Homebrew first: https://brew.sh"}
@@ -278,15 +295,6 @@ def setup-docker-system [] {
     ^sudo apt-get update
     ^sudo apt-get install -y --no-install-recommends procps file gcc libc6-dev
     ^sudo rm -rf /var/lib/apt/lists/*
-
-    # Why: Docker sandbox has no system clipboard. This shim uses OSC 52 escape
-    # sequences to push copied text to the host terminal's clipboard. Consumed by
-    # helix, lazygit, broot, nushell keybindings, and nu-goodies commands.
-    # Goes to ~/.local/bin (already on PATH via Dockerfile ENV) so we don't
-    # need sudo for /usr/local/bin.
-    let local_bin = $nu.home-dir | path join '.local' 'bin'
-    mkdir $local_bin
-    ^install -m 755 ($cozy_root | path join 'docker-files' 'pbcopy') ($local_bin | path join 'pbcopy')
 
     # Runtime env exports (the sandbox shell sources this file on each login).
     # /etc/sandbox-persistent.sh is agent-writable on the base image — matches
