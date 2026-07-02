@@ -29,6 +29,8 @@ sbx run shell --kit sbx-kit/ .
 sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
 ```
 
+Note: the kit installs cozy from GitHub — the latest commit on the default branch — not from your local checkout. Push your changes before `sbx run`, or pin a tag via `--branch` in [sbx-kit/spec.yaml](sbx-kit/spec.yaml) if you need reproducible installs.
+
 ## Install elsewhere
 
 [`host-install.sh`](host-install.sh) exposes the same `bootstrap.nu` installer the Dockerfile runs, as a host-callable script. It deploys the full environment (nushell, modules, dotfiles, configs) into virtually any Ubuntu-based sandbox or directly onto a macOS host — for example `sbx` with a pure `shell` agent, an Apple container running Ubuntu, or a plain macOS install.
