@@ -2,12 +2,12 @@
 task-name: install paths audit — sbx kit / Dockerfile / host-install.sh
 status: in_progress
 created: '20260702-215200 #yyyyMMdd-hhmmss'
-updated: '20260702-222259 #yyyyMMdd-hhmmss'
+updated: '20260702-235512 #yyyyMMdd-hhmmss'
 original_session: 08d41519-11d5-4a07-ba92-022e10afb0a8
 related_files:
   - Dockerfile
   - sbx-kit/spec.yaml
-  - host-install.sh
+  - cozy-module/install/run-install.sh
   - cozy-module/install/bootstrap.nu
   - cozy-module/install/ensure-nu.sh
   - cozy-module/install/topiary.nu
@@ -44,7 +44,7 @@ Baseline fact that drives most findings: all three paths converge on `bootstrap.
 
 ### E. Guard and verification coverage gaps
 
-- **E1 — `toolkit/check.nu` guards 5 env keys + a PATH prefix, nothing else.** Unguarded keys living in 2+ places: `HOME`, `HOMEBREW_NO_ASK`, `HOMEBREW_NO_AUTO_UPDATE`, `TERM`/`COLORTERM`/`TERM_PROGRAM` (`check.nu:19`). PATH is compared by prefix only — Dockerfile inherits the base tail via `${PATH}` while the kit hardcodes its tail (`spec.yaml:17`); tails can drift silently (`check.nu:84`). And nothing guards the *install-command sequence* itself, which exists in three copies (Dockerfile RUN, kit `commands.install`, host-install.sh) held together by convention (`design/build.md:21`).
+- **E1 — `toolkit/check.nu` guards 5 env keys + a PATH prefix, nothing else.** Unguarded keys living in 2+ places: `HOME`, `HOMEBREW_NO_ASK`, `HOMEBREW_NO_AUTO_UPDATE`, `TERM`/`COLORTERM`/`TERM_PROGRAM` (`check.nu:19`). PATH is compared by prefix only — Dockerfile inherits the base tail via `${PATH}` while the kit hardcodes its tail (`spec.yaml:17`); tails can drift silently (`check.nu:84`). The *install-command sequence* is no longer a drift risk — it collapsed into the shared `cozy-module/install/run-install.sh` (45cb593); the env keys and PATH tail above remain the open gap.
 - **E2 — `ensure-nu.sh` smoke test covers less than its docs imply.** `nu -c "use bootstrap.nu"` (`ensure-nu.sh:26`) parses bootstrap + its two `use`s only. Autoload scripts, dotfiles `config.nu`/`env.nu`, `cozy-module/*.nu`, and the lazy install modules (`rust.nu`, `zellij.nu`, …) are not covered: a nu syntax drift there installs "successfully" and breaks every interactive session afterward. Fix: extend the check (`nu --ide-check` over autoload + config) or scope the claim in `ensure-nu.sh:22-25` / `design/build.md:40`.
 - **E3 — `cozy verify` never runs automatically, and refuses to run outside a sandbox.** Not wired into any path (grep: only `mod.nu:11`), and `verify.nu:225` errors without the marker, so host installs are never verifiable. Also `verify.nu:25-31` hand-lists 17 tools and `verify.nu:48-52` hand-lists 3 files, contradicting CLAUDE.md:84 "never hand-listed" (the dirs/envs checks do derive). Fix: add a final kit install command `nu -c '... verify | where not pass'` failing loudly; make verify's sandbox-only checks conditional so hosts can run the subset; scope the CLAUDE.md claim.
 - **E4 — network allowlist gaps (`spec.yaml:36-54`, self-declared provisional).** Plausibly missing: `pkg-containers.githubusercontent.com` (ghcr bottle redirect), `release-assets.githubusercontent.com` (ensure-nu fallback tarball redirect), and whatever CDN `claude.ai/install.sh` fetches the binary from (not visible in-repo; if blocked, `claude install` half-fails and `bootstrap.nu:151` dies one step later with "claude not found"). Likely unused at install time: `codeload.github.com` (vendor tarballs are a pre-build host-side fetch). On-demand `cozy install rust/zellij/nushell/polars` need `sh.rustup.rs`, `static.rust-lang.org`, `crates.io` — absent, worth a spec comment. Verify all on a live `sbx run`.
@@ -52,36 +52,33 @@ Baseline fact that drives most findings: all three paths converge on `bootstrap.
 ### F. Documentation drift (beyond C2)
 
 - README.md:34 — "deploys the full environment ... into virtually any Ubuntu-based sandbox": full only with the sbx marker; plain Ubuntu loses Step 0 (env block, apt deps).
-- README.md:36 — "exits early if [brew] isn't on PATH": actually auto-installs on Linux with passwordless sudo (`host-install.sh:16-24`); exits early only otherwise.
 - README.md:47 — Technologies list: `procps file gcc libc6-dev` are Step-0-only; the "base image adds rg, jq, gh…" parenthetical means hosts get no `rg`/`jq`/`gh` from cozy at all — no host/sandbox distinction is made.
 - CLAUDE.md:18 — "apt proxy" is stale; Step 0 does an http→https sources rewrite, no proxy (`bootstrap.nu:246-260`). Same stale phrase in `Dockerfile:57` ("/etc/apt proxy file").
 - CLAUDE.md:27 — Step 9 also merges `externalEditorContext` and writes the stamp; not mentioned.
 - design/build.md:74-76 + bootstrap.nu:137-140 — "No clone fallback (fail-fast)" is **wrong**: `topiary.nu:22-28` clones `topiary-nushell` from GitHub whenever `~/git/topiary-nushell` is absent. The fail-fast intent is not enforced by the code. Either delete the fallback in topiary.nu (align code to stated intent) or fix the three doc sites.
 - design/build.md:31 — ENV list omits the two `HOMEBREW_*` vars; "Step 0 mirrors this block" is imprecise (subset + git/jj additions).
 - design/ `reconciled-at: 03a87ce` is 5 install-path commits behind (`3645ca8`, `3c23179`, `8251c9f`, `4a7aa11`, `05fd413`) — run `/update-design`.
-- host-install.sh's rc-block on Ubuntu: writing a new `~/.bash_profile` (`host-install.sh:36`) makes bash login shells skip `~/.profile` — the conventional home of `eval "$(brew shellenv)"` on Linux — potentially dropping brew off PATH for login shells. Also the block never adds `~/.local/bin` to PATH, so a pinned-nu fallback (`ensure-nu.sh:73`) stops shadowing brew's nu the moment the script exits. Fix: append to `~/.bashrc` (or to `~/.profile` if no `~/.bash_profile` existed), and include `~/.local/bin` in PATH.
+- run-install.sh's rc-block on Ubuntu (was host-install.sh's): writing a new `~/.bash_profile` (`run-install.sh:53`) makes bash login shells skip `~/.profile` — the conventional home of `eval "$(brew shellenv)"` on Linux — potentially dropping brew off PATH for login shells. Also the block never adds `~/.local/bin` to PATH, so a pinned-nu fallback (`ensure-nu.sh:74`) stops shadowing brew's nu the moment the script exits. Fix: append to `~/.bashrc` (or to `~/.profile` if no `~/.bash_profile` existed), and include `~/.local/bin` in PATH.
 
 ## Refactoring opportunities (ranked)
 
-1. **Collapse the triplicated boot tail into one shared script** (e.g. `cozy-module/install/run-install.sh`: brew-nushell pre-install → `ensure-nu.sh` → `nu bootstrap.nu`), called by Dockerfile, kit and host-install.sh. Kills the ordering-drift risk (E1) and keeps the Dockerfile in sync for the Apple-container plan almost for free — it shrinks to base + brew + clone/COPY + one RUN.
 3. **In-progress marker + `--force`/`--recover` split** (D1) — removes the worst data-loss/confusion path on hosts.
 4. **Converge every step + auto-verify**: marker-wrap the CLAUDE.md append (D4), wire `cozy verify` as the final kit install command and make it host-capable (E3). Turns silent partial installs into loud failures.
 5. **Harden the network/prompt contract**: allowlist the redirect CDNs (E4), assert `which claude` before `claude mcp add` (`bootstrap.nu:150-151`).
-6. **Extend `check.nu`**: add `HOME` + `HOMEBREW_*` keys, compare full PATH tails, and (optionally) assert the kit's 5 install commands textually against the shared script once refactoring 1 lands.
+6. **Extend `check.nu`**: add `HOME` + `HOMEBREW_*` keys, compare full PATH tails, and (optionally) assert that the kit's install commands and the Dockerfile RUN tail invoke `run-install.sh` (refactoring 1 landed in 45cb593).
 
 ## Implementation plan
 
 Quick wins (one-liners, no design decisions):
 - [ ] Marker-wrap the Step-6 catalog append
 - [ ] `which claude` assert before `claude mcp add`
-- [ ] host-install.sh rc-block: target `~/.bashrc`/`~/.profile` correctly, add `~/.local/bin` to PATH
+- [ ] run-install.sh rc-block: target `~/.bashrc`/`~/.profile` correctly, add `~/.local/bin` to PATH
 
 Decisions needed from user before implementing:
-- [ ] Refactoring 1 (shared boot-tail script) — approve shape before touching three entry points
 - [ ] topiary clone fallback: delete it (fail-fast intent) or document it?
 
 Doc fixes (can batch into one commit):
-- [ ] README lines 34, 36, 47; CLAUDE.md lines 18, 27; Dockerfile:57; design/build.md:31, 74-76; then `/update-design` to advance `reconciled-at`
+- [ ] README lines 34, 47; CLAUDE.md lines 18, 27; design/build.md:31, 74-76; then `/update-design` to advance `reconciled-at` (README:36 and Dockerfile:57 were absorbed by the run-install.sh rewrite, 45cb593)
 
 Verify on a live `sbx run` (can't be determined from the repo):
 - [ ] Whether kit `environment.variables` reach a direct `sbx exec ... nu` process (assumed yes)
@@ -91,4 +88,4 @@ Verify on a live `sbx run` (can't be determined from the repo):
 
 ## Affected files
 
-Existing: see `related_files` frontmatter. New files: possibly `cozy-module/install/run-install.sh` (refactoring 1). No code was changed by this audit.
+Existing: see `related_files` frontmatter. New files: `cozy-module/install/run-install.sh` (refactoring 1, landed in 45cb593 — replaces `host-install.sh`). No code was changed by this audit.
