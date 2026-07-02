@@ -1,6 +1,6 @@
 # Sandbox Environment
 
-You are running inside an sbx sandbox — Docker's standalone sandbox runtime (Ubuntu, arm64 or amd64). The workspace is mounted at its original macOS path, not `/workspace` or `/home/agent`.
+You are running inside an sbx sandbox — Docker's standalone sandbox runtime (Ubuntu, arm64 or amd64). The workspace is mounted at its original host path, not `/workspace` or `/home/agent`.
 
 ## Available Tools
 
