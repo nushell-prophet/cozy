@@ -4,8 +4,12 @@ use std/iter scan
 @example "update readme" {
     numd run README.md
 }
+@example "preview which blocks would execute, without running them" {
+    numd run --dry-run README.md
+}
 export def run [
     file: path # path to a `.md` file containing Nushell code to be executed
+    --dry-run # return blocks that would execute (block_index, infostring, code) without executing anything
     --echo # output resulting markdown to stdout instead of saving to file
     --eval: string # Nushell code to prepend to the script (use `open -r config.nu` for file-based config)
     --ignore-git-check # skip the check for uncommitted changes before overwriting
@@ -14,14 +18,27 @@ export def run [
     --print-block-results # print blocks one by one as they are executed, useful for long running scripts
     --save-intermed-script: path # optional path for keeping intermediate script (useful for debugging purposes). If not set, the temporary intermediate script will be deleted.
     --use-host-config # load host's env, config, and plugin files (default: run with nu -n for reproducibility)
-]: [nothing -> string nothing -> nothing nothing -> record] {
+]: [nothing -> string nothing -> nothing nothing -> record nothing -> table<block_index: int, infostring: string, code: string>] {
+    # Why: the safety valve lives on `run` itself — an agent about to `numd run` an
+    # arbitrary file discovers the gate in `run --help`, not in a distant command
+    if $dry_run {
+        return (
+            parse-file $file
+            | where action == 'execute'
+            | strip-outputs
+            | insert code { $in.line | skip | drop | str join (char nl) } # skip/drop the fence lines
+            | select block_index row_type code
+            | rename --column {row_type: infostring}
+        )
+    }
+
     let original_md = open -r $file
 
     let intermediate_script_path = $save_intermed_script
-    | default ($file | build-modified-path --suffix $'-numd-temp-(generate-timestamp)' --extension '.nu')
+        | default ($file | build-modified-path --suffix $'-numd-temp-(generate-timestamp)' --extension '.nu')
 
     let result = parse-file $file
-    | execute-blocks --eval $eval --no-fail-on-error=$no_fail_on_error --print-block-results=$print_block_results --save-intermed-script $intermediate_script_path --use-host-config=$use_host_config
+        | execute-blocks --eval $eval --no-fail-on-error=$no_fail_on_error --print-block-results=$print_block_results --save-intermed-script $intermediate_script_path --use-host-config=$use_host_config
 
     # if $save_intermed_script param wasn't set - remove the temporary intermediate script
     if $save_intermed_script == null { rm $intermediate_script_path }
@@ -104,9 +121,9 @@ export def execute-blocks [
     }
 
     let results = $execution_output
-    | str replace -ar "\n{2,}```\n" "\n```\n"
-    | lines
-    | extract-block-index
+        | str replace -ar "\n{2,}```\n" "\n```\n"
+        | lines
+        | extract-block-index
 
     # Update original table with execution results
     let result_indices = $results | get block_index
@@ -162,26 +179,26 @@ export def to-markdown []: table -> string {
 export def parse-markdown-to-blocks []: string -> table<block_index: int, row_type: string, line: list<string>, action: string> {
     let file_lines = $in | lines
     let row_type = $file_lines
-    | each {
-        str trim --right
-        | if $in =~ '^```' { } else { 'text' }
-    }
-    | scan --noinit 'text' {|curr_fence prev_fence|
-        match $curr_fence {
-            'text' => { if $prev_fence == 'closing-fence' { 'text' } else { $prev_fence } }
-            '```' => { if $prev_fence == 'text' { '```' } else { 'closing-fence' } }
-            _ => { $curr_fence }
+        | each {
+            str trim --right
+            | if $in =~ '^```' { } else { 'text' }
         }
-    }
-    | scan --noinit 'text' {|curr_fence prev_fence|
-        if $curr_fence == 'closing-fence' { $prev_fence } else { $curr_fence }
-    }
+        | scan --noinit 'text' {|curr_fence prev_fence|
+            match $curr_fence {
+                'text' => { if $prev_fence == 'closing-fence' { 'text' } else { $prev_fence } }
+                '```' => { if $prev_fence == 'text' { '```' } else { 'closing-fence' } }
+                _ => { $curr_fence }
+            }
+        }
+        | scan --noinit 'text' {|curr_fence prev_fence|
+            if $curr_fence == 'closing-fence' { $prev_fence } else { $curr_fence }
+        }
 
     let block_index = $row_type
-    | window --remainder 2
-    | scan 0 {|window index|
-        if $window.0 == $window.1? { $index } else { $index + 1 }
-    }
+        | window --remainder 2
+        | scan 0 {|window index|
+            if $window.0 == $window.1? { $index } else { $index + 1 }
+        }
 
     # Wrap lists into columns because the `window` command was used previously
     $file_lines | wrap line
@@ -235,14 +252,14 @@ export def generate-block-execution [
     let highlighted_command = $code_content | generate-highlight-print
 
     let code_execution = $code_content
-    | trim-trailing-comments
-    | if 'try' in $fence_options {
-        wrap-in-try-catch --new-instance=('new-instance' in $fence_options)
-    } else { }
-    | format-command-output $fence_options
-    | $in + (char nl)
-    # Always print a blank line after each command group to preserve visual separation
-    | $in + "print ''"
+        | trim-trailing-comments
+        | if 'try' in $fence_options {
+            wrap-in-try-catch --new-instance=('new-instance' in $fence_options)
+        } else { }
+        | format-command-output $fence_options
+        | $in + (char nl)
+        # Always print a blank line after each command group to preserve visual separation
+        | $in + "print ''"
 
     $highlighted_command + $code_execution
 }
@@ -310,17 +327,17 @@ export def extract-block-index []: list<string> -> table<block_index: int, line:
     let clean_lines = skip until { $in =~ (code-block-marker) }
 
     let block_index = $clean_lines
-    | each {
-        if $in =~ $"^(code-block-marker)\\d+$" {
-            split row '-' | last | into int
-        } else {
-            -1
+        | each {
+            if $in =~ $"^(code-block-marker)\\d+$" {
+                split row '-' | last | into int
+            } else {
+                -1
+            }
         }
-    }
-    | scan --noinit 0 {|curr_index prev_index|
-        if $curr_index == -1 { $prev_index } else { $curr_index }
-    }
-    | wrap block_index
+        | scan --noinit 0 {|curr_index prev_index|
+            if $curr_index == -1 { $prev_index } else { $curr_index }
+        }
+        | wrap block_index
 
     $clean_lines
     | wrap 'nu_out'
@@ -385,11 +402,11 @@ export def compute-change-stats [
     let new_file_content = $new_file | ansi strip
 
     let nushell_blocks = $new_file_content
-    | parse-markdown-to-blocks
-    | where action == 'execute'
-    | get block_index
-    | uniq
-    | length
+        | parse-markdown-to-blocks
+        | where action == 'execute'
+        | get block_index
+        | uniq
+        | length
 
     $new_file_content | str stats | transpose metric new
     | merge ($original_file_content | str stats | transpose metric old)
@@ -413,38 +430,21 @@ export def compute-change-stats [
     | select filename nushell_blocks levenshtein_dist diff_lines diff_words diff_chars
 }
 
-# Fence options data: short form, long form, description
+# Fence options data: long form, description
 const fence_options = [
-    [short long description];
+    [long description];
 
-    [O no-output "execute code without outputting results"]
-    [N no-run "do not execute code in block"]
-    [t try "execute block inside `try {}` for error handling"]
-    [n new-instance "execute block in new Nushell instance (useful with `try` block)"]
-    [s separate-block "output results in a separate code block instead of inline `# =>`"]
-    ['' run-once "execute code block once, then set to no-run"]
+    [no-output "execute code without outputting results"]
+    [no-run "do not execute code in block"]
+    [try "execute block inside `try {}` for error handling"]
+    [new-instance "execute block in new Nushell instance (useful with `try` block)"]
+    [separate-block "output results in a separate code block instead of inline `# =>`"]
+    [run-once "execute code block once, then set to no-run"]
 ]
 
 # List fence options for execution and output customization.
 export def list-fence-options []: nothing -> table {
-    $fence_options | select long short description
-}
-
-# Expand short options for code block execution to their long forms.
-@example "expand short option to long form" {
-    convert-short-options 'O'
-} --result "no-output"
-export def convert-short-options [
-    option: string
-]: nothing -> string {
-    let options_dict = $fence_options | select short long | transpose -r -d
-    let result = $options_dict | get -o $option | default $option
-
-    if $result not-in ($options_dict | values) {
-        print $'(ansi red)($result) is unknown option(ansi reset)'
-    }
-
-    $result
+    $fence_options
 }
 
 # Escape symbols to be printed unchanged inside a `print "something"` statement.
@@ -545,20 +545,20 @@ export def get-last-span [
 ]: nothing -> string {
     let trimmed = $command | str trim
     let spans = ast $trimmed --json
-    | get block
-    | from json
-    | to yaml
-    | parse -r 'span:\n\s+start:(.*)\n\s+end:(.*)'
-    | rename start end
-    | into int start end
+        | get block
+        | from json
+        | to yaml
+        | parse -r 'span:\n\s+start:(.*)\n\s+end:(.*)'
+        | rename start end
+        | into int start end
 
     #  I just brute-forced AST filter parameters in nu 0.97, as `ast` awaits a better replacement or improvement.
     let last_span_end = $spans.end | math max
     let longest_last_span_start = $spans
-    | where end == $last_span_end
-    | get start
-    | if ($in | length) == 1 { } else { sort | skip }
-    | first
+        | where end == $last_span_end
+        | get start
+        | if ($in | length) == 1 { } else { sort | skip }
+        | first
 
     let offset = $longest_last_span_start - $last_span_end
 
@@ -649,13 +649,26 @@ export def generate-block-markers [
 }
 
 # Parse options from a code fence and return them as a list.
-@example "parse fence options with short forms" { '```nu no-run, t' | extract-fence-options } --result [no-run try]
+@example "parse fence options" { '```nu no-run, try' | extract-fence-options } --result [no-run try]
 export def extract-fence-options []: string -> list<string> {
-    str replace -r '```nu(shell)?\s*' ''
-    | split row ','
-    | str trim
-    | compact --empty
-    | each { convert-short-options $in }
+    let fence = $in
+
+    let options = $fence
+        | str replace -r '```nu(shell)?\s*' ''
+        | split row ','
+        | str trim
+        | compact --empty
+
+    # Why: a typo in a fence option is a source-document error. Fail fast naming the
+    # fence, rather than warn-and-run — a mistyped safety tag like `N` must stop, not execute.
+    let unknown = $options | where $it not-in $fence_options.long
+    if ($unknown | is-not-empty) {
+        error make {
+            msg: $"unknown fence option ($unknown | str join ', ') in fence `($fence)`; valid options: ($fence_options.long | str join ', ')"
+        }
+    }
+
+    $options
 }
 
 # Modify a path by adding a prefix, suffix, extension, or parent directory.
