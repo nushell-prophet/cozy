@@ -45,11 +45,16 @@ export def main [
     $env.HOMEBREW_NO_ASK = "1"
     $env.HOMEBREW_NO_AUTO_UPDATE = "1"
 
-    # Step 0 — Docker-sandbox system setup, gated on the marker file the
-    # base image ships (/etc/sandbox-persistent.sh — what we append claude
-    # env exports to below). Present in docker-build AND in-sandbox re-runs,
-    # absent on macOS host install — exactly the partition we want.
-    if ('/etc/sandbox-persistent.sh' | path exists) {
+    # Step 0 — container system setup. The sbx base image ships the marker
+    # file /etc/sandbox-persistent.sh (what we append env exports to below);
+    # a non-sbx container base (plain docker image, Apple container) is
+    # detected via /.dockerenv instead, and setup-docker-system creates the
+    # env file it would otherwise have appended to.
+    # Why: marker-only gating made any non-sbx base silently take the host
+    # branch — no apt deps, no env exports — while still stamping itself
+    # installed at the end.
+    let in_container = ('/etc/sandbox-persistent.sh' | path exists) or ('/.dockerenv' | path exists)
+    if $in_container {
         setup-docker-system
     } else if not $force {
         # Host install: refuse to clobber existing user configs. Skipped in
