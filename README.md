@@ -99,7 +99,7 @@ In Helix, `+ s` (custom `+` menu, then `s`) copies the selected lines and wraps 
 
 ### Git attribution
 
-Git environment variables (`GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL`) are set in `CLAUDE_ENV_FILE` (`/etc/sandbox-persistent.sh`), which is sourced only by Claude Code's bash tool. Commits made by Claude are attributed to `claude@anthropic.com`. These variables do not affect the user's interactive Nushell shell — if you configure your own git identity (via `git config user.name` / `git config user.email`), commands you run directly from the shell use your credentials.
+Git environment variables (`GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL`) are exported from `/etc/sandbox-persistent.sh`, which the sandbox sources before every bash invocation — including Claude Code's bash tool, so commits made by Claude are attributed to `claude@anthropic.com`. Interactive Nushell does not source bash profiles, so these variables never reach your `nu` session: commands you run there use your own git identity (`git config user.name` / `git config user.email`). Note the flip side: in a bash shell the exported variables override `git config`, so commits made from bash are attributed to Claude too.
 
 ### Lazygit
 
