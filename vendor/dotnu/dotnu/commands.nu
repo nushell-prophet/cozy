@@ -5,10 +5,14 @@
 # To make a command public, add it to the export list in mod.nu.
 
 # Regex matching a capture point: a pipeline line ending in `| print $in`.
-# Why: `find-capture-points` and `execute-and-parse-results` must agree on what a
-# capture point is — they are zipped together in `embeds-update`, so any disagreement
-# misaligns outputs against the wrong lines.
+# `find-capture-points` is the sole scanner: it returns the matching line indices, which
+# `embeds-update` passes to `execute-and-parse-results` to instrument exactly those lines.
+# So the two can't disagree on what a capture point is.
 const capture_point = '\|\s*print\s+\$in\s*$'
+
+# The embed annotation prefix. `comment-hash-colon` writes it; `embeds-remove` strips it —
+# a single const so the two can't drift apart.
+const annotation_prefix = '# => '
 
 # Check .nu module files to determine which commands depend on other commands.
 @example 'Analyze command dependencies in a module' {
@@ -19,10 +23,16 @@ export def 'dependencies' [
     --keep-builtins # keep builtin commands in the result page
     --definitions-only # output only commands' names definitions
 ] {
+    # Compute the exclusion list once, not once per file. `--definitions-only`
+    # returns before the exclusion filter, so skip the slow `help commands` then.
+    let excluded_commands = if $definitions_only { [] } else {
+        excluded-command-names --keep-builtins=$keep_builtins
+    }
+
     let callees_to_merge = $paths
         | sort # ensure consistent order across platforms
         | each {
-            list-module-commands $in --keep-builtins=$keep_builtins --definitions-only=$definitions_only
+            list-module-commands $in --definitions-only=$definitions_only --excluded-commands $excluded_commands
         }
         | flatten
 
@@ -60,6 +70,25 @@ export def 'dependencies' [
 } --result [[caller filename_of_caller]; [question "ask.nu"] [hello "hello.nu"] [say "mod.nu"]]
 export def 'filter-commands-with-no-tests' [] {
     let input = $in
+
+    # Why: this command consumes `dotnu dependencies` output; guard the shape here so a
+    # stray or empty pipeline gets one clear message instead of a raw column/input-type
+    # error from deep in the body. An empty list is a valid (trivial) dependencies
+    # result, so let it through.
+    let required = [caller callee filename_of_caller step]
+    let cols = try { $input | columns } catch { null }
+    if $cols == null or (($input | is-not-empty) and ($required | any {|c| $c not-in $cols })) {
+        error make --unspanned {
+            msg: (
+                [
+                    "`filter-commands-with-no-tests` expects the output of `dotnu dependencies`:"
+                    $"a table with columns ($required | str join ', ')."
+                    "  dotnu dependencies ...(glob '*.nu') | dotnu filter-commands-with-no-tests"
+                ] | str join (char nl)
+            )
+        }
+    }
+
     let covered_with_tests = $input
         | where caller =~ 'test' or filename_of_caller =~ '^test.*\.nu$'
         | get callee
@@ -122,68 +151,18 @@ export def 'generate-numd' [] {
     | to text
 }
 
-# Extract command code from a module and save it as a `.nu` file that can be sourced.
-# By executing this `.nu` file, you'll have all the variables in your environment for debugging or development.
-export def 'extract-command-code' [
-    module_path: path # path to a Nushell module file
-    command: string@nu-completion-command-name # the name of the command to extract
-    --output: path # a file path to save the extracted command script
-    --clear-vars # clear variables previously set in the extracted .nu file
-    --echo # output the command to the terminal
-    --set-vars: record = {} # set variables for a command
-    --code-editor: string = 'code' # code is my editor of choice to open the result file
-] {
-    let command = $command
-        | if $in =~ '\s' and $in !~ "^(\"|')" {
-            $'"($in)"'
-        } else { }
-
-    let dotnu_vars_delim = '#dotnu-vars-end'
-
-    let extracted_command = dummy-command $command $module_path $dotnu_vars_delim
-        | nu -n -c $in
-        | split row $dotnu_vars_delim
-
-    if $extracted_command.1? == null {
-        error make --unspanned {msg: $'no command `($command)` was found'}
-    }
-
-    let filename = $output
-        | default $'($command | str trim --char '"' | str trim --char "'").nu'
-
-    # here we use defined variables from the previously extracted command to a file
-    let variables_from_prev_script = if ($filename | path exists) and not $clear_vars {
-        open $filename
-        | split row $dotnu_vars_delim
-        | get 0
-        | variable-definitions-to-record
-    } else { {} }
-
-    $extracted_command.0
-    | variable-definitions-to-record
-    | merge $variables_from_prev_script
-    | merge $set_vars
-    | items {|k v| $'let $($k) = ($v | to nuon)' }
-    | prepend $'source ($module_path)'
-    | append $dotnu_vars_delim
-    | append $extracted_command.1
-    | str join "\n"
-    | $in + "\n"
-    | if $echo {
-        return $in
-    } else {
-        save --force $filename
-
-        $" ^($code_editor) \"($filename)\"; commandline edit --replace ' source \"($filename)\"'"
-        | commandline edit --replace $in
-    }
-}
-
 # Extract a command with its dependency cascade from a module into one self-contained script.
 #
-# Runtime analog of `extract-command-code`: the module is imported into a clean `nu -n`
-# process and command bodies are dumped via `view source`, so Nushell itself resolves
-# `export use` chains, submodules and `main` renaming.
+# The module is imported into a clean `nu -n` process and command bodies are dumped via
+# `view source`, so Nushell itself resolves `export use` chains, submodules and `main`
+# renaming. Private dependencies are embedded as plain `def`, in dependency order.
+#
+# With `--vars` (or a non-empty `--set-vars`) the target is emitted as a debug scaffold
+# instead: its parameters become `let` bindings (signature defaults, overridable via
+# `--set-vars`) and its body is unwrapped to the top level, so you can source the script and
+# step the body with the variables in scope. Its dependencies stay embedded as `def`. When
+# saved with `--output`, variable values you edit in the file are preserved on re-extraction
+# unless `--clear-vars` is passed.
 #
 # Importing runs `export-env` blocks (the module's own and those of transitively imported
 # local modules) — the only channel of arbitrary code execution at import — so the command
@@ -201,6 +180,9 @@ export def extract-module-command [
     command_name: string # exposed name of the command to extract (`main` means the module itself)
     --allow-export-env # proceed even when the module contains export-env blocks
     --output: path # save the assembled script to this file instead of returning it
+    --vars # emit the target's parameters as `let` bindings and unwrap its body into a sourceable debug scaffold
+    --set-vars: record = {} # variable values overriding the signature defaults (implies --vars)
+    --clear-vars # with --output, discard variable values previously saved in the file instead of preserving them
 ] {
     let module = module-files $module_path
     let scan = $module.files | each {|file| scan-module-file $file } | flatten
@@ -345,7 +327,7 @@ export def extract-module-command [
         | str replace --regex '^export ' ''
         | uniq
 
-    let script = $ordered
+    let defs_script = $ordered
         | each {|name|
             $sources
             | where name == $name
@@ -356,12 +338,75 @@ export def extract-module-command [
         | str join ((char nl) + (char nl))
         | $in + (char nl)
 
-    # fail fast on any exposure case the assembly can't map (see "Known limits" above)
-    let check = nu -n -c $script | complete
+    # fail fast on any exposure case the assembly can't map (see "Known limits" above).
+    # Checked on the def-form script: it only defines commands, so `nu -n` parses without
+    # running a body — unlike the --vars scaffold, whose top-level body would execute here.
+    let check = nu -n -c $defs_script | complete
     if $check.exit_code != 0 {
         error make --unspanned {
             msg: $"assembled script does not parse under `nu -n`:\n($check.stderr)"
         }
+    }
+
+    let vars_mode = $vars or ($set_vars | is-not-empty)
+    let script = if not $vars_mode { $defs_script } else {
+        # markers bracket the vars block so a later re-extraction can read the edited values
+        # back out without tripping over `let`s inside the embedded dep bodies
+        let vars_start = '#dotnu-vars-start'
+        let vars_end = '#dotnu-vars-end'
+
+        # dependencies: the cascade minus the target, still as (export-restored) defs
+        let dep_defs = $ordered
+            | where $it != $target
+            | each {|name|
+                $sources | where name == $name | get 0.source
+                | if $name in $exported_names { 'export ' + $in } else { }
+            }
+
+        let target_row = $sources | where name == $target | get 0
+
+        # signature defaults -> {name: value}; switches default to false, rest to []
+        let signature_vars = $target_row.params
+            | each {
+                if ($in.parameter_type == 'rest') {
+                    if ($in.parameter_name == '') { upsert parameter_name 'rest' } else { }
+                    | default [] parameter_default
+                } else { }
+            }
+            | where parameter_name != null
+            | reduce --fold {} {|p acc|
+                let name = $p.parameter_name | str replace --all '-' '_' | str replace '$' ''
+                let value = $p.parameter_default? | default (if $p.parameter_type == 'switch' { false })
+                $acc | upsert $name $value
+            }
+
+        # values the user edited in a previous extraction to --output win over the defaults
+        let preserved = if $output != null and ($output | path exists) and not $clear_vars {
+            open $output
+            | parse --regex ('(?s)' + $vars_start + '(?<vars>.*?)' + $vars_end)
+            | get --optional vars.0
+            | default ''
+            | variable-definitions-to-record
+        } else { {} }
+
+        let vars_lines = $signature_vars
+            | merge $preserved
+            | merge $set_vars
+            | items {|k v| $"let $($k) = ($v | to nuon)" }
+
+        # comment the def header and closing brace, leaving the body live at top level
+        let head_comment = '# ' + ($target_row.source | str replace --regex '(?s)(\]\s*\{).*' '$1')
+        let body = $target_row.source
+            | str replace --regex '(?s)^.*?\]\s*\{' ''
+            | str replace --regex '(?s)\}\s*$' ''
+            | str trim --char (char nl)
+
+        let target_block = [$head_comment $vars_start] ++ $vars_lines ++ [$vars_end $body]
+            | str join (char nl)
+
+        $header ++ $dep_defs ++ [$target_block]
+        | str join ((char nl) + (char nl))
+        | $in + (char nl)
     }
 
     if $output == null { $script } else { $script | save --force $output }
@@ -377,10 +422,6 @@ export def 'list-module-exports' [
     open $path --raw
     | extract-exported-commands ($path | path expand | path dirname)
     | replace-main-with-module-name $path
-    | if ($in | is-empty) {
-        print 'No command found'
-        return
-    } else { }
 }
 
 # List module's callable interface (main commands)
@@ -396,13 +437,7 @@ export def 'list-module-interface' [
     | extract-command-name
     | where $it starts-with 'main'
     | str replace 'main ' ''
-    | if ($in | is-empty) {
-        print 'No command found'
-        return
-    } else { }
 }
-
-# todo: make configuration like --autocommit in file itself
 
 # Inserts captured output back into the script at capture points
 export def 'embeds-update' [
@@ -419,24 +454,41 @@ export def 'embeds-update' [
         | normalize-newlines
         | embeds-remove
 
-    let results = execute-and-parse-results $script --script_path=$file
+    let points = $script | find-capture-points
+    let results = execute-and-parse-results $script ($points | get index) --script_path=$file
 
-    let replacements = $script
-        | find-capture-points
-        | zip $results
-
-    let prevent_second_replacement = " # to-not-be-replaced-again"
-
-    $replacements
-    # Why: prepend a newline so a capture point on the very first line is anchored
-    # by "\n" on both sides like any interior line; without it the match silently no-ops
-    | reduce --fold ("\n" + $script) {|it|
-        str replace ("\n" + $it.0 + "\n") ("\n" + $it.0 + $prevent_second_replacement + "\n" + $it.1 + "\n")
+    # Fail-fast: exactly one captured result per capture point. A capture point inside a
+    # command that runs more than once (a def called twice, a loop body) yields extra
+    # results that would otherwise be silently zipped onto — and misannotate — other lines.
+    if ($results | length) != ($points | length) {
+        error make --unspanned {
+            msg: (
+                $"got ($results | length) captured result\(s) for ($points | length) capture point\(s). "
+                + "Keep `| print $in` on top-level lines only — a capture point inside a command "
+                + "executed more than once produces extra outputs and misaligns the annotations."
+            )
+        }
     }
-    | str replace --regex '^\n' '' # strip the single leading newline added above
-    | str replace --all $prevent_second_replacement ''
-    | str replace --all --regex '\n{3,}' "\n\n"
-    | str replace --regex "\n*$" "\n"
+
+    # Insert each capture point's annotation right after its own source line, by index. Each
+    # result carries the source line index it came from (tagged by execute-and-parse-results),
+    # so annotations are placed by identity — not by execution order, which can differ from
+    # source order. Every other line — including blank lines — is emitted untouched.
+    $script
+    | lines
+    | enumerate
+    | each {|it|
+        let idx = $it.index # Why: `where` below rebinds `$it` to its own row, shadowing this one
+        let match = $results | where index == $idx
+        if ($match | is-empty) {
+            [$it.item]
+        } else {
+            [$it.item] ++ ($match.0.capture | str trim --char "\n" | lines)
+        }
+    }
+    | flatten
+    | str join "\n"
+    | $in + "\n"
     | if $echo or ($input != null) { } else { save --force $file }
 }
 
@@ -458,18 +510,17 @@ export def 'examples-update' [
 
     # Execute each example and collect results
     let results = $examples | each {|ex|
-            let result = execute-example $ex.code $file
-            if ($result | describe) == "record<error: string>" {
+            try {
+                {
+                    original: $ex.original
+                    new_result: (execute-example $ex.code $file)
+                }
+            } catch {|err|
                 # Skip failed examples - don't corrupt the file with error messages
                 print --stderr $"Warning: Example execution failed in ($file | path basename):"
                 print --stderr $"  Code: ($ex.code)"
-                print --stderr $"  Error: ($result.error | lines | first)"
+                print --stderr $"  Error: ($err.msg | lines | first)"
                 null
-            } else {
-                {
-                    original: $ex.original
-                    new_result: $result
-                }
             }
         }
         | compact
@@ -480,8 +531,10 @@ export def 'examples-update' [
             # Build new example by replacing just the result value in the original
             # Escape $ as $$ to prevent regex backreference interpretation
             let escaped_result = $item.new_result | str replace --all '$' '$$'
+            # `(?s)` lets `.` cross newlines so a multi-line `--result` value (which
+            # find-examples deliberately captures via bracket-depth) is replaced whole.
             let new_example = $item.original
-                | str replace --regex '\} --result .+$' $"} --result ($escaped_result)"
+                | str replace --regex '(?s)\} --result .+$' $"} --result ($escaped_result)"
 
             $acc | str replace $item.original $new_example
         }
@@ -611,11 +664,30 @@ export def run-expand-pipeline [
     | lines
 }
 
+# Find attribute decorators (@name) in ast-complete tokens.
+#
+# The `@` shows up as the last char of a shape_gap token; the token right after it is the
+# attribute name. Using the AST (not a text scan) avoids false positives from `@name` inside
+# strings or comments. Returns one row per decorator with the name token, its index, and the
+# byte offset of the `@`.
+export def find-attribute-tokens []: table -> table<name_index: int, name_token: any, at_start: int> {
+    enumerate
+    | window 2
+    | where {|pair| $pair.0.item.shape == "shape_gap" and ($pair.0.item.content | str ends-with "@") }
+    | each {|pair|
+        {
+            name_index: $pair.1.index
+            name_token: $pair.1.item
+            at_start: ($pair.0.item.end - 1) # @ is the last char in the gap
+        }
+    }
+}
+
 # Find @example blocks with their code and result sections using AST parsing
 #
 # Uses ast-complete to accurately detect @example attributes, avoiding false positives
 # from @example inside strings or comments. The @ prefix appears as shape_gap.
-export def find-examples []: string -> table<original: string, code: string, result_line: string> {
+export def find-examples []: string -> table<original: string, code: string> {
     let source = $in
     let bytes = $source | encode utf8
     let tokens = $source | ast-complete
@@ -624,18 +696,11 @@ export def find-examples []: string -> table<original: string, code: string, res
         return []
     }
 
-    # Find @example: shape_gap ending with "@" followed by "example" token
-    # The gap may include preceding newlines (e.g., "\n\n@")
+    # Find @example: an attribute decorator whose name token is "example"
     let example_indices = $tokens
-        | enumerate
-        | window 2
-        | where {|pair|
-            (
-                $pair.0.item.shape == "shape_gap" and ($pair.0.item.content | str ends-with "@")
-                and $pair.1.item.content == "example"
-            )
-        }
-        | each { $in.1.index } # Get index of "example" token
+        | find-attribute-tokens
+        | where {|a| $a.name_token.content == "example" }
+        | get name_index
 
     if ($example_indices | is-empty) {
         return []
@@ -672,21 +737,20 @@ export def find-examples []: string -> table<original: string, code: string, res
                 | where shape not-in ["shape_whitespace" "shape_newline"]
             let first_token = $result_tokens | first
 
-            # For lists/records, find matching closing bracket
-            let end_byte = if $first_token.content == "[" or $first_token.content == "{" {
-                let close_char = if $first_token.content == "[" { "]" } else { "}" }
-                let open_char = $first_token.content
-                # Find matching close by tracking bracket depth
-                let close_token = $result_tokens | skip 1
-                    | reduce --fold {depth: 1 token: null} {|t acc|
+            # For lists/records, find the matching closing bracket by tracking
+            # depth. Multi-line brackets bundle surrounding whitespace into the
+            # token (e.g. "[\n    " and "\n]"), so match by leading/trailing char
+            # rather than exact content.
+            let open_char = if ($first_token.content | str starts-with "[") { "[" } else { "{" }
+            let close_char = if $open_char == "[" { "]" } else { "}" }
+            let end_byte = if ($first_token.content | str starts-with $open_char) {
+                # A token may both open and close (e.g. "[]"), so count each edge.
+                let close_token = $result_tokens
+                    | reduce --fold {depth: 0 token: null} {|t acc|
                         if $acc.token != null { $acc } else {
-                            let new_depth = if $t.content == $open_char {
-                                $acc.depth + 1
-                            } else if $t.content == $close_char {
-                                $acc.depth - 1
-                            } else {
-                                $acc.depth
-                            }
+                            let opened = $t.content | str starts-with $open_char | into int
+                            let closed = $t.content | str ends-with $close_char | into int
+                            let new_depth = $acc.depth + $opened - $closed
                             if $new_depth == 0 { {depth: 0 token: $t} } else { {depth: $new_depth token: null} }
                         }
                     }
@@ -698,14 +762,12 @@ export def find-examples []: string -> table<original: string, code: string, res
             {
                 has_result: true
                 end_byte: $end_byte
-                result_line: "" # not used, kept for interface compatibility
             }
         } else {
             # No --result flag
             {
                 has_result: false
                 end_byte: $close_brace.end
-                result_line: ""
             }
         }
 
@@ -728,16 +790,15 @@ export def find-examples []: string -> table<original: string, code: string, res
         {
             original: $original
             code: $code
-            result_line: $result_info.result_line
         }
     }
     | compact
     | where {|row| $row.code != '' }
 }
 
-# Execute example code and return the result as nuon
-# Returns null on execution failure
-export def execute-example [code: string file: path]: nothing -> any {
+# Execute example code and return the result as nuon.
+# Errors (via `error make`) when the code fails, so the caller can `try`/`catch` it.
+export def execute-example [code: string file: path]: nothing -> string {
     let abs_file = $file | path expand
     let dir = $abs_file | path dirname
     let parent_dir = $dir | path dirname
@@ -755,45 +816,29 @@ export def execute-example [code: string file: path]: nothing -> any {
 
     let result = do --ignore-errors { ^$nu.current-exe -n -c $script } | complete
     if $result.exit_code != 0 {
-        # Return error info for caller to handle
-        {error: ($result.stderr | str trim | default "unknown error")}
-    } else {
-        $result.stdout | str trim
+        error make --unspanned {msg: ($result.stderr | str trim | default "unknown error")}
     }
-}
-
-# Set environment variables to operate with embeds
-export def --env 'embeds-setup' [
-    path?: path
-    --auto-commit
-] {
-    $env.dotnu.embeds-capture-path = (
-        $path
-        | if $in == null {
-            get-dotnu-capture-path
-        } else {
-            str replace --regex '(\.nu)?$' '.nu' # make sure that the script has .nu extension
-        }
-        | path expand
-    )
-
-    if $auto_commit {
-        touch $env.dotnu.embeds-capture-path
-
-        git-autocommit-dotnu-capture
-
-        $env.dotnu.auto-commit = true
-    }
+    $result.stdout | str trim
 }
 
 # Embed stdin together with its command into the file
-export def 'embed-add' [
+export def --env 'embed-add' [
+    --capture-path: path # capture file to append to; remembered for later calls in the session
     --pipe-further (-p) # output input further to the pipeline
     --published # output the published representation into terminal
-    --dry_run
-    #todo: --
+    --dry-run
 ] {
     let input = $in
+
+    # Why: setting the path in this --env def makes it sticky for the rest of the session,
+    # so later bare `embed-add` calls reuse it without re-passing --capture-path.
+    if $capture_path != null {
+        $env.dotnu.embeds-capture-path = (
+            $capture_path
+            | str replace --regex '(\.nu)?$' '.nu' # make sure that the script has .nu extension
+            | path expand
+        )
+    }
 
     let path = get-dotnu-capture-path
 
@@ -801,7 +846,8 @@ export def 'embed-add' [
         get-command-from-hist | get previous
     } else {
         get-command-from-hist | get current
-        | str replace --regex '(?s)\| ?dotnu embed-add.*$' ''
+        # `dotnu ` optional: with `use dotnu/commands.nu *` the call is a bare `embed-add`
+        | str replace --regex '(?s)\| ?(dotnu )?embed-add.*$' ''
     }
 
     let commented_input = $input
@@ -812,10 +858,6 @@ export def 'embed-add' [
         }
 
     let script_with_output = $"\n($command) | print $in\n($commented_input)"
-
-    if $env.dotnu?.auto-commit? == true {
-        git-autocommit-dotnu-capture
-    }
 
     if not $dry_run { $script_with_output | save --append $path }
 
@@ -837,13 +879,6 @@ export def normalize-newlines []: string -> string {
     if $nu.os-info.family == windows { str replace --all (char crlf) "\n" } else { }
 }
 
-export def 'git-autocommit-dotnu-capture' [] {
-    let path = get-dotnu-capture-path
-
-    git add $path
-    git commit --only $path -m 'dotnu capture autocommit'
-}
-
 export def 'get-command-from-hist' [] {
     if $env.config.history.file_format == 'sqlite' {
         open $nu.history-path
@@ -851,30 +886,9 @@ export def 'get-command-from-hist' [] {
         | get command_line
         | {previous: $in.1 current: $in.0}
     } else {
-        # history | last $index | get command | first # returns the previous command
-        print 'txt history file format is not supported'
-    }
-}
-
-export def check-clean-working-tree [
-    module_path: path
-] {
-    cd ($module_path | path dirname)
-
-    let git_status = git status --short
-
-    $git_status
-    | lines
-    | parse '{s} {m} {f}'
-    | where f =~ $'($module_path | path basename)$'
-    | is-not-empty
-    | if $in {
-        error make --unspanned {
-            msg: (
-                "Working tree isn't empty. Please commit or stash changed files, " +
-                "or use `--no-git-check` flag. Uncommitted files:\n" + $git_status
-            )
-        }
+        # Fail fast: the caller reads `get previous`/`get current` off this record and would
+        # otherwise die on a confusing "cannot find column" far from the real cause.
+        error make --unspanned {msg: 'embed-add needs sqlite history; the txt history file format is not supported'}
     }
 }
 
@@ -909,9 +923,12 @@ export def variable-definitions-to-record []: string -> record {
 
     let script = $script_with_variable_definitions + $record_builder_code
 
+    # Fail fast: we already have parsed `let` definitions, so a non-zero exit means they
+    # don't evaluate (e.g. a broken vars header in a previously extracted file). Report it
+    # instead of returning {} and silently dropping the user's saved variables.
     let result = (nu -n -c $script | complete)
     if $result.exit_code != 0 {
-        return {}
+        error make --unspanned {msg: $"failed to evaluate variable definitions:\n($result.stderr)"}
     }
     $result.stdout | from nuon | default {}
 }
@@ -953,18 +970,12 @@ export def escape-for-quotes []: string -> string {
     str replace --all --regex '(\\|\")' '\$1'
 }
 
-# context aware completions for defined command names in nushell module files
-@example '' {
-    nu-completion-command-name 'dotnu extract-command-code tests/assets/b/example-mod1.nu' | first 3
-} --result [main lscustom "command-5"]
-export def nu-completion-command-name [
-    context: string
-] {
-    $context | str replace --regex '^.*? extract-command-code ' ''
-    | str trim | split row ' ' | first
-    | path expand | open $in --raw | lines
-    | where $it =~ '^(export )?def '
-    | each { extract-command-name }
+# Command names to exclude from call analysis: keywords always, built-ins too
+# unless `--keep-builtins`. Single source of truth so `list-module-commands` and
+# `dependencies` can't disagree on what counts as excluded.
+export def excluded-command-names [--keep-builtins]: nothing -> list<string> {
+    let excluded_types = if $keep_builtins { ['keyword'] } else { ['keyword' 'built-in'] }
+    help commands | where command_type in $excluded_types | get name
 }
 
 # Extract table with information on which commands use which commands
@@ -978,6 +989,7 @@ export def list-module-commands [
     module_path: path # path to a .nu module file.
     --keep-builtins # keep builtin commands in the result page
     --definitions-only # output only commands' names definitions
+    --excluded-commands: list<string> # precomputed exclusion list; when omitted, computed from `help commands`
 ] {
     let script_content = open $module_path --raw
         | normalize-newlines
@@ -992,17 +1004,10 @@ export def list-module-commands [
         | select caller start end
 
     # Phase 1b: Find attributes using ast-complete
-    # The @ prefix appears as shape_gap, followed by the attribute token
     let attribute_definitions = $all_tokens
-        | enumerate
-        | window 2
-        | where {|pair|
-            $pair.0.item.shape == "shape_gap" and ($pair.0.item.content | str ends-with "@")
-        }
-        | each {|pair|
-            let attr_token = $pair.1.item
-            let at_start = $pair.0.item.end - 1 # @ is last char in the gap
-            {caller: ('@' + ($attr_token.content | split row ' ' | first)) start: $at_start}
+        | find-attribute-tokens
+        | each {|a|
+            {caller: ('@' + ($a.name_token.content | split row ' ' | first)) start: $a.at_start}
         }
         | insert end null # attributes don't have scope ranges
 
@@ -1016,11 +1021,15 @@ export def list-module-commands [
 
     let defs_by_start = $defined_defs | sort-by start
 
-    # Why: compute the exclusion list once. A subexpression inside `where` is
-    # re-evaluated per row, so an inline `help commands` here would run once per
-    # token — expensive on the hot path (`dependencies` calls this per file).
-    let excluded_types = if $keep_builtins { ['keyword'] } else { ['keyword' 'built-in'] }
-    let excluded_commands = help commands | where command_type in $excluded_types | get name
+    # Why: `help commands` is slow. On the hot path `dependencies` computes the
+    # exclusion once and passes it here per file; standalone callers fall back to
+    # computing it themselves. Not `default (...)` because: its argument evaluates
+    # eagerly, so `help commands` would run even when the list is already supplied.
+    let excluded_commands = if $excluded_commands != null {
+        $excluded_commands
+    } else {
+        excluded-command-names --keep-builtins=$keep_builtins
+    }
 
     # Range-based lookup using statement boundaries
     # For defs with end ranges, tokens must be within [start, end)
@@ -1166,16 +1175,22 @@ export def export-ify-file [
     | save --force $file
 }
 
-# Import an export-ified module copy in a clean `nu -n` and dump `name -> source` for
-# every exposed command — one process for the whole module instead of one per command
+# Import an export-ified module copy in a clean `nu -n` and dump `name -> source` (plus the
+# parameter list, for --vars scaffolding) for every exposed command — one process for the
+# whole module instead of one per command
 export def dump-module-commands [
     copy_path: path # the export-ified temp copy (directory or single .nu file)
     module_name: string
-]: nothing -> table<name: string, source: string> {
+]: nothing -> table<name: string, source: string, params: list> {
     let script = [
         $"use '($copy_path)' *"
         $"scope modules | where name == '($module_name)' | get 0.commands.name"
-        "| each {|n| {name: $n source: (view source $n)} }"
+        "| each {|n| {"
+        "    name: $n"
+        "    source: (view source $n)"
+        # rebuild each param row to plain fields — a `completion` closure would break `to nuon`
+        "    params: (scope commands | where name == $n | get --optional 0.signatures | default {} | values | get --optional 0 | default [] | each {|p| {parameter_name: $p.parameter_name, parameter_type: $p.parameter_type, syntax_shape: $p.syntax_shape, parameter_default: $p.parameter_default} })"
+        "} }"
         "| to nuon"
     ] | str join (char nl)
 
@@ -1185,25 +1200,6 @@ export def dump-module-commands [
     }
 
     $result.stdout | from nuon
-}
-
-# Format example blocks (annotation, command, result) and a command description as `# `-prefixed comment lines
-export def format-substitutions [
-    examples: table
-    command_description: string
-] {
-    $examples
-    | each {|i|
-        [$i.annotation $i.command $i.result]
-        | compact --empty
-        | str join (char nl) # `to text` produces trailing empty line
-    }
-    | prepend $command_description
-    | compact --empty
-    | str join $"(char nl)(char nl)"
-    | lines
-    | each { $"# ($in)" | str trim }
-    | to text
 }
 
 # helper function for use inside of generate
@@ -1220,116 +1216,46 @@ export def 'join-next' [
     | where callee != null
 }
 
-export def 'dummy-command' [
-    command: string
-    file: path
-    dotnu_vars_delim: string
-] {
-    # the closure below is used as highlighted in an editor constructor
-    # for the command that will be executed in `nu -c`
-    let dummy_closure = {|function|
-        let params = scope commands
-            | where name == $command
-            | get --optional signatures.0
-            | if $in == null {
-                error make --unspanned {msg: 'no command $command was found'}
-            } else { }
-            | values
-            | get 0
-            | each {
-                if ($in.parameter_type == 'rest') {
-                    if ($in.parameter_name == '') {
-                        # if rest parameters named $rest, in the signatures it doesn't have a name
-                        upsert parameter_name 'rest'
-                    } else { }
-                    | default [] parameter_default
-                } else { }
-            }
-            | where parameter_name != null
-            | each {|i|
-                let param = $i.parameter_name | str replace --all '-' '_' | str replace '$' ''
-
-                let value = $i.parameter_default?
-                    | default (if $i.parameter_type == 'switch' { false })
-                    | to nuon # to handle nuls
-
-                $"let $($param) = ($value) # ($i.syntax_shape)"
-            }
-            | to text
-
-        let main = view source $command
-            | lines
-            | upsert 0 {|i| '# ' + $i }
-            | drop
-            | append '# }'
-            | prepend $dotnu_vars_delim
-            | to text
-
-        "source '$file'\n\n" + $params + "\n\n" + $main
-    }
-
-    view source $dummy_closure
-    | lines | skip | drop | to text
-    | str replace --all '$command' $command
-    | str replace --all '$file' $file
-    | str replace --all '$dotnu_vars_delim' $"'($dotnu_vars_delim)'"
-    | $"source ($file)\n\n($in)"
-}
-
 @example '' {
     [[a]; [b]] | table | comment-hash-colon
 } --result '# => ╭─#─┬─a─╮
 # => │ 0 │ b │
 # => ╰───┴───╯
 '
-export def 'comment-hash-colon' [
-    --source-code
-] {
-    let input = $in
-    let closure = {|i|
-        $i | into string | ansi strip | str trim --char "\n" | str replace --all --regex --multiline '^' "# => "
-    }
-
-    if $source_code {
-        view source $closure
-        | lines
-        | skip
-        | str replace '$i ' ''
-        | drop
-        | to text
-    } else {
-        do $closure $input
-    }
+export def 'comment-hash-colon' []: any -> string {
+    into string | ansi strip | str trim --char "\n" | str replace --all --regex --multiline '^' $annotation_prefix
 }
 
 # Extract captured output from a script file execution results
 export def execute-and-parse-results [
     script: string
+    capture_indices: list<int> # line indices to instrument, from `find-capture-points`
     --script_path: path
-] {
-    # Prints output that will be embedded back into the script
-    let embed_in_script = {
-
-        let input = table --expand
-            | comment-hash-colon
-
-        (capture-marker) + $input + "\n" + (capture-marker --close)
-        | print
-    }
-
-    let embed_in_script_src = view source $embed_in_script
-        | 'def embed-in-script [] ' + $in
-        | str replace '(capture-marker --close)' $"'(capture-marker --close)'"
-        | str replace 'capture-marker' $"'(capture-marker)'"
-        | str replace 'comment-hash-colon' (comment-hash-colon --source-code)
+]: nothing -> table<index: int, capture: string> {
+    # `embed-in-script` comment-prefixes stdin and wraps it in capture markers so the parse
+    # step below can slice each capture point's output back out. Each capture is tagged with
+    # its source line index (baked into the `embed-in-script` call) so results are placed by
+    # identity, not by execution order — two capture points running out of source order would
+    # otherwise have their annotations swapped. Markers are emitted as consts so the generated
+    # script stands alone under `nu -n`.
+    let embed_in_script_src = [
+        $"const annotation_prefix = ($annotation_prefix | to nuon)"
+        $"const capture_open = ((capture-marker) | to nuon)"
+        $"const capture_close = ((capture-marker --close) | to nuon)"
+        (view source comment-hash-colon)
+        "def embed-in-script [idx: int] {"
+        "    let input = table --expand | comment-hash-colon"
+        '    $capture_open + ($idx | into string) + ":" + $input + "\n" + $capture_close | print'
+        "}"
+    ] | str join (char nl)
 
     let script_updated = $script
         | lines
-        | each {
-            if $in !~ '^\s*#' {
-                # don't search for `print $in` inside of commented lines
-                str replace --regex $capture_point '| embed-in-script'
-            } else { }
+        | enumerate
+        | each {|it|
+            if $it.index in $capture_indices {
+                $it.item | str replace --regex $capture_point $'| embed-in-script ($it.index)'
+            } else { $it.item }
         }
         | prepend $embed_in_script_src
         | str join "\n"
@@ -1337,24 +1263,26 @@ export def execute-and-parse-results [
     if $script_path != null { $script_path | path dirname | cd $in }
 
     ^$nu.current-exe -n -c $script_updated
-    | parse --regex ('(?s)' + (capture-marker) + '(.*?)' + (capture-marker --close))
-    # Parsing here presupposes capturing only the output of a script command,
-    # so it won't be able to capture content inside custom command definitions correctly
-    # (if they are executed more than once).
-    | get capture0
+    # Parsing presupposes capturing only the output of a script command, so it won't correctly
+    # capture content inside custom command definitions executed more than once (the count-assert
+    # in embeds-update catches that case).
+    | parse --regex ('(?s)' + (capture-marker) + '(?<index>\d+):(?<capture>.*?)' + (capture-marker --close))
+    | update index { into int }
 }
 
-# Finds capture-point lines (uncommented lines ending in `| print $in`)
-export def find-capture-points [] {
+# Finds capture points: uncommented lines ending in `| print $in`, with their line index.
+export def find-capture-points []: string -> table<index: int, line: string> {
     lines
-    | where $it !~ '^\s*#' and $it =~ $capture_point
+    | enumerate
+    | where item !~ '^\s*#' and item =~ $capture_point
+    | rename --column {item: line}
 }
 
 # Removes annotation lines starting with "# => " from the script
 export def embeds-remove [] {
     normalize-newlines
     | lines
-    | where not ($it starts-with "# => ")
+    | where not ($it starts-with $annotation_prefix)
     | str join "\n"
     | $in + "\n" # Explicit LF with trailing newline for Windows compatibility
 }
@@ -1528,16 +1456,27 @@ export def split-statements []: string -> table<statement: string, start: int, e
         # Track block depth
         # Handle blocks where { and } may be in same token (e.g., "{}" or "{ x }")
         if $token.shape in ["shape_block" "shape_closure" "shape_gap"] {
-            let opens = ($token.content | split row "{" | length) - 1
-            let closes = ($token.content | split row "}" | length) - 1
+            # Why: a `{`/`}` inside a comment is not a block delimiter. These shapes carry
+            # only structural braces plus surrounding whitespace/comments — strings and code
+            # are separate tokens — so a `#` here always starts a comment. Strip each `#`-tail
+            # before counting braces (`.` doesn't cross newlines, so `--all` clears every line),
+            # or an unbalanced brace in a comment (e.g. `shape_block "{"`) leaks into the depth
+            # and merges the statements that follow.
+            let content = $token.content | str replace --all --regex '#.*' ''
+            let opens = ($content | split row "{" | length) - 1
+            let closes = ($content | split row "}" | length) - 1
             $depth = $depth + $opens - $closes
         }
 
         # Statement boundary at top level
-        # Also check shape_gap that starts with newline (comments are bundled into gaps)
+        # A shape_gap bundles any trailing comment plus the newline that follows it, so
+        # strip the comment tail (as the depth counter above does) and treat the gap as a
+        # boundary when it contains a newline — not only when it starts with one. Without
+        # the strip, a line like `if true { 1 } # note` leaves the gap as ` # note }\n`,
+        # which does not start with `\n`, so the next statement merges into this one.
         let is_boundary = (
             $token.shape in ["shape_semicolon" "shape_newline"]
-            or ($token.shape == "shape_gap" and ($token.content | str starts-with "\n"))
+            or ($token.shape == "shape_gap" and (($token.content | str replace --all --regex '#.*' '') | str contains "\n"))
         )
         if $depth == 0 and $is_boundary {
             let stmt_text = $bytes | bytes at $stmt_start..<$token.start | decode utf8 | str trim
