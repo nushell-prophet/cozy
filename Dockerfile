@@ -1,3 +1,9 @@
+# This Dockerfile is legacy and unmaintained. It was required by `docker
+# sandbox`, which is now deprecated, so I've replaced it with `sbx`. `sbx` can
+# probably consume Dockerfiles too, but for my workflow -- running this
+# environment against a fixed set of folders -- a one-time build via sbx-kit/
+# is simpler.
+
 FROM docker/sandbox-templates:shell
 
 USER agent
