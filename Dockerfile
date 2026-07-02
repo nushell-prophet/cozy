@@ -8,9 +8,9 @@ FROM docker/sandbox-templates:shell
 
 USER agent
 
-# Install Homebrew. bootstrap.nu IS a nushell script, so brew (which provides
-# nu) must exist before we can hand off. Host install assumes brew is already
-# present.
+# Cache-prime Homebrew as its own layer. run-install.sh (the uncached tail
+# below) auto-installs brew when it's missing, so this layer is optional for
+# correctness — it exists so editing cozy-module/ doesn't re-download brew.
 RUN NONINTERACTIVE=1 /bin/bash -c \
     "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
@@ -36,9 +36,9 @@ ENV XDG_CONFIG_HOME=$HOME/.config \
 ENV HOMEBREW_NO_ASK=1 \
     HOMEBREW_NO_AUTO_UPDATE=1
 
-# Pre-install latest nushell as a cached layer. ensure-nu.sh below smoke-
-# tests it against bootstrap.nu and falls back to the pinned version if
-# pre-1.0 syntax has drifted in latest.
+# Cache-prime latest nushell too — ensure-nu.sh (called by run-install.sh)
+# installs it when `nu` is absent, smoke-tests it against bootstrap.nu, and
+# falls back to the pinned version if pre-1.0 syntax has drifted in latest.
 RUN brew install nushell
 
 # Stage cozy repo bits for bootstrap.nu:
@@ -49,13 +49,9 @@ COPY --chown=agent:agent vendor/ /tmp/vendor/
 COPY --chown=agent:agent cozy-module/ /home/agent/repos/cozy/cozy-module/
 COPY --chown=agent:agent docker-files/ /home/agent/repos/cozy/docker-files/
 
-# Smoke-test latest nu against bootstrap.nu; download pinned (.nushell-version)
-# into ~/.local/bin/nu if latest can't parse it — guards against pre-1.0 drift.
-RUN /home/agent/repos/cozy/cozy-module/install/ensure-nu.sh
-
-# All install logic lives in bootstrap.nu — same code path the host install uses.
-# Docker mode uses sudo only where unavoidable (apt itself, /etc/apt proxy
-# file); pbcopy goes to ~/.local/bin and git identity into XDG ~/.config/git/.
-RUN nu /home/agent/repos/cozy/cozy-module/install/bootstrap.nu
+# The whole boot tail lives in one shared script — ensure brew (no-op here,
+# cached above) → ensure-nu.sh smoke test → nu bootstrap.nu. Same script the
+# sbx kit and a host checkout run, so the paths can't drift in ordering.
+RUN /home/agent/repos/cozy/cozy-module/install/run-install.sh
 
 COPY --chown=agent:agent docker-files/workspace-README.md /home/agent/workspace/README.md

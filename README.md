@@ -33,15 +33,15 @@ Note: the kit installs cozy from GitHub — the latest commit on the default bra
 
 ## Install elsewhere
 
-[`host-install.sh`](host-install.sh) exposes the same `bootstrap.nu` installer the Dockerfile runs, as a host-callable script. It deploys the full environment (nushell, modules, dotfiles, configs) into virtually any Ubuntu-based sandbox or directly onto a macOS host — for example `sbx` with a pure `shell` agent, an Apple container running Ubuntu, or a plain macOS install.
+`cozy-module/install/run-install.sh` is the same boot tail the Dockerfile and the sbx kit run — one script, so the install paths can't drift apart. It deploys the full environment (nushell, modules, dotfiles, configs) into virtually any Ubuntu-based sandbox or directly onto a macOS host — for example `sbx` with a pure `shell` agent, an Apple container running Ubuntu, or a plain macOS install.
 
-**Prerequisite:** Homebrew (https://brew.sh). `host-install.sh` uses `brew` for nushell and the rest of the toolchain, and exits early if it isn't on `PATH`. On a Linux host, `gcc` and `libc6-dev` must also be present (the topiary grammar compiles at install time) — the installer fails fast if they're missing.
+**Prerequisite:** Homebrew (https://brew.sh). On a Linux host with passwordless sudo the script installs it for you; on macOS install it first — the script exits early with the copy-paste command, so your sudo password never goes through a script. On a Linux host, `gcc` and `libc6-dev` must also be present (the topiary grammar compiles at install time) — the installer fails fast if they're missing.
 
 ```sh
 git clone https://github.com/nushell-prophet/cozy
 cd cozy
-./host-install.sh             # install
-./host-install.sh --force     # reinstall over existing user configs
+cozy-module/install/run-install.sh             # install
+cozy-module/install/run-install.sh --force     # reinstall over existing user configs
 ```
 
 ## Technologies

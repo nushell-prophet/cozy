@@ -6,8 +6,8 @@ description: >
   Layers cozy on top of the standard `shell` agent: brew tools (nushell,
   helix, zellij, lazygit, broot, topiary, jj, …), vendored nu modules
   under ~/repos/, dotfiles via `toolkit push-to-machine`, Claude skills,
-  Claude Code with the nushell MCP. Same bootstrap.nu the Dockerfile and
-  host-install.sh paths use — see cozy-module/install/bootstrap.nu.
+  Claude Code with the nushell MCP. Same boot tail the Dockerfile and a
+  host checkout run — see cozy-module/install/run-install.sh.
 
 # Mirrors the Dockerfile ENV block. PATH is fully expanded (no ${PATH}
 # reference) — kit-level value substitution behaviour is undocumented;
@@ -65,33 +65,24 @@ network:
 
 commands:
   install:
-    # Clone cozy. The shell agent's base image ships git, so this runs
-    # before Homebrew. --depth 1 keeps the clone small (~4 MB vs full
-    # history). Pin to a tag/branch via --branch if reproducibility matters.
+    # Clone cozy. The one step that can't live in run-install.sh — the
+    # script doesn't exist in-sandbox until the clone lands. The shell
+    # agent's base image ships git, so this runs before Homebrew. --depth 1
+    # keeps the clone small (~4 MB vs full history). Pin to a tag/branch
+    # via --branch if reproducibility matters.
     # GIT_TERMINAL_PROMPT=0: on a 404/renamed repo or proxy auth failure git
     # would prompt for a username with no TTY and hang — the same guard
     # _clone-or-fail.nu applies to every other clone in the tree.
     - command: GIT_TERMINAL_PROMPT=0 git clone --depth 1 https://github.com/nushell-prophet/cozy /home/agent/repos/cozy
       user: "1000"
       description: Clone cozy
-    # Install Homebrew. bootstrap.nu IS a nushell script, so brew (which
-    # provides nu) must exist before we can hand off.
-    - command: NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    # The whole boot tail in one shared script: ensure brew (auto-installs —
+    # Linux with passwordless sudo holds here) → ensure-nu.sh (installs nu,
+    # pins on parse drift) → nu bootstrap.nu (brew tools, XDG git, ~/repos/,
+    # dotfiles, skills, broot, topiary, Claude Code + MCP; its Step 0 fires
+    # via the /etc/sandbox-persistent.sh marker the base image ships). Same
+    # script the Dockerfile RUNs and a host checkout runs, so the paths
+    # can't drift in ordering.
+    - command: /home/agent/repos/cozy/cozy-module/install/run-install.sh
       user: "1000"
-      description: Install Homebrew
-    # Pre-install nushell so bootstrap.nu can run.
-    - command: brew install nushell
-      user: "1000"
-      description: Pre-install nushell
-    # Smoke-test latest nu against bootstrap.nu; fall back to the pinned
-    # .nushell-version on parse failure (guards against pre-1.0 drift).
-    - command: /home/agent/repos/cozy/cozy-module/install/ensure-nu.sh
-      user: "1000"
-      description: Pin nushell if latest can't parse bootstrap.nu
-    # Full installer: brew tools, XDG git, ~/repos/, dotfiles, skills,
-    # broot, topiary, Claude Code + MCP. Step 0 setup-docker-system fires
-    # automatically via the /etc/sandbox-persistent.sh marker shipped by
-    # the base image.
-    - command: nu /home/agent/repos/cozy/cozy-module/install/bootstrap.nu
-      user: "1000"
-      description: Run the full cozy installer
+      description: Run the shared cozy installer (brew → ensure-nu → bootstrap.nu)

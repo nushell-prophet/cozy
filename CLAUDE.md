@@ -4,17 +4,16 @@ Modern, beginner-friendly terminal environment for AI agents, running inside `sb
 
 ## Architecture
 
-The Dockerfile is thin: install Homebrew, pre-install nushell as a cached layer, COPY repo bits, then hand off to `bootstrap.nu`. All install logic lives in `cozy-module/install/bootstrap.nu`, which serves both the docker-build path and the host-install path (via `host-install.sh`).
+Every install path (docker build, sbx kit, plain host checkout) runs the same boot tail, `cozy-module/install/run-install.sh`: ensure brew → `ensure-nu.sh` (install nu, smoke-test it against bootstrap.nu, pin on parse drift) → `nu bootstrap.nu`. All install logic lives in `cozy-module/install/bootstrap.nu`; the Dockerfile just cache-primes brew + nushell, COPYs repo bits, and calls the shared script.
 
 ```
 Dockerfile (thin)
 ├── Base: docker/sandbox-templates:shell (Ubuntu, git, curl, Python, Node.js, Go, rg, jq, gh)
-├── RUN install Homebrew + brew install nushell (cached layer)
+├── RUN install Homebrew + brew install nushell (cached layers; run-install.sh re-checks, so they're optional for correctness)
 ├── COPY vendor/ → /tmp/vendor/; cozy-module/ + docker-files/ → ~/repos/cozy/
-├── RUN ensure-nu.sh — smoke-test latest nu against bootstrap.nu, fall back to pinned version if pre-1.0 syntax drifted
-└── RUN nu bootstrap.nu — all install logic below
+└── RUN run-install.sh — the shared boot tail: ensure brew (no-op here) → ensure-nu.sh → nu bootstrap.nu
 
-bootstrap.nu (also entry point for host install via host-install.sh)
+bootstrap.nu (all install logic; every path reaches it via run-install.sh)
 ├── Step 0: setup-docker-system (gated on /etc/sandbox-persistent.sh) — apt deps, pbcopy shim, apt proxy, runtime env exports
 ├── Step 1: brew install rest of tools (fzf, helix, lazygit, zellij, broot, git-delta, visidata, bat, topiary, fd, jj, git-lfs)
 ├── Step 2: XDG git config (~/.config/git/{config,ignore})
@@ -82,9 +81,9 @@ The kit re-clones cozy and re-runs `bootstrap.nu` on every `sbx run`, so picking
 - Vendored modules: `toolkit/vendor.yml` via `toolkit/vendor.nu` (not the CLAUDE.md architecture list). `toolkit/vendor.nu` also projects it into `cozy-module/vendored-repos.nuon` — the manifest that ships into the sandbox, read by `cozy sync-repos` and `cozy-module/verify.nu`. `toolkit check` guards the manifest against `vendor.yml`; never hardcode the list
 - `cozy` command surface: `cozy-module/mod.nu` exports
 - Post-build verification: `cozy-module/verify.nu` — one check set, run by `cozy verify` inside a sandbox. Checks take a transport closure so the check logic is independent of how commands are carried; expected values derive from `vendored-repos.nuon`, the `docker-files/nushell-autoload/` glob and `bootstrap.nu`'s env exports — never hand-listed
-- Install step order (host + docker + kit): `cozy-module/install/bootstrap.nu` — single entry point for all build paths
+- Install step order (host + docker + kit): the shared boot tail `cozy-module/install/run-install.sh` (ensure brew → `ensure-nu.sh` → `bootstrap.nu`), then `cozy-module/install/bootstrap.nu`'s steps 0–9 — one sequence for all build paths
 - Pinned nushell fallback: `cozy-module/install/.nushell-version` — consumed by `ensure-nu.sh` when latest `nu` can't parse `bootstrap.nu`
-- Kit spec for `sbx run shell --kit ./sbx-kit/`: `sbx-kit/spec.yaml` — environment + commands.install mirror the Dockerfile ENV + RUN block; the kit clones cozy in-sandbox and runs the same `bootstrap.nu`. The shared env values (Dockerfile ENV / kit / `bootstrap.nu` exports) can't share one literal across the three formats — `toolkit check` guards them against drift
+- Kit spec for `sbx run shell --kit ./sbx-kit/`: `sbx-kit/spec.yaml` — environment mirrors the Dockerfile ENV; commands.install is clone + the shared `run-install.sh` (the clone can't live in the script — it doesn't exist in-sandbox until the clone lands). The shared env values (Dockerfile ENV / kit / `bootstrap.nu` exports) can't share one literal across the three formats — `toolkit check` guards them against drift; the *command sequence* CAN and does share one literal: `run-install.sh`
 - CHANGELOG entries are historical — cross-reference sequential versions for contradictions
 
 ## Notes

@@ -2,9 +2,10 @@
 # Ensure `nu` can parse bootstrap.nu. Tries latest first (brew install
 # nushell); if latest can't parse it (nushell is pre-1.0 and syntax drifts
 # between releases), falls back to the pinned version in `.nushell-version`
-# by downloading the matching github release into ~/.local/bin/nu — both
-# host-install.sh and the Dockerfile put that dir first on PATH, so the pinned
-# binary shadows brew's `nu` once it lands.
+# by downloading the matching github release into ~/.local/bin/nu —
+# run-install.sh exports that dir first on PATH (and the Dockerfile/kit ENV
+# keep it there at runtime), so the pinned binary shadows brew's `nu` once
+# it lands.
 set -euo pipefail
 
 # Why: brew's "Do you want to proceed?" prompt (fires when an install would

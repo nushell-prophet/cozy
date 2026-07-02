@@ -19,7 +19,7 @@
 # Either way the installer consumes the committed vendor/ snapshot as-is — it
 # never fetches modules. Refreshing vendor/ from upstream (GitHub tarballs) or
 # from sibling repos (rsync) is toolkit/vendor.nu's job, run before a build —
-# not the installer's. host-install.sh only exists inside a checkout, which
+# not the installer's. run-install.sh only exists inside a checkout, which
 # always ships vendor/, so an empty source means a corrupt checkout: fail fast.
 #
 # Flags:
@@ -364,7 +364,7 @@ def populate-repos [] {
 
     let vendor_src = if ('/tmp/vendor' | path exists) { '/tmp/vendor' } else { $cozy_root | path join 'vendor' }
     if (glob ($vendor_src | path join '*') | is-empty) {
-        # Why: vendor/ is committed and ships with every checkout; host-install.sh
+        # Why: vendor/ is committed and ships with every checkout; run-install.sh
         # only runs from inside one. Empty here can only mean a corrupt checkout —
         # surface it, don't silently re-fetch (that masks the corruption).
         error make {msg: $"vendor source is empty: ($vendor_src) — corrupt checkout; run toolkit/vendor.nu to repopulate vendor/"}

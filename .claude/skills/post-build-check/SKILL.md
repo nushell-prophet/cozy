@@ -55,7 +55,7 @@ the host-specific nuances below need eyes:
       built from that image passes `cozy verify`.
 - [ ] Drop a module from `toolkit/vendor.yml`, rebuild, recreate — `cozy verify`
       reports the dropped module absent from `~/repos/`.
-- [ ] On macOS: `./host-install.sh` from a clean state succeeds and `cozy
+- [ ] On macOS: `cozy-module/install/run-install.sh` from a clean state succeeds and `cozy
       verify` passes. Then confirm `claude mcp list` resolves a brew `nu` path
       (`/opt/homebrew/bin/nu` on Apple Silicon, `/home/linuxbrew/...` on Intel)
       — host-specific, not covered by `verify`.
