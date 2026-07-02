@@ -154,6 +154,27 @@ def check-git-xdg [run: closure]: nothing -> record {
     if ($r.stdout | str contains '.config/git/config') { ok 'git config: XDG' } else { fail 'git config: XDG' 'runtime git config not from ~/.config/git/config' }
 }
 
+# cozy's global ignore patterns must still resolve after sbx sets
+# core.excludesFile (which shadows git's XDG default). The patterns are derived
+# from the sandbox's canonical ~/.config/git/ignore — the git-global-ignore
+# autoload mirrors that file into the active excludesFile. Run the autoload
+# first (idempotent self-heal, same as check-mcp), then assert every canonical
+# pattern is reported ignored. check-ignore needs a work tree, but a global
+# excludesFile applies in any repo, so init a throwaway in /tmp — don't depend
+# on ~/repos/cozy being a repo: it's a real clone under the sbx kit, a symlink
+# in a cozy-dev sandbox, and plain COPYs (no .git) under the Dockerfile.
+def check-git-ignore [run: closure]: nothing -> record {
+    do $run [nu ($autoload_dir | path join git-global-ignore.nu)] | ignore
+    let want = (do $run [cat ($home | path join .config git ignore)]).stdout | lines | where {|l| ($l | str trim) | is-not-empty }
+    if ($want | is-empty) { return (fail 'git ignore: patterns' 'canonical ~/.config/git/ignore missing or empty') }
+    let tmp = '/tmp/cozy-verify-ignore'
+    do $run [git init -q $tmp] | ignore
+    let r = do $run ([git -C $tmp check-ignore] | append $want)
+    let got = $r.stdout | lines
+    let unignored = $want | where {|p| $p not-in $got }
+    if ($unignored | is-empty) { ok 'git ignore: patterns' ($want | str join ' ') } else { fail 'git ignore: patterns' $"not ignored: ($unignored | str join ', ') — sbx excludesFile shadowing XDG default" }
+}
+
 # Run every check with the given transport; one row per check.
 export def run-checks [run: closure]: nothing -> table {
     [
@@ -167,6 +188,7 @@ export def run-checks [run: closure]: nothing -> table {
         (check-catalog $run)
         (check-topiary $run)
         (check-git-xdg $run)
+        (check-git-ignore $run)
     ]
 }
 

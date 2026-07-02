@@ -4,6 +4,7 @@ covers:                # source paths update-design reconciles this file against
   - docker-files/nushell-autoload/modules-core.nu
   - docker-files/nushell-autoload/modules-repl.nu
   - docker-files/nushell-autoload/mcp-server.nu
+  - docker-files/nushell-autoload/git-global-ignore.nu
   - docker-files/nushell-autoload/git-safe-directory.nu
   - docker-files/nushell-autoload/my-nu-completions.nu
   - docker-files/nushell-autoload/standard-aliases.nu
@@ -22,7 +23,11 @@ Each entry records why the file ships — the self-healing or workaround it exis
 
 ## Autoload scripts (`~/.config/nushell/autoload/`)
 
-Nushell loads autoload scripts alphabetically; they're listed below in that order (`git-safe-directory` → `mcp-server` → `modules-core` → `modules-repl` → `my-nu-completions` → `standard-aliases`). The only ordering dependency is `modules-core` before `modules-repl` — alphabetical naming guarantees it, so the REPL-only modules can build on the core overlays.
+Nushell loads autoload scripts alphabetically; they're listed below in that order (`git-global-ignore` → `git-safe-directory` → `mcp-server` → `modules-core` → `modules-repl` → `my-nu-completions` → `standard-aliases`). The only ordering dependency is `modules-core` before `modules-repl` — alphabetical naming guarantees it, so the REPL-only modules can build on the core overlays.
+
+### git-global-ignore.nu
+Keep cozy's global gitignore patterns (`.DS_Store`, `Thumbs.db`, `desktop.ini`) active on shell start. Self-healing: `sbx` sets `core.excludesFile = ~/.gitignore_global` in `~/.gitconfig` on every create, which shadows git's XDG default (`~/.config/git/ignore`) where cozy wrote those patterns. git allows one excludesFile and `~/.gitconfig` wins over XDG, so cozy can't reclaim it — the autoload mirrors its canonical `~/.config/git/ignore` into whatever excludesFile resolves to, keeping sbx's `.sbx`. No-ops when excludesFile is unset (plain host reads the XDG default) or nothing is missing.
+**Code:** `docker-files/nushell-autoload/git-global-ignore.nu`
 
 ### git-safe-directory.nu
 Re-assert git `safe.directory = '*'` on shell start. Self-healing: sandbox creation overwrites the global setting with just the workspace-root path, so submodule repos beneath it trip "dubious ownership" under VirtioFS. Guarded so the normal path writes nothing.

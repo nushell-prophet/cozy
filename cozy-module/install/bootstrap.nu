@@ -87,6 +87,11 @@ export def main [
 	fsync = all
 	fsyncMethod = fsync
 ' | save -f ($git_xdg | path join 'config')
+    # Global ignore, git's XDG-default path. Read directly when core.excludesFile
+    # is unset (Dockerfile / host path); under sbx — which sets excludesFile and
+    # shadows this default — git-global-ignore.nu mirrors these lines into the
+    # active excludesFile on shell start, and verify.nu's check-git-ignore derives
+    # its patterns from this file. Single source: edit here, the others follow.
     ".DS_Store\nThumbs.db\ndesktop.ini\n" | save -f ($git_xdg | path join 'ignore')
 
     # Step 3 — populate ~/repos/ with vendored modules
