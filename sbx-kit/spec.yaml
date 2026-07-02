@@ -68,7 +68,10 @@ commands:
     # Clone cozy. The shell agent's base image ships git, so this runs
     # before Homebrew. --depth 1 keeps the clone small (~4 MB vs full
     # history). Pin to a tag/branch via --branch if reproducibility matters.
-    - command: git clone --depth 1 https://github.com/nushell-prophet/cozy /home/agent/repos/cozy
+    # GIT_TERMINAL_PROMPT=0: on a 404/renamed repo or proxy auth failure git
+    # would prompt for a username with no TTY and hang — the same guard
+    # _clone-or-fail.nu applies to every other clone in the tree.
+    - command: GIT_TERMINAL_PROMPT=0 git clone --depth 1 https://github.com/nushell-prophet/cozy /home/agent/repos/cozy
       user: "1000"
       description: Clone cozy
     # Install Homebrew. bootstrap.nu IS a nushell script, so brew (which
