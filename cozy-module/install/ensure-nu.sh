@@ -7,6 +7,12 @@
 # binary shadows brew's `nu` once it lands.
 set -euo pipefail
 
+# Why: brew's "Do you want to proceed?" prompt (fires when an install would
+# also upgrade outdated deps) hangs forever without a TTY. The Dockerfile and
+# kit set these via ENV; exported here too so the host path is covered before
+# the brew install below.
+export HOMEBREW_NO_ASK=1 HOMEBREW_NO_AUTO_UPDATE=1
+
 cd "$(dirname "$0")"
 VERSION="$(tr -d '[:space:]' < .nushell-version)"
 BOOTSTRAP="$PWD/bootstrap.nu"
