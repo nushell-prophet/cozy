@@ -147,8 +147,11 @@ export def main [
     # Dockerfile. Always pass `--docker` because cozy only vendors
     # paths-docker.csv (see toolkit/vendor.yml) — host install is feature
     # parity and uses the same paths file as the docker install.
+    # --commit-existing snapshots pre-existing destination files before the
+    # overwrite; without it a re-run silently loses in-sandbox config edits
+    # (--force skips the dirty check that would otherwise stop the copy).
     cd ($nu.home-dir | path join 'repos' 'dotfiles')
-    ^nu --no-config-file --commands 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker --commit-changes'
+    ^nu --no-config-file --commands 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker --commit-existing --commit-changes'
     ^nu --no-config-file --commands 'use toolkit.nu; toolkit install-skills --all'
 
     # Step 6 — append global Claude instructions to ~/.claude/CLAUDE.md
