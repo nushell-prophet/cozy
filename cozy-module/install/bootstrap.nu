@@ -62,6 +62,15 @@ export def main [
         check-no-clobber
     }
 
+    # Why: step 8 (topiary install) compiles the tree-sitter-nu grammar with
+    # gcc. Containers get gcc from step 0's apt install; on a Linux host we
+    # won't sudo mid-flow, so fail fast before anything is modified instead
+    # of surfacing a sudo prompt at step 8. macOS is covered: brew requires
+    # the Xcode CLT, which provides gcc.
+    if not $in_container and $nu.os-info.name == 'linux' and (which gcc | is-empty) {
+        error make {msg: "gcc not found — install build deps first (sudo apt-get install gcc libc6-dev), then re-run"}
+    }
+
     # Step 1 — brew installs
     if (which brew | is-empty) {
         error make {msg: "brew not found — install Homebrew first: https://brew.sh"}
