@@ -7,9 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-07-03
+
 ### Changed
 
 - All install paths (sbx kit, Dockerfile, host) now run one shared boot-tail script, so their command sequences can't drift apart; `./host-install.sh` is removed — run `cozy-module/install/run-install.sh` instead. The Homebrew it auto-installs on Linux now lands on PATH (`brew shellenv`) — previously the install succeeded but the very next command couldn't find brew. (45cb593)
+- The Dockerfile is now marked legacy and unmaintained — with `docker sandbox` deprecated, the `sbx-kit/` in-sandbox build is the supported path. (4a7aa11)
+- Vendored `numd` — new `numd run --dry-run` lists the blocks a file would execute without running them; unknown fence options now error instead of warn-and-run, and short-form fence options are removed. (4e7234b)
+- Vendored `dotnu` — new `extract-module-command` pulls a command plus its full dependency cascade into one self-contained script, and `expand-code` generates code from `#**` directives; `embed-add` now folds in the capture config and requires sqlite history. (e297aa7, e8948dc)
+- Vendored `nu-goodies` — `copy-out` strips the trailing `#exit_<code>` failure tag so the copied text matches the command shown on screen. (05128fb, d61ec1f)
+- Vendored `dotfiles` — WezTerm QuickSelect matches two- and three-dot git commit ranges (`hash..hash`, `hash...hash`) as one block. (97eedc9)
+
+### Fixed
+
+- Inside an `sbx` sandbox `.DS_Store`/`Thumbs.db`/`desktop.ini` stopped being ignored — `sbx` sets `core.excludesFile` on every create, which shadows cozy's XDG ignore. A new autoload re-heals it on shell start by mirroring cozy's patterns into whatever excludesFile resolves to. (05fd413)
+- The pbcopy shim now installs on every Linux host, not only in the docker step — on a plain Linux host every copy keybinding (helix, lazygit, broot, nushell, zellij, visidata) died with command-not-found. (3050e08)
+- The no-flag install from the README no longer dies on a stock macOS shell — `run-install.sh` guarded empty args against bash 3.2 under `set -u`. (6d0a0f6)
+- Bootstrap now fails fast on a Linux host without gcc instead of hitting a `sudo apt-get` prompt at step 8; the gcc/libc6-dev prerequisite is documented. (a56a4ab, 3ff3a56)
+- A bootstrap re-run no longer silently overwrites uncommitted in-sandbox edits to `~/.config/*` — `--commit-existing` snapshots the prior state into git history first. (068112a)
+- The kit's cozy clone can no longer hang on git's credential prompt (404 or proxy auth failure) — guarded with `GIT_TERMINAL_PROMPT=0`. (94cf1fb)
+- The host install path no longer hangs on Homebrew's confirmation prompt — `ensure-nu.sh` now exports `HOMEBREW_NO_ASK`/`HOMEBREW_NO_AUTO_UPDATE` itself. (3b29e0b)
+- `cozy verify` no longer false-fails the git-identity and JJ_CONFIG checks when run under the nushell MCP — it now reads the env from a login shell, so the result is the same however verify is launched. (b4c1aad)
 
 ## [0.3.2] - 2026-07-01
 
@@ -355,7 +373,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.2...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.3...HEAD
+[0.3.3]: https://github.com/nushell-prophet/cozy/compare/0.3.2...0.3.3
 [0.3.2]: https://github.com/nushell-prophet/cozy/compare/0.3.1...0.3.2
 [0.3.1]: https://github.com/nushell-prophet/cozy/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/nushell-prophet/cozy/compare/0.2.5...0.3.0
