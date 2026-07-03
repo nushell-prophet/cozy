@@ -8,7 +8,7 @@ human-check: pending # pending | verified — flip to verified after you read it
 
 This is not a command reference. The Nushell modules are self-documenting — `help <cmd>` and the doc comments are the source of truth for *what* each command does; duplicating that here only rots. So these notes hold the part no single script can carry: the **build order** (it spans the `../Dockerfile`, `bootstrap.nu`, and the kit) and the **motivation** — why each tool is compiled from source, why each module is vendored, why each file ships into the sandbox. They sit between `../CLAUDE.md` (terse ops facts) and the code, linking to it by symbol, never copying.
 
-**Everything starts from the `../Dockerfile`.** These notes follow the build sequence: base image → Homebrew → ENV → cached `nu` → `COPY` repo bits → `ensure-nu.sh` → `bootstrap.nu`, which runs the install steps in order. Each file walks its own part in that same order — preserve it when editing.
+**Everything starts from the `../Dockerfile`.** These notes follow the build sequence: base image → Homebrew → ENV → cached `nu` → `COPY` repo bits → `run-install.sh` (→ `ensure-nu.sh` → `bootstrap.nu`), which runs the install steps in order. Each file walks its own part in that same order — preserve it when editing.
 
 ## Subsystems
 
