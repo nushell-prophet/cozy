@@ -98,15 +98,25 @@ def check-dirs [run: closure]: nothing -> list {
     }
 }
 
+# Read env from a login shell, not this process. Why: the git identity and
+# JJ_CONFIG live only in /etc/sandbox-persistent.sh, which a login shell sources
+# but a directly-spawned nu does not — so reading `$env`/`printenv` here false-
+# fails when verify runs under the nushell MCP tool (its nu isn't a login child).
+# A login shell is also the true contract: it catches a real regression where the
+# base image stops sourcing the persistent file, which a plain file read wouldn't.
 def check-envs [run: closure]: nothing -> list {
+    let actual = (do $run [bash -lc printenv]).stdout
+        | lines
+        | parse '{k}={v}'
+        | reduce --fold {} {|row acc| $acc | insert $row.k $row.v }
     expected-envs | items {|name expected|
-        let r = do $run [printenv $name]
-        if $r.exit != 0 or ($r.stdout | is-empty) {
-            fail $"env: ($name)" 'not set'
-        } else if $r.stdout == $expected {
-            ok $"env: ($name)" $r.stdout
+        let got = $actual | get --optional $name
+        if $got == null {
+            fail $"env: ($name)" 'not set (checked a login shell)'
+        } else if $got == $expected {
+            ok $"env: ($name)" $got
         } else {
-            fail $"env: ($name)" $"expected ($expected), got ($r.stdout)"
+            fail $"env: ($name)" $"expected ($expected), got ($got)"
         }
     }
 }

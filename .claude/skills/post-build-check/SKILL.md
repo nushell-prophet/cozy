@@ -13,9 +13,9 @@ description: >
 The checks live in `cozy-module/verify.nu`. Run them inside a freshly-built
 sandbox with `cozy verify`.
 
-Run `cozy verify` via `nu -c` from the **Bash tool** — not the nushell MCP `evaluate` tool. `cozy` is a Nushell overlay (loaded by the `module-imports.nu` autoload), not a PATH binary, and autoloads don't fire under `nu -c`, so load the overlay yourself: `nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'`.
+Run `cozy verify` inside the sandbox — any launch path works: the nushell MCP `evaluate` tool, an interactive shell, or `nu -c` from Bash. `cozy` is a Nushell overlay (loaded by the `module-imports.nu` autoload), not a PATH binary; autoloads fire in an interactive shell and the MCP tool but **not** under `nu -c`, so there load the overlay yourself: `nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'`.
 
-Don't use the MCP `evaluate` tool for this. Its `nu` is spawned directly, not from a login shell, so it never sources `/etc/sandbox-persistent.sh` — where the git identity (`GIT_AUTHOR_*`, `GIT_COMMITTER_*`) and `JJ_CONFIG` are exported. Those five env checks then report `pass: false` on a healthy build (the real container ENV — `XDG_*`, `HELIX_RUNTIME`, `LANG` — is inherited, so it misleads by passing some of the block). The Bash tool's shell is profile-initialized (it sources that file), so a `nu -c` child inherits the full env and every check passes — as does a real login shell, `bash -lc 'nu -c "…"'`.
+The env checks read a login shell (via `bash -lc`), not verify's own process, so they report the same result however verify was launched. This matters because the git identity (`GIT_AUTHOR_*`, `GIT_COMMITTER_*`) and `JJ_CONFIG` live only in `/etc/sandbox-persistent.sh`, which a login shell sources but a directly-spawned `nu` (the MCP tool) does not — reading verify's own `$env` would false-fail those five on a healthy build. One MCP-only gotcha remains: an `evaluate` session caches the module it loaded at startup, so if you edit `verify.nu` mid-session, re-run via `nu -c` (fresh parse), not the stale overlay.
 
 The checks derive every expected value from sources that ship into the sandbox
 — `vendored-repos.nuon` (repos), the
