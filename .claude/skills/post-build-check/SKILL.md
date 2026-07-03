@@ -13,12 +13,9 @@ description: >
 The checks live in `cozy-module/verify.nu`. Run them inside a freshly-built
 sandbox with `cozy verify`.
 
-`cozy` is a Nushell overlay loaded by the `module-imports.nu` autoload, not a
-PATH binary. Autoloads fire in an interactive shell and in the nushell MCP
-`evaluate` tool, but **not** in non-interactive `nu -c '...'`. So run `cozy
-verify` through the nushell MCP tool or an interactive shell. From plain `nu -c`
-the overlay is absent (`command not found`) — load it first with `overlay use
-~/repos/cozy/cozy-module/ as cozy --prefix`.
+Run `cozy verify` via `nu -c` from the **Bash tool** — not the nushell MCP `evaluate` tool. `cozy` is a Nushell overlay (loaded by the `module-imports.nu` autoload), not a PATH binary, and autoloads don't fire under `nu -c`, so load the overlay yourself: `nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'`.
+
+Don't use the MCP `evaluate` tool for this. Its `nu` is spawned directly, not from a login shell, so it never sources `/etc/sandbox-persistent.sh` — where the git identity (`GIT_AUTHOR_*`, `GIT_COMMITTER_*`) and `JJ_CONFIG` are exported. Those five env checks then report `pass: false` on a healthy build (the real container ENV — `XDG_*`, `HELIX_RUNTIME`, `LANG` — is inherited, so it misleads by passing some of the block). The Bash tool's shell is profile-initialized (it sources that file), so a `nu -c` child inherits the full env and every check passes — as does a real login shell, `bash -lc 'nu -c "…"'`.
 
 The checks derive every expected value from sources that ship into the sandbox
 — `vendored-repos.nuon` (repos), the
