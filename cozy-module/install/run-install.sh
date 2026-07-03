@@ -38,7 +38,10 @@ command -v brew >/dev/null || {
 
 export PATH="$HOME/.local/bin:$PATH"
 ./ensure-nu.sh
-nu bootstrap.nu "$@"
+# ${1+"$@"} not "$@": under set -u, bash < 4.4 treats empty "$@" as unbound —
+# and the shebang resolves to Apple's /bin/bash 3.2 on a stock Mac, so the
+# README's plain no-flag install would die right here.
+nu bootstrap.nu ${1+"$@"}
 
 # Why: on macOS, `nu` without XDG_CONFIG_HOME reads
 # ~/Library/Application Support/nushell/ — but bootstrap.nu deploys dotfiles
