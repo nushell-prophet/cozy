@@ -7,7 +7,7 @@ covers:
   - toolkit/check.nu
   - toolkit/docs.nu
   - cozy-module/vendored-repos.nuon
-reconciled-at: 03a87ce2f81ce9eadf5835c34f9e6f4288a050c5
+reconciled-at: 6d0a0f617731076e7b387a47782c70cdfad0593b
 ---
 
 # toolkit — host-side vendor tooling
@@ -34,4 +34,4 @@ Wired in `toolkit/vendor.nu`.
 
 ## Local docs
 
-`toolkit docs` (in `toolkit/docs.nu`, wired into `mod.nu` alongside `vendor` and `check`) syncs Docker sandbox docs into `docs.docker.com/` (its own gitignored repo). Idempotent.
+`toolkit docs` (in `toolkit/docs.nu`, wired into `mod.nu` alongside `vendor` and `check`) syncs Docker sandbox docs into `docs.docker.com/` (its own gitignored repo). Pages are auto-discovered from docs.docker.com's `llms-full.txt` index, filtered to the sandbox/sbx path prefixes — no hardcoded page list to keep in sync. Idempotent.

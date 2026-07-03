@@ -7,7 +7,7 @@ covers:                # source paths update-design reconciles this file against
   - cozy-module/install/.nushell-version
   - cozy-module/install/bootstrap.nu
   - sbx-kit/spec.yaml
-reconciled-at: 03a87ce2f81ce9eadf5835c34f9e6f4288a050c5
+reconciled-at: 6d0a0f617731076e7b387a47782c70cdfad0593b
 ---
 
 # build — the boot sequence (the spine)
@@ -20,15 +20,15 @@ reconciled-at: 03a87ce2f81ce9eadf5835c34f9e6f4288a050c5
 
 This file walks the `Dockerfile` top to bottom, then `bootstrap.nu`'s steps 0–9 in order, and links out to the other design files at the step where each is reached. **This order is the canonical order for the whole project** — README, CLAUDE.md, and every other design file mirror it. Change the order here and propagate it everywhere.
 
-`bootstrap.nu` auto-detects its mode (no flags): `/etc/sandbox-persistent.sh` present → run the Docker system setup (Step 0); `/tmp/vendor` present → use the Docker-staged vendor as-is; else → use the committed `vendor/`. Re-run = clean setup; idempotency is not a goal.
+`bootstrap.nu` auto-detects its mode (no flags): a container marker present (`/etc/sandbox-persistent.sh` from the sbx base image, or `/.dockerenv` for non-sbx container bases) → run the container system setup (Step 0); `/tmp/vendor` present → use the Docker-staged vendor as-is; else → use the committed `vendor/`. Re-run = clean setup; idempotency is not a goal.
 
 ## Dockerfile
 
-The Dockerfile is deliberately thin — it stages bits and hands off. In order:
+The Dockerfile is **legacy and unmaintained**: it existed for the deprecated `docker sandbox`, and the `sbx` kit replaced it as the run path — it survives only as the plain-`docker` artifact. It still defines the canonical order. Deliberately thin — it stages bits and hands off. In order:
 
 1. `FROM docker/sandbox-templates:shell` — Ubuntu base with git, curl, Python, Node.js, Go, ripgrep, jq, gh. `USER agent`.
 2. Install Homebrew — cache-priming only: `run-install.sh` auto-installs brew when it's missing, so this layer is optional for correctness; it keeps brew out of the uncached tail.
-3. `ENV` blocks — `PATH` puts `~/.local/bin` first (so a pinned `nu` shadows brew's), then linuxbrew; plus `HELIX_RUNTIME`, `HOME`, `TERM*`, `LANG`, and the `XDG_*` dirs. `bootstrap.nu` Step 0 mirrors this block into `/etc/sandbox-persistent.sh` for in-sandbox re-runs; `sbx-kit/spec.yaml`'s `environment.variables` mirrors it for the kit.
+3. `ENV` blocks — `PATH` puts `~/.local/bin` first (so a pinned `nu` shadows brew's), then linuxbrew; plus `HELIX_RUNTIME`, `HOME`, `TERM*`, `LANG`, and the `XDG_*` dirs. Also `HOMEBREW_NO_ASK=1` (brew's "Do you want to proceed?" prompt hangs forever without a TTY) and `HOMEBREW_NO_AUTO_UPDATE=1` (skip the implicit `brew update` — faster, and bottle versions stay fixed); `ensure-nu.sh` and `bootstrap.nu` export the same pair so the host path is covered too. `bootstrap.nu` Step 0 mirrors this block into `/etc/sandbox-persistent.sh` for in-sandbox re-runs; `sbx-kit/spec.yaml`'s `environment.variables` mirrors it for the kit.
 4. `brew install nushell` — cache-priming too: `ensure-nu.sh` (via `run-install.sh`) installs `nu` when it's absent.
 5. `COPY` repo bits — `vendor/` → `/tmp/vendor/` (bootstrap fans it out under `~/repos/`); `cozy-module/` + `docker-files/` → `~/repos/cozy/`, so `bootstrap.nu` resolves `cozy_root` from `path self` (three dirnames up).
 6. `RUN run-install.sh` — the shared boot tail: ensure brew (no-op here) → `ensure-nu.sh` (see below) → `nu bootstrap.nu` (steps 0–9 below).
@@ -44,9 +44,13 @@ Ensure `nu` can parse `bootstrap.nu`. Tries latest brew `nu` first; if it can't 
 Entry: `export def main [--force]`. `--force` skips the host-install clobber guard. The installer consumes the committed `vendor/` snapshot as-is and never fetches modules — refreshing `vendor/` (from upstream or siblings) is `toolkit/vendor.nu`'s job, run before a build.
 **Code:** `cozy-module/install/bootstrap.nu` → `export def main`
 
-### Step 0 — system setup (Docker) / clobber guard (host)
-Gated on the `/etc/sandbox-persistent.sh` marker the base image ships. **Docker:** `setup-docker-system` wipes colliding `config.nu`/`env.nu`, rewrites apt sources `http://` → `https://` (the VM allows :443, not :80), `apt-get install` procps/file/gcc/libc6-dev (gcc + libc6-dev are needed for the tree-sitter-nu compile in Step 8), installs the `pbcopy` shim to `~/.local/bin`, and writes the runtime env-export block (marker-wrapped) into `/etc/sandbox-persistent.sh`. **Host** (marker absent): `check-no-clobber` refuses to overwrite existing user configs unless `--force` or the `~/.cozy-installed` stamp is present.
+### Step 0 — system setup (container) / clobber guard (host)
+Gated on a container marker: `/etc/sandbox-persistent.sh` (shipped by the sbx base image) or `/.dockerenv` (non-sbx container bases — marker-only gating made those silently take the host branch). **Container:** `setup-docker-system` wipes colliding `config.nu`/`env.nu`, rewrites apt sources `http://` → `https://` (the VM allows :443, not :80), `apt-get install` procps/file/gcc/libc6-dev (gcc + libc6-dev are needed for the tree-sitter-nu compile in Step 8), and writes the runtime env-export block (marker-wrapped) into `/etc/sandbox-persistent.sh` (created when only `/.dockerenv` was present). **Host** (markers absent): `check-no-clobber` refuses to overwrite existing user configs unless `--force` or the `~/.cozy-installed` stamp is present.
 **Code:** `bootstrap.nu` → `def setup-docker-system`, `def check-no-clobber`
+
+### Before Step 1 — gcc fail-fast + pbcopy shim
+Two guards in `main` between Step 0 and the brew installs. A Linux **host** without gcc fails before anything is modified — Step 8 compiles the tree-sitter-nu grammar, containers get gcc from Step 0's apt install, but the flow won't sudo mid-install, so surface it up front (macOS is covered via the Xcode CLT brew requires). Then the `pbcopy` shim is installed to `~/.local/bin` on every Linux, container or host — the dotfiles deployed in Step 4 call `pbcopy` and Linux has no native one; a user's own non-cozy `pbcopy` on PATH is never shadowed. See `autoload.md`.
+**Code:** `bootstrap.nu` → `export def main` (pre-Step-1 block)
 
 ### Step 1 — brew installs
 `brew install nushell fzf lazygit helix zellij broot git-delta visidata bat topiary fd jj git-lfs`, then `brew cleanup --prune=all`. Errors if brew is missing.
@@ -62,7 +66,7 @@ Writes `~/.config/git/{config,ignore}`: identity `Agent <agent@sandbox>` (so Ste
 Wipes `~/.config/nushell/autoload/` (cozy owns it; stale files from removed-upstream scripts must not accumulate), then copies `docker-files/nushell-autoload/*.nu` into it. See `autoload.md`.
 
 ### Steps 4 & 5 — dotfiles + skills
-From `~/repos/dotfiles`, spawns nu to run `toolkit push-to-machine --force --create-dirs --docker --commit-changes` (deploys helix/zellij/lazygit/broot/nushell/jj/wezterm configs) then `toolkit install-skills --all`. Always `--docker` because cozy only vendors the docker paths file. Config sources live in the `dotfiles` repo — see `modules.md`.
+From `~/repos/dotfiles`, spawns nu to run `toolkit push-to-machine --force --create-dirs --docker --commit-existing --commit-changes` (deploys helix/zellij/lazygit/broot/nushell/jj/wezterm configs; `--commit-existing` snapshots pre-existing destination files before the forced overwrite, so a re-run can't silently lose in-sandbox config edits) then `toolkit install-skills --all`. Always `--docker` because cozy only vendors the docker paths file. Config sources live in the `dotfiles` repo — see `modules.md`.
 
 ### Step 6 — global Claude instructions
 Appends `docker-files/global-claude.md` (the tool catalog) to `~/.claude/CLAUDE.md`.
@@ -79,7 +83,7 @@ Symlinks the vendored `~/repos/topiary-nushell` to `~/git/topiary-nushell` (wher
 
 ## run-install.sh (the shared boot tail)
 
-The one script every path runs. Ensures brew — auto-installs only on Linux with passwordless sudo (the sbx case; it then `eval`s `brew shellenv`, since the installer never touches the calling shell's PATH), fails fast with a copy-paste snippet on macOS (keeps password prompts out of the no-prompt flow). Then `ensure-nu.sh`, then `nu bootstrap.nu "$@"`. On hosts (no container marker — same detection as bootstrap.nu Step 0) it finally appends an `XDG_CONFIG_HOME` export to the user's shell rc (so macOS `nu` reads `~/.config/nushell/` instead of `~/Library/Application Support/`).
+The one script every path runs. Ensures brew — auto-installs only on Linux with passwordless sudo (the sbx case; it then `eval`s `brew shellenv`, since the installer never touches the calling shell's PATH), fails fast with a copy-paste snippet on macOS (keeps password prompts out of the no-prompt flow). Then `ensure-nu.sh`, then `nu bootstrap.nu "$@"`. On hosts (no container markers — same detection as bootstrap.nu Step 0) it finally appends an `XDG_CONFIG_HOME` export to the user's shell rc (so macOS `nu` reads `~/.config/nushell/` instead of `~/Library/Application Support/`).
 **Code:** `cozy-module/install/run-install.sh`
 
 ## sbx-kit/spec.yaml (sbx kit)

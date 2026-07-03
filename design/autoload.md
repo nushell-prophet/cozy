@@ -12,12 +12,12 @@ covers:                # source paths update-design reconciles this file against
   - docker-files/pbcopy
   - docker-files/logo.ans
   - docker-files/workspace-README.md
-reconciled-at: 03a87ce2f81ce9eadf5835c34f9e6f4288a050c5
+reconciled-at: 6d0a0f617731076e7b387a47782c70cdfad0593b
 ---
 
 # cozy autoload & shipped docker-files
 
-The `docker-files/` bits that land in the running sandbox. `bootstrap.nu` Step 3.5 copies `docker-files/nushell-autoload/*.nu` → `~/.config/nushell/autoload/` (loaded on every shell start), Step 6 appends `global-claude.md` to `~/.claude/CLAUDE.md`, and the `pbcopy` shim is installed to `~/.local/bin` (Step 0). The `Dockerfile`'s final `COPY` places `workspace-README.md` at `~/workspace/README.md`. `logo.ans` stays in place and is read by `cozy logo` and the build MOTD.
+The `docker-files/` bits that land in the running sandbox. `bootstrap.nu` Step 3.5 copies `docker-files/nushell-autoload/*.nu` → `~/.config/nushell/autoload/` (loaded on every shell start), Step 6 appends `global-claude.md` to `~/.claude/CLAUDE.md`, and the `pbcopy` shim is installed to `~/.local/bin` (on every Linux, just before Step 1). The `Dockerfile`'s final `COPY` places `workspace-README.md` at `~/workspace/README.md`. `logo.ans` stays in place and is read by `cozy logo` and the build MOTD.
 
 Each entry records why the file ships — the self-healing or workaround it exists for. **Code** points at the file.
 
@@ -55,11 +55,11 @@ Defines the `lg` → `lazygit` alias (the only alias in the file today).
 **Code:** `docker-files/nushell-autoload/standard-aliases.nu` → `alias lg = lazygit`
 
 ## global-claude.md
-The tool catalog appended to `~/.claude/CLAUDE.md` by `bootstrap.nu` Step 6. A markdown brief that tells the agent what cozy built around it: available tools (shell, editors, git, search, data/languages, formatting, package managers), where Nushell modules live, the registered Nushell MCP server, sandbox constraints, and a privacy section.
+The tool catalog appended to `~/.claude/CLAUDE.md` by `bootstrap.nu` Step 6. A markdown brief that tells the agent what cozy built around it: available tools (shell, editors, git, search, data/languages, formatting, package managers), where Nushell modules live, the registered Nushell MCP server and its two usage caveats (the `evaluate` session persists across calls, so edited modules stay stale until re-`use`d; the MCP `nu` skips the login shell, so the `/etc/sandbox-persistent.sh` git/jj exports are absent), sandbox constraints, and a privacy section.
 **Code:** `docker-files/global-claude.md`
 
 ## pbcopy
-Clipboard shim installed to `~/.local/bin/pbcopy` (Step 0). Reads stdin and emits it as an OSC 52 terminal escape (`base64`-encoded) to `/dev/tty`, so copy-to-clipboard works over the terminal without a real pasteboard.
+Clipboard shim installed to `~/.local/bin/pbcopy` on every Linux, container or host, just before Step 1 — the dotfiles deployed in Step 4 call `pbcopy` and Linux has no native one; a user's own non-cozy `pbcopy` on PATH is never shadowed. Reads stdin and emits it as an OSC 52 terminal escape (`base64`-encoded) to `/dev/tty`, so copy-to-clipboard works over the terminal without a real pasteboard.
 **Code:** `docker-files/pbcopy`
 
 ## logo.ans
