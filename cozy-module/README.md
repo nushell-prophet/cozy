@@ -90,7 +90,11 @@ Runs the post-build checks against the sandbox you are inside: tools launch, exp
 cozy verify
 ```
 
-The `cozy` module is autoloaded only in an interactive nushell session, so run this from an interactive shell or the nushell MCP `evaluate` tool — a one-shot `nu -c` skips autoloads and won't have `cozy`.
+The `cozy` module is autoloaded only in an interactive nushell session, so run this from an interactive shell or the nushell MCP `evaluate` tool — a one-shot `nu -c` skips autoloads and won't have `cozy` unless you load it explicitly (`nu --config ~/.config/nushell/autoload/modules-core.nu -c 'cozy verify'`).
+
+### `cozy logo`
+
+Prints the cozy ANSI logo banner (the same one bash login shows).
 
 ### `cozy install ...`
 

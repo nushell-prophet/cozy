@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- All install paths (sbx kit, Dockerfile, host) now run one shared boot-tail script, so their command sequences can't drift apart; `./host-install.sh` is removed — run `cozy-module/install/run-install.sh` instead. On a fresh Linux host with passwordless sudo it now also auto-installs Homebrew and puts it on PATH. (45cb593)
+- All install paths (sbx kit, Dockerfile, host) now run one shared boot-tail script, so their command sequences can't drift apart; `./host-install.sh` is removed — run `cozy-module/install/run-install.sh` instead. The Homebrew it auto-installs on Linux now lands on PATH (`brew shellenv`) — previously the install succeeded but the very next command couldn't find brew. (45cb593)
 
 ## [0.3.2] - 2026-07-01
 

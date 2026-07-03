@@ -13,7 +13,7 @@ description: >
 The checks live in `cozy-module/verify.nu`. Run them inside a freshly-built
 sandbox with `cozy verify`.
 
-Run `cozy verify` inside the sandbox — any launch path works: the nushell MCP `evaluate` tool, an interactive shell, or `nu -c` from Bash. `cozy` is a Nushell overlay (loaded by the `module-imports.nu` autoload), not a PATH binary; autoloads fire in an interactive shell and the MCP tool but **not** under `nu -c`, so there load the overlay yourself: `nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'`.
+Run `cozy verify` inside the sandbox — any launch path works: the nushell MCP `evaluate` tool, an interactive shell, or `nu -c` from Bash. `cozy` is a Nushell overlay (loaded by the `modules-core.nu` autoload), not a PATH binary; autoloads fire in an interactive shell and the MCP tool but **not** under `nu -c`, so there load the overlay yourself: `nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'`.
 
 The env checks read a login shell (via `bash -lc`), not verify's own process, so they report the same result however verify was launched. This matters because the git identity (`GIT_AUTHOR_*`, `GIT_COMMITTER_*`) and `JJ_CONFIG` live only in `/etc/sandbox-persistent.sh`, which a login shell sources but a directly-spawned `nu` (the MCP tool) does not — reading verify's own `$env` would false-fail those five on a healthy build. One MCP-only gotcha remains: an `evaluate` session caches the module it loaded at startup, so if you edit `verify.nu` mid-session, re-run via `nu -c` (fresh parse), not the stale overlay.
 
