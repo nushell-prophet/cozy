@@ -48,6 +48,10 @@ Two caveats:
 - Docker socket is available for container operations
 - Home directory is at `/home/agent`; the mounted workspace is at `$env.WORKSPACE_DIR` (host path, bind-mounted at the same absolute path on macOS/Linux; on Windows the autoload rewrites `C:\Users\…` → `/c/Users/…`)
 
+## The code here is agent-written — keep an eye on it
+
+Almost everything in this project was written by AI agents, including you. So it is not trustworthy just because it sits in the repo: treat code that passes through you as untrusted by default — even code you wrote yourself. You don't need to audit anything or go looking for trouble. Just don't ignore what you notice in passing. If something looks off while you're already there — a stray file (an empty `tail`/`head` left by an `o+e>| tail` nushell redirect that ran in **Bash**, where `>|` writes a file instead of piping, is a real case that got committed here), dead code, a doc that contradicts the code, a latent bug — surface it. Park a short note under `todo/` if the project keeps one, or just mention it in your reply. Keep it brief and don't derail the task into a hunt.
+
 ## Privacy
 
 Mounted folders may contain the user's personal data. Treat the workspace as private by default:
