@@ -32,11 +32,16 @@ Nushell is the primary shell. Modules are in `~/repos/`:
 - `nutest` — test framework
 - `nu-multiproof` — multi-proof utilities to timestamp and sign git repo contents
 
-Autoload scripts in `~/.config/nushell/autoload/` load these modules — and the `cozy` command — for you, but only when nu starts an **interactive** session. The nushell MCP `evaluate` tool runs such a session, so the modules are ready there too. A one-shot `nu -c '…'` (e.g. run from Bash) is not interactive and skips autoloads, so `cozy`, `nu-goodies`, `kv` and the rest are absent — you'll get `command not found`. Prefer the MCP `evaluate` tool for nushell. If you must use `nu -c`, load the modules with `--config`: `nu --config ~/.config/nushell/autoload/modules-core.nu -c '…'` — `--config` runs even in `-c` mode (unlike autoload), so the full core module set (`cozy`, `nu-goodies`, `kv`, `dotnu`, `numd`) is available.
+Autoload scripts in `~/.config/nushell/autoload/` load these modules — and the `cozy` command — for you, but only when nu starts an **interactive** session. The nushell MCP `evaluate` tool runs such a session, so the modules are ready there too. A one-shot `nu -c '…'` (e.g. run from Bash) is not interactive and skips autoloads, so `cozy`, `nu-goodies`, `kv` and the rest are absent — you'll get `command not found`. The MCP `evaluate` tool is good for interactive exploration (autoloads fire, structured output) — but read its caveats under *Nushell MCP Server* below before relying on it. If you use `nu -c`, load the modules with `--config`: `nu --config ~/.config/nushell/autoload/modules-core.nu -c '…'` — `--config` runs even in `-c` mode (unlike autoload), so the full core module set (`cozy`, `nu-goodies`, `kv`, `dotnu`, `numd`) is available.
 
 ## Nushell MCP Server
 
 A Nushell MCP server is registered in `~/.claude.json`. It provides `evaluate`, `list_commands`, and `command_help` tools for running Nushell commands with structured output.
+
+Two caveats:
+
+- **The session persists.** All `evaluate` calls share one long-lived nushell state — variables, `$env`, and loaded modules stay between calls. Handy, but a trap when you edit a module: the old version stays loaded until you re-run `use module.nu` (or `overlay use`) for it. Agents forget this and keep debugging against stale code. A one-shot `nu -c '…'` from Bash starts fresh every time — slower to set up, but straightforward and predictable.
+- **It skips the login environment.** The MCP `nu` is spawned directly, not from a login shell, so it never sources `/etc/sandbox-persistent.sh` — the git identity (`GIT_AUTHOR_*`, `GIT_COMMITTER_*`) and `JJ_CONFIG` are absent there. Real container ENV (`XDG_*`, `HELIX_RUNTIME`, `LANG`) is inherited fine, so the gap is easy to miss. If a command depends on those git/jj vars, run it via `nu -c` from Bash (whose shell sourced the profile) or `bash -lc 'nu -c "…"'`.
 
 ## Constraints
 
