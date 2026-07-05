@@ -19,7 +19,7 @@ def resolve-workspace-mount [host: string] {
     if ($m | is-empty) {
         error make {msg: $"WORKSPACE_DIR ($host) not resolvable inside VM"}
     }
-    let candidate = $"/($m.drive.0 | str downcase)/($m.rest.0)"
+    let candidate = $"/($m.drive.0 | str lowercase)/($m.rest.0)"
     if not ($candidate | path exists) {
         error make {msg: $"WORKSPACE_DIR ($host): translated to ($candidate) but path doesn't exist"}
     }
