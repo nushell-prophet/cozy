@@ -1,6 +1,6 @@
 ---
 name: nushell-style
-description: This skill should be used when writing, editing, reviewing, or debugging Nushell (.nu) files. Covers opinionated pipeline composition, command choices (where vs filter, match vs if/else, get --optional), formatting conventions (Topiary), type signatures, module structure, testing with nutest (unit tests, snapshot tests, @example attributes, coverage), NUON data format, toolkit.nu patterns, nu --ide-check debugging, the Nushell MCP server, and migration guide for updating scripts across Nushell versions (0.100–0.113: breaking changes, renamed commands, new idioms). Relevant when the user says "write nushell code," "review my .nu file," "nushell style," "nushell best practices," "format nushell," "nushell pipeline," "nutest," "NUON," "nu --ide-check," "nushell MCP," "update nushell script," "nushell breaking changes," or "nushell migration."
+description: This skill should be used when writing, editing, reviewing, or debugging Nushell (.nu) files. Covers opinionated pipeline composition, command choices (where vs filter, match vs if/else, get --optional), formatting conventions (Topiary), type signatures, module structure, testing with nutest (unit tests, snapshot tests, @example attributes, coverage), NUON data format, toolkit.nu patterns, nu --ide-check debugging, the Nushell MCP server, and migration guide for updating scripts across Nushell versions (0.100–0.114: breaking changes, renamed commands, new idioms). Relevant when the user says "write nushell code," "review my .nu file," "nushell style," "nushell best practices," "format nushell," "nushell pipeline," "nutest," "NUON," "nu --ide-check," "nushell MCP," "update nushell script," "nushell breaking changes," or "nushell migration."
 ---
 
 # Nushell Code Style Guide
@@ -17,8 +17,8 @@ description: This skill should be used when writing, editing, reviewing, or debu
 | [testing.md](references/testing.md) | nutest framework, snapshots, coverage |
 | [toolkit.md](references/toolkit.md) | toolkit.nu, repo utilities, commit conventions |
 | [mcp.md](references/mcp.md) | Nushell as MCP server (`nu --mcp`), tools, persistent state |
-| [migration.md](references/migration.md) | Breaking changes, renamed commands, new idioms (0.100 → 0.113) |
-| [enhancements.md](references/enhancements.md) | New features to improve existing scripts (0.100 → 0.113) |
+| [migration.md](references/migration.md) | Breaking changes, renamed commands, new idioms (0.100 → 0.114) |
+| [enhancements.md](references/enhancements.md) | New features to improve existing scripts (0.100 → 0.114) |
 
 ---
 
@@ -42,7 +42,7 @@ Write code that an experienced nushell user can quickly apprehend. Leverage impl
 
 | Verbose | Concise | Why |
 |---------|---------|-----|
-| `update field {\|row\| $row.field \| str upcase}` | `update field { str upcase }` | Closure receives field value directly |
+| `update field {\|row\| $row.field \| str uppercase}` | `update field { str uppercase }` | Closure receives field value directly |
 | `each {\|x\| $x \| str trim}` | `each { str trim }` | `$in` implicit, pipeline flows |
 | `$list \| each { str trim }` | `$list \| str trim` | Many commands accept `list<string>` directly (see below) |
 | `where {\|row\| $row.status == "active"}` | `where status == "active"` | `where` has field shorthand |
