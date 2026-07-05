@@ -38,7 +38,9 @@ export def install [
         $"main \(($rev)\)"
     } else {
         ^git fetch --tags
-        let tag = ^git tag -l '[0-9]*' --sort='-v:refname' | lines | first
+        # Why: upstream has legacy tags like 0_5_0 and v0.96.0; version sort ranks
+        # '_' above '.', so 0_5_0 would win. Keep only dot-separated version tags.
+        let tag = ^git tag -l --sort='-v:refname' | lines | where $it =~ '^\d+(\.\d+)+$' | first
         ^git checkout $tag
         $tag
     }
