@@ -2,8 +2,13 @@
 # This script allow us to unpack them so they look like the original error given that
 # for whatever reason, `$env.NU_BACKTRACE = 0` doesn't appear to work
 
-export def unwrap-error []: record<msg: string, rendered: string, json: string> -> record<msg: string, rendered: string, json: string> {
-    let original = $in | select msg rendered json
+export def unwrap-error []: record -> record {
+    # Nushell 0.114 replaced the catch record's `json` string field with a
+    # structured `details` record. Normalise back to `json` so the rest of this
+    # (version-agnostic) code keeps working on both.
+    let raw = $in
+    let input = if 'json' in ($raw | columns) { $raw } else { $raw | insert json ($raw.details | to json) }
+    let original = $input | select msg rendered json
 
     mut error = $original
     mut json = $error.json | from json

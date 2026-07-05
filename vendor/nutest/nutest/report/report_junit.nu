@@ -17,7 +17,7 @@ use ../store.nu
 #    </testsuite>
 #  </testsuites>
 
-export def create [path: string]: nothing -> record<name: string, save: closure, results: closure> {
+export def create [path: string]: any -> record<name: string, save: closure, results: closure> {
     {
         name: "report junit"
         results: { create-report }
