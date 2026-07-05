@@ -14,7 +14,7 @@ description: >
 # absolute paths are safe across whatever the parent agent inherits.
 environment:
   variables:
-    PATH: /home/agent/.local/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    PATH: /home/agent/.local/bin:/home/agent/.cargo/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     HOME: /home/agent
     HELIX_RUNTIME: /home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime
     TERM: xterm-256color

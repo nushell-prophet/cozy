@@ -20,7 +20,7 @@ const shared_env_keys = [XDG_CONFIG_HOME XDG_DATA_HOME XDG_CACHE_HOME HELIX_RUNT
 
 # The PATH prefix the Dockerfile prepends (before its `${PATH}`) — sbx-kit/spec.yaml
 # has no ${PATH} to expand, so it must start with this exact prefix.
-const path_prefix = '/home/agent/.local/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin'
+const path_prefix = '/home/agent/.local/bin:/home/agent/.cargo/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin'
 
 # Normalize a value for comparison: strip surrounding quotes and expand the
 # $HOME the shell/Docker forms use to the literal /home/agent the kit spells out.

@@ -88,6 +88,16 @@ export def main [
         }
     }
 
+    # Why: cargo-built binaries (cozy install nushell/zellij) must shadow the
+    # brew ones. Base PATH (Dockerfile ENV / kit spec) lists ~/.cargo/bin
+    # before linuxbrew, and dotfiles env.nu prepends it too — but env.nu
+    # filters PATH entries by existence, and long-lived processes (the zellij
+    # server) capture PATH at startup. If the dir is only born when rust is
+    # installed later, it's already missing from those PATHs, and new zellij
+    # tabs keep resolving `nu` to the brew binary. Creating it up front keeps
+    # it in PATH from the first shell.
+    mkdir ($nu.home-dir | path join '.cargo' 'bin')
+
     # Step 1 — brew installs
     if (which brew | is-empty) {
         error make {msg: "brew not found — install Homebrew first: https://brew.sh"}
