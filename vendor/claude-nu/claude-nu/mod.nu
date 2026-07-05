@@ -14,11 +14,11 @@
 #   claude-nu -f 'regex'                # quick message search, current project
 #   claude-nu sessions | where parent_session_id == null | claude-nu messages 'regex'
 
-export use commands.nu [
-    projects messages sessions export-session save-markdown
-    "gi-hook"
+export use sessions.nu [
+    projects messages main export-session save-markdown
 ]
-use commands.nu [ find-session-files ]
+export use gi-hook.nu main
+use sessions.nu [ find-session-files ]
 
 # Umbrella entry point: search user messages for a regex and return every match
 # with its `session` column (a pipeline-safe selector — pipe it into
@@ -50,7 +50,7 @@ export def main [
     if $find == null {
         error make {
             msg: "claude-nu needs a subcommand or a search term"
-            help: "search messages:  claude-nu -f 'regex'  (--all-projects to widen)\nsubcommands:  projects, sessions, messages, export-session, save-markdown"
+            help: "search messages:  claude-nu -f 'regex'  (--all-projects to widen)\nsubcommands:  projects, sessions, messages, export-session, save-markdown, gi-hook"
         }
     }
     let files = find-session-files $find --all-projects=$all_projects --no-rg=$no_rg
