@@ -29,6 +29,17 @@ Read the printed table; any `pass: false` row names what to fix and, for files,
 the owning repo. There is nothing to hand-maintain here — to add or change a
 check, edit `cozy-module/verify.nu`.
 
+**Caveat — `CLAUDE.md catalog`.** This one row can fail on a healthy build. The
+catalog is appended to `~/.claude/CLAUDE.md` by bootstrap step 6, but that same
+file is also user state: `cozy sandbox-state import` overwrites it whole from a
+snapshot. If the snapshot has no catalog, import wipes the build's catalog and
+the check fails — not a build defect. Worse, it can't self-heal: `export`
+snapshots the clobbered (catalog-less) file, so once lost the catalog stays
+lost across the import/export loop. Before treating this row as a real failure,
+check whether `cozy sandbox-state import` ran in this sandbox. (Underlying fix —
+give the catalog a marker block so export strips it and the build keeps owning
+it — is unbuilt as of 2026-07.)
+
 ## Manual checks (not automated)
 
 A few things `verify` deliberately leaves out:
