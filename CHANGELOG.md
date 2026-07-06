@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-07-06
+
+### Changed
+
+- `~/.cargo/bin` now sits before brew on PATH, so binaries you compile via `cozy install nushell` (etc.) win over the brew copies — previously new zellij tabs kept opening the brew nu because the zellij server had captured a PATH from before the cargo dir existed. (934821c)
+- Vendored `claude-nu` — the git-intent interface moved here from `my-claude-skills`: `gi-hook enable` seeds the gi skills and canvas output style into `.claude/skills`; the hook now blocks turns that end on main/master, names the working doc in block messages, and lets the agent flag a misfired block instead of obeying it. (f6118f6, 542445b)
+- Vendored `dotfiles` — nushell gains fish-style inline autosuggestions drawn from history recorded in the current folder; `$env.LOCAL_COMPLETIONS = 0` switches to whole-history hints. (469c0a8)
+- Vendored `nu-goodies` — `copy-out --cwd` prepends the working directory as a comment line to the copied output. (1d36c21)
+- Vendored `nushell-skills` — `nushell-style` now versions with the nushell minor it targets (1.114.0, covering the 0.114 breaking changes); `nushell-completions` 1.2.0. (03ac164)
+- Shipped agent guidance gains two rules: question an instruction that conflicts with a concern before executing it, and stay skeptical of agent-written code passing through — surface suspicious things instead of ignoring them. (e58e30b, 60ab962)
+
+### Fixed
+
+- `cozy install nushell` no longer checks out the 2019-era `0_5_0` tag (whose dead rust toolchain broke the build) — upstream's legacy underscore tags sorted above modern `0.x.y` versions; the tag pick now filters to dot-separated numeric tags. (92e9758)
+- Vendored modules and autoload scripts run clean on nushell 0.114 — adapted to `scan --fold`, `str lowercase`, stricter parse-time typing, and the new structured error `details`. (096d102, bb6566b, 0c66de4, 09c3545, f762022, 94e9bfa)
+
 ## [0.3.3] - 2026-07-03
 
 ### Changed
@@ -373,7 +389,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.3...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.4...HEAD
+[0.3.4]: https://github.com/nushell-prophet/cozy/compare/0.3.3...0.3.4
 [0.3.3]: https://github.com/nushell-prophet/cozy/compare/0.3.2...0.3.3
 [0.3.2]: https://github.com/nushell-prophet/cozy/compare/0.3.1...0.3.2
 [0.3.1]: https://github.com/nushell-prophet/cozy/compare/0.3.0...0.3.1
