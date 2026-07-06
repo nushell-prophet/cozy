@@ -182,7 +182,7 @@ A Nushell toolbox for working with Claude Code sessions. Main commands:
 - `claude-nu save-markdown` — save exported sessions to files
 - `claude-nu gi-hook enable/disable/status` — manage the git-intent Stop hook in the current repo
 
-The environment also includes Claude Code skills for building Nushell completions and writing opinionated Nushell code.
+The environment also includes Claude Code skills for building Nushell completions, writing opinionated Nushell code, and inspecting or rewriting the Nushell user REPL command history.
 
 ### nutest
 
