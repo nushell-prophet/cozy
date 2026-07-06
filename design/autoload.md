@@ -7,7 +7,6 @@ covers:                # source paths update-design reconciles this file against
   - docker-files/nushell-autoload/git-global-ignore.nu
   - docker-files/nushell-autoload/git-safe-directory.nu
   - docker-files/nushell-autoload/my-nu-completions.nu
-  - docker-files/nushell-autoload/standard-aliases.nu
   - docker-files/global-claude.md
   - docker-files/pbcopy
   - docker-files/logo.ans
@@ -23,7 +22,7 @@ Each entry records why the file ships — the self-healing or workaround it exis
 
 ## Autoload scripts (`~/.config/nushell/autoload/`)
 
-Nushell loads autoload scripts alphabetically; they're listed below in that order (`git-global-ignore` → `git-safe-directory` → `mcp-server` → `modules-core` → `modules-repl` → `my-nu-completions` → `standard-aliases`). The only ordering dependency is `modules-core` before `modules-repl` — alphabetical naming guarantees it, so the REPL-only modules can build on the core overlays.
+Nushell loads autoload scripts alphabetically; they're listed below in that order (`git-global-ignore` → `git-safe-directory` → `mcp-server` → `modules-core` → `modules-repl` → `my-nu-completions`). The only ordering dependency is `modules-core` before `modules-repl` — alphabetical naming guarantees it, so the REPL-only modules can build on the core overlays.
 
 ### git-global-ignore.nu
 Keep cozy's global gitignore patterns (`.DS_Store`, `Thumbs.db`, `desktop.ini`) active on shell start. Self-healing: `sbx` sets `core.excludesFile = ~/.gitignore_global` in `~/.gitconfig` on every create, which shadows git's XDG default (`~/.config/git/ignore`) where cozy wrote those patterns. git allows one excludesFile and `~/.gitconfig` wins over XDG, so cozy can't reclaim it — the autoload mirrors its canonical `~/.config/git/ignore` into whatever excludesFile resolves to, keeping sbx's `.sbx`. No-ops when excludesFile is unset (plain host reads the XDG default) or nothing is missing.
@@ -49,10 +48,6 @@ Interactive-only module additions, `use`d on every interactive shell start: clau
 ### my-nu-completions.nu
 Custom completions for external tools — defines the `tte` extern with style-name completion.
 **Code:** `docker-files/nushell-autoload/my-nu-completions.nu` → `export extern tte`
-
-### standard-aliases.nu
-Defines the `lg` → `lazygit` alias (the only alias in the file today).
-**Code:** `docker-files/nushell-autoload/standard-aliases.nu` → `alias lg = lazygit`
 
 ## global-claude.md
 The tool catalog appended to `~/.claude/CLAUDE.md` by `bootstrap.nu` Step 6. A markdown brief that tells the agent what cozy built around it: available tools (shell, editors, git, search, data/languages, formatting, package managers), where Nushell modules live, the registered Nushell MCP server and its two usage caveats (the `evaluate` session persists across calls, so edited modules stay stale until re-`use`d; the MCP `nu` skips the login shell, so the `/etc/sandbox-persistent.sh` git/jj exports are absent), sandbox constraints, and a privacy section.
