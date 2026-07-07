@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-07-07
+
+### Added
+
+- Tab completions for the `claude`, `nu`, `fd`, and `zellij` CLIs now autoload in every sandbox — vendored from claude-nu's new completions set; loaded interactive-only, so one-shot `nu -c` runs are unaffected. (d8548ed, e7f027a, f257c7e)
+
+### Changed
+
+- Vendored `dotfiles` — the two fzf history bindings merge into one Ctrl+F picker: enter replaces the line, alt-enter inserts at cursor, alt-c limits the view to current-directory history. History-derived abbreviations (`cs`, `gs`, `gl`, …) replace aliases so the expanded command lands in history; cozy's `lg` alias moved there too. (0e756ac, 0c55d51)
+- Vendored `dotfiles` — helix `+` keybindings now pass the selection via stdin through a new nu-hx module, so text containing `#` or an apostrophe no longer breaks them. (17f03a5)
+
+### Fixed
+
+- Vendored `dotnu` — `embeds-update` no longer fails with "Cannot view string value" when the module is imported with a prefix (`use dotnu/`), which is exactly how cozy loads it. (25cc463)
+
 ## [0.3.4] - 2026-07-06
 
 ### Changed
@@ -389,7 +404,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.4...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.5...HEAD
+[0.3.5]: https://github.com/nushell-prophet/cozy/compare/0.3.4...0.3.5
 [0.3.4]: https://github.com/nushell-prophet/cozy/compare/0.3.3...0.3.4
 [0.3.3]: https://github.com/nushell-prophet/cozy/compare/0.3.2...0.3.3
 [0.3.2]: https://github.com/nushell-prophet/cozy/compare/0.3.1...0.3.2
