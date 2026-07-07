@@ -18,6 +18,7 @@
   github: nushell-prophet/claude-nu
   modules:
   - claude-nu
+  - completions
 - repo: nu-cmd-stack
   github: nushell-prophet/nu-cmd-stack
   modules:

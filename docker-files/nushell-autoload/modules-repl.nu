@@ -5,6 +5,7 @@
 # modules-core.nu. These are session tools with no meaning in a one-shot `-c`.
 
 use ~/repos/claude-nu/claude-nu/
+use ~/repos/claude-nu/completions/claude.nu *
 
 use ~/.config/zellij/todo-nu/todo.nu lstd
 
