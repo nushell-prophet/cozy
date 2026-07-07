@@ -9,7 +9,7 @@
 #   • Basic Configuration
 #   • Core Keybindings
 #   • Menu Systems
-#   • FZF Integration Suite
+#   • FZF History Picker
 #   • Tool Integrations
 #
 # 🎯 Dependencies Required:
@@ -43,7 +43,7 @@ $env.config.hinter.closure = {|ctx|
             + (if $global { "" } else { " AND cwd = :cwd" })
             + " ORDER BY id DESC LIMIT 1"
         ) --params (
-            {len: ($ctx.line | str length), line: $ctx.line}
+            {len: ($ctx.line | str length) line: $ctx.line}
             | if $global { } else { insert cwd $ctx.cwd }
         )
         | get --optional 0.command_line
@@ -86,6 +86,32 @@ $env.config.rm.always_trash = false
 # shell_integration.osc8 (bool): Generate clickable links in `ls` output.
 # Terminal can launch files in associated applications.
 $env.config.shell_integration.osc8 = false
+
+# Why: makes invisible leading/trailing spaces in table cells visible — a classic source of "why doesn't this match" bugs. Table renderer only; bare strings are not touched.
+$env.config.color_config.leading_trailing_space_bg = {bg: red}
+# Why: exact timestamps over the humanized default ("a day ago") — humanizing throws away the exact value in table work.
+$env.config.datetime_format.table = '%y-%m-%d %H:%M:%S'
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ▐ ABBREVIATIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+# Inline expansion as you type (fires anywhere in the line, not just command position).
+# Why: unlike aliases, the expanded command lands in history, so the fzf bindings, the hinter, and history queries see real commands. Replaces the former `alias lg = lazygit` (cozy standard-aliases.nu) for the same reason.
+# Keys collision-checked against 7.8k history entries (never typed as command or argument token) and PATH.
+
+$env.config.abbreviations = {
+    cs: 'claude --dangerously-skip-permissions'
+    cn: 'claude-nu'
+    gd: 'git diff'
+    gp: 'git pull'
+    gs: 'git status'
+    gl: 'git log'
+    gco: 'git checkout'
+    gb: 'git branch'
+    grv: 'git remote -v'
+    ut: 'use toolkit.nu'
+    lg: 'lazygit'
+}
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ▐ CORE KEYBINDINGS
@@ -298,148 +324,118 @@ def prompt_to_raw_source [] {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ▐ FZF INTEGRATION SUITE
+# ▐ FZF HISTORY PICKER
 # ═══════════════════════════════════════════════════════════════════════════════
-# Advanced history search and navigation using fzf
-# Dependencies: fzf (brew install fzf)
-
-# Base FZF parameters for consistent history function behavior
-$env.FZF_HISTORY_BASE = [
-    '--cycle'
-    '--read0'
-    '--print0'
-    '--layout=reverse'
-    '--multi'
-    '--height=70%'
-    '--wrap'
-    "--wrap-sign=\t↳ "
-    '--tiebreak=begin,length,chunk'
-    '--bind=load:toggle-sort' # Sort with initially provided order
-    '--bind=alt-r:toggle-raw'
-    '--with-shell=sh -c'
-    '--preview-window=bottom:30%:wrap'
-    '--preview=echo {2} | nu -n --no-std-lib --stdin -c "nu-highlight" '
-]
-
-# ───────────────────────────────────────────────────────────────────────────────
-# FZF Multi-Select History Insertion
+# One binding for all history recall.
 # Shortcut: Ctrl+F
-# Usage: Search and select multiple history entries to insert
-# Features: Syntax highlighting, sorting toggle, multi-select
-# ───────────────────────────────────────────────────────────────────────────────
+# Dependencies: fzf 0.73+
+#
+# Why one binding: the former Ctrl+F (insert, empty query) / Alt+F (prefix
+# search, replace) pair shared 90% of their logic but drifted apart — the shared
+# preview only worked for Ctrl+F's entry format, Alt+F's dedup relied on
+# DISTINCT over an ordered subquery (SQLite doesn't guarantee that order), and
+# one leg of the indent-compression was dead code. Now the accept key decides
+# the outcome instead of the opening key:
+#   enter      replace the commandline with the selection
+#   alt-enter  insert the selection at the cursor
+# Multi-select (tab) joins entries with `;` + newline.
+#
+# The current commandline (if any) becomes the initial query, anchored as ONE
+# literal prefix term — spaces are backslash-escaped so fzf doesn't split terms
+# (and `|` can't become an OR-operator). Ctrl+U in fzf clears it.
+#
+# In-picker keys (see --header):
+#   alt-c            toggle "current directory only" (prompt shows `cwd> `) —
+#                    picker-side counterpart of the LOCAL_COMPLETIONS hinter toggle
+#   ctrl-f / ctrl-r  toggle relevance sort (list starts in recency order)
+#   alt-r            toggle raw display
+#
+# Preview shows when/where the command ran (timestamp, duration, exit status,
+# cwd — fetched from the history db by id) above the highlighted command.
 
 $env.config.keybindings ++= [
     {
-        name: fzf_history_entries
+        name: fzf_history
         modifier: control
         keycode: char_f
         mode: [emacs vi_normal vi_insert]
         event: {
             send: executehostcommand
-            cmd: (fzf-hist-all-reverse-append)
+            cmd: (fzf-history-source)
         }
     }
 ]
 
-def 'fzf-hist-all-reverse-append' [] {
+def fzf-history-source [] {
     let closure = {
-        let index_sep = "\u{200C}\t"
-        let entry_sep = "\u{200B}"
+        # Why helper scripts (scripts/fzf-hist-*.nu, deployed next to config.nu):
+        # fzf's reload/preview run nu via `sh -c`; inlining nu code there means
+        # three quoting layers. Real files beat generated temp files: no
+        # predictable world-writable /tmp path re-executed by fzf, and the
+        # scripts get git history and ide-check coverage.
+        # Why the db path is an argument: `nu -n` resolves $nu.history-path to
+        # the plaintext default, not the sqlite file this config sets.
+        let scripts_dir = $nu.config-path | path dirname | path join 'scripts'
+        let src_script = $scripts_dir | path join 'fzf-hist-source.nu'
+        let preview_script = $scripts_dir | path join 'fzf-hist-preview.nu'
+        let db = $nu.history-path
 
-        open $nu.history-path
-        | query db '
-            WITH ordered_history AS (
-                SELECT
-                    id,
-                    command_line,
-                    ROW_NUMBER() OVER (PARTITION BY command_line ORDER BY id DESC) AS row_num
-                FROM history
-            )
-            SELECT
-                id,
-                command_line
-            FROM ordered_history
-            WHERE row_num = 1
-            ORDER BY id DESC;
-        '
-        | each { $"($in.id)($index_sep)($in.command_line)" }
-        | str join (char nul)
-        | ^fzf ...(
-            $env.FZF_HISTORY_BASE ++ [
-                '--bind=ctrl-r:toggle-sort'
-                '--bind=ctrl-f:toggle-sort'
-                $'--delimiter=($index_sep)'
-                '-n2..'
-            ]
-        )
-        | decode utf-8
-        | str trim --char (char nl)
-        | str replace -ar $'(char lp)^|(char nul)(char rp)\d+?($index_sep)' '$1'
-        | str trim --char (char nul)
-        | str replace -ar (char nul) $';(char nl)'
-        | str replace -r $';(char nl)$' ''
-        | str replace -a $entry_sep '    '
-        | str trim
-        | commandline edit --insert $in
-    }
+        let query = commandline
+            | str replace --all ' ' '\ '
+            | if ($in | is-empty) { '' } else { $'^($in)' }
 
-    view source $closure | lines | skip | drop | to text
-}
+        let reload = $"reload:nu -n --no-std-lib \"($src_script)\" \"($db)\""
+        let cwd_toggle = ($"[ \"$FZF_PROMPT\" = \"cwd> \" ]"
+            + $" && echo 'change-prompt\(> )+($reload)'"
+            + $" || echo 'change-prompt\(cwd> )+($reload) --cwd'")
 
-# ───────────────────────────────────────────────────────────────────────────────
-# FZF Prefix History Search and Replace
-# Shortcut: Alt+F
-# Usage: Search history with current line as prefix, replace entire line
-# Features: Prefix filtering, fuzzy search, line replacement
-# ───────────────────────────────────────────────────────────────────────────────
+        let selection = '' | ^fzf ...[
+            '--read0'
+            '--print0'
+            '--multi'
+            '--cycle'
+            '--layout=reverse'
+            '--height=70%'
+            '--wrap'
+            "--wrap-sign=\t↳ "
+            '--no-sort' # start in recency order; ctrl-f/ctrl-r switch to relevance
+            '--tiebreak=begin,length,chunk'
+            "--delimiter=\t"
+            '--nth=2..' # match on the command, not the id column
+            '--with-shell=sh -c'
+            '--prompt=> '
+            $'--query=($query)'
+            '--expect=alt-enter'
+            '--header=enter replace · alt-enter insert · alt-c cwd · ctrl-f sort · alt-r raw'
+            '--header-first'
+            '--bind=ctrl-f:toggle-sort'
+            '--bind=ctrl-r:toggle-sort'
+            '--bind=alt-r:toggle-raw'
+            $'--bind=start:($reload)'
+            $'--bind=alt-c:transform:($cwd_toggle)'
+            '--preview-window=bottom:30%:wrap'
+            $'--preview=nu -n --no-std-lib "($preview_script)" "($db)" {1} {2..}'
+        ] | complete
 
-$env.config.keybindings ++= [
-    {
-        name: fzf_history
-        modifier: alt
-        keycode: char_f
-        mode: [emacs vi_normal vi_insert]
-        event: {
-            send: executehostcommand
-            cmd: (fzf-hist-current-commandline-prefix-replace)
-        }
-    }
-]
+        match $selection.exit_code {
+            0 => {
+                # --print0 + --expect output: <accept key> NUL <entry> NUL <entry> NUL
+                let out = $selection.stdout | split row (char nul)
+                let picked = $out
+                    | skip 1
+                    | compact --empty
+                    | str replace --regex '^\d+\t' ''
+                    | str join $";(char nl)"
 
-# find the '^' prefixed current commandline in whole history; replace current commandline
-def 'fzf-hist-current-commandline-prefix-replace' [] {
-    let closure = {
-        open $nu.history-path
-        | query db '
-            WITH ordered_history AS (
-                SELECT command_line
-                FROM history
-                ORDER BY id DESC
-            )
-            SELECT DISTINCT command_line
-            FROM ordered_history;
-        '
-        | get command_line
-        | each { str replace -a '    ' "\u{200B}" }
-        | str join (char nul)
-        | ^fzf ...(
-            $env.FZF_HISTORY_BASE ++ [
-                $'--query=^(commandline | str replace -a "| " "")'
-                '--header=ctrl-r to disable sort'
-                '--header-first'
-                '--bind=ctrl-r:toggle-sort'
-                '--bind=alt-f:toggle-sort'
-            ]
-        )
-        | decode utf-8
-        | str trim --char (char nl)
-        | str replace -ar (char nul) $';(char nl)'
-        | str replace -r $';(char nl)$' ''
-        | str replace -a "\u{200B}" '    '
-        | str trim
-        | if ($in | is-empty) { } else {
-            commandline edit --replace $in;
-            commandline set-cursor -e
+                if ($out | first) == 'alt-enter' {
+                    commandline edit --insert $picked
+                } else {
+                    commandline edit --replace $picked
+                    commandline set-cursor --end
+                }
+            }
+            1 | 130 => { } # no match / cancelled: leave the commandline untouched
+            _ => { error make {msg: $selection.stderr} }
         }
     }
 
@@ -451,9 +447,11 @@ def 'fzf-hist-current-commandline-prefix-replace' [] {
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # ───────────────────────────────────────────────────────────────────────────────
-# Copy Command to Clipboard (macOS)
+# Copy Command to Clipboard
 # Shortcut: Ctrl+Alt+C
 # Usage: Copies current command line to clipboard and adds confirmation
+# pbcopy is native on macOS; in cozy it's an OSC52 shim (cozy/docker-files/pbcopy),
+# the same clipboard path zellij/helix/lazygit use — portable, not Mac-only
 # ───────────────────────────────────────────────────────────────────────────────
 
 $env.config.keybindings ++= [
@@ -464,7 +462,6 @@ $env.config.keybindings ++= [
         mode: [emacs]
         event: {
             send: executehostcommand
-            # macos version command below
             cmd: "commandline | pbcopy; commandline edit --append ' # copied'"
         }
     }
