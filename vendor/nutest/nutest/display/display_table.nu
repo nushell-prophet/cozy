@@ -4,7 +4,7 @@ use ../store.nu
 use ../theme.nu
 use ../formatter.nu
 
-export def create []: any -> record<name: string, run-start: closure, run-complete: closure, test-start: closure, test-complete: closure> {
+export def create []: nothing -> record<name: string, run-start: closure, run-complete: closure, test-start: closure, test-complete: closure> {
     let theme = theme standard
     let error_format = "compact"
     let formatter = formatter pretty $theme $error_format
