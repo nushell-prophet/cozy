@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `cozy sync-repos` re-runs are now non-destructive, so the `~/repos/` clones are yours to develop in and PR upstream from — it fetches always and fast-forwards only when the tree is clean and undiverged, never `clean -fd`/`reset --hard`/branch-switching your work. The `-f`/`--force` flag is gone (it only existed to force those destructive ops).
+
 ## [0.3.5] - 2026-07-07
 
 ### Added

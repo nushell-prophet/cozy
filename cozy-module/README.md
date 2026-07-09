@@ -8,11 +8,10 @@ Maintains running sandboxes without rebuilding — updates modules, syncs repos,
 
 ### `cozy sync-repos`
 
-Pulls the latest changes for all repos under `~/repos/`. Handles branch switching, dirty working tree detection, and converting vendored directories to proper git repos.
+Turns the vendored `~/repos/` snapshots into full git clones of upstream on the first run, then keeps already-cloned repos current — non-destructively. These are yours to develop in and PR upstream from, so a re-run never touches local work: it fetches always, and fast-forwards a repo only when its tree is clean and the branch hasn't diverged. Dev-linked repos (see `cozy dev-link`) are skipped.
 
 ```nushell
-cozy sync-repos       # skip repos with local changes
-cozy sync-repos -f    # force: discard local changes and switch branches
+cozy sync-repos
 ```
 
 ### `cozy mount init`
