@@ -1,13 +1,7 @@
-const agents = [cagent claude codex copilot gemini kiro shell]
-
 def "nu-complete sandbox names" [] {
     ^sbx ls # we don't use --json because it reports wrong status
     | detect columns --guess
     | each {|x| {value: $x.SANDBOX description: $"($x.STATUS) ($x.WORKSPACE)"} }
-}
-
-def "nu-complete sandbox run-target" [] {
-    ^sbx ls --json | from json | get sandboxes | each {|x| {value: $x.name description: ($x.status | $x.workspaces | str join ' ')} }
 }
 
 const script_path = path self
