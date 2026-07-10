@@ -1,7 +1,6 @@
 def "nu-complete sandbox names" [] {
-    ^sbx ls # we don't use --json because it reports wrong status
-    | detect columns --guess
-    | each {|x| {value: $x.SANDBOX description: $"($x.STATUS) ($x.WORKSPACE)"} }
+    ^sbx ls --json | from json | get sandboxes
+    | each {|x| {value: $x.name description: $"($x.status) ($x.workspaces | str join ' ')"} }
 }
 
 const script_path = path self
