@@ -55,6 +55,67 @@ export def 'bar' [
     }
 }
 
+# Check crates.io for newer versions of your `cargo install`-ed binaries.
+#
+# A pure-nushell stand-in for `cargo install-update -a` (from the `cargo-update` crate) —
+# it needs no extra tooling, just `cargo` and network access. Each installed crate is
+# compared against its latest stable version on crates.io. Crates installed from git or a
+# local path carry a `source` and can't be compared, so they are listed but not checked.
+#
+# > cargo-updates
+# > cargo-updates --outdated   # only the ones with a newer stable version
+export def 'cargo-updates' [
+    --outdated (-o) # Show only crates that have a newer stable version
+]: nothing -> table {
+    let installed = cargo install --list
+        | lines
+        | parse --regex '(?m)^(?<name>\S+) v(?<version>[^ :]+)(?: \((?<source>[^)]+)\))?:$'
+
+    let checked = $installed | par-each {|c|
+        if $c.source != null {
+            # Not from crates.io (git/path install) — nothing to compare against.
+            {name: $c.name, installed: $c.version, latest: null, updatable: false, source: $c.source}
+        } else {
+            let latest = try {
+                let cr = http get --headers [User-Agent "nu-goodies cargo-updates"] $"https://crates.io/api/v1/crates/($c.name)"
+                    | get crate
+                # Why: prefer the latest *stable* release; fall back to newest only for
+                # crates that have never cut a stable version.
+                $cr.max_stable_version | default $cr.newest_version
+            } catch { null }
+
+            {
+                name: $c.name
+                installed: $c.version
+                latest: $latest
+                updatable: ($latest != null and (semver-lt $c.version $latest))
+                source: null
+            }
+        }
+    }
+
+    $checked
+    | if $outdated { where updatable } else { $in }
+    | sort-by name
+    | sort-by updatable --reverse # stable sort: updatable crates float to the top, names stay ordered
+}
+
+# True if version string $a is older than $b, compared by numeric release parts.
+# Pre-release (`-rc.1`) and build (`+sha`) metadata are dropped before comparing.
+def semver-lt [a: string, b: string]: nothing -> bool {
+    let pa = $a | split row '+' | first | split row '-' | first | split row '.' | each { into int }
+    let pb = $b | split row '+' | first | split row '-' | first | split row '.' | each { into int }
+    let n = [($pa | length) ($pb | length)] | math max
+    let pa = $pa | append (0..<$n | each { 0 }) | first $n # right-pad with zeros so 1.2 vs 1.2.0 compare equal
+    let pb = $pb | append (0..<$n | each { 0 }) | first $n
+    for i in 0..<$n {
+        let x = $pa | get $i
+        let y = $pb | get $i
+        if $x != $y { return ($x < $y) }
+    }
+    false
+}
+
 # output a command from a pipe where `example` is used, and truncate the output table
 #
 # > ls nu-goodies | first 3 | reject modified | example
@@ -700,11 +761,61 @@ export def 'rgv' --wrapped [...rest] {
     }
 }
 
+# Find files matching the glob that contain the fixed string
+def 'files-containing' [
+    find: string
+    glob_pattern: string
+    no_rg: bool = false
+]: nothing -> list<string> {
+    if (which rg | is-empty) or $no_rg {
+        glob --no-dir $glob_pattern
+        | where {|i| open --raw $i | str contains $find }
+        | path relative-to (pwd)
+    } else {
+        # explicit `.` — without a path rg reads stdin when stdin is not a tty
+        rg $find --fixed-strings --files-with-matches --glob $glob_pattern .
+        | complete
+        # rg exits 1 on "no matches" — not an error here
+        | if $in.exit_code > 1 { error make --unspanned {msg: $in.stderr} } else { $in.stdout }
+        | lines
+        | str replace --regex '^\./' ''
+    }
+}
+
+# Replace a fixed string in the given files; return the changed lines
+# as a table with rgv-style `path:line:col` links
+def 'replace-in-files' [
+    find: string
+    replace: string
+    files: list<string>
+]: nothing -> table {
+    $files
+    | each {|file|
+        let old = open --raw $file
+
+        $old
+        | str replace --all $find $replace
+        | str replace --regex '\n*$' (char nl)
+        | save --force $file
+
+        $old
+        | lines
+        | enumerate
+        | where {|l| $l.item | str contains $find }
+        | each {|l| {
+            path: ([$file ($l.index + 1) (($l.item | str index-of $find) + 1)] | str join ':')
+            before: $l.item
+            after: ($l.item | str replace --all $find $replace)
+        }}
+    }
+    | flatten
+}
+
 # Find and replace text across multiple files by extension
 export def 'replace-in-all-files' [
     find: string # Text to search for
     replace: string # Replacement text
-    --quiet # Suppress statistics output
+    --quiet # Suppress the changed-lines table and stats
     --no-git-check # Skip uncommitted changes check
     --no-rg # Use Nushell instead of ripgrep
     --extensions: list<string> = [nu md py] # File extensions to process
@@ -713,39 +824,78 @@ export def 'replace-in-all-files' [
         | str join ','
         | str c '**/*.{' $in '}'
 
-    let files_total = glob --no-dir $glob
+    let files_found = files-containing $find $glob $no_rg
 
-    let files_found = if (which rg | is-empty) or $no_rg {
-        $files_total
-        | each {|i|
-            open --raw $i
-            | if ($in | str contains $find) { $i }
-        }
-        | compact
-    } else {
-        rg $find --fixed-strings --files-with-matches --glob $glob
-        | lines
-    }
+    # check all files before writing any, so a dirty file aborts the whole run
+    if not $no_git_check { $files_found | each {|i| git-check-file-clean $i } }
 
-    let updated = $files_found
-        | each {|i|
-            if not $no_git_check { git-check-file-clean $i }
-
-            $i | open
-            | str replace --all $find $replace
-            | str replace --regex '\n*$' (char nl)
-            | save --force $i
-        }
-        | length
+    let changes = replace-in-files $find $replace $files_found
 
     if not $quiet {
         let field_name = $'total .($extensions) files'
         # I use record here just for decoration
-        {
-            $field_name: ($files_total | length)
-            'updated': $updated
+        print {
+            $field_name: (glob --no-dir $glob | length)
+            'updated': ($files_found | length)
         }
+
+        $changes
     }
+}
+
+# Move/rename a file and update references to it in markdown and code
+#
+# Replaces occurrences of the old path as given, then — if the basename
+# changed — occurrences of the bare basename, which catches relative
+# links like `../old.md` written from other directories.
+export def 'mv-update-links' [
+    from: path # Current path of the file
+    to: path # New path of the file
+    --quiet # Suppress the changed-lines table
+    --no-git-check # Skip uncommitted changes check
+    --extensions: list<string> = [nu md py] # File extensions to scan for references
+]: nothing -> any {
+    if not ($from | path exists) {
+        error make --unspanned {msg: (str c 'file not found: ' $from)}
+    }
+    if ($to | path exists) {
+        error make --unspanned {msg: (str c $to ' already exists')}
+    }
+    let glob = $extensions
+        | str join ','
+        | str c '**/*.{' $in '}'
+
+    let pairs = [
+        [find replace];
+        [($from | into string) ($to | into string)]
+        [($from | path basename) ($to | path basename)]
+    ]
+    | uniq
+    | where find != replace
+
+    # check every file the whole run will touch before doing anything —
+    # the move and the path pass dirty files the later passes see, so
+    # checks made mid-run would abort with the work half-applied
+    if not $no_git_check {
+        git-check-file-clean $from
+
+        $pairs
+        | each {|pair| files-containing $pair.find $glob }
+        | flatten
+        | uniq
+        | each {|i| git-check-file-clean $i }
+    }
+
+    mv $from $to
+
+    let changes = $pairs
+        | each {|pair|
+            let files = files-containing $pair.find $glob
+            replace-in-files $pair.find $pair.replace $files
+        }
+        | flatten
+
+    if not $quiet { $changes }
 }
 
 # Error if file has uncommitted git changes

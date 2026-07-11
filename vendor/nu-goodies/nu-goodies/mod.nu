@@ -1,5 +1,6 @@
 export use commands.nu [
     "bar"
+    "cargo-updates"
     # "cb"
     # "git-check-file-clean"
     "cd-root"
@@ -17,6 +18,7 @@ export use commands.nu [
     "mc"
     "md"
     "mv1"
+    "mv-update-links"
     "mygit log"
     "normalize"
     "nu-format"
