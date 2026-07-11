@@ -7,9 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-07-11
+
 ### Changed
 
-- `cozy sync-repos` re-runs are now non-destructive, so the `~/repos/` clones are yours to develop in and PR upstream from — it fetches always and fast-forwards only when the tree is clean and undiverged, never `clean -fd`/`reset --hard`/branch-switching your work. The `-f`/`--force` flag is gone (it only existed to force those destructive ops).
+- `cozy sync-repos` re-runs are now non-destructive, so the `~/repos/` clones are yours to develop in and PR upstream from — it fetches always and fast-forwards only when the tree is clean and undiverged, never `clean -fd`/`reset --hard`/branch-switching your work. The `-f`/`--force` flag is gone (it only existed to force those destructive ops). (236020c)
+- `wezterm-cozy` is renamed `sbx-w` and moved to `toolkit/sbx-w.nu`; its sandbox-name completion now parses `sbx ls --json` instead of scraping the table output. (aaeec70, a50cbd4, 51e4c73)
+- Vendored `numd` 0.5.0 — new `numd doc` renders command documentation into markdown regions from scope data. (82902bb)
+- Vendored `nu-goodies` — new `mv-update-links` (move a file and update references to it) and `cargo-updates` (check crates.io for newer versions of installed binaries); `replace-in-all-files` now shows changed lines as a before/after table. (e611fa1)
+- Vendored `claude-nu` — `claude` CLI completions rework optional-value flags (`--resume` etc.) into bare switches with a context-aware session picker on the prompt positional; adds `--prompt-suggestions`. (428516d)
+- Vendored `dotfiles` — zellij prefers the stacked swap layout from 2 panes up; helix auto-save is off; broot-paste inserts paths relative to the current directory. (8693859, 21d73df, e0f1b00)
+- Vendored `nushell-skills` — nushell-style 1.114.1 teaches toolkit runners the auto-detect output mode (human view on a terminal, JSON on a pipe). (daeda7d)
+
+### Fixed
+
+- Vendored `claude-nu` — sessions with zero user turns no longer break "most recent session" picks; the timestamp span now covers all records. (428516d)
 
 ## [0.3.5] - 2026-07-07
 
@@ -408,7 +420,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.5...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.6...HEAD
+[0.3.6]: https://github.com/nushell-prophet/cozy/compare/0.3.5...0.3.6
 [0.3.5]: https://github.com/nushell-prophet/cozy/compare/0.3.4...0.3.5
 [0.3.4]: https://github.com/nushell-prophet/cozy/compare/0.3.3...0.3.4
 [0.3.3]: https://github.com/nushell-prophet/cozy/compare/0.3.2...0.3.3
