@@ -14,7 +14,7 @@ def "nu-complete wezterm background" [] {
 }
 
 # Open a sandbox in a new WezTerm window and attach to its zellij session
-export def sbx-w [
+export def main [
     sandbox_name: string@"nu-complete sandbox names"
     --config-file: path
     --background: string@"nu-complete wezterm background" = "000000" # hex without '#'
