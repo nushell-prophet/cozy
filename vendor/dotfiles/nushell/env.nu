@@ -1,15 +1,15 @@
 # Nushell Environment Config File
 
-def create_left_prompt [] {
-    let dir = do -i { pwd | path relative-to $nu.home-dir }
+def create-left-prompt []: nothing -> string {
+    let dir = do --ignore-errors { pwd | path relative-to $nu.home-dir }
         | match $in {
             null => (pwd)
             '' => '~'
             $relative_pwd => ([~ $relative_pwd] | path join)
         }
 
-    let path_color = (if (is-admin) { ansi red_bold } else { ansi green_italic })
-    let separator_color = (if (is-admin) { ansi light_red_bold } else { ansi white })
+    let path_color = if (is-admin) { ansi red_bold } else { ansi green_italic }
+    let separator_color = if (is-admin) { ansi light_red_bold } else { ansi white }
     let path_segment = $"($path_color)($dir)(ansi reset)"
         | str replace --all (char path_sep) $"($separator_color)(char path_sep)($path_color)"
 
@@ -19,15 +19,27 @@ def create_left_prompt [] {
             $in.stdout
             | lines
             | first
-            | str replace -r '^## ' ''
+            | str replace --regex '^## ' ''
         } else { '' }
+        | if $in == '' { } else { $in + ' ' }
 
-    $'(char nl)(ansi grey)┏ (ansi reset)($path_segment) ($git_status)'
+    let last_exit_code = if $env.LAST_EXIT_CODE != 0 {
+        $'(ansi red_bold)($env.LAST_EXIT_CODE)(ansi reset) '
+    } else { "" }
+
+    let shlvl = $env.SHLVL? | default 1
+        # show only if there are more than 2 instances
+        | if $in <= 2 { '' } else { $'(ansi yellow)nu($in)(ansi reset) ' }
+
+    # hide near-instant commands
+    let duration = $env.CMD_DURATION_MS | into int | if $in < 90 { '' } else { $'($in)ms ' }
+
+    $'(char nl)(ansi grey)┏ (ansi reset)($path_segment) ($git_status)($duration)($last_exit_code)($shlvl)'
     | append $'(ansi grey)┗━(ansi reset)'
     | str join (char nl)
 }
 
-$env.PROMPT_COMMAND = {|| create_left_prompt }
+$env.PROMPT_COMMAND = {|| create-left-prompt }
 $env.PROMPT_COMMAND_RIGHT = {|| null }
 
 # The prompt indicators are environmental variables that represent
@@ -45,21 +57,6 @@ $env.TRANSIENT_PROMPT_COMMAND = {|| "\n" }
 # $env.TRANSIENT_PROMPT_MULTILINE_INDICATOR = {|| "" }
 # $env.TRANSIENT_PROMPT_COMMAND_RIGHT = {|| "" }
 
-# Specifies how environment variables are:
-# - converted from a string to a value on Nushell startup (from_string)
-# - converted from a value back to a string when running external commands (to_string)
-# Note: The conversions happen *after* config.nu is loaded
-$env.ENV_CONVERSIONS = {
-    "PATH": {
-        from_string: {|s| $s | split row (char esep) | path expand --no-symlink }
-        to_string: {|v| $v | path expand --no-symlink | str join (char esep) }
-    }
-    "Path": {
-        from_string: {|s| $s | split row (char esep) | path expand --no-symlink }
-        to_string: {|v| $v | path expand --no-symlink | str join (char esep) }
-    }
-}
-
 $env.XDG_STATE_HOME = ($env.HOME | path join ".local" "state")
 $env.XDG_CACHE_HOME = ($env.HOME | path join ".cache")
 # Why: NUPM_HOME below reads XDG_DATA_HOME, and TOPIARY_* below
@@ -72,21 +69,18 @@ $env.XDG_CONFIG_HOME = ($env.XDG_CONFIG_HOME? | default ($env.HOME | path join "
 $env.NUPM_HOME = ($env.XDG_DATA_HOME | path join "nupm")
 
 # Directories to search for scripts when calling source or use
-# The default for this is $nu.default-config-dir/scripts
-$env.NU_LIB_DIRS = [
-    ($nu.default-config-dir | path join 'scripts') # add <nushell-config-dir>/scripts
-    ($nu.data-dir | path join 'completions') # default home for nushell completions
+const NU_LIB_DIRS = [
+    ($nu.default-config-dir | path join 'scripts')
+    ($nu.data-dir | path join 'completions')
 ]
 
 # Directories to search for plugin binaries when calling `plugin add`
-# The default for this is $nu.default-config-dir/plugins
-$env.NU_PLUGIN_DIRS = [
-    ($nu.default-config-dir | path join 'plugins') # add <nushell-config-dir>/plugins
+const NU_PLUGIN_DIRS = [
+    ($nu.default-config-dir | path join 'plugins')
 ]
 
 $env.PATH = (
     $env.PATH
-    | split row (char esep)
     | prepend [
         ($env.NUPM_HOME | path join "scripts")
         ($env.NUPM_HOME | path join "modules")
@@ -103,7 +97,6 @@ $env.PATH = (
         '~/Applications/kitty.app/Contents/MacOS'
     ]
     | path expand
-    | str trim
     | where { path exists }
     | uniq
 )
