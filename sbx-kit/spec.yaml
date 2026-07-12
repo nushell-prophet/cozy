@@ -83,6 +83,13 @@ commands:
     # via the /etc/sandbox-persistent.sh marker the base image ships). Same
     # script the Dockerfile RUNs and a host checkout runs, so the paths
     # can't drift in ordering.
-    - command: /home/agent/repos/cozy/cozy-module/install/run-install.sh
+    # Redirect to a log: sbx create/run swallow install-command stdout (no
+    # flag to show it — verified on sbx create, which just sits silent for
+    # the whole build). The log file is the only way to watch progress or
+    # read back a failure: `sbx exec -it <name> tail -f /home/agent/cozy-install.log`
+    # from a second terminal while create runs.
+    # Not `| tee` because: under `sh -c` (dash, no pipefail) tee's exit code
+    # would mask an installer failure, and sbx hides the live stream anyway.
+    - command: /home/agent/repos/cozy/cozy-module/install/run-install.sh > /home/agent/cozy-install.log 2>&1
       user: "1000"
       description: Run the shared cozy installer (brew → ensure-nu → bootstrap.nu)
