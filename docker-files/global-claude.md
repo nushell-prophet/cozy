@@ -34,6 +34,12 @@ Nushell is the primary shell. Modules are in `~/repos/`:
 
 Autoload scripts in `~/.config/nushell/autoload/` load these modules — and the `cozy` command — for you, but only when nu starts an **interactive** session. The nushell MCP `evaluate` tool runs such a session, so the modules are ready there too. A one-shot `nu -c '…'` (e.g. run from Bash) is not interactive and skips autoloads, so `cozy`, `nu-goodies`, `kv` and the rest are absent — you'll get `command not found`. The MCP `evaluate` tool is good for interactive exploration (autoloads fire, structured output) — but read its caveats under *Nushell MCP Server* below before relying on it. If you use `nu -c`, load the modules with `--config`: `nu --config ~/.config/nushell/autoload/modules-core.nu -c '…'` — `--config` runs even in `-c` mode (unlike autoload), so the full core module set (`cozy`, `nu-goodies`, `kv`, `dotnu`, `numd`) is available.
 
+### Pitfalls cheatsheet
+
+- `\(` is an escape **only** in `$"..."`. In `$'...'` backslash is literal and `(` still interpolates — parens can't be escaped there. Literal parens + interpolation → `$"..."`.
+- The Bash tool rewrites `!` → `\!`, breaking `!=`/`!~` in `nu -c '…'`. Use a quoted heredoc (`<< 'EOF'`) or a temp file.
+- In Bash, `o+e>| cmd` is not a pipe — `>|` writes a file named `cmd`. That redirect syntax is Nushell-only.
+
 ## Nushell MCP Server
 
 A Nushell MCP server is registered in `~/.claude.json`. It provides `evaluate`, `list_commands`, and `command_help` tools for running Nushell commands with structured output.
