@@ -34,7 +34,6 @@ Two files carry these. `modules-core.nu` holds the set that must work everywhere
 ## Vendored but not autoloaded (need a manual `use`)
 
 - **nutest** — Nushell test framework. Third-party, MIT, `vyadh/nutest`.
-- **nu-multiproof** — timestamp/sign worktrees and verify proof bundles. Repo `nushell-prophet/nu-multiproof`.
 
 ## Vendored, not command modules
 

@@ -11,7 +11,6 @@
   [nu-cmd-stack,     "https://github.com/nushell-prophet/nu-cmd-stack.git"],
   [nu-goodies,       "https://github.com/nushell-prophet/nu-goodies.git"],
   [nu-kv,            "https://github.com/nushell-prophet/nu-kv.git"],
-  [nu-multiproof,    "https://github.com/nushell-prophet/nu-multiproof.git"],
   [numd,             "https://github.com/nushell-prophet/numd.git"],
   [nushell-skills,   "https://github.com/nushell-prophet/nushell-skills.git"],
   [nutest,           "https://github.com/vyadh/nutest.git"],

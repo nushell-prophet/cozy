@@ -55,7 +55,3 @@
   github: nushell-prophet/nushell-skills
   modules:
   - plugins
-- repo: nu-multiproof
-  github: nushell-prophet/nu-multiproof
-  modules:
-  - nu-multiproof

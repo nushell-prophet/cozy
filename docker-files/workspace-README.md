@@ -15,7 +15,6 @@ cozy ships a set of upstream modules *vendored* into `~/repos/` — committed in
 | `numd` | Literate Markdown — `numd run <file>` |
 | `dotnu` | Literate `.nu` — `dotnu embeds-update`, module tooling |
 | `claude-nu` | Toolbox for Claude Code sessions (`claude-nu messages`, …) + tab-completions for the `claude` CLI |
-| `nu-multiproof` | Multi-proof utilities |
 | `nutest` | Test framework (not autoloaded: `use ~/repos/nutest/nutest`) |
 | `topiary-nushell` | Nushell grammar for the topiary formatter |
 | `dotfiles` | Source of every config deployed below |

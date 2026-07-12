@@ -17,7 +17,7 @@ bootstrap.nu (all install logic; every path reaches it via run-install.sh)
 ├── Step 0: setup-docker-system (gated on /etc/sandbox-persistent.sh or /.dockerenv) — apt sources → https, apt deps, runtime env exports (pbcopy shim installs separately, on every Linux)
 ├── Step 1: brew install rest of tools (fzf, helix, lazygit, zellij, broot, git-delta, visidata, bat, topiary, fd, jj, git-lfs)
 ├── Step 2: XDG git config (~/.config/git/{config,ignore})
-├── Step 3: populate ~/repos/ from /tmp/vendor (docker) or cozy_root/vendor (host); modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, topiary-nushell, dotfiles, my-claude-skills, nushell-skills, nu-multiproof
+├── Step 3: populate ~/repos/ from /tmp/vendor (docker) or cozy_root/vendor (host); modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, topiary-nushell, dotfiles, my-claude-skills, nushell-skills
 ├── Step 3.5: copy docker-files/nushell-autoload/*.nu → ~/.config/nushell/autoload/ (visidata config ships via dotfiles in Steps 4–5)
 ├── Steps 4–5: dotfiles deploy via `toolkit push-to-machine --docker`; install Claude skills via `toolkit install-skills --all`
 ├── Step 6: append docker-files/global-claude.md to ~/.claude/CLAUDE.md (tool catalog)
