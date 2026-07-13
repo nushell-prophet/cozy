@@ -265,10 +265,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Sandbox `/etc/gitconfig` sets `gc.auto=0`, `core.fsync=all`, `core.fsyncMethod=fsync` — protects against VirtioFS corruption on shared host↔sandbox mounts. (ba35a06)
 - `LANG=C.UTF-8` set as Dockerfile ENV — fixes git-delta showing UTF-8 multi-byte sequences as literal `<E2><80><94>` hex escapes through less. (ed407d1)
-- Vendored `nu-kv` — `setp` shorthand for `pbpaste | set pbpaste`, and `kv get --pbcopy` flag to pipe values through `pbcopy`. (ab672c9)
-- Vendored `nu-goodies` — new `rgv` wraps `rg --vimgrep` into a `{path, content}` table. (da884ca)
+- Vendored `nu-kv` — `setp` shorthand for `pbpaste | set pbpaste`, and `kv get --pbcopy` flag to pipe values through `pbcopy`. (7c65301)
+- Vendored `nu-goodies` — new `rgv` wraps `rg --vimgrep` into a `{path, content}` table. (c9b3b2f)
 - Vendored `nu-cmd-stack` — `cmd-stack init` accepts `--quiet` and `--force-keybindings`. (d13dd1d)
-- Vendored `nushell-skills` 1.2.0 — Nushell 0.100→0.112 migration guide. (33111cc)
+- Vendored `nushell-skills` 1.2.0 — Nushell 0.100→0.112 migration guide. (8919f5f)
 
 ### Fixed
 
