@@ -60,7 +60,7 @@ many apps changed at once, one `vendor: updated dotfiles` commit is fine.
 
 Subject conventions (verified against `git log --oneline -- vendor/`):
 
-- Simple bump: `vendor: updated <repo>` (e.g. `vendor: updated nu-multiproof`)
+- Simple bump: `vendor: updated <repo>` (e.g. `vendor: updated nu-goodies`)
 - Single-file bump: `vendor: updated <filename>` (e.g. `vendor: updated wezterm.lua`)
 - Specific behavior change worth naming: `vendor: <repo> <short description>`
   (e.g. `vendor: dotfiles XDG_CONFIG_HOME fallback in env.nu`)
