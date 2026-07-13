@@ -48,6 +48,7 @@ In incremental mode every step below is scoped to the changed set from the basel
    - Test files that check for removed/renamed things
    - CHANGELOG contradictions between sequential versions (e.g. v0.0.2 says
      "switch from A to B" but v0.0.1 already claims B)
+   - CHANGELOG commit hashes that no longer resolve to a commit on the branch — see *CHANGELOG commit hashes* below
 
 4. **Report** — numbered list of issues, grouped by file. Show what the doc says vs
    what the code says.
@@ -56,6 +57,22 @@ In incremental mode every step below is scoped to the changed set from the basel
    cases, ask the user.
 
 6. **Advance the marker** — once fixes are committed and the pass is clean, `git update-ref refs/cozy/docs-validated HEAD`. Skip this if you only checked a subset the user named rather than the full changed set — a partial check must not move the baseline.
+
+## CHANGELOG commit hashes
+
+Every hash cited in `CHANGELOG.md` must resolve to a commit reachable from `HEAD`. This check **always runs over the whole file**, even in incremental mode — a rebase (or any history edit) rewrites the hash a commit is known by *without changing a single byte of `CHANGELOG.md`*, so scoping to the changed-file set would skip exactly the drift this catches.
+
+```sh
+grep -oE '\(([0-9a-f]{7,40}(, )?)+\)' CHANGELOG.md | grep -oE '[0-9a-f]{7,40}' | sort -u \
+| while read h; do git merge-base --is-ancestor "$h" HEAD 2>/dev/null || echo "unresolved: $h"; done
+```
+
+`merge-base --is-ancestor` is stricter than `rev-parse`: a commit rebased off the branch still exists as a dangling object, but is no longer an ancestor of `HEAD`, so it is correctly flagged.
+
+Fixing an unresolved hash:
+
+- **Rehashed by a rebase** — the same patch lives on the branch under a new hash. Find it by matching the entry's described change to a commit subject (`git log <last-release-tag>..HEAD`), and confirm with `git patch-id` (`git diff old^ old | git patch-id --stable` vs the candidate — identical patch-id means it's the same change). A confident patch-id match is safe to swap automatically.
+- **Never existed (typo)** — no patch-id match anywhere. Locate the real commit by its message (`git log --all -i --grep='<keywords>'`); if the match is unambiguous, fix it, otherwise ask.
 
 ## Guidelines
 
