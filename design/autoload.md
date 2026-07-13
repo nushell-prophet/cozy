@@ -11,7 +11,7 @@ covers:                # source paths update-design reconciles this file against
   - docker-files/pbcopy
   - docker-files/logo.ans
   - docker-files/workspace-README.md
-reconciled-at: 6d0a0f617731076e7b387a47782c70cdfad0593b
+reconciled-at: 0eeb1329e2cc38cd941ba552592ecd09684ff189
 ---
 
 # cozy autoload & shipped docker-files
@@ -42,7 +42,7 @@ Resolve `$env.WORKSPACE_DIR` to the in-VM mount path, then overlay the vendored 
 **Code:** `docker-files/nushell-autoload/modules-core.nu` → `def resolve-workspace-mount`
 
 ### modules-repl.nu
-Interactive-only module additions, `use`d on every interactive shell start: claude-nu, zellij's todo.nu, nu-cmd-stack. Split out from the core set so non-interactive `-c` consumers don't load session tools that have no meaning there.
+Interactive-only module additions, `use`d on every interactive shell start: claude-nu, the shell completions claude-nu ships (claude/nu/fd/zellij — `zellij` without `*` so its bare `action …` subcommands stay module-prefixed), zellij's todo.nu, nu-cmd-stack. Split out from the core set so non-interactive `-c` consumers don't load session tools that have no meaning there.
 **Code:** `docker-files/nushell-autoload/modules-repl.nu`
 
 ### my-nu-completions.nu
@@ -50,7 +50,7 @@ Custom completions for external tools — defines the `tte` extern with style-na
 **Code:** `docker-files/nushell-autoload/my-nu-completions.nu` → `export extern tte`
 
 ## global-claude.md
-The tool catalog appended to `~/.claude/CLAUDE.md` by `bootstrap.nu` Step 6. A markdown brief that tells the agent what cozy built around it: available tools (shell, editors, git, search, data/languages, formatting, package managers), where Nushell modules live, the registered Nushell MCP server and its two usage caveats (the `evaluate` session persists across calls, so edited modules stay stale until re-`use`d; the MCP `nu` skips the login shell, so the `/etc/sandbox-persistent.sh` git/jj exports are absent), sandbox constraints, and a privacy section.
+The tool catalog appended to `~/.claude/CLAUDE.md` by `bootstrap.nu` Step 6. A markdown brief that tells the agent what cozy built around it: available tools (shell, editors, git, search, data/languages, formatting, package managers), where Nushell modules live, a Nushell pitfalls cheatsheet, the registered Nushell MCP server and its two usage caveats (the `evaluate` session persists across calls, so edited modules stay stale until re-`use`d; the MCP `nu` skips the login shell, so the `/etc/sandbox-persistent.sh` git/jj exports are absent), sandbox constraints, a note that the code here is agent-written and the agent should keep an eye on it, and a privacy section.
 **Code:** `docker-files/global-claude.md`
 
 ## pbcopy

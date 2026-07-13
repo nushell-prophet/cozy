@@ -7,7 +7,7 @@ covers:                # source paths update-design reconciles this file against
   - cozy-module/install/.nushell-version
   - cozy-module/install/bootstrap.nu
   - sbx-kit/spec.yaml
-reconciled-at: 6d0a0f617731076e7b387a47782c70cdfad0593b
+reconciled-at: 0eeb1329e2cc38cd941ba552592ecd09684ff189
 ---
 
 # build — the boot sequence (the spine)
@@ -24,15 +24,19 @@ This file walks the `Dockerfile` top to bottom, then `bootstrap.nu`'s steps 0–
 
 ## Dockerfile
 
-The Dockerfile is **legacy and unmaintained**: it existed for the deprecated `docker sandbox`, and the `sbx` kit replaced it as the run path — it survives only as the plain-`docker` artifact. It still defines the canonical order. Deliberately thin — it stages bits and hands off. In order:
+The Dockerfile builds the **Debian rootless** run path — plain `docker run` and Apple `container`, **in testing** (`sbx` never touches it; it uses the kit). Its point is least privilege: the `agent` gets passwordless sudo only during the build (apt, brew's chown, the tree-sitter compile), revoked in the final layer, so the running container can't escalate. Debian slim ships none of the sbx template's agent tooling, so the early layers add it back. It still defines the canonical order. In order:
 
-1. `FROM docker/sandbox-templates:shell` — Ubuntu base with git, curl, Python, Node.js, Go, ripgrep, jq, gh. `USER agent`.
-2. Install Homebrew — cache-priming only: `run-install.sh` auto-installs brew when it's missing, so this layer is optional for correctness; it keeps brew out of the uncached tail.
-3. `ENV` blocks — `PATH` puts `~/.local/bin` first (so a pinned `nu` shadows brew's), then `~/.cargo/bin` (so cargo-built binaries from `cozy install nushell`/`zellij` shadow brew's — bootstrap creates the dir up front so exists-filtered PATHs like dotfiles `env.nu` keep it before rust is installed), then linuxbrew; plus `HELIX_RUNTIME`, `HOME`, `TERM*`, `LANG`, and the `XDG_*` dirs. Also `HOMEBREW_NO_ASK=1` (brew's "Do you want to proceed?" prompt hangs forever without a TTY) and `HOMEBREW_NO_AUTO_UPDATE=1` (skip the implicit `brew update` — faster, and bottle versions stay fixed); `ensure-nu.sh` and `bootstrap.nu` export the same pair so the host path is covered too. `bootstrap.nu` Step 0 mirrors this block into `/etc/sandbox-persistent.sh` for in-sandbox re-runs; `sbx-kit/spec.yaml`'s `environment.variables` mirrors it for the kit.
-4. `brew install nushell` — cache-priming too: `ensure-nu.sh` (via `run-install.sh`) installs `nu` when it's absent.
-5. `COPY` repo bits — `vendor/` → `/tmp/vendor/` (bootstrap fans it out under `~/repos/`); `cozy-module/` + `docker-files/` → `~/repos/cozy/`, so `bootstrap.nu` resolves `cozy_root` from `path self` (three dirnames up).
-6. `RUN run-install.sh` — the shared boot tail: ensure brew (no-op here) → `ensure-nu.sh` (see below) → `nu bootstrap.nu` (steps 0–9 below).
-7. `COPY workspace-README.md` → `~/workspace/README.md` — the only step after bootstrap. See `autoload.md`.
+1. `FROM debian:12-slim`.
+2. **Root build layer** — rewrite apt sources `http://` → `https://` (the VM allows :443, not :80; TLS peer-verify is off for this first apt because the CA bundle isn't installed yet — apt still verifies packages via gpg), then `apt-get install` sudo, ca-certificates, curl, git, build-essential, procps, file, rsync, ripgrep, jq. build-essential/procps/file back Homebrew's Linux toolchain requirement; rsync backs `install-skills` (Step 5); rg + jq replace agent tools the template bundled (kept on apt so the shared brew list stays untouched).
+3. Create the `agent` user (uid/gid 1000) and grant passwordless sudo via a `/etc/sudoers.d/agent-build` drop-in — **build-only**, deleted in the final layer.
+4. Ship the `/etc/sandbox-persistent.sh` marker (BuildKit makes no `/.dockerenv` at build time, so this is what fires bootstrap Step 0) and add a source line to `/etc/bash.bashrc` for interactive shells. `USER agent`.
+5. Install Homebrew — cache-priming only: `run-install.sh` auto-installs brew when it's missing, so this layer is optional for correctness; it keeps brew out of the uncached tail.
+6. `ENV` blocks — `PATH` puts `~/.local/bin` first (so a pinned `nu` shadows brew's), then `~/.cargo/bin` (so cargo-built binaries from `cozy install nushell`/`zellij` shadow brew's — bootstrap creates the dir up front so exists-filtered PATHs like dotfiles `env.nu` keep it before rust is installed), then linuxbrew; plus `HELIX_RUNTIME`, `HOME`, `TERM*`, `LANG`, and the `XDG_*` dirs. Also `HOMEBREW_NO_ASK=1` (brew's "Do you want to proceed?" prompt hangs forever without a TTY) and `HOMEBREW_NO_AUTO_UPDATE=1` (skip the implicit `brew update` — faster, and bottle versions stay fixed); `ensure-nu.sh` and `bootstrap.nu` export the same pair so the host path is covered too. `bootstrap.nu` Step 0 mirrors this block into `/etc/sandbox-persistent.sh` for in-sandbox re-runs; `sbx-kit/spec.yaml`'s `environment.variables` mirrors it for the kit.
+7. `brew install nushell` — cache-priming too: `ensure-nu.sh` (via `run-install.sh`) installs `nu` when it's absent.
+8. `COPY` repo bits — `vendor/` → `/tmp/vendor/` (bootstrap fans it out under `~/repos/`); `cozy-module/` + `docker-files/` → `~/repos/cozy/`, so `bootstrap.nu` resolves `cozy_root` from `path self` (three dirnames up).
+9. `RUN run-install.sh` — the shared boot tail: ensure brew (no-op here) → `ensure-nu.sh` (see below) → `nu bootstrap.nu` (steps 0–9 below).
+10. `COPY workspace-README.md` → `~/workspace/README.md`. See `autoload.md`.
+11. **Final root layer** (kept last so editing it doesn't invalidate the cached brew layers) — write `/etc/profile.d/cozy.sh` (brew shellenv + the per-user PATH prepend + source `/etc/sandbox-persistent.sh`) so login shells — including the `bash -lc` `cozy verify` reads env through — regain the PATH additions and the cozy env block that `/etc/profile` rebuilds away; then delete the sudoers drop-in to revoke the build-time privilege. `USER agent`.
 
 ## ensure-nu.sh
 
@@ -88,5 +92,5 @@ The one script every path runs. Ensures brew — auto-installs only on Linux wit
 
 ## sbx-kit/spec.yaml (sbx kit)
 
-A `mixin` kit that layers cozy on the standard `shell` agent. `environment.variables` mirrors the Dockerfile `ENV`; `commands.install` is two steps: clone cozy (the one step that can't live in `run-install.sh` — the script doesn't exist in-sandbox until the clone lands) → `run-install.sh`. No `files/` tree — the repo is cloned in-sandbox, so `cozy_root` lines up via `path self`. `network.allowedDomains` is provisional (derived by walking the install path; verify on a real `sbx run`).
+A `mixin` kit that layers cozy on the standard `shell` agent. `environment.variables` mirrors the Dockerfile `ENV`; `commands.install` is two steps: clone cozy (the one step that can't live in `run-install.sh` — the script doesn't exist in-sandbox until the clone lands) → `run-install.sh`, its output redirected to `~/cozy-install.log` (sbx swallows install-command stdout with no flag to show it, so the log is the only way to watch progress or read back a failure — `sbx exec -it <name> tail -f ~/cozy-install.log` from a second terminal). No `files/` tree — the repo is cloned in-sandbox, so `cozy_root` lines up via `path self`. `network.allowedDomains` is provisional (derived by walking the install path; verify on a real `sbx run`).
 **Code:** `sbx-kit/spec.yaml`
