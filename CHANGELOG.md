@@ -7,9 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-07-13
+
 ### Added
 
 - Debian image (in testing): the Dockerfile now builds on `debian:12-slim` with build-time-only sudo, giving plain `docker run` / Apple `container` a rootless runtime (no standing privilege). Same toolset, passes `cozy verify` (56/56). `sbx` stays the standard path. (e1e15d0, af40861, fea5111)
+- `sbx run` install output is now captured to `~/cozy-install.log`, so you can watch the otherwise-silent multi-minute build live (`sbx exec -it <name> tail -f ~/cozy-install.log`) or read failures back after. (c347751)
+
+### Changed
+
+- Vendored `nushell-skills` — new `nushell-literate-programming` skill (numd, dotnu, and REPL-capture workflows for a shared human-agent Nushell space, ships a Common Space output style); `nushell-style` 1.114.2. (99c6b54)
+- Vendored `dotfiles` — the nushell prompt now shows command duration (hidden under 90ms), a non-zero exit code, and SHLVL when shells nest deeper than 2. (4941663)
+- Vendored `nu-goodies` — new `tarq` packs paths into a timestamped `.tar.gz` backup; `--no-timestamp` names it exactly `base.tar.gz`. (f3a732d)
+- Vendored `claude-nu` — the git-intent hook command renamed `gi-hook` → `gi`, and `gi enable` no longer installs the Stop hook unless you pass `--hook` (it still seeds the Canvas style, skills, and working doc). (3501be3)
+- The nushell "failed last time" hint no longer writes an `#exit_<code>` tag into your history rows — it's derived live at hint time, so history stays unmutated. (07ec9fc)
+- The WezTerm-into-sandbox launcher (`sbx-w` in 0.3.6) is renamed `sbxw` and works again — invoke it as `nu toolkit/sbxw.nu <name>`. The 0.3.6 rename had left its command defined under the wrong name, so it did nothing. (47df770, 5feb63b)
+- Shipped agent guidance gains a Nushell pitfalls cheatsheet (paren-escaping in `$'...'`, Bash-tool `!` mangling, `o+e>|` writing a file under bash) in the sandbox global `CLAUDE.md`. (1a52c66)
+
+### Removed
+
+- Dropped the `nu-multiproof` vendored module — its GitHub mirror stopped updating in CI; the module lives on at codeberg.org/nushell-prophet/nu-multiproof. (28b09e8)
 
 ## [0.3.6] - 2026-07-11
 
@@ -424,7 +441,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.6...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.7...HEAD
+[0.3.7]: https://github.com/nushell-prophet/cozy/compare/0.3.6...0.3.7
 [0.3.6]: https://github.com/nushell-prophet/cozy/compare/0.3.5...0.3.6
 [0.3.5]: https://github.com/nushell-prophet/cozy/compare/0.3.4...0.3.5
 [0.3.4]: https://github.com/nushell-prophet/cozy/compare/0.3.3...0.3.4
