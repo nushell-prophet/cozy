@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Debian image (in testing): the Dockerfile now builds on `debian:12-slim` with build-time-only sudo, giving plain `docker run` / Apple `container` a rootless runtime (no standing privilege). Same toolset, passes `cozy verify` (56/56). `sbx` stays the standard path. (e1e15d0, af40861, fea5111)
+
 ## [0.3.6] - 2026-07-11
 
 ### Changed

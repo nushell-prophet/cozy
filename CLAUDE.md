@@ -4,11 +4,11 @@ Modern, beginner-friendly terminal environment for AI agents, running inside `sb
 
 ## Architecture
 
-Every install path (docker build, sbx kit, plain host checkout) runs the same boot tail, `cozy-module/install/run-install.sh`: ensure brew → `ensure-nu.sh` (install nu, smoke-test it against bootstrap.nu, pin on parse drift) → `nu bootstrap.nu`. All install logic lives in `cozy-module/install/bootstrap.nu`; the Dockerfile just cache-primes brew + nushell, COPYs repo bits, and calls the shared script.
+Every install path (docker build, sbx kit, plain host checkout) runs the same boot tail, `cozy-module/install/run-install.sh`: ensure brew → `ensure-nu.sh` (install nu, smoke-test it against bootstrap.nu, pin on parse drift) → `nu bootstrap.nu`. All install logic lives in `cozy-module/install/bootstrap.nu`; the Dockerfile cache-primes brew + nushell, COPYs repo bits, and calls the shared script — plus, on its Debian base, it creates the `agent` user with build-time-only sudo and wires the login-shell env/PATH (things the sbx template supplies for free).
 
 ```
-Dockerfile (thin)
-├── Base: docker/sandbox-templates:shell (Ubuntu, git, curl, Python, Node.js, Go, rg, jq, gh)
+Dockerfile (Debian base — in testing; the standard sbx path uses the template instead)
+├── Base: debian:12-slim + an `agent` user given passwordless sudo only for the build, revoked in the final layer → rootless runtime. ripgrep/jq added via apt. (The sbx path instead runs on docker/sandbox-templates:shell — Ubuntu; git, curl, Python, Node.js, Go, rg, jq, gh.)
 ├── RUN install Homebrew + brew install nushell (cached layers; run-install.sh re-checks, so they're optional for correctness)
 ├── COPY vendor/ → /tmp/vendor/; cozy-module/ + docker-files/ → ~/repos/cozy/
 └── RUN run-install.sh — the shared boot tail: ensure brew (no-op here) → ensure-nu.sh → nu bootstrap.nu
@@ -28,7 +28,7 @@ bootstrap.nu (all install logic; every path reaches it via run-install.sh)
 
 ## Run
 
-The `sbx` kit is the only run path — no image build. It clones cozy in-sandbox and runs the same `bootstrap.nu`:
+The `sbx` kit is the standard run path — no image build. It clones cozy in-sandbox and runs the same `bootstrap.nu`:
 
 ```sh
 sbx run shell --kit sbx-kit/ ~/path/to/project
@@ -37,7 +37,9 @@ sbx run shell --kit sbx-kit/ ~/path/to/project
 
 `sbx` pulls images only from a registry, and cozy images stay local-only (never pushed), so a `docker build`ed image can't be fed to `sbx` — the kit (in-sandbox build) replaces that path entirely.
 
-The agent name (`claude`, `shell`, etc.) selects which agent process runs inside the sandbox — it is independent of the base image (`docker/sandbox-templates:shell`) used in the Dockerfile.
+A second run path is **in testing**: the `Dockerfile` builds a `debian:12-slim` image for plain `docker run` and Apple `container`. Its point is a rootless runtime — the `agent` has passwordless sudo only during the build, revoked in the final layer — which suits working with valuable data. It runs the same `bootstrap.nu` and passes `cozy verify` (all 56 checks). This is a separate path, not fed to `sbx` (see the registry note above); `sbx` stays primary. Verify a build of it with `verify-cozy docker`.
+
+The agent name (`claude`, `shell`, etc.) selects which agent process runs inside the sandbox — it is independent of the base image (`docker/sandbox-templates:shell`) the sbx sandbox runs on.
 
 Requires Docker Desktop 4.58+ on macOS or Windows.
 

@@ -10,6 +10,8 @@ This is a work-in-progress educational project; video demos are on the way.
 
 Cozy started on `docker sandbox`, now `sbx` (Docker's standalone sandbox runtime) — that's my primary target, so the quick start uses the `sbx` kit. Internally both the kit and the [Dockerfile](Dockerfile) wrap [`bootstrap.nu`](cozy-module/install/bootstrap.nu) — the same installer used by [Install elsewhere](#install-elsewhere) below. Every supported target (`sbx`, Docker, Apple container, macOS host) runs the same installer and lands on the same toolset; container targets additionally get the system-level setup (apt build deps, the `/etc/sandbox-persistent.sh` env exports) that a host install leaves to the machine. For *why* it's built this way — the build order and why each tool is compiled from source, vendored, or shipped — see `design/`.
 
+**Debian image (in testing).** Alongside the standard `sbx` path, the [Dockerfile](Dockerfile) now builds a lean `debian:12-slim` image for plain `docker run` and Apple `container`. The agent gets passwordless sudo only during the build and loses it in the final layer, so the running container is rootless — no standing privilege, which suits working with valuable data. It runs the same `bootstrap.nu` and passes the full `cozy verify` suite. `sbx` remains the primary target.
+
 First, install the `sbx` CLI: https://docs.docker.com/ai/sandboxes/#get-started
 
 ```sh
