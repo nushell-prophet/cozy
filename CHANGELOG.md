@@ -367,7 +367,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Vendor dotfiles selectively from sibling repo instead of cloning from GitHub at build time. (1898b2b)
-- Vendor topiary-nushell to eliminate GitHub clone during default build — only tree-sitter-nu grammar compilation still needs network. (5cd891d)
+- Vendor topiary-nushell to eliminate GitHub clone during default build — only tree-sitter-nu grammar compilation still needs network. (4c7916b)
 
 ## [0.0.3] - 2026-03-19
 
