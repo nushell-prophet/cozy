@@ -80,7 +80,7 @@ export def 'ansi-to-png' [
     --font-size: int = 50
     --font-name: string = 'ZedMono Nerd Font' # Why: matches wezterm config; rsvg-convert resolves via fontconfig after `brew install --cask font-zed-mono-nerd-font`
     --line-height: float = 1.0
-    --background: string@$bg_presets = '#000000' # Why: matches the cozy sandbox background (black), set via `wezterm-cozy --background`
+    --background: string@$bg_presets = '#000000' # Why: matches the cozy sandbox background (black), set via `sbxw --background`
     --show
 ]: string -> path {
     let $out = $out | default (next_img_path)
@@ -176,8 +176,7 @@ def 'completions-copy-out' []: nothing -> list<record<value: int, description: s
     | each {|i|
         {
             value: ($i.index + 1)
-            # Why: drop the ` #exit_<code>` tag dotfiles' hooks-config.nu adds to failed commands
-            description: ($i.item | str replace --regex ' #exit_\d+$' '' | str replace --all (char nl) '·' | str substring --grapheme-clusters 0..$width)
+            description: ($i.item | str replace --all (char nl) '·' | str substring --grapheme-clusters 0..$width)
         }
     }
 }
@@ -250,10 +249,6 @@ def 'match-history-command' [
     let match = open $nu.history-path
         | query db "SELECT command_line FROM history WHERE session_id = ? ORDER BY id DESC LIMIT 100" --params [$session]
         | get command_line
-        # Why: dotfiles' hooks-config.nu (pre_prompt) tags failed commands with
-        # ` #exit_<code>` in history; strip it so the untagged on-screen command matches
-        # (and stays out of the paste). If that hook goes away, drop this whole strip.
-        | each { str replace --regex ' #exit_\d+$' '' }
         | where { ($in | lines | first | str trim --right) == ($first_line | str trim --right) }
         | get 0?
 
