@@ -116,12 +116,19 @@ COPY --chown=agent:agent docker-files/workspace-README.md /home/agent/workspace/
 # ---- final root layer: login PATH + revoke the build-time privilege ----
 # Kept last so tweaking either doesn't invalidate the cached brew layers.
 #
-# login PATH: `bash -l` runs /etc/profile, which rebuilds PATH from scratch and
-# drops the ENV PATH additions above — so `nu` and every brew tool vanish from
-# login shells. The docker/sandbox-templates base wired brew into the login
-# PATH for us; on plain Debian a profile.d drop-in does it. brew shellenv adds
-# linuxbrew's bin/sbin (+ MANPATH etc.); we prepend the per-user bins like the
-# ENV PATH does. Non-login shells still get PATH straight from the ENV directive.
+# login env: a login shell (`bash -l`, and the non-interactive `bash -lc` that
+# `cozy verify` reads env through) runs /etc/profile, not /etc/bash.bashrc. So
+# two things must be re-supplied there. (1) PATH: /etc/profile rebuilds it from
+# scratch and drops the ENV PATH additions above, so `nu` and every brew tool
+# vanish — brew shellenv puts linuxbrew's bin/sbin back and we prepend the
+# per-user bins like the ENV PATH does. (2) The cozy env block (GIT_AUTHOR_*,
+# GIT_COMMITTER_*, JJ_CONFIG, ...) lives only in /etc/sandbox-persistent.sh,
+# which /etc/bash.bashrc sources for interactive shells but a login shell never
+# sees — so source it here too, or verify's five git-identity/jj env checks
+# false-fail. profile.d is sourced by /etc/profile unconditionally, so both
+# interactive and non-interactive login shells get it. The sbx base wired all
+# this for us; on plain Debian the profile.d drop-in does. Non-login shells
+# still get PATH from the ENV directive and the env block from /etc/bash.bashrc.
 #
 # revoke sudo: the agent kept passwordless sudo through every RUN above (brew
 # chown, apt, tree-sitter compile). Deleting the drop-in leaves the running
@@ -131,6 +138,7 @@ USER root
 RUN printf '%s\n' \
         'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' \
         'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' \
-        > /etc/profile.d/cozy-path.sh \
+        '[ -f /etc/sandbox-persistent.sh ] && . /etc/sandbox-persistent.sh' \
+        > /etc/profile.d/cozy.sh \
     && rm -f /etc/sudoers.d/agent-build
 USER agent
