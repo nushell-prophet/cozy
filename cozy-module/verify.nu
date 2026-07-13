@@ -24,7 +24,7 @@ const repos = "/home/agent/repos"
 # the one place they're named. pbcopy has no --version; checked in check-pbcopy.
 const tools = [
     [nu "--version"] [fd "--version"] [bat "--version"] [rg "--version"]
-    [delta "--version"] [jj version] [vd "--version"] [gh "--version"]
+    [delta "--version"] [jj version] [vd "--version"]
     [hx "--version"] [lazygit "--version"] [zellij "--version"]
     [topiary "--version"] [claude "--version"] [broot "--version"]
     [git-lfs "--version"] [git "--version"] [jq "--version"]
