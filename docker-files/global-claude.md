@@ -38,6 +38,7 @@ Autoload scripts in `~/.config/nushell/autoload/` load these modules — and the
 - `\(` is an escape **only** in `$"..."`. In `$'...'` backslash is literal and `(` still interpolates — parens can't be escaped there. Literal parens + interpolation → `$"..."`.
 - The Bash tool rewrites `!` → `\!`, breaking `!=`/`!~` in `nu -c '…'`. Use a quoted heredoc (`<< 'EOF'`) or a temp file.
 - In Bash, `o+e>| cmd` is not a pipe — `>|` writes a file named `cmd`. That redirect syntax is Nushell-only.
+- `nu --ide-check 10 file.nu` alone floods stdout with type hints. Filter to real errors: `nu --ide-check 10 file.nu | nu --stdin -c 'lines | each { from json } | where type == "diagnostic"'`.
 
 ## Nushell MCP Server
 
