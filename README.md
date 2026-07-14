@@ -31,25 +31,6 @@ sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
 
 Note: the kit installs cozy from GitHub — the latest commit on the default branch — not from your local checkout. Push your changes before `sbx run`, or pin a tag via `--branch` in [sbx-kit/spec.yaml](sbx-kit/spec.yaml) if you need reproducible installs.
 
-## Install elsewhere
-
-`cozy-module/install/run-install.sh` is the same boot tail the Dockerfile and the sbx kit run — one script, so the install paths can't drift apart. It deploys the full environment (nushell, modules, dotfiles, configs) into virtually any Ubuntu-based sandbox or directly onto a macOS host — for example `sbx` with a pure `shell` agent, an Apple container running Ubuntu, or a plain macOS install. Container targets additionally get the system-level setup (apt build deps, the `/etc/sandbox-persistent.sh` env exports) that a host install leaves to the machine. For *why* it's built this way — the build order and why each tool is compiled from source, vendored, or shipped — see `design/`.
-
-**Prerequisite:** Homebrew (https://brew.sh). On a Linux host with passwordless sudo the script installs it for you; on macOS install it first — the script exits early with the copy-paste command, so your sudo password never goes through a script. On a Linux host, `gcc` and `libc6-dev` must also be present (the topiary grammar compiles at install time) — the installer fails fast if they're missing.
-
-```sh
-git clone https://github.com/nushell-prophet/cozy
-cd cozy
-cozy-module/install/run-install.sh             # install
-cozy-module/install/run-install.sh --force     # reinstall over existing user configs
-```
-
-## Debian image (in testing)
-
-Alongside the standard `sbx` path, the [Dockerfile](Dockerfile) builds a lean `debian:12-slim` image for plain `docker run` and Apple `container`. The agent gets passwordless sudo only during the build and loses it in the final layer, so the running container is rootless — no standing privilege, which suits working with valuable data. It passes the full `cozy verify` suite.
-
-**Apple `container` on Apple Silicon:** the first `container build` can fail with `Rosetta is not installed`. The builder VM defaults to `[build] rosetta = true`, so it wants Rosetta even for a native `arm64` build. Fix it without installing Rosetta — put `rosetta = false` under `[build]` in `~/.config/container/config.toml`, then `container builder stop && container builder start`. An `arm64` build never runs x86, so Rosetta stays unused either way.
-
 ## Technologies
 
 **Installed**: [Nushell](#nushell), [Helix](#helix-editor), [Zellij](#zellij), [Lazygit](#lazygit), [Broot](#broot), [FZF](#fzf), git-delta, [VisiData](#visidata), bat, topiary, fd, jj, git-lfs, Claude Code, procps, file, gcc, libc6-dev (base image adds git, curl, Python, Node.js, Go, ripgrep, jq, gh)
@@ -193,4 +174,23 @@ The environment also includes Claude Code skills for building Nushell completion
 ### nutest
 
 [nutest](https://github.com/vyadh/nutest) is a Nushell test framework by [vyadh](https://github.com/vyadh). Licensed under MIT. Not autoloaded — use `use ~/repos/nutest/nutest` to load.
+
+## Install elsewhere
+
+`cozy-module/install/run-install.sh` is the same boot tail the Dockerfile and the sbx kit run — one script, so the install paths can't drift apart. It deploys the full environment (nushell, modules, dotfiles, configs) into virtually any Ubuntu-based sandbox or directly onto a macOS host — for example `sbx` with a pure `shell` agent, an Apple container running Ubuntu, or a plain macOS install. Container targets additionally get the system-level setup (apt build deps, the `/etc/sandbox-persistent.sh` env exports) that a host install leaves to the machine. For *why* it's built this way — the build order and why each tool is compiled from source, vendored, or shipped — see `design/`.
+
+**Prerequisite:** Homebrew (https://brew.sh). On a Linux host with passwordless sudo the script installs it for you; on macOS install it first — the script exits early with the copy-paste command, so your sudo password never goes through a script. On a Linux host, `gcc` and `libc6-dev` must also be present (the topiary grammar compiles at install time) — the installer fails fast if they're missing.
+
+```sh
+git clone https://github.com/nushell-prophet/cozy
+cd cozy
+cozy-module/install/run-install.sh             # install
+cozy-module/install/run-install.sh --force     # reinstall over existing user configs
+```
+
+## Debian image (in testing)
+
+Alongside the standard `sbx` path, the [Dockerfile](Dockerfile) builds a lean `debian:12-slim` image for plain `docker run` and Apple `container`. The agent gets passwordless sudo only during the build and loses it in the final layer, so the running container is rootless — no standing privilege, which suits working with valuable data. It passes the full `cozy verify` suite.
+
+**Apple `container` on Apple Silicon:** the first `container build` can fail with `Rosetta is not installed`. The builder VM defaults to `[build] rosetta = true`, so it wants Rosetta even for a native `arm64` build. Fix it without installing Rosetta — put `rosetta = false` under `[build]` in `~/.config/container/config.toml`, then `container builder stop && container builder start`. An `arm64` build never runs x86, so Rosetta stays unused either way.
 
