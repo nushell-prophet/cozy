@@ -14,4 +14,6 @@ use ~/repos/claude-nu/completions/zellij.nu
 
 use ~/.config/zellij/todo-nu/todo.nu lstd
 
-use ~/repos/nu-cmd-stack/cmd-stack
+# `init` registers the keybindings (ctrl+s push, ctrl+alt+j/k scroll);
+# a bare `use` loads the commands but binds no keys.
+use ~/repos/nu-cmd-stack/cmd-stack; cmd-stack init --quiet
