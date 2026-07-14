@@ -8,11 +8,7 @@ This is a work-in-progress educational project; video demos are on the way.
 
 ## Quick start
 
-Cozy started on `docker sandbox`, now `sbx` (Docker's standalone sandbox runtime) — that's my primary target, so the quick start uses the `sbx` kit. Internally both the kit and the [Dockerfile](Dockerfile) wrap [`bootstrap.nu`](cozy-module/install/bootstrap.nu) — the same installer used by [Install elsewhere](#install-elsewhere) below. Every supported target (`sbx`, Docker, Apple container, macOS host) runs the same installer and lands on the same toolset; container targets additionally get the system-level setup (apt build deps, the `/etc/sandbox-persistent.sh` env exports) that a host install leaves to the machine. For *why* it's built this way — the build order and why each tool is compiled from source, vendored, or shipped — see `design/`.
-
-**Debian image (in testing).** Alongside the standard `sbx` path, the [Dockerfile](Dockerfile) now builds a lean `debian:12-slim` image for plain `docker run` and Apple `container`. The agent gets passwordless sudo only during the build and loses it in the final layer, so the running container is rootless — no standing privilege, which suits working with valuable data. It runs the same `bootstrap.nu` and passes the full `cozy verify` suite. `sbx` remains the primary target.
-
-**Apple `container` on Apple Silicon:** the first `container build` can fail with `Rosetta is not installed`. The builder VM defaults to `[build] rosetta = true`, so it wants Rosetta even for a native `arm64` build. Fix it without installing Rosetta — put `rosetta = false` under `[build]` in `~/.config/container/config.toml`, then `container builder stop && container builder start`. An `arm64` build never runs x86, so Rosetta stays unused either way.
+Cozy's primary target is `sbx` (Docker's standalone sandbox runtime, formerly `docker sandbox`), so the quick start uses the `sbx` kit. Other targets — plain Docker, Apple `container`, a macOS host — run the same installer and land on the same toolset: see [Install elsewhere](#install-elsewhere) and [Debian image](#debian-image-in-testing) below.
 
 First, install the `sbx` CLI: https://docs.docker.com/ai/sandboxes/#get-started
 
@@ -37,7 +33,7 @@ Note: the kit installs cozy from GitHub — the latest commit on the default bra
 
 ## Install elsewhere
 
-`cozy-module/install/run-install.sh` is the same boot tail the Dockerfile and the sbx kit run — one script, so the install paths can't drift apart. It deploys the full environment (nushell, modules, dotfiles, configs) into virtually any Ubuntu-based sandbox or directly onto a macOS host — for example `sbx` with a pure `shell` agent, an Apple container running Ubuntu, or a plain macOS install.
+`cozy-module/install/run-install.sh` is the same boot tail the Dockerfile and the sbx kit run — one script, so the install paths can't drift apart. It deploys the full environment (nushell, modules, dotfiles, configs) into virtually any Ubuntu-based sandbox or directly onto a macOS host — for example `sbx` with a pure `shell` agent, an Apple container running Ubuntu, or a plain macOS install. Container targets additionally get the system-level setup (apt build deps, the `/etc/sandbox-persistent.sh` env exports) that a host install leaves to the machine. For *why* it's built this way — the build order and why each tool is compiled from source, vendored, or shipped — see `design/`.
 
 **Prerequisite:** Homebrew (https://brew.sh). On a Linux host with passwordless sudo the script installs it for you; on macOS install it first — the script exits early with the copy-paste command, so your sudo password never goes through a script. On a Linux host, `gcc` and `libc6-dev` must also be present (the topiary grammar compiles at install time) — the installer fails fast if they're missing.
 
@@ -47,6 +43,12 @@ cd cozy
 cozy-module/install/run-install.sh             # install
 cozy-module/install/run-install.sh --force     # reinstall over existing user configs
 ```
+
+## Debian image (in testing)
+
+Alongside the standard `sbx` path, the [Dockerfile](Dockerfile) builds a lean `debian:12-slim` image for plain `docker run` and Apple `container`. The agent gets passwordless sudo only during the build and loses it in the final layer, so the running container is rootless — no standing privilege, which suits working with valuable data. It runs the same `bootstrap.nu` and passes the full `cozy verify` suite. `sbx` remains the primary target.
+
+**Apple `container` on Apple Silicon:** the first `container build` can fail with `Rosetta is not installed`. The builder VM defaults to `[build] rosetta = true`, so it wants Rosetta even for a native `arm64` build. Fix it without installing Rosetta — put `rosetta = false` under `[build]` in `~/.config/container/config.toml`, then `container builder stop && container builder start`. An `arm64` build never runs x86, so Rosetta stays unused either way.
 
 ## Technologies
 
