@@ -38,6 +38,7 @@ Autoload scripts in `~/.config/nushell/autoload/` load these modules — and the
 - `\(` is an escape **only** in `$"..."`. In `$'...'` backslash is literal and `(` still interpolates — parens can't be escaped there. Literal parens + interpolation → `$"..."`.
 - The Bash tool rewrites `!` → `\!`, breaking `!=`/`!~` in `nu -c '…'`. Use a quoted heredoc (`<< 'EOF'`) or a temp file.
 - In Bash, `o+e>| cmd` is not a pipe — `>|` writes a file named `cmd`. That redirect syntax is Nushell-only.
+- In a pipeline, an empty branch block `{}` = `{$in}` — it passes the input through, not null (`"abc" | if false { "x" } else { } | debug` → `abc`). Don't flag `else { }` as a bug: it's an intentional identity branch. A **missing** else branch is the opposite — it effectively passes nothing (`"abc" | if false { "x" } | describe` → `nothing`).
 - `nu --ide-check 10 file.nu` alone floods stdout with type hints, and its `span` is raw byte offsets (useless to act on). Keep only real errors and resolve each span to a line number + the flagged text: `nu -c 'let f = "file.nu"; let c = open --raw $f; nu --ide-check 10 $f | lines | each { from json } | where type == "diagnostic" | each {|d| {line: ($c | str substring 0..<$d.span.start | split row (char newline) | length) severity: $d.severity message: $d.message src: ($c | str substring $d.span.start..<$d.span.end)}}'`. (Inline form of the nushell-style skill's `diagnose`.)
 
 ## Nushell MCP Server
