@@ -46,7 +46,7 @@ cozy-module/install/run-install.sh --force     # reinstall over existing user co
 
 ## Debian image (in testing)
 
-Alongside the standard `sbx` path, the [Dockerfile](Dockerfile) builds a lean `debian:12-slim` image for plain `docker run` and Apple `container`. The agent gets passwordless sudo only during the build and loses it in the final layer, so the running container is rootless — no standing privilege, which suits working with valuable data. It runs the same `bootstrap.nu` and passes the full `cozy verify` suite. `sbx` remains the primary target.
+Alongside the standard `sbx` path, the [Dockerfile](Dockerfile) builds a lean `debian:12-slim` image for plain `docker run` and Apple `container`. The agent gets passwordless sudo only during the build and loses it in the final layer, so the running container is rootless — no standing privilege, which suits working with valuable data. It passes the full `cozy verify` suite.
 
 **Apple `container` on Apple Silicon:** the first `container build` can fail with `Rosetta is not installed`. The builder VM defaults to `[build] rosetta = true`, so it wants Rosetta even for a native `arm64` build. Fix it without installing Rosetta — put `rosetta = false` under `[build]` in `~/.config/container/config.toml`, then `container builder stop && container builder start`. An `arm64` build never runs x86, so Rosetta stays unused either way.
 
