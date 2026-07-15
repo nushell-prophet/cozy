@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Vendored `dotnu` — new `dotnu diagnose file.nu` checks a script with `nu --ide-check` and resolves each diagnostic to a line number, source line, and flagged text; the shipped cheatsheet and nushell-style skill now point agents at it instead of an inline snippet. (f5ead0b, e31e362, 33ec951)
+
 ## [0.3.7] - 2026-07-13
 
 ### Added
