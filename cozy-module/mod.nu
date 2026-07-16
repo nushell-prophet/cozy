@@ -10,3 +10,4 @@ export use configure/
 export use git-harden.nu
 export use verify.nu
 export use logo.nu
+export use nu-demo-instance.nu
