@@ -96,7 +96,7 @@ Lazygit is a godsend interface for git that greatly simplifies everyday operatio
 
 ### Broot
 
-Broot is a file manager with a tree-like structure and fuzzy search. `cmd+alt+b` opens it, and `alt+enter` pastes the selected path back to the active pane.
+Broot is a file manager with a tree-like structure and fuzzy search. `cmd+alt+b` opens it, and `alt+enter` pastes the selected path back to the active pane (relative when it sits under the current directory) and copies the absolute path to the clipboard.
 
 ### FZF
 
@@ -168,6 +168,8 @@ A Nushell toolbox for working with Claude Code sessions. Main commands:
 - `claude-nu export-session` — export session dialogue as markdown
 - `claude-nu save-markdown` — save exported sessions to files
 - `claude-nu gi enable/disable/status/check` — set up the git-intent protocol in the current repo (seeds the Canvas style, skills, and a working doc); `gi enable --hook` also installs the Stop hook
+- `claude-nu commits` — per-commit Claude-authorship table for a git repo; `--by-month` rolls up Claude's share of commits each month
+- `claude-nu code-authorship` — Claude's share of the lines living in the tree now (via `git blame`)
 
 The environment also includes Claude Code skills for building Nushell completions, writing opinionated Nushell code, practicing literate programming with numd and dotnu, and inspecting or rewriting the Nushell user REPL command history.
 
