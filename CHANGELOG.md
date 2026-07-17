@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `cozy nu-demo-instance` — puts a throwaway-nushell launch line into the REPL prompt (XDG config/data pointed at empty temp dirs, so nu starts bare); `--here` keeps the config in `./nushell/` so it can be edited live during a demo. (d36589a, 42d8b01)
+
 ### Changed
 
 - Vendored `dotnu` — new `dotnu diagnose file.nu` checks a script with `nu --ide-check` and resolves each diagnostic to a line number, source line, and flagged text; the shipped cheatsheet and nushell-style skill now point agents at it instead of an inline snippet. (f5ead0b, e31e362, 33ec951)
