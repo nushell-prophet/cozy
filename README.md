@@ -138,7 +138,7 @@ wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua --config 'colors={back
 
 A personal collection of everyday Nushell commands developed over time. In the AI context, two commands may be especially useful:
 
-- `example` — captures the last pipeline from history, runs it, and formats command + output as a copyable snippet (wraps output in `# =>` comments and the command in `nu -c '...'`)
+- `example` — appended to a pipeline (`ls | first 3 | example`), it grabs the command text from history and formats command + output as a copyable snippet (wraps output in `# =>` comments and the command in `nu -c '...'`)
 - `copy-out` — grabs commands with their output from Zellij pane scrollback and copies them to the clipboard (output lines are prefixed with `# =>`)
 
 ### nu-kv
@@ -155,7 +155,7 @@ Command history stacking module.
 
 ### dotnu
 
-`dotnu embeds` is another module for literate programming. It executes a Nushell script, captures output from `| print $in` lines, and injects the results back into the `.nu` file as `# =>` comments after each corresponding line.
+`dotnu` is another module for literate programming. `dotnu embeds-update <file>` executes a Nushell script, captures output from `| print $in` lines, and injects the results back into the `.nu` file as `# =>` comments after each corresponding line.
 
 ### claude-nu
 
@@ -167,9 +167,9 @@ A Nushell toolbox for working with Claude Code sessions. Main commands:
 - `claude-nu sessions` — parse session files into structured summaries, with selectable columns (`--columns`/`--all-columns`: file ops, tool stats, agents, etc.)
 - `claude-nu export-session` — export session dialogue as markdown
 - `claude-nu save-markdown` — save exported sessions to files
-- `claude-nu gi-hook enable/disable/status` — manage the git-intent Stop hook in the current repo
+- `claude-nu gi enable/disable/status/check` — set up the git-intent protocol in the current repo (seeds the Canvas style, skills, and a working doc); `gi enable --hook` also installs the Stop hook
 
-The environment also includes Claude Code skills for building Nushell completions, writing opinionated Nushell code, and inspecting or rewriting the Nushell user REPL command history.
+The environment also includes Claude Code skills for building Nushell completions, writing opinionated Nushell code, practicing literate programming with numd and dotnu, and inspecting or rewriting the Nushell user REPL command history.
 
 ### nutest
 
