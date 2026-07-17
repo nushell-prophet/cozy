@@ -29,7 +29,7 @@ Two files carry these. `modules-core.nu` holds the set that must work everywhere
 **Interactive-only (`modules-repl.nu`):**
 
 - **claude-nu** — toolbox for Claude Code sessions. `claude-nu` namespace. Repo `nushell-prophet/claude-nu`.
-- **nu-cmd-stack** — command-history stacking. No prefix. Repo `nushell-prophet/nu-cmd-stack`.
+- **nu-cmd-stack** — command-history stacking. Prefix `cmd-stack`. The autoload runs `cmd-stack init` right after the `use` — that's what registers the keybindings (ctrl+s push, ctrl+alt+j/k scroll); a bare `use` binds no keys. Repo `nushell-prophet/nu-cmd-stack`.
 
 ## Vendored but not autoloaded (need a manual `use`)
 

@@ -42,7 +42,7 @@ Resolve `$env.WORKSPACE_DIR` to the in-VM mount path, then overlay the vendored 
 **Code:** `docker-files/nushell-autoload/modules-core.nu` → `def resolve-workspace-mount`
 
 ### modules-repl.nu
-Interactive-only module additions, `use`d on every interactive shell start: claude-nu, the shell completions claude-nu ships (claude/nu/fd/zellij — `zellij` without `*` so its bare `action …` subcommands stay module-prefixed), zellij's todo.nu, nu-cmd-stack. Split out from the core set so non-interactive `-c` consumers don't load session tools that have no meaning there.
+Interactive-only module additions, `use`d on every interactive shell start: claude-nu, the shell completions claude-nu ships (claude/nu/fd/zellij — `zellij` without `*` so its bare `action …` subcommands stay module-prefixed), zellij's todo.nu, nu-cmd-stack (followed by `cmd-stack init`, which registers its keybindings — a bare `use` binds no keys). Split out from the core set so non-interactive `-c` consumers don't load session tools that have no meaning there.
 **Code:** `docker-files/nushell-autoload/modules-repl.nu`
 
 ### my-nu-completions.nu
