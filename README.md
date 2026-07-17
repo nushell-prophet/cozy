@@ -8,7 +8,7 @@ This is a work-in-progress educational project; video demos are on the way.
 
 ## Quick start
 
-Cozy's primary target is `sbx` (Docker's standalone sandbox runtime, formerly `docker sandbox`), so the quick start uses the `sbx` kit. Other targets — plain Docker, Apple `container`, a macOS host — run the same installer and land on the same toolset: see [Install elsewhere](#install-elsewhere) and [Debian image](#debian-image-in-testing) below.
+Cozy's primary target is [`sbx`](https://www.docker.com/products/docker-sandboxes/) (Docker's standalone sandbox runtime), so the quick start uses the `sbx` kit. Other targets — plain Docker, Apple `container`, a macOS host — run the same installer and land on the same toolset: see [Install elsewhere](#install-elsewhere) and [Debian image](#debian-image-in-testing) below.
 
 First, install the `sbx` CLI: https://docs.docker.com/ai/sandboxes/#get-started
 
