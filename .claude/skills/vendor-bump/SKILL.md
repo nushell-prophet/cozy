@@ -95,7 +95,18 @@ per-repo commit, don't split. If an entire repo disappeared (dropped from
 `vendor.yml`), the subject should say `vendor: drop <repo>` and the body
 should reference the `vendor.yml` change.
 
-## 5. Report
+## 5. Sync README.md
+
+After the vendor commits, check whether the bump invalidated any README claim.
+README documents module command lists (claude-nu, nu-goodies, numd, dotnu) and
+behavior of vendored dotfiles (keybindings, broot-paste, prompt). For each
+change you just committed, ask: does README state something this change added,
+removed, or altered? New exported commands and changed user-visible behavior
+are the usual cases. If so, edit README.md and commit it separately as
+`docs(readme): <what was synced>`, referencing the vendor commit hash(es) in
+the body. Internal refactors need nothing.
+
+## 6. Report
 
 List the commits created — one line each with subject. Note any repo where
 the body is sparse because upstream history was unavailable; flag it so the
