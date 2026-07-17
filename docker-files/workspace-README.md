@@ -34,6 +34,8 @@ cozy ships a set of upstream modules *vendored* into `~/repos/` — committed in
 | `cozy mount init` | Register the workspace's git subdirs as submodules |
 | `cozy swap-zellij-super` | Rewrite Zellij's Super-key bindings (→ Alt/Ctrl) for Windows hosts |
 | `cozy git-harden` | Apply safer git defaults |
+| `cozy verify` | Run the post-build check suite against this environment |
+| `cozy nu-demo-instance` | Put a bare throwaway-nushell launch line into the prompt (for demos); `--here` keeps the config in `./nushell/` |
 | `cozy configure claude-settings` | Write Claude Code settings |
 | `cozy sandbox-state export` / `import` | Snapshot/restore history + Claude sessions + global CLAUDE.md |
 | `cozy sandbox-state history export` / `import` | Just the Nushell history |
