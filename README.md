@@ -1,4 +1,4 @@
-<img src="https://github.com/user-attachments/assets/96b23749-53c4-48dd-a80c-6e0d5567257a" align="left" height="140"> 
+<img src="https://github.com/user-attachments/assets/96b23749-53c4-48dd-a80c-6e0d5567257a" align="right" height="140"> 
 
 A convenient terminal environment for AI sandboxes (and macOS hosts). 
 
