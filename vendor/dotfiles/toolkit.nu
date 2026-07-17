@@ -7,8 +7,8 @@
 #   - paths-local.csv: Optional local overrides with status column (update, ignore)
 #
 # Commands:
-#   pull-from-machine        - Copy configs from machine into repo
-#   push-to-machine          - Copy configs from repo to machine (--dry-run for preview)
+#   pull-from-machine        - Copy configs from machine into repo (module names + --docker supported)
+#   push-to-machine          - Copy configs from repo to machine (--dry-run for preview; pass module names to limit)
 #   fill-candidates          - Find new config files to potentially track
 #   cleanup-paths-not-in-csv - List repo files not tracked in CSV
 #   install-skills           - Deploy Claude skills from sibling skill repos into ~/.claude/skills/
@@ -161,11 +161,33 @@ def expand-paths [paths_file: string = 'paths-default.csv'] {
     | insert on-machine {|r| $r.full-path    | path exists }
 }
 
+# Filter expanded paths to the given module names (repo subdirs or exact files).
+# Empty names = no filter. A name matching no tracked path fails fast — a typo
+# would otherwise silently select nothing for it.
+def select-modules [modules: list<string>] {
+    let paths = $in
+    if ($modules | is-empty) { return $paths }
+
+    let selected = $paths | where {|r|
+        $modules | any {|m| $r.path-in-repo == $m or ($r.path-in-repo | str starts-with $"($m)/") }
+    }
+    let unmatched = $modules | where {|m|
+        not ($selected.path-in-repo | any { $in == $m or ($in | str starts-with $"($m)/") })
+    }
+    if ($unmatched | is-not-empty) {
+        error make {msg: $"No tracked paths match: ($unmatched | str join ', ')"}
+    }
+    $selected
+}
+
 # Copy config files from the local machine into the repository
 export def pull-from-machine [
+    ...modules: string # limit pull to these repo subdirs or files (e.g. zellij helix); omit for all
     --force # overwrite files with uncommitted changes
+    --docker # use paths-docker.csv (pulling inside the sandbox VM)
 ] {
-    let paths = expand-paths | where on-machine
+    let paths_file = if $docker { 'paths-docker.csv' } else { 'paths-default.csv' }
+    let paths = expand-paths $paths_file | select-modules $modules | where on-machine
 
     if not $force and (check-dirty-files $paths path-in-repo "repo files") { return }
 
@@ -199,6 +221,7 @@ def show-push-diff [paths: table] {
 
 # Copy config files from the repository to the local machine
 export def push-to-machine [
+    ...modules: string # limit push to these repo subdirs or files (e.g. zellij helix); omit for all
     --create-dirs # in case of missing directories - create them in place
     --force # overwrite files with uncommitted changes
     --commit-existing # snapshot dirty destination/orphan files in git before pushing (instead of erroring)
@@ -208,7 +231,7 @@ export def push-to-machine [
     --delete-orphans # remove machine files whose repo source was deleted
 ] {
     let paths_file = if $docker { 'paths-docker.csv' } else { 'paths-default.csv' }
-    let paths = expand-paths $paths_file
+    let paths = expand-paths $paths_file | select-modules $modules
     let to_copy = $paths | where in-repo
     let to_delete = if $delete_orphans {
         $paths | where {|r| (not $r.in-repo) and $r.on-machine }
@@ -240,16 +263,20 @@ export def push-to-machine [
         if not $force and (check-dirty-files $to_delete full-path "orphans") { return }
     }
 
-    $to_copy
-    | group-by { $in.full-path | path dirname }
-    | items {|dirname v|
-        if ($dirname | path exists) { $v } else {
-            if $create_dirs { mkdir $dirname; $v }
+    # Why: skips files whose parent dir is missing when --create-dirs is off, so
+    # $copied — not the planned $to_copy — is the single source of truth for what
+    # actually landed on the machine. --commit-changes derives touched_files from it.
+    let copied = $to_copy
+        | group-by { $in.full-path | path dirname }
+        | items {|dirname v|
+            if ($dirname | path exists) { $v } else {
+                if $create_dirs { mkdir $dirname; $v }
+            }
         }
-    }
-    | compact
-    | flatten
-    | each { cp $in.path-in-repo $in.full-path }
+        | compact
+        | flatten
+
+    $copied | each { cp $in.path-in-repo $in.full-path }
 
     $to_delete | each { rm $in.full-path }
 
@@ -276,7 +303,7 @@ export def push-to-machine [
             let target_dir = $target_dir | path expand --no-symlink
             if not ($target_dir | path join '.git' | path exists) { return }
 
-            let touched_files = $to_copy | get full-path
+            let touched_files = $copied | get full-path
                 | append ($to_delete | get full-path)
                 | where { $in | str starts-with $"($target_dir)/" }
 

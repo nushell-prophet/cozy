@@ -1,17 +1,18 @@
 # Nushell Environment Config File
 
 def create-left-prompt []: nothing -> string {
-    let dir = do --ignore-errors { pwd | path relative-to $nu.home-dir }
+    # collapse $in to $mark when it sits under $base; unchanged otherwise
+    let collapse = {|base mark|
+        let path = $in
+        do --ignore-errors { $path | path relative-to $base }
         | match $in {
-            null => (pwd)
-            '' => '~'
-            $relative_pwd => ([~ $relative_pwd] | path join)
+            null => $path
+            '' => $mark
+            $rel => ([$mark $rel] | path join)
         }
+    }
 
-    let path_color = if (is-admin) { ansi red_bold } else { ansi green_italic }
-    let separator_color = if (is-admin) { ansi light_red_bold } else { ansi white }
-    let path_segment = $"($path_color)($dir)(ansi reset)"
-        | str replace --all (char path_sep) $"($separator_color)(char path_sep)($path_color)"
+    let dir = pwd | do $collapse $nu.home-dir '~'
 
     let git_status = git status --branch --porcelain
         | complete
@@ -20,6 +21,13 @@ def create-left-prompt []: nothing -> string {
             | lines
             | first
             | str replace --regex '^## ' ''
+            # Why: the raw line is wordy — `main...codeberg/main [ahead 26]`;
+            # the upstream name is noise, so compact to starship-style `main ⇡26⇣2`
+            | str replace --regex '\.\.\.\S+' ''
+            | str replace 'ahead ' '⇡'
+            | str replace 'behind ' '⇣'
+            | str replace ', ' ''
+            | str replace --regex ' \[(.+)\]$' ' $1'
         } else { '' }
         | if $in == '' { } else { $in + ' ' }
 
@@ -27,14 +35,60 @@ def create-left-prompt []: nothing -> string {
         $'(ansi red_bold)($env.LAST_EXIT_CODE)(ansi reset) '
     } else { "" }
 
-    let shlvl = $env.SHLVL? | default 1
+    # Why: into int because SHLVL arrives as a string when inherited from the
+    # OS environment (e.g. a nu spawned outside a login shell) — without it the
+    # comparison below kills the whole prompt.
+    let shlvl = $env.SHLVL? | default 1 | into int
         # show only if there are more than 2 instances
         | if $in <= 2 { '' } else { $'(ansi yellow)nu($in)(ansi reset) ' }
 
     # hide near-instant commands
     let duration = $env.CMD_DURATION_MS | into int | if $in < 90 { '' } else { $'($in)ms ' }
 
-    $'(char nl)(ansi grey)┏ (ansi reset)($path_segment) ($git_status)($duration)($last_exit_code)($shlvl)'
+    # everything after the path — built once, so the width math below and the
+    # rendered prompt can't drift apart
+    let tail = $'($git_status)($duration)($last_exit_code)($shlvl)'
+    let width = { ansi strip | str length --grapheme-clusters } # visible width
+    let max_width = (term size).columns - 2 # the `┏ ` prefix takes 2 cells
+
+    # Why: when the line would overflow, shorten the path rather than let the
+    # cap below cut off the more informative tail (git, duration, exit code).
+    # Shortening is a last resort: the full path is what wezterm quick-select
+    # copies, so it stays whole while there is space. That is also why the
+    # workspace mount (in the container it sits at the host's long absolute
+    # path, not under ~ there) collapses to ~ws only here, not unconditionally.
+    # Then fish-style (~/g/a/nu-multiproof) if ~ws alone is not enough.
+    let fits = {|d| (($d | do $width) + 1 + ($tail | do $width)) <= $max_width }
+    let dir = if (do $fits $dir) { $dir } else {
+        let dir = $env.WORKSPACE_DIR?
+            | match $in {
+                null => $dir
+                $ws => ($dir | do $collapse $ws '~ws')
+            }
+        if (do $fits $dir) { $dir } else {
+            $dir | split row (char path_sep)
+            | drop 1
+            # ~ and ~ws markers stay whole; dot-dirs keep two chars
+            | each {|c| if ($c starts-with '~') { $c } else { $c | str substring --grapheme-clusters 0..(if ($c starts-with '.') { 1 } else { 0 }) } }
+            | append ($dir | path basename)
+            | str join (char path_sep)
+        }
+    }
+
+    let path_color = if (is-admin) { ansi red_bold } else { ansi green_italic }
+    let separator_color = if (is-admin) { ansi light_red_bold } else { ansi white }
+    let path_segment = $"($path_color)($dir)(ansi reset)"
+        | str replace --all (char path_sep) $"($separator_color)(char path_sep)($path_color)"
+
+    # Why: the prompt must never be wider than one terminal line. str substring
+    # would count the invisible ansi codes, so measure the stripped text and
+    # drop the colors in the rare overflow case.
+    let longprompt = $'($path_segment) ($tail)'
+        | if ($in | do $width) <= $max_width { } else {
+            ($in | ansi strip | str substring --grapheme-clusters 0..<($max_width - 1)) + '…'
+        }
+
+    $'(char nl)(ansi grey)┏ (ansi reset)($longprompt)'
     | append $'(ansi grey)┗━(ansi reset)'
     | str join (char nl)
 }
@@ -50,20 +104,22 @@ $env.PROMPT_INDICATOR_VI_NORMAL = {|| "> " }
 $env.PROMPT_MULTILINE_INDICATOR = {|| "" }
 
 # Collapse the 2-line prompt to a single newline for previously entered commands
-$env.TRANSIENT_PROMPT_COMMAND = {|| "\n" }
+# $env.TRANSIENT_PROMPT_COMMAND = {|| "\n" }
 # $env.TRANSIENT_PROMPT_INDICATOR = {|| "" }
 # $env.TRANSIENT_PROMPT_INDICATOR_VI_INSERT = {|| "" }
 # $env.TRANSIENT_PROMPT_INDICATOR_VI_NORMAL = {|| "" }
 # $env.TRANSIENT_PROMPT_MULTILINE_INDICATOR = {|| "" }
 # $env.TRANSIENT_PROMPT_COMMAND_RIGHT = {|| "" }
 
-$env.XDG_STATE_HOME = ($env.HOME | path join ".local" "state")
-$env.XDG_CACHE_HOME = ($env.HOME | path join ".cache")
 # Why: NUPM_HOME below reads XDG_DATA_HOME, and TOPIARY_* below
-# read XDG_CONFIG_HOME. cozy bakes both into the OS env (Dockerfile ENV or
-# /etc/sandbox-persistent.sh), but on a fresh shell or macOS host they
-# aren't set, and nu would crash with "Cannot find column XDG_*_HOME".
-# Honor existing values if present, fall back to the XDG-spec defaults.
+# read XDG_CONFIG_HOME. cozy bakes CONFIG/DATA/CACHE into the OS env
+# (Dockerfile ENV or /etc/sandbox-persistent.sh), but on a fresh shell or
+# macOS host they aren't set, and nu would crash with "Cannot find column
+# XDG_*_HOME". Honor an existing value if present (so a baked or host value
+# wins), fall back to the XDG-spec defaults. All four use the same pattern:
+# an unconditional set would silently override whatever cozy baked.
+$env.XDG_STATE_HOME = ($env.XDG_STATE_HOME? | default ($env.HOME | path join ".local" "state"))
+$env.XDG_CACHE_HOME = ($env.XDG_CACHE_HOME? | default ($env.HOME | path join ".cache"))
 $env.XDG_DATA_HOME = ($env.XDG_DATA_HOME? | default ($env.HOME | path join ".local" "share"))
 $env.XDG_CONFIG_HOME = ($env.XDG_CONFIG_HOME? | default ($env.HOME | path join ".config"))
 $env.NUPM_HOME = ($env.XDG_DATA_HOME | path join "nupm")
@@ -81,6 +137,10 @@ const NU_PLUGIN_DIRS = [
 
 $env.PATH = (
     $env.PATH
+    # Why: `nu --mcp` skips the startup string→list PATH conversion, so PATH
+    # arrives here as one colon-joined string; `where { path exists }` below
+    # would drop it whole, leaving only the prepended dirs (no git, no prompt).
+    | if ($in | describe) == string { split row (char esep) } else { }
     | prepend [
         ($env.NUPM_HOME | path join "scripts")
         ($env.NUPM_HOME | path join "modules")
