@@ -7,13 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-07-18
+
 ### Added
 
 - `cozy nu-demo-instance` — puts a throwaway-nushell launch line into the REPL prompt (XDG config/data pointed at empty temp dirs, so nu starts bare); `--here` keeps the config in `./nushell/` so it can be edited live during a demo. (d36589a, 42d8b01)
+- Vendored `claude-nu` — new `commits` and `code-authorship` commands measure Claude's authorship share: per commit (`--by-month` for the monthly trend) and of the lines alive in the code now. (698cce6)
 
 ### Changed
 
 - Vendored `dotnu` — new `dotnu diagnose file.nu` checks a script with `nu --ide-check` and resolves each diagnostic to a line number, source line, and flagged text; the shipped cheatsheet and nushell-style skill now point agents at it instead of an inline snippet. (f5ead0b, e31e362, 33ec951)
+- Vendored `dotfiles` — the nushell prompt now stays in scrollback after each command and caps at one terminal line (the path shortens first; git status compacts to starship-style `main ⇡2⇣1`); broot-paste copies the absolute path to the clipboard while still pasting the relative one. (2167598, bd6f742)
+- Vendored `numd` — `capture start`/`capture stop` are gone; `dotnu embed-add --capture-path` supersedes the capture workflow, and the shipped nushell testing skill teaches the new step. (947116e, 7fd7fdb)
+- The jj workflows (`jj-commit`, `jj-improve-history`, `jj-split-file-for-commit`) now ship as Claude skills instead of dotfiles slash commands. (1d84ac9, bd6f742)
+
+### Removed
+
+- Vendored `claude-nu` — the deprecated `gi-hook` alias is gone; settings files still invoking `gi-hook check` need one `gi enable` re-run, which rewrites the entry. (612b9b9)
+
+### Fixed
+
+- cmd-stack keybindings (ctrl+s stacks the current command, ctrl+alt+j/k scrolls the stack) now work in the sandbox REPL — the autoload loaded the module but never ran `cmd-stack init`, which registers them. (382d40e)
+- Vendored `nu-goodies` — `copy-out` and `delete-prompts` find prompts in scrollback again: they now match the kept two-line prompt and no longer expect the removed `#exit` history tag. (d12af09, f3bc302)
+- Vendored `dotfiles` — helix's `+ g` quick-commit macro works again; the `C-w` write key it replays had been commented out. (bd6f742)
 
 ## [0.3.7] - 2026-07-13
 
@@ -449,7 +465,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.7...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.8...HEAD
+[0.3.8]: https://github.com/nushell-prophet/cozy/compare/0.3.7...0.3.8
 [0.3.7]: https://github.com/nushell-prophet/cozy/compare/0.3.6...0.3.7
 [0.3.6]: https://github.com/nushell-prophet/cozy/compare/0.3.5...0.3.6
 [0.3.5]: https://github.com/nushell-prophet/cozy/compare/0.3.4...0.3.5
