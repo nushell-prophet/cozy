@@ -235,8 +235,7 @@ $env.config.menus ++= [
             selected_text: green_reverse
         }
         source: {|buffer position|
-
-             let $buffer_esc = $buffer | str replace -ar '(_|-)' '_|-'
+            let buffer_esc = $buffer | str replace --all --regex '(_|-)' '_|-'
 
             open $nu.history-path
             | query db "SELECT cwd FROM history GROUP BY cwd ORDER BY MAX(start_timestamp) DESC"
@@ -282,7 +281,7 @@ def vars-menu-source [] {
     let closure = {
         let selected = scope variables
             | where name not-in ($env.ignore-env-vars? | default [])
-            | sort-by var_id -r
+            | sort-by var_id --reverse
             | each { $"($in.name)\t($in.type)" }
             | str join (char nul)
             | ^fzf --read0 --no-sort --layout=reverse --height=40% --delimiter="\t"
@@ -321,9 +320,16 @@ $env.config.keybindings ++= [
 def prompt_to_raw_source [] {
     let closure = {
         let input = commandline
-        let hashes = $input | parse -r '(#+)' | get capture0 | sort -r | get 0? | default '' # find longest hash
+        # Why: parse --regex is fancy-regex, so \k<open> can demand matching closing hashes
+        let wrapped = $input | parse --regex `(?s)^r(?<open>#+)'(?<body>.*)'\k<open>$`
 
-        $" r#($hashes)'($input)'#($hashes)" | commandline edit -r $in
+        if ($wrapped | is-not-empty) {
+            $wrapped.0.body # toggle back: the whole line is one raw string
+        } else {
+            let hashes = $input | parse --regex '(#+)' | get capture0 | sort --reverse | get --optional 0 | default '' # find longest hash
+
+            $"r#($hashes)'($input)'#($hashes)"
+        } | commandline edit --replace $in
     }
 
     view source $closure | lines | skip | drop | to text
@@ -505,13 +511,13 @@ def broot-source [] {
         let element = ast --flatten $cl
             | flatten
             | where start <= $pos and end >= $pos
-            | get content.0 -o
+            | get --optional content.0
             | default ''
 
         let path_exp = $element
-            | str trim -c '"'
-            | str trim -c "'"
-            | str trim -c '`'
+            | str trim --char '"'
+            | str trim --char "'"
+            | str trim --char '`'
             | if $in =~ '^~' { path expand } else { }
             | if ($in | path exists) { } else { '.' }
 
@@ -534,7 +540,7 @@ def broot-source [] {
         if $path_exp == '.' {
             commandline edit --insert $rel_path
         } else {
-            $cl | str replace $element $rel_path | commandline edit -r $in
+            $cl | str replace $element $rel_path | commandline edit --replace $in
         }
     }
 
@@ -582,7 +588,7 @@ $env.config.menus ++= [
         type: {layout: list page_size: 25}
         style: {text: green selected_text: green_reverse description_text: yellow}
         source: {|buffer position|
-            let last_segment = $buffer | split row -r '(\s\|\s)|\(|;|(\{\|\w\| )' | last
+            let last_segment = $buffer | split row --regex '(\s\|\s)|\(|;|(\{\|\w\| )' | last
             let last_segment_length = $last_segment | str length
 
             let regex = '\.^$*+?{}()[]|/' | split chars | each { $'\($in)' } | str join '|' | $"\(($in))"
@@ -593,8 +599,8 @@ $env.config.menus ++= [
             | get command
             | uniq
             | where $it =~ $last_segment_escaped
-            | str replace -a (char nl) ' ' # might cause troubles?
-            | str replace -r $'.*($last_segment_escaped)' $last_segment
+            | str replace --all (char nl) ' ' # might cause troubles?
+            | str replace --regex $'.*($last_segment_escaped)' $last_segment
             | reverse
             | uniq
             | each {|it| {value: $it span: {start: ($position - $last_segment_length) end: ($position)}} }
