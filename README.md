@@ -4,7 +4,7 @@
 
 Tuning my terminal setup is my unpaid full-time job. Now it's packaged so others can pick it up as inspiration or as a working starting point. I still encourage everyone to roll their own eventually — it's the only path to mastery.
 
-This is a work-in-progress educational project; video demos are on the way.
+This is a work-in-progress educational project. Video demos have started: [Cozy — a terminal environment for AI agents | 1. Copying commands and their output](https://youtu.be/AcDM7-U2e2A).
 
 ## Quick start
 
