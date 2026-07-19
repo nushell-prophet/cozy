@@ -17,19 +17,17 @@ First, install the `sbx` CLI: https://docs.docker.com/ai/sandboxes/#get-started
 git clone https://github.com/nushell-prophet/cozy
 cd cozy
 
-# Launch a sandbox with the cozy kit. `shell` is the agent; `--kit sbx-kit/`
+# Create a sandbox with the cozy kit. `shell` is the agent; `--kit sbx-kit/`
 # layers cozy on top — it clones this repo in-sandbox and runs the shared
-# bootstrap.nu installer (no image build needed). The last argument is the
-# folder to mount as your workspace. Here `.` is the cozy repo you just cloned,
-# so you land in something to explore — point it at your own project (e.g.
-# `~/my-project`) once you're set up.
-sbx run shell --kit sbx-kit/ .
+# bootstrap.nu installer (no image build needed). The last arguments are the
+# folders to mount as your workspace; the first one is where you start.
+sbx create --name NAME --kit sbx-kit/ shell ~/some/dir ~/another/dir
 
-# connect to the sandbox and start the Zellij session (NAME from `sbx ls`)
+# connect to the sandbox and start the Zellij session (NAME as chosen above)
 sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
 ```
 
-Note: the kit installs cozy from GitHub — the latest commit on the default branch — not from your local checkout. Push your changes before `sbx run`, or pin a tag via `--branch` in [sbx-kit/spec.yaml](sbx-kit/spec.yaml) if you need reproducible installs.
+Note: the kit installs cozy from GitHub — the latest commit on the default branch — not from your local checkout. Push your changes before `sbx create`, or pin a tag via `--branch` in [sbx-kit/spec.yaml](sbx-kit/spec.yaml) if you need reproducible installs.
 
 ## Technologies
 
