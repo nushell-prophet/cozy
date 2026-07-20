@@ -21,7 +21,7 @@ What each builder *does* is in its own doc comment and code (wired in [`../cozy-
 
 Shared by every Rust-based builder: idempotent (skips work already done), installs Rust on demand, and compiles with `-j 1` + `profile.release.lto=false` — the small sandbox VM runs out of RAM otherwise. Clones go through `_clone-or-fail`, which sets `GIT_TERMINAL_PROMPT=0` so a 404 fails fast instead of hanging on git's credential prompt.
 
-- **claude** — official install script; skipped when `claude` is already on PATH (e.g. inside `sbx run claude`, whose base image ships it).
+- **claude** — official install script; skipped when `claude` is already on PATH (e.g. inside [`sbx run claude`](https://docs.docker.com/ai/sandboxes/agents/claude-code/), whose base image ships it).
 - **rust** — via rustup. Writes `~/.cargo/config.toml` (retries, long timeout, sparse registry) to survive the flaky sandbox proxy.
 - **polars** — `nu_plugin_polars` from source, then `plugin add`. Source because there's no packaged build matching the running `nu`.
 - **topiary** — binary via brew, but the tree-sitter-nu grammar `.so` is compiled by hand (clone + gcc) because `topiary prefetch`'s HTTP client fails behind the proxy.

@@ -12,7 +12,7 @@ reconciled-at: 0eeb1329e2cc38cd941ba552592ecd09684ff189
 
 # build — the boot sequence (the spine)
 
-**Everything starts here.** Three entry paths converge on the same boot tail, [`../cozy-module/install/run-install.sh`](../cozy-module/install/run-install.sh) (ensure brew → `ensure-nu.sh` → `bootstrap.nu`) — the command sequence exists in that one script and nowhere else, so the environment is identical whether you build the image, install on a host, or layer the `sbx` kit. The paths differ only in how the checkout lands:
+**Everything starts here.** Three entry paths converge on the same boot tail, [`../cozy-module/install/run-install.sh`](../cozy-module/install/run-install.sh) (ensure brew → `ensure-nu.sh` → `bootstrap.nu`) — the command sequence exists in that one script and nowhere else, so the environment is identical whether you build the image, install on a host, or layer the [`sbx` kit](https://docs.docker.com/ai/sandboxes/customize/kits/). The paths differ only in how the checkout lands:
 
 - **Docker** — [`../Dockerfile`](../Dockerfile) COPYs the repo bits → `run-install.sh`
 - **Host** — a git checkout → [`cozy-module/install/run-install.sh`](../cozy-module/install/run-install.sh)
@@ -20,7 +20,7 @@ reconciled-at: 0eeb1329e2cc38cd941ba552592ecd09684ff189
 
 This file walks the [`Dockerfile`](../Dockerfile) top to bottom, then `bootstrap.nu`'s steps 0–9 in order, and links out to the other design files at the step where each is reached. **This order is the canonical order for the whole project** — README, CLAUDE.md, and every other design file mirror it. Change the order here and propagate it everywhere.
 
-`bootstrap.nu` auto-detects its mode (no flags): a container marker present (`/etc/sandbox-persistent.sh` from the sbx base image, or `/.dockerenv` for non-sbx container bases) → run the container system setup (Step 0); `/tmp/vendor` present → use the Docker-staged vendor as-is; else → use the committed [`vendor/`](../vendor/). Re-run = clean setup; idempotency is not a goal.
+`bootstrap.nu` auto-detects its mode (no flags): a container marker present ([`/etc/sandbox-persistent.sh`](https://docs.docker.com/ai/sandboxes/faq/#how-do-i-set-custom-environment-variables-inside-a-sandbox) from the sbx base image, or `/.dockerenv` for non-sbx container bases) → run the container system setup (Step 0); `/tmp/vendor` present → use the Docker-staged vendor as-is; else → use the committed [`vendor/`](../vendor/). Re-run = clean setup; idempotency is not a goal.
 
 ## Dockerfile
 
@@ -92,5 +92,5 @@ The one script every path runs. Ensures brew — auto-installs only on Linux wit
 
 ## sbx-kit/spec.yaml (sbx kit)
 
-A `mixin` kit that layers cozy on the standard `shell` agent. `environment.variables` mirrors the Dockerfile `ENV`; `commands.install` is two steps: clone cozy (the one step that can't live in `run-install.sh` — the script doesn't exist in-sandbox until the clone lands) → `run-install.sh`, its output redirected to `~/cozy-install.log` (sbx swallows install-command stdout with no flag to show it, so the log is the only way to watch progress or read back a failure — `sbx exec -it <name> tail -f ~/cozy-install.log` from a second terminal). No `files/` tree — the repo is cloned in-sandbox, so `cozy_root` lines up via `path self`. `network.allowedDomains` is provisional (derived by walking the install path; verify on a real `sbx run`).
+A [`mixin`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#top-level-fields) kit that layers cozy on the standard [`shell`](https://docs.docker.com/ai/sandboxes/agents/shell/) agent. [`environment.variables`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#environment) mirrors the Dockerfile `ENV`; [`commands.install`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#install) is two steps: clone cozy (the one step that can't live in `run-install.sh` — the script doesn't exist in-sandbox until the clone lands) → `run-install.sh`, its output redirected to `~/cozy-install.log` (sbx swallows install-command stdout with no flag to show it, so the log is the only way to watch progress or read back a failure — `sbx exec -it <name> tail -f ~/cozy-install.log` from a second terminal). No [`files/`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#static-files) tree — the repo is cloned in-sandbox, so `cozy_root` lines up via `path self`. [`network.allowedDomains`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#network) is provisional (derived by walking the install path; verify on a real [`sbx run`](https://docs.docker.com/reference/cli/sbx/run/)).
 **Code:** [`sbx-kit/spec.yaml`](../sbx-kit/spec.yaml)
