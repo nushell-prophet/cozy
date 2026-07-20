@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.9] - 2026-07-20
+
 ### Changed
 
 - Vendored `topiary-nushell` — newer tree-sitter-nu grammar, so topiary now formats Nushell code that uses a leading `%` command sigil or a dot inside a flag identifier. (f79aa47)
+- Vendored `dotfiles` — command hints now fall back to the whole history: a match from the current folder still wins, but when the folder has none, the newest match from anywhere fills in. (d15ab35)
+- Vendored `nu-goodies` — new `str to-raw-string` wraps a string as a Nushell raw-string literal, so `example` can quote commands that mix `'` and `"`; `example` also gains `--cwd` to prepend a `# (pwd)` line. (68a902a)
+- Vendored `nushell-skills` — the `nushell-history` skill now tells agents to read your real sqlite history, since an agent's own nushell instance often points at an empty store. (52df319)
+
+### Fixed
+
+- Vendored `numd` — code blocks like `view source ls | get source` keep their output again; keywords used as an argument or column name were mistaken for declarations. (8f590e0)
 
 ## [0.3.8] - 2026-07-18
 
@@ -469,7 +478,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.8...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.9...HEAD
+[0.3.9]: https://github.com/nushell-prophet/cozy/compare/0.3.8...0.3.9
 [0.3.8]: https://github.com/nushell-prophet/cozy/compare/0.3.7...0.3.8
 [0.3.7]: https://github.com/nushell-prophet/cozy/compare/0.3.6...0.3.7
 [0.3.6]: https://github.com/nushell-prophet/cozy/compare/0.3.5...0.3.6
