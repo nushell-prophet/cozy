@@ -1,5 +1,5 @@
 use history.nu [ get-last-commands-from-sql ]
-use str.nu [ "str c" ]
+use str.nu [ "str c" "str to-raw-string" ]
 
 # Open table in Less
 export def 'L' [
@@ -124,16 +124,18 @@ def semver-lt [a: string, b: string]: nothing -> bool {
 # │ nu-goodies/abbreviate.nu │ file │  898 B │
 # ╰───────────name───────────┴─type─┴──size──╯
 export def 'example' [
-    --no-copy (-C) # Don't copy the output into clipboard
-    --no-comment (-H) # Don't comment the result
+    --no-copy # Don't copy the output into clipboard
+    --no-comment (-C) # Don't comment the result
     --abbreviated: int = 10
     --bare # Don't wrap in `nu -c`, output the raw nushell command
+    --cwd # Include CWD into first line comment
 ]: any -> string {
     let input = table --abbreviated $abbreviated
         | if $no_comment { } else { into string | ansi strip }
 
     let command = get-last-commands-from-sql 1
         | str replace --regex '\| example.*' ''
+        | str trim
         | if $no_comment {
             nu-highlight # for making screnshots
         } else { }
@@ -145,8 +147,8 @@ export def 'example' [
                 # only single quotes — double-quote wrap (both shells)
                 $'nu -c "($in)"'
             } else {
-                # both quotes or bash-unsafe chars — bash-only fallback
-                $"nu -c '($in | str replace --all "'" "'\\''")'"
+                # both quote types (or bash-unsafe chars) — raw string, no escaping (nushell)
+                $"nu -c ($in | str to-raw-string)"
             }
         }
         | str c $in (char nl)
@@ -158,6 +160,7 @@ export def 'example' [
     }
     | prepend $command
     | str join (char nl)
+    | if $cwd { $"# (pwd)\n($in)" } else { }
     | if $no_copy { } else {
         tee { pbcopy }
     }
