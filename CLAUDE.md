@@ -36,7 +36,7 @@ sbx create --name NAME --kit sbx-kit/ shell ~/path/to/project
 sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
 ```
 
-`sbx create` builds the sandbox in the background; `sbx run` with the same arguments creates it and attaches immediately. `README.md`'s quick start uses the `create` + `exec` pair — that is the tested path.
+`sbx create` builds the sandbox and leaves you at your prompt — it blocks for the whole build, printing nothing (hence the install-log redirect in `sbx-kit/spec.yaml`); you connect afterwards with `sbx exec`. `sbx run` creates and attaches in one step. `README.md`'s quick start uses the `create` + `exec` pair — that is the tested path.
 
 `sbx` pulls images only from a registry, and cozy images stay local-only (never pushed), so a `docker build`ed image can't be fed to `sbx` — the kit (in-sandbox build) replaces that path entirely.
 
