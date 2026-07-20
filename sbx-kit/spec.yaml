@@ -25,8 +25,9 @@ environment:
     XDG_DATA_HOME: /home/agent/.local/share
     XDG_CACHE_HOME: /home/agent/.cache
     # Silence Homebrew's "Do you want to proceed?" install prompt — without a
-    # TTY brew hangs on it forever. NONINTERACTIVE (above) only covers the brew
-    # installer, not package installs; HOMEBREW_NO_ASK covers `brew install`.
+    # TTY brew hangs on it forever. NONINTERACTIVE (set by run-install.sh when
+    # it installs brew) only covers the brew installer, not package installs;
+    # HOMEBREW_NO_ASK covers `brew install`.
     # NO_AUTO_UPDATE skips the implicit `brew update` before each install.
     HOMEBREW_NO_ASK: 1
     HOMEBREW_NO_AUTO_UPDATE: 1

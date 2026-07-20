@@ -1,8 +1,9 @@
 # Refresh vendored modules and configs into vendor/
-# Run before `docker build` to update vendored copies.
+# Run before pushing — the sbx kit clones cozy from GitHub on every run — or
+# before `docker build` for the plain-docker image.
 #
 # Default: download tarballs from GitHub (no git clone, no auth needed)
-# --local: use local ~/repos/ directories (original rsync behavior)
+# --local: rsync from the sibling repos next to cozy/ (original rsync behavior)
 
 const cozy_root = (path self | path dirname | path dirname)
 const vendor_yml = (path self | path dirname | path join vendor.yml)
@@ -35,10 +36,10 @@ def "nu-complete vendor repos" []: nothing -> list<string> {
     open $vendor_yml | get repo
 }
 
-# Curl args for the GitHub API: fail-fast on HTTP errors (so a JSON rate-
-# limit body never reaches `tar xz` as "not in gzip format"), show errors
-# even with -s, follow redirects. Bearer auth when GH_TOKEN/GITHUB_TOKEN
-# is set bumps the anonymous 60 req/hr limit to 5000.
+# Auth header for the GitHub API. Bearer auth when GH_TOKEN/GITHUB_TOKEN is set
+# bumps the anonymous 60 req/hr limit to 5000; empty list otherwise.
+# The `-f -s -S -L` flags live at the call sites — `-f` matters most there, so a
+# JSON rate-limit body never reaches `tar xz` as "not in gzip format".
 def gh-curl-args []: nothing -> list<string> {
     let token = $env.GH_TOKEN? | default ($env.GITHUB_TOKEN? | default '')
     if ($token | is-empty) { [] } else { ['-H' $"Authorization: bearer ($token)"] }

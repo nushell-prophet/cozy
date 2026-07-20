@@ -11,8 +11,11 @@
 # but each run lands on the same end state.
 #
 # Mode auto-detection (no flags needed):
-#   /etc/sandbox-persistent.sh present → run setup-docker-system (apt
-#                                        installs, pbcopy, env).
+#   /etc/sandbox-persistent.sh OR /.dockerenv present
+#                                      → container: run setup-docker-system
+#                                        (apt installs, runtime env exports).
+#                                        The pbcopy shim is separate — it
+#                                        installs on every Linux, host too.
 #   /tmp/vendor present                → use Docker-staged vendor as-is.
 #   else                               → use committed cozy_root/vendor/.
 #
@@ -138,13 +141,13 @@ export def main [
     # Step 3 — populate ~/repos/ with vendored modules
     populate-repos
 
-    # Sandbox-specific config (feature parity with Dockerfile):
-    # nushell autoload scripts. (visidata config is deployed via dotfiles
-    # push-to-machine — see paths-docker.csv — not copied here.)
+    # Step 3.5 — replace ~/.config/nushell/autoload/ with the current
+    # docker-files/nushell-autoload/ set. Runs on every path, host included.
+    # (visidata config is deployed via dotfiles push-to-machine — see
+    # paths-docker.csv — not copied here.)
     # Wipe the autoload dir first: cozy owns it, any file not deployed by
     # the current run is stale (e.g. an entry removed upstream). Without
-    # this, re-runs accumulated removed-upstream autoload files
-    # indefinitely (originally fixed for docker, missing on host until M2).
+    # this, re-runs accumulated removed-upstream autoload files indefinitely.
     let autoload_dst = $nu.home-dir | path join '.config' 'nushell' 'autoload'
     if ($autoload_dst | path exists) { rm -rf $autoload_dst }
     mkdir $autoload_dst
@@ -153,8 +156,8 @@ export def main [
     }
 
     # Steps 4 & 5 — deploy dotfiles and Claude skills from ~/repos/dotfiles.
-    # Spawn nu so toolkit.nu's `use`/cwd-relative paths work as in the existing
-    # Dockerfile. Always pass `--docker` because cozy only vendors
+    # Spawn nu so toolkit.nu's `use`/cwd-relative paths resolve from the
+    # dotfiles repo root. Always pass `--docker` because cozy only vendors
     # paths-docker.csv (see toolkit/vendor.yml) — host install is feature
     # parity and uses the same paths file as the docker install.
     # --commit-existing snapshots pre-existing destination files before the
@@ -261,7 +264,8 @@ def check-no-clobber [] {
     exit 1
 }
 
-# Docker-only: what the USER root layers in the Dockerfile used to do.
+# Container-only (Step 0). Runs under sbx, plain docker and Apple container —
+# the marker check, not Docker specifically, is what gates it.
 # Sudo is kept only for genuinely root-owned paths: apt itself and the apt
 # sources files under /etc/apt/. Agent has passwordless sudo at build time,
 # same assumption already made by topiary.nu and rust.nu.

@@ -6,9 +6,11 @@ export def main [] { help topiary }
 
 # Install topiary formatter with nushell support.
 #
-# Installs the topiary binary via brew, clones the topiary-nushell
-# grammar/queries repo, and symlinks config into ~/.config/topiary/.
-# Safe to re-run — skips steps already done.
+# Installs the topiary binary via brew, obtains the topiary-nushell
+# grammar/queries repo, writes ~/.config/topiary/languages.ncl (copied, with a
+# 4-space indent override) and symlinks queries/nu.scm, then compiles the
+# tree-sitter-nu grammar with gcc.
+# Safe to re-run — skips the brew install and the clone when already done.
 export def install []: nothing -> nothing {
     # 1. Install topiary binary
     if (which topiary | is-empty) {
@@ -27,7 +29,7 @@ export def install []: nothing -> nothing {
         print $"  (ansi green)topiary-nushell(ansi reset): already cloned"
     }
 
-    # 3. Symlink config files
+    # 3. Copy languages.ncl (with the indent override), symlink queries/nu.scm
     let config_dir = $nu.home-dir | path join .config topiary
     mkdir $config_dir
     mkdir ($config_dir | path join queries)

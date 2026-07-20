@@ -4,7 +4,8 @@ export def main [] { help polars }
 #
 # Installs Rust automatically if not already present.
 # Compiles from source — may take several minutes.
-# Safe to re-run — skips steps already done.
+# Safe to re-run — skips the cargo build when the plugin binary is already
+# there; `plugin add` re-registers on every run.
 export def install []: nothing -> nothing {
     let cargo_bin = $nu.home-dir | path join .cargo bin
 
