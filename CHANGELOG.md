@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Vendored `topiary-nushell` — newer tree-sitter-nu grammar, so topiary now formats Nushell code that uses a leading `%` command sigil or a dot inside a flag identifier. (f79aa47)
+
 ## [0.3.8] - 2026-07-18
 
 ### Added
