@@ -21,7 +21,7 @@ cd cozy
 
 # Create a sandbox with the cozy kit. `shell` is the agent; `--kit sbx-kit/`
 # layers cozy on top — it clones this repo in-sandbox and runs the shared
-# bootstrap.nu installer (no image build needed). The last arguments are the
+# run-install.sh boot tail (no image build needed). The last arguments are the
 # folders to mount as your workspace; the first one is where you start.
 sbx create --name NAME --kit sbx-kit/ shell ~/some/dir ~/another/dir
 
@@ -29,7 +29,7 @@ sbx create --name NAME --kit sbx-kit/ shell ~/some/dir ~/another/dir
 sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
 ```
 
-Note: the kit installs cozy from GitHub — the latest commit on the default branch — not from your local checkout. Push your changes before `sbx create`, or pin a tag via `--branch` in [sbx-kit/spec.yaml](sbx-kit/spec.yaml) if you need reproducible installs.
+Note: the kit installs cozy from GitHub — the latest commit on the default branch — not from your local checkout. Push your changes before `sbx create`, or add `--branch <tag>` to the `git clone` line in [sbx-kit/spec.yaml](sbx-kit/spec.yaml) if you need reproducible installs.
 
 ## Technologies
 
@@ -37,12 +37,12 @@ Note: the kit installs cozy from GitHub — the latest commit on the default bra
 
 **Optional** (`cozy install`): Rust, nu_plugin_polars, nu-plugin-image, Claude Code (reinstall)
 
-**Rebuild from source** (`cozy install`): Nushell, Zellij (without web sharing), topiary
+**Rebuild from source** (`cozy install`): Nushell, Zellij (without web sharing)
 
 ### sbx
 
 Cozy is based on [Docker's sandbox runtime](https://docs.docker.com/ai/sandboxes/) (`sbx`), so it is:
-- macOS and Windows* (experimental) compatible — the image provides both `arm64` and `amd64` architectures
+- macOS and Windows* (experimental) compatible — the kit builds in-sandbox on whatever architecture `sbx` runs, `arm64` or `amd64`
 - isolated
 - with built-in AI agent (I personally tested it with `claude code`)
 
@@ -88,7 +88,7 @@ In Helix, `+ s` (custom `+` menu, then `s`) copies the selected lines and wraps 
 
 ### Git attribution
 
-Git environment variables (`GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL`) are exported from `/etc/sandbox-persistent.sh`, which the sandbox sources before every bash invocation — including Claude Code's bash tool, so commits made by Claude are attributed to `claude@anthropic.com`. Interactive Nushell does not source bash profiles, so these variables never reach your `nu` session: commands you run there use your own git identity (`git config user.name` / `git config user.email`). Note the flip side: in a bash shell the exported variables override `git config`, so commits made from bash are attributed to Claude too.
+Git environment variables (`GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL`) are exported from `/etc/sandbox-persistent.sh`, which the sandbox sources before every bash invocation — including Claude Code's bash tool, so commits made by Claude are attributed to `claude@anthropic.com`. Nushell does not source bash profiles itself, so a `nu` started directly — the usual `sbx exec -it NAME nu` — never sees these variables: commands you run there use your own git identity (`git config user.name` / `git config user.email`). A `nu` launched from a bash login shell inherits them like any other environment variable. Note the flip side: in a bash shell the exported variables override `git config`, so commits made from bash are attributed to Claude too.
 
 ### Lazygit
 
@@ -102,11 +102,14 @@ Broot is a file manager with a tree-like structure and fuzzy search. `cmd+alt+b`
 
 I use fzf for navigating Nushell history.
 
-In Nushell there are keybindings:
-- `ctrl+f` to spawn fzf with Nushell history; after selecting, the command is inserted into the command line.
-- `alt+f` to spawn fzf with `^currently-entered-commandline`; the current command line is replaced with the selection.
+`ctrl+f` spawns fzf with Nushell history. Whatever is already on the command line becomes the initial query, anchored as one literal prefix term (`ctrl+u` inside fzf clears it).
 
-In fzf, `tab` and `shift-tab` select multiple commands. On enter, selected commands are joined with `;\n` and are pasted back into the command line.
+The accept key decides what happens to the selection:
+
+- `enter` — replace the command line with the selection
+- `alt+enter` — insert the selection at the cursor
+
+In fzf, `tab` and `shift-tab` select multiple commands; they are joined with `;\n`. In-picker toggles: `alt+c` limits results to the current directory, `ctrl+f`/`ctrl+r` switch between recency and relevance sort, `alt+r` toggles raw display. The preview pane shows when and where the command ran.
 
 ### VisiData
 
