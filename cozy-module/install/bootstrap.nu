@@ -181,13 +181,15 @@ export def main [
     # Step 8 — topiary install (binary + grammar + config).
     # topiary.nu reads ~/git/topiary-nushell, but the vendor flow lands the
     # grammar repo at ~/repos/topiary-nushell/. Bridge with a symlink so
-    # topiary install picks up the vendored copy instead of cloning from
-    # GitHub. No clone fallback per fail-fast: if vendored dir is missing,
-    # topiary install should fail loudly so the build flow is fixed at its
-    # source.
+    # topiary install picks up the vendored copy. A missing vendored dir is
+    # fatal here rather than in topiary.nu, so the error names the real cause —
+    # a broken vendor flow — instead of an absent ~/git/ path.
     let vendored = $nu.home-dir | path join 'repos' 'topiary-nushell'
     let link = $nu.home-dir | path join 'git' 'topiary-nushell'
-    if ($vendored | path exists) and ($link | path type) != 'symlink' {
+    if not ($vendored | path exists) {
+        error make {msg: $"Step 8: vendored topiary-nushell missing at ($vendored) — Step 3 should have populated it from vendor/. Refresh it on the host with `nu toolkit/vendor.nu topiary-nushell` and rebuild."}
+    }
+    if ($link | path type) != 'symlink' {
         mkdir ($link | path dirname)
         ^ln -s $vendored $link
     }

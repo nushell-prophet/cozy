@@ -43,8 +43,8 @@ network:
     - objects.githubusercontent.com
     - api.github.com
     # github.com covers the cozy repo clone below, brew tap clones,
-    # ensure-nu fallback release tarballs, topiary-nushell + tree-sitter-nu
-    # clones in topiary install, and `jj`/`gh` runtime use.
+    # ensure-nu fallback release tarballs, the tree-sitter-nu clone in
+    # topiary install, and `jj`/`gh` runtime use.
     - github.com
     - codeload.github.com
     # apt sources — bootstrap.nu rewrites /etc/apt/sources.list to https://

@@ -1,16 +1,15 @@
 use _clone-or-fail.nu
 
-const topiary_nushell_url = "https://github.com/blindFS/topiary-nushell.git"
-
 export def main [] { help topiary }
 
 # Install topiary formatter with nushell support.
 #
-# Installs the topiary binary via brew, obtains the topiary-nushell
-# grammar/queries repo, writes ~/.config/topiary/languages.ncl (copied, with a
-# 4-space indent override) and symlinks queries/nu.scm, then compiles the
-# tree-sitter-nu grammar with gcc.
-# Safe to re-run — skips the brew install and the clone when already done.
+# Installs the topiary binary via brew, reads the vendored topiary-nushell
+# grammar/queries repo (linked at ~/git/topiary-nushell by bootstrap.nu Step 8 —
+# errors if absent, never clones it), writes ~/.config/topiary/languages.ncl
+# (copied, with a 4-space indent override) and symlinks queries/nu.scm, then
+# clones and compiles the tree-sitter-nu grammar with gcc.
+# Safe to re-run — skips the brew install and the grammar build when already done.
 export def install []: nothing -> nothing {
     # 1. Install topiary binary
     if (which topiary | is-empty) {
@@ -20,14 +19,15 @@ export def install []: nothing -> nothing {
         print $"  (ansi green)topiary(ansi reset): already installed"
     }
 
-    # 2. Clone topiary-nushell repo
+    # 2. Locate the topiary-nushell grammar/queries repo.
+    # Not a clone fallback because: the repo is vendored and bootstrap.nu Step 8
+    # symlinks it here. Cloning from GitHub instead would paper over a broken
+    # vendor flow and silently install an unpinned upstream revision.
     let repo_dir = $nu.home-dir | path join git topiary-nushell
     if not ($repo_dir | path exists) {
-        print "  Cloning topiary-nushell..."
-        _clone-or-fail $topiary_nushell_url $repo_dir
-    } else {
-        print $"  (ansi green)topiary-nushell(ansi reset): already cloned"
+        error make {msg: $"topiary-nushell not found at ($repo_dir) — it is vendored and linked by bootstrap.nu Step 8. Re-run `cozy install bootstrap`, or on the host refresh vendor/ with `nu toolkit/vendor.nu topiary-nushell`."}
     }
+    print $"  (ansi green)topiary-nushell(ansi reset): found at ($repo_dir)"
 
     # 3. Copy languages.ncl (with the indent override), symlink queries/nu.scm
     let config_dir = $nu.home-dir | path join .config topiary
