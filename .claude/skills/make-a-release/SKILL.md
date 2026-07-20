@@ -14,7 +14,7 @@ Full release procedure for the cozy project.
 
 - Working directory is clean (`git status` shows no uncommitted changes)
 - `## [Unreleased]` in `CHANGELOG.md` has entries to release
-- You are on the `main` branch (or the branch the user intends to release from)
+- You are on `master` — this repo's default branch (or the branch the user intends to release from)
 
 If any prerequisite fails, stop and tell the user what needs to happen first.
 
@@ -99,5 +99,5 @@ After completing, tell the user:
 
 - The new version number and date
 - Summary of what was released
-- Remind them to push: `git push && git push --tags`
-- Remind them to rebuild the image if needed: `docker build -t cozy:vX .`
+- Remind them to push: `git push && git push --tags` — pushing is what makes the release live, since the sbx kit clones cozy from GitHub on every `sbx run`
+- Only if they use the plain-`docker` path: rebuild the image (`docker build -t cozy:<version> .`). It is not used by `sbx`

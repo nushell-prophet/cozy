@@ -28,8 +28,9 @@ nu toolkit/vendor.nu --local --no-commit    # all repos, rsync from sibling ../<
 nu toolkit/vendor.nu <repo> --no-commit     # just one repo from vendor.yml
 ```
 
-**Always pass `--no-commit`.** `vendor.nu` auto-commits its result with a
-generic `vendor: update <repo>` message by default — that has no body and
+**Always pass `--no-commit`.** `vendor.nu` auto-commits its result by default,
+with a generic `vendor: refresh all modules` (no repo named) or
+`vendor: update <repo>` subject — that has no body and
 violates the Intent Preservation rule this skill exists to honor. `--no-commit`
 leaves the changes unstaged so steps 2–4 below can compose richer per-repo
 commits.
@@ -118,6 +119,5 @@ user can amend.
   submodule subdirs are vendored. If `vendor/` contains a repo not in
   `vendor.yml` after the run, that's a bug in `vendor.nu`, not something to
   commit around.
-- `nutest` (vyadh/nutest) and `my-claude-skills` (maxim-uvarov/...) are
-  third-party; their commit bodies should clearly attribute upstream rather
-  than imply local authorship.
+- `nutest` (vyadh/nutest) is third-party; its commit bodies should clearly
+  attribute upstream rather than imply local authorship.

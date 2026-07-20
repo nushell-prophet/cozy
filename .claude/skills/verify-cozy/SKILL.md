@@ -3,8 +3,8 @@ name: verify-cozy
 description: >
   Verify a cozy build by running `cozy verify` against a target you name — a
   locally-built docker container (default), a running sbx sandbox, or a host
-  checkout. The checks (cozy-module/verify.nu) derive every expected value from
-  the repo. Use when you say "verify the build", "build-check", "smoke test the
+  checkout. The checks live in cozy-module/verify.nu. Use when you say "verify
+  the build", "build-check", "smoke test the
   sandbox", "is everything wired up", "/verify-cozy docker", after building the
   image, or after creating a sandbox.
 ---
@@ -16,13 +16,18 @@ takes a transport closure, so the check logic is identical everywhere — the on
 thing that changes per target is how the commands are carried. Name the target as
 the argument; with no argument the target is `docker`.
 
-The checks derive every expected value from sources that ship into the build —
-`vendored-repos.nuon` (repos), the `docker-files/nushell-autoload/` glob (autoload
-scripts), and the export block in `bootstrap.nu` (env vars) — so the checklist
-can't drift from the build. They cover binaries on PATH, vendored repos, autoload
-scripts, runtime env, MCP wiring, pbcopy, the appended CLAUDE.md tool catalog,
-that `bootstrap.nu` parses on the shipped nu, topiary's grammar, and XDG git
-config.
+The repo, autoload and env checks derive their expected values from sources that
+ship into the build — `vendored-repos.nuon` (repos), the
+`docker-files/nushell-autoload/` glob (autoload scripts), and the export block in
+`bootstrap.nu` (env vars) — so those three can't drift from the build. The binary
+list is the exception: `verify.nu`'s `const tools` is hand-kept, because the
+binaries are spread across the base image and `bootstrap.nu`'s `brew install` with
+no machine-readable source of truth. Add a brew tool, add it there too.
+
+The checks cover: that each expected binary *launches* (not merely resolves on
+PATH), vendored repos, autoload scripts, runtime env, MCP wiring, pbcopy, the
+appended CLAUDE.md tool catalog, that `bootstrap.nu` parses on the shipped nu,
+topiary's grammar, the global-ignore patterns, and XDG git config.
 
 `cozy` is a Nushell overlay (loaded by the `modules-core.nu` autoload), not a PATH
 binary. Autoloads fire in an interactive shell and the MCP `evaluate` tool but
@@ -36,8 +41,7 @@ they report the same result however verify was launched. The git identity
 the Debian image does it via `/etc/profile.d`), or those five checks false-fail.
 
 Read the printed table; any `pass: false` row names what to fix and, for files,
-the owning repo. There is nothing to hand-maintain — to add or change a check,
-edit `cozy-module/verify.nu`.
+the owning repo. To add or change a check, edit `cozy-module/verify.nu`.
 
 ## Targets
 
