@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Ensure `nu` can parse bootstrap.nu. Tries latest first (brew install
-# nushell); if latest can't parse it (nushell is pre-1.0 and syntax drifts
+# Install a `nu` that can run bootstrap.nu. Tries latest first (brew install
+# nushell); if latest can't run it (nushell is pre-1.0 and syntax drifts
 # between releases), falls back to the pinned version in `.nushell-version`
 # by downloading the matching github release into ~/.local/bin/nu —
 # run-install.sh exports that dir first on PATH (and the Dockerfile/kit ENV
