@@ -6,6 +6,8 @@ Tuning my terminal setup is my unpaid full-time job. Now it's packaged so others
 
 This is a work-in-progress educational project. Video demos have started: [the cozy series playlist](https://www.youtube.com/playlist?list=PLG6y4L4fR19I).
 
+The install steps and the reasoning behind each of them are described in [design/](design/).
+
 ## Quick start
 
 Cozy's primary target is [`sbx`](https://www.docker.com/products/docker-sandboxes/) (Docker's standalone sandbox runtime), so the quick start uses the `sbx` kit. Other targets — plain Docker, Apple `container`, a macOS host — run the same installer and land on the same toolset: see [Install elsewhere](#install-elsewhere) and [Debian image](#debian-image-in-testing) below.
