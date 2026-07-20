@@ -1,12 +1,12 @@
 ---
 human-check: pending   # pending | verified — flip to verified after you read it
 covers:                # source paths update-design reconciles this file against
+  - sbx-kit/spec.yaml
   - Dockerfile
   - cozy-module/install/run-install.sh
   - cozy-module/install/ensure-nu.sh
   - cozy-module/install/.nushell-version
   - cozy-module/install/bootstrap.nu
-  - sbx-kit/spec.yaml
 reconciled-at: 0eeb1329e2cc38cd941ba552592ecd09684ff189
 ---
 
@@ -14,17 +14,24 @@ reconciled-at: 0eeb1329e2cc38cd941ba552592ecd09684ff189
 
 **Everything starts here.** Three entry paths converge on the same boot tail, [`../cozy-module/install/run-install.sh`](../cozy-module/install/run-install.sh) (ensure brew → `ensure-nu.sh` → `bootstrap.nu`) — the command sequence exists in that one script and nowhere else, so the environment is identical whether you build the image, install on a host, or layer the [`sbx` kit](https://docs.docker.com/ai/sandboxes/customize/kits/). The paths differ only in how the checkout lands:
 
+- **sbx kit** (primary) — [`../sbx-kit/spec.yaml`](../sbx-kit/spec.yaml) clones the repo in-sandbox → `run-install.sh`
 - **Docker** — [`../Dockerfile`](../Dockerfile) COPYs the repo bits → `run-install.sh`
 - **Host** — a git checkout → [`cozy-module/install/run-install.sh`](../cozy-module/install/run-install.sh)
-- **sbx kit** — [`../sbx-kit/spec.yaml`](../sbx-kit/spec.yaml) clones the repo in-sandbox → `run-install.sh`
 
-This file walks the [`Dockerfile`](../Dockerfile) top to bottom, then `bootstrap.nu`'s steps 0–9 in order, and links out to the other design files at the step where each is reached. **This order is the canonical order for the whole project** — README, CLAUDE.md, and every other design file mirror it. Change the order here and propagate it everywhere.
+This file follows **execution order**: first the two entry points that deliver the checkout, then the shared tail they both hand off to — `run-install.sh` → `ensure-nu.sh` → `bootstrap.nu`'s steps 0–9 — linking out to the other design files at the step where each is reached. **This order is the canonical order for the whole project** — README, CLAUDE.md, and every other design file mirror it. Change the order here and propagate it everywhere.
 
-`bootstrap.nu` auto-detects its mode (no flags): a container marker present ([`/etc/sandbox-persistent.sh`](https://docs.docker.com/ai/sandboxes/faq/#how-do-i-set-custom-environment-variables-inside-a-sandbox) from the sbx base image, or `/.dockerenv` for non-sbx container bases) → run the container system setup (Step 0); `/tmp/vendor` present → use the Docker-staged vendor as-is; else → use the committed [`vendor/`](../vendor/). Re-run = clean setup; idempotency is not a goal.
+## Entry points
 
-## Dockerfile
+Both only put the repo on disk and call `run-install.sh`; everything after that is shared. The third path — a host checkout — has no entry artifact of its own: it starts straight at the tail.
 
-The Dockerfile builds the **Debian rootless** run path — plain `docker run` and Apple `container`, **in testing** (`sbx` never touches it; it uses the kit). Its point is least privilege: the `agent` gets passwordless sudo only during the build (apt, brew's chown, the tree-sitter compile), revoked in the final layer, so the running container can't escalate. Debian slim ships none of the sbx template's agent tooling, so the early layers add it back. It still defines the canonical order. In order:
+### sbx-kit/spec.yaml — the kit (primary path)
+
+A [`mixin`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#top-level-fields) kit that layers cozy on the standard [`shell`](https://docs.docker.com/ai/sandboxes/agents/shell/) agent — no image build, so this is the path `sbx run` takes. [`environment.variables`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#environment) mirrors the Dockerfile `ENV` block (below); [`commands.install`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#install) is two steps: clone cozy (the one step that can't live in `run-install.sh` — the script doesn't exist in-sandbox until the clone lands) → `run-install.sh`, its output redirected to `~/cozy-install.log` (sbx swallows install-command stdout with no flag to show it, so the log is the only way to watch progress or read back a failure — `sbx exec -it <name> tail -f ~/cozy-install.log` from a second terminal). No [`files/`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#static-files) tree — the repo is cloned in-sandbox, so `cozy_root` lines up via `path self`. [`network.allowedDomains`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#network) is provisional (derived by walking the install path; verify on a real [`sbx run`](https://docs.docker.com/reference/cli/sbx/run/)).
+**Code:** [`sbx-kit/spec.yaml`](../sbx-kit/spec.yaml)
+
+### Dockerfile — the Debian rootless image (secondary, in testing)
+
+The Dockerfile builds the **Debian rootless** run path — plain `docker run` and Apple `container`, **in testing** (`sbx` never touches it; it uses the kit). Its point is least privilege: the `agent` gets passwordless sudo only during the build (apt, brew's chown, the tree-sitter compile), revoked in the final layer, so the running container can't escalate. Debian slim ships none of the sbx template's agent tooling, so the early layers add it back. Its layers, in order:
 
 1. `FROM debian:12-slim`.
 2. **Root build layer** — rewrite apt sources `http://` → `https://` (the VM allows :443, not :80; TLS peer-verify is off for this first apt because the CA bundle isn't installed yet — apt still verifies packages via gpg), then `apt-get install` sudo, ca-certificates, curl, git, build-essential, procps, file, rsync, ripgrep, jq. build-essential/procps/file back Homebrew's Linux toolchain requirement; rsync backs `install-skills` (Step 5); rg + jq replace agent tools the template bundled (kept on apt so the shared brew list stays untouched).
@@ -38,6 +45,11 @@ The Dockerfile builds the **Debian rootless** run path — plain `docker run` an
 10. `COPY workspace-README.md` → `~/workspace/README.md`. See [`autoload.md`](autoload.md).
 11. **Final root layer** (kept last so editing it doesn't invalidate the cached brew layers) — write `/etc/profile.d/cozy.sh` (brew shellenv + the per-user PATH prepend + source `/etc/sandbox-persistent.sh`) so login shells — including the `bash -lc` `cozy verify` reads env through — regain the PATH additions and the cozy env block that `/etc/profile` rebuilds away; then delete the sudoers drop-in to revoke the build-time privilege. `USER agent`.
 
+## run-install.sh (the shared boot tail)
+
+The one script every path runs. Ensures brew — auto-installs only on Linux with passwordless sudo (the sbx case; it then `eval`s `brew shellenv`, since the installer never touches the calling shell's PATH), fails fast with a copy-paste snippet on macOS (keeps password prompts out of the no-prompt flow). Then `ensure-nu.sh`, then `nu bootstrap.nu "$@"`. On hosts (no container markers — same detection as bootstrap.nu Step 0) it finally appends an `XDG_CONFIG_HOME` export to the user's shell rc (so macOS `nu` reads `~/.config/nushell/` instead of `~/Library/Application Support/`).
+**Code:** [`cozy-module/install/run-install.sh`](../cozy-module/install/run-install.sh)
+
 ## ensure-nu.sh
 
 Ensure `nu` can parse `bootstrap.nu`. Tries latest brew `nu` first; if it can't parse (nushell is pre-1.0 and syntax drifts between releases), downloads the pinned version from [`../cozy-module/install/.nushell-version`](../cozy-module/install/.nushell-version) into `~/.local/bin/nu`, which shadows brew's `nu` via the `PATH` order above. If even the pinned version can't parse it, `bootstrap.nu` has a real bug — fail loudly rather than install a broken environment.
@@ -47,6 +59,8 @@ Ensure `nu` can parse `bootstrap.nu`. Tries latest brew `nu` first; if it can't 
 
 Entry: `export def main [--force]`. `--force` skips the host-install clobber guard. The installer consumes the committed `vendor/` snapshot as-is and never fetches modules — refreshing `vendor/` (from upstream or siblings) is [`toolkit/vendor.nu`](../toolkit/vendor.nu)'s job, run before a build.
 **Code:** [`cozy-module/install/bootstrap.nu`](../cozy-module/install/bootstrap.nu) → `export def main`
+
+It auto-detects its mode (no flags): a container marker present ([`/etc/sandbox-persistent.sh`](https://docs.docker.com/ai/sandboxes/faq/#how-do-i-set-custom-environment-variables-inside-a-sandbox) from the sbx base image, or `/.dockerenv` for non-sbx container bases) → run the container system setup (Step 0); `/tmp/vendor` present → use the Docker-staged vendor as-is; else → use the committed [`vendor/`](../vendor/). Re-run = clean setup; idempotency is not a goal.
 
 ### Step 0 — system setup (container) / clobber guard (host)
 Gated on a container marker: `/etc/sandbox-persistent.sh` (shipped by the sbx base image) or `/.dockerenv` (non-sbx container bases — marker-only gating made those silently take the host branch). **Container:** `setup-docker-system` wipes colliding `config.nu`/`env.nu`, rewrites apt sources `http://` → `https://` (the VM allows :443, not :80), `apt-get install` procps/file/gcc/libc6-dev (gcc + libc6-dev are needed for the tree-sitter-nu compile in Step 8), and writes the runtime env-export block (marker-wrapped) into `/etc/sandbox-persistent.sh` (created when only `/.dockerenv` was present). **Host** (markers absent): `check-no-clobber` refuses to overwrite existing user configs unless `--force` or the `~/.cozy-installed` stamp is present.
@@ -84,13 +98,3 @@ Symlinks the vendored `~/repos/topiary-nushell` to `~/git/topiary-nushell` (wher
 
 ### Step 9 — Claude Code + nushell MCP
 `claude install` (see [`install.md`](install.md)), then `claude mcp add --scope user --transport stdio nushell -- nu --mcp`, then merges `externalEditorContext: true` into `~/.claude.json`. Finally writes the `~/.cozy-installed` stamp (last, so a partial failure leaves no stamp and forces `--force` to recover) and, if env exports were just written but the current shell predates them, prints a "run `exec bash -l`" note.
-
-## run-install.sh (the shared boot tail)
-
-The one script every path runs. Ensures brew — auto-installs only on Linux with passwordless sudo (the sbx case; it then `eval`s `brew shellenv`, since the installer never touches the calling shell's PATH), fails fast with a copy-paste snippet on macOS (keeps password prompts out of the no-prompt flow). Then `ensure-nu.sh`, then `nu bootstrap.nu "$@"`. On hosts (no container markers — same detection as bootstrap.nu Step 0) it finally appends an `XDG_CONFIG_HOME` export to the user's shell rc (so macOS `nu` reads `~/.config/nushell/` instead of `~/Library/Application Support/`).
-**Code:** [`cozy-module/install/run-install.sh`](../cozy-module/install/run-install.sh)
-
-## sbx-kit/spec.yaml (sbx kit)
-
-A [`mixin`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#top-level-fields) kit that layers cozy on the standard [`shell`](https://docs.docker.com/ai/sandboxes/agents/shell/) agent. [`environment.variables`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#environment) mirrors the Dockerfile `ENV`; [`commands.install`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#install) is two steps: clone cozy (the one step that can't live in `run-install.sh` — the script doesn't exist in-sandbox until the clone lands) → `run-install.sh`, its output redirected to `~/cozy-install.log` (sbx swallows install-command stdout with no flag to show it, so the log is the only way to watch progress or read back a failure — `sbx exec -it <name> tail -f ~/cozy-install.log` from a second terminal). No [`files/`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#static-files) tree — the repo is cloned in-sandbox, so `cozy_root` lines up via `path self`. [`network.allowedDomains`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#network) is provisional (derived by walking the install path; verify on a real [`sbx run`](https://docs.docker.com/reference/cli/sbx/run/)).
-**Code:** [`sbx-kit/spec.yaml`](../sbx-kit/spec.yaml)
