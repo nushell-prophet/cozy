@@ -66,15 +66,15 @@ It auto-detects its mode (no flags): a container marker present ([`/etc/sandbox-
 Gated on a container marker: `/etc/sandbox-persistent.sh` (shipped by the sbx base image) or `/.dockerenv` (non-sbx container bases — marker-only gating made those silently take the host branch). **Container:** `setup-docker-system` wipes colliding `config.nu`/`env.nu`, rewrites apt sources `http://` → `https://` (the VM allows :443, not :80), `apt-get install` procps/file/gcc/libc6-dev (gcc + libc6-dev are needed for the tree-sitter-nu compile in Step 8), and writes the runtime env-export block (marker-wrapped) into `/etc/sandbox-persistent.sh` (created when only `/.dockerenv` was present). **Host** (markers absent): `check-no-clobber` refuses to overwrite existing user configs unless `--force` or the `~/.cozy-installed` stamp is present.
 **Code:** `bootstrap.nu` → `def setup-docker-system`, `def check-no-clobber`
 
-### Before Step 1 — gcc fail-fast + pbcopy shim
-Two guards in `main` between Step 0 and the brew installs. A Linux **host** without gcc fails before anything is modified — Step 8 compiles the tree-sitter-nu grammar, containers get gcc from Step 0's apt install, but the flow won't sudo mid-install, so surface it up front (macOS is covered via the Xcode CLT brew requires). Then the `pbcopy` shim is installed to `~/.local/bin` on every Linux, container or host — the dotfiles deployed in Step 4 call `pbcopy` and Linux has no native one; a user's own non-cozy `pbcopy` on PATH is never shadowed. See [`autoload.md`](autoload.md).
+### Before Step 1 — gcc fail-fast, pbcopy shim, `~/.cargo/bin`
+Three actions in `main` between Step 0 and the brew installs; only the first is a guard. A Linux **host** without gcc fails before anything is modified — Step 8 compiles the tree-sitter-nu grammar, containers get gcc from Step 0's apt install, but the flow won't sudo mid-install, so surface it up front (macOS is covered via the Xcode CLT brew requires). Then the `pbcopy` shim is installed to `~/.local/bin` on every Linux, container or host — the dotfiles deployed in Step 4 call `pbcopy` and Linux has no native one; a user's own non-cozy `pbcopy` on PATH is never shadowed. See [`autoload.md`](autoload.md). Last, `~/.cargo/bin` is created empty: cargo-built binaries (`cozy install nushell`/`zellij`) must shadow the brew ones, but `env.nu` filters PATH entries by existence and long-lived processes capture PATH at startup — a dir born later is already missing from those.
 **Code:** `bootstrap.nu` → `export def main` (pre-Step-1 block)
 
 ### Step 1 — brew installs
 `brew install nushell fzf lazygit helix zellij broot git-delta visidata bat topiary fd jj git-lfs`, then `brew cleanup --prune=all`. Errors if brew is missing.
 
 ### Step 2 — XDG git config
-Writes `~/.config/git/{config,ignore}`: identity `Agent <agent@sandbox>` (so Step 4 can commit), `safe.directory=*`, `gc.auto=0`, `core.fsync=all`. XDG (not `/etc/gitconfig`) avoids sudo and is overridden by a real user's `~/.gitconfig`, so a personal identity still wins.
+Writes `~/.config/git/{config,ignore}`: identity `Agent <agent@sandbox>` (so Step 4 can commit), `safe.directory=*`, `gc.auto=0`, `core.fsync=all` + `core.fsyncMethod=fsync`. XDG (not `/etc/gitconfig`) avoids sudo and is overridden by a real user's `~/.gitconfig`, so a personal identity still wins.
 
 ### Step 3 — populate ~/repos/
 `populate-repos` mirrors `cozy-module/` + `docker-files/` to `~/repos/cozy/` (skipped in Docker, where the `COPY` already did it), then fans out every vendored module from `/tmp/vendor` (Docker) or `cozy_root/vendor/` into `~/repos/`. The source is used as-is; an empty source is a corrupt checkout and errors out. See [`modules.md`](modules.md).
@@ -97,4 +97,4 @@ Symlinks the vendored `~/repos/topiary-nushell` to `~/git/topiary-nushell` (wher
 **Code:** `bootstrap.nu` (Step 8 block) → `topiary install`
 
 ### Step 9 — Claude Code + nushell MCP
-`claude install` (see [`install.md`](install.md)), then `claude mcp add --scope user --transport stdio nushell -- nu --mcp`, then merges `externalEditorContext: true` into `~/.claude.json`. Finally writes the `~/.cozy-installed` stamp (last, so a partial failure leaves no stamp and forces `--force` to recover) and, if env exports were just written but the current shell predates them, prints a "run `exec bash -l`" note.
+`claude install` (see [`install.md`](install.md)), then `claude mcp add --scope user --transport stdio nushell -- (which nu | get path.0) --mcp` — the absolute path is resolved on purpose, so a pinned `~/.local/bin/nu` is the one the MCP server runs. Then merges `externalEditorContext: true` into `~/.claude.json`. Finally writes the `~/.cozy-installed` stamp (last, so a partial failure leaves no stamp and forces `--force` to recover) and, if env exports were just written but the current shell predates them, prints a "run `exec bash -l`" note.

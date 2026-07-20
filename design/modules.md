@@ -39,6 +39,6 @@ Two files carry these. `modules-core.nu` holds the set that must work everywhere
 
 These are in `vendor.yml` but are configs or skills, not Nushell command modules:
 
-- **dotfiles** (`nushell-prophet/my-dotfiles`) — personal configs, deployed by `bootstrap.nu` Steps 4–5; see [`autoload.md`](autoload.md).
+- **dotfiles** (`nushell-prophet/my-dotfiles`) — personal configs, deployed by `bootstrap.nu` Step 4; see [`autoload.md`](autoload.md).
 - **my-claude-skills** (`maxim-uvarov/my-claude-skills`) and **nushell-skills** (`nushell-prophet/nushell-skills`) — Claude Code skills installed by `toolkit install-skills`.
 - **topiary-nushell** (`blindFS/topiary-nushell`) — grammar + queries for the topiary formatter, wired up in `bootstrap.nu` Step 8; see [`install.md`](install.md).

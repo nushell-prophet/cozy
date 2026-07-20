@@ -33,7 +33,7 @@ Re-assert git `safe.directory = '*'` on shell start. Self-healing: sandbox creat
 **Code:** [`docker-files/nushell-autoload/git-safe-directory.nu`](../docker-files/nushell-autoload/git-safe-directory.nu)
 
 ### mcp-server.nu
-Ensure the nushell MCP server is registered in Claude Code user config. Self-healing: sandbox create may overwrite `~/.claude.json`, this restores the `mcpServers.nushell` stdio entry (`nu --mcp`).
+Ensure the nushell MCP server is registered in Claude Code user config. Self-healing: sandbox create may overwrite `~/.claude.json`, this restores the `mcpServers.nushell` stdio entry (the resolved `nu` path + `--mcp`, matching Step 9).
 > NOTE: registered in `~/.claude.json` (user scope), NOT `~/.claude/settings.json`.
 **Code:** [`docker-files/nushell-autoload/mcp-server.nu`](../docker-files/nushell-autoload/mcp-server.nu)
 

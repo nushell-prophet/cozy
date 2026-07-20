@@ -24,7 +24,7 @@ The build sequence, in order:
 
 Host-side build tooling:
 
-- [`toolkit.md`](toolkit.md) — how images get built and modules get vendored from the host. The mechanism and its source of truth, not a command catalog.
+- [`toolkit.md`](toolkit.md) — how modules get vendored and the build's invariants get checked, from the host. The mechanism and its source of truth, not a command catalog.
 
 ## Maintaining these notes
 
