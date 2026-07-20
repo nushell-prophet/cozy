@@ -1,6 +1,6 @@
 # Sandbox Environment
 
-You are running inside an sbx sandbox — Docker's standalone sandbox runtime (Ubuntu, arm64 or amd64). The workspace is mounted at its original host path, not `/workspace` or `/home/agent`.
+This file is appended to `~/.claude/CLAUDE.md` by every cozy install path, so check which one you are on before relying on the environment notes below. The usual one is an `sbx` sandbox — Docker's standalone sandbox runtime, on Ubuntu. The others are a `debian:12-slim` image run under plain `docker`/Apple `container`, and a plain host install (macOS or Linux). In a sandbox the workspace is mounted at its original host path, not `/workspace` or `/home/agent`.
 
 ## Available Tools
 
@@ -13,11 +13,11 @@ You are running inside an sbx sandbox — Docker's standalone sandbox runtime (U
 - `broot` / `br` (in Nushell)
 - `fzf`, `rg` (ripgrep), `bat`, `fd`
 - `vd` (visidata)
-- `python3`, `node`, `go` — via base image and Homebrew
+- `python3`, `node`, `go` — from the `sbx` base image only; absent on the Debian image
 - `jq`
 - `topiary` — Nushell grammar support
-- `brew`, `pip`, `uv`, `npm` — install more as needed
-- `sudo` — passwordless
+- `brew` — install more as needed
+- `sudo` — passwordless on `sbx`; **revoked** on the Debian image, which runs rootless by design
 
 ## Nushell
 
@@ -29,9 +29,9 @@ Nushell is the primary shell. Modules are in `~/repos/`:
 - `nu-cmd-stack` — command history stacking for interactive use in the REPL
 - `nu-kv` — key-value store for any nushell data; kept in a host-mounted folder, so it's available on the host too
 - `claude-nu` — Claude Code commands for extracting session data and for easier REPL interaction
-- `nutest` — test framework
+- `nutest` — test framework; **not** autoloaded, load it with `use ~/repos/nutest/nutest`
 
-Autoload scripts in `~/.config/nushell/autoload/` load these modules — and the `cozy` command — for you, but only when nu starts an **interactive** session. The nushell MCP `evaluate` tool runs such a session, so the modules are ready there too. A one-shot `nu -c '…'` (e.g. run from Bash) is not interactive and skips autoloads, so `cozy`, `nu-goodies`, `kv` and the rest are absent — you'll get `command not found`. The MCP `evaluate` tool is good for interactive exploration (autoloads fire, structured output) — but read its caveats under *Nushell MCP Server* below before relying on it. If you use `nu -c`, load the modules with `--config`: `nu --config ~/.config/nushell/autoload/modules-core.nu -c '…'` — `--config` runs even in `-c` mode (unlike autoload), so the full core module set (`cozy`, `nu-goodies`, `kv`, `dotnu`, `numd`) is available.
+Autoload scripts in `~/.config/nushell/autoload/` load the modules above (except `nutest`) — and the `cozy` command — for you, but only when nu starts an **interactive** session. The nushell MCP `evaluate` tool runs such a session, so the modules are ready there too. A one-shot `nu -c '…'` (e.g. run from Bash) is not interactive and skips autoloads, so `cozy`, `nu-goodies`, `kv` and the rest are absent — you'll get `command not found`. The MCP `evaluate` tool is good for interactive exploration (autoloads fire, structured output) — but read its caveats under *Nushell MCP Server* below before relying on it. If you use `nu -c`, load the modules with `--config`: `nu --config ~/.config/nushell/autoload/modules-core.nu -c '…'` — `--config` runs even in `-c` mode (unlike autoload), so the full core module set (`cozy`, `nu-goodies`, `kv`, `dotnu`, `numd`) is available.
 
 ### Pitfalls cheatsheet
 
@@ -52,8 +52,8 @@ Two caveats:
 
 ## Constraints
 
-- Docker socket is available for container operations
-- Home directory is at `/home/agent`; the mounted workspace is at `$env.WORKSPACE_DIR` (host path, bind-mounted at the same absolute path on macOS/Linux; on Windows the autoload rewrites `C:\Users\…` → `/c/Users/…`)
+- Docker socket is available for container operations (sandbox paths only)
+- In a sandbox the home directory is at `/home/agent`; the mounted workspace is at `$env.WORKSPACE_DIR` (host path, bind-mounted at the same absolute path on macOS/Linux; on Windows the autoload rewrites `C:\Users\…` → `/c/Users/…`)
 
 ## The code here is agent-written — keep an eye on it
 
