@@ -28,12 +28,15 @@ bootstrap.nu (all install logic; every path reaches it via run-install.sh)
 
 ## Run
 
-The `sbx` kit is the standard run path — no image build. It clones cozy in-sandbox and runs the same `bootstrap.nu`:
+The `sbx` kit is the standard run path — no image build. It clones cozy in-sandbox and runs the same `run-install.sh` boot tail. Flags come before the agent positional, matching `sbx`'s own docs:
 
 ```sh
-sbx run shell --kit sbx-kit/ ~/path/to/project
-#       ^^agent              ^^workspace
+sbx create --name NAME --kit sbx-kit/ shell ~/path/to/project
+#                                     ^^agent  ^^workspace (first = start dir)
+sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
 ```
+
+`sbx create` builds the sandbox in the background; `sbx run` with the same arguments creates it and attaches immediately. `README.md`'s quick start uses the `create` + `exec` pair — that is the tested path.
 
 `sbx` pulls images only from a registry, and cozy images stay local-only (never pushed), so a `docker build`ed image can't be fed to `sbx` — the kit (in-sandbox build) replaces that path entirely.
 
