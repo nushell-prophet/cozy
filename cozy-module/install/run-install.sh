@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The one boot tail shared by all three install paths — Dockerfile RUN,
 # sbx-kit commands.install, and a plain host checkout:
-#   ensure brew → ensure-nu.sh (installs nu if missing, pins on parse drift)
+#   ensure brew → ensure-nu.sh (installs nu if missing, pins on syntax drift)
 #   → nu bootstrap.nu
 # Callers differ only in how the checkout lands (COPY / git clone / you);
 # the command sequence lives here and nowhere else, so the paths can't

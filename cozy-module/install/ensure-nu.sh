@@ -26,10 +26,9 @@ if ! command -v nu >/dev/null; then
     brew install nushell
 fi
 
-# Smoke test: does current nu parse bootstrap.nu? `use` triggers a full
-# parse + evaluation of top-level decls, and bootstrap.nu's top level is
-# pure (consts + nested `use topiary.nu`/`use claude.nu`), so this is
-# effectively parse-only.
+# Compatibility gate: can this nu load bootstrap.nu? `use` parses it and
+# evaluates its top-level declarations (consts + nested `use topiary.nu`/
+# `use claude.nu`) — the whole surface bootstrap.nu exposes before main runs.
 if nu -c "use '$BOOTSTRAP'" >/dev/null 2>&1; then
     exit 0
 fi
@@ -44,13 +43,13 @@ current_nu="$(nu --version 2>/dev/null || echo unknown)"
     echo "================================================================"
     echo "  cozy: FALLING BACK TO PINNED NUSHELL"
     echo "----------------------------------------------------------------"
-    echo "  Latest nu ($current_nu) cannot parse bootstrap.nu."
+    echo "  Latest nu ($current_nu) cannot load bootstrap.nu."
     echo "  Installing pinned nu $VERSION into ~/.local/bin/nu."
     echo
     echo "  ~/.local/bin is FIRST on PATH, so this pinned nu shadows"
     echo "  brew's nu for the ENTIRE environment — every nu in this"
     echo "  sandbox is $VERSION, not the latest, until bootstrap.nu"
-    echo "  parses under latest nu again."
+    echo "  loads under latest nu again."
     echo
     echo "  Fix: update bootstrap.nu for the new nu syntax, re-vendor,"
     echo "  rebuild, then bump .nushell-version. Until then you are on"
@@ -79,10 +78,10 @@ curl -fsSL "$url" -o "$tmp/nu.tar.gz"
 tar -xzf "$tmp/nu.tar.gz" -C "$tmp"
 install -m 755 "$tmp/nu-${VERSION}-${target}/nu" "$HOME/.local/bin/nu"
 
-# If pinned can't parse it either, bootstrap.nu has an actual bug — fail
+# If pinned can't load it either, bootstrap.nu has an actual bug — fail
 # loudly instead of letting a broken environment install silently.
 if ! nu -c "use '$BOOTSTRAP'" >/dev/null 2>&1; then
-    echo "even pinned nu $VERSION can't parse bootstrap.nu — likely a real bug" >&2
+    echo "even pinned nu $VERSION can't load bootstrap.nu — likely a real bug" >&2
     exit 1
 fi
 

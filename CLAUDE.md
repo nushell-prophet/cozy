@@ -4,7 +4,7 @@ Modern, beginner-friendly terminal environment for AI agents, running inside `sb
 
 ## Architecture
 
-Every install path (docker build, sbx kit, plain host checkout) runs the same boot tail, `cozy-module/install/run-install.sh`: ensure brew → `ensure-nu.sh` (install nu, smoke-test it against bootstrap.nu, pin on parse drift) → `nu bootstrap.nu`. All install logic lives in `cozy-module/install/bootstrap.nu`; the Dockerfile cache-primes brew + nushell, COPYs repo bits, and calls the shared script — plus, on its Debian base, it creates the `agent` user with build-time-only sudo and wires the login-shell env/PATH (things the sbx template supplies for free).
+Every install path (docker build, sbx kit, plain host checkout) runs the same boot tail, `cozy-module/install/run-install.sh`: ensure brew → `ensure-nu.sh` (install nu, check that it can load bootstrap.nu, pin on syntax drift) → `nu bootstrap.nu`. All install logic lives in `cozy-module/install/bootstrap.nu`; the Dockerfile cache-primes brew + nushell, COPYs repo bits, and calls the shared script — plus, on its Debian base, it creates the `agent` user with build-time-only sudo and wires the login-shell env/PATH (things the sbx template supplies for free).
 
 ```
 Dockerfile (Debian base — in testing; the standard sbx path uses the template instead)
@@ -15,7 +15,7 @@ Dockerfile (Debian base — in testing; the standard sbx path uses the template 
 
 bootstrap.nu (all install logic; every path reaches it via run-install.sh)
 ├── Step 0: setup-docker-system (gated on /etc/sandbox-persistent.sh or /.dockerenv) — apt sources → https, apt deps, runtime env exports (pbcopy shim installs separately, on every Linux)
-├── Step 1: brew install rest of tools (fzf, helix, lazygit, zellij, broot, git-delta, visidata, bat, topiary, fd, jj, git-lfs)
+├── Step 1: brew install the tool set (nushell again, fzf, helix, lazygit, zellij, broot, git-delta, visidata, bat, topiary, fd, jj, git-lfs)
 ├── Step 2: XDG git config (~/.config/git/{config,ignore})
 ├── Step 3: populate ~/repos/ from /tmp/vendor (docker) or cozy_root/vendor (host); modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, topiary-nushell, dotfiles, my-claude-skills, nushell-skills
 ├── Step 3.5: copy docker-files/nushell-autoload/*.nu → ~/.config/nushell/autoload/ (visidata config ships via dotfiles in Steps 4–5)
@@ -83,8 +83,8 @@ The kit re-clones cozy and re-runs `bootstrap.nu` on every `sbx run`, so picking
 - Vendored modules: `toolkit/vendor.yml` via `toolkit/vendor.nu` (not the CLAUDE.md architecture list). `toolkit/vendor.nu` also projects it into `cozy-module/vendored-repos.nuon` — the manifest that ships into the sandbox, read by `cozy sync-repos` and `cozy-module/verify.nu`. `toolkit check` guards the manifest against `vendor.yml`; never hardcode the list
 - `cozy` command surface: `cozy-module/mod.nu` exports
 - Post-build verification: `cozy-module/verify.nu` — one check set, run by `cozy verify` inside a sandbox. Checks take a transport closure so the check logic is independent of how commands are carried; expected values derive from `vendored-repos.nuon`, the `docker-files/nushell-autoload/` glob and `bootstrap.nu`'s env exports — never hand-listed
-- Install step order (host + docker + kit): the shared boot tail `cozy-module/install/run-install.sh` (ensure brew → `ensure-nu.sh` → `bootstrap.nu`), then `cozy-module/install/bootstrap.nu`'s steps 0–9 — one sequence for all build paths
-- Pinned nushell fallback: `cozy-module/install/.nushell-version` — consumed by `ensure-nu.sh` when latest `nu` can't parse `bootstrap.nu`
+- Install step order (host + docker + kit): the shared boot tail `cozy-module/install/run-install.sh` (ensure brew → `ensure-nu.sh` → `bootstrap.nu`), then `cozy-module/install/bootstrap.nu`'s steps 0–9 — one sequence for all build paths; Step 0 alone branches container vs host
+- Pinned nushell fallback: `cozy-module/install/.nushell-version` — consumed by `ensure-nu.sh` when latest `nu` can't load `bootstrap.nu`
 - Kit spec for `sbx run shell --kit ./sbx-kit/`: `sbx-kit/spec.yaml` — environment mirrors the Dockerfile ENV; commands.install is clone + the shared `run-install.sh` (the clone can't live in the script — it doesn't exist in-sandbox until the clone lands). The shared env values (Dockerfile ENV / kit / `bootstrap.nu` exports) can't share one literal across the three formats — `toolkit check` guards them against drift; the *command sequence* CAN and does share one literal: `run-install.sh`
 - CHANGELOG entries are historical — cross-reference sequential versions for contradictions
 

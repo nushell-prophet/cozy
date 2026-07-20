@@ -146,7 +146,9 @@ def check-bootstrap-parses [run: closure]: nothing -> record {
     let path = ($repos | path join cozy cozy-module install bootstrap.nu)
     let r = do $run [nu --ide-check 0 $path]
     let errs = $r.stdout | lines | where {|l| $l | str contains '"severity":"error"' }
-    if ($errs | is-empty) { ok 'bootstrap.nu parses' } else { fail 'bootstrap.nu parses' $"($errs | length) error\(s) — pinned-nu fallback should have caught this" }
+    # Narrower than ensure-nu.sh's gate: --ide-check parses only, where `use`
+    # also evaluates the top level. A file that passes here can still fail there.
+    if ($errs | is-empty) { ok 'bootstrap.nu parses' } else { fail 'bootstrap.nu parses' $"($errs | length) parse error\(s) on the shipped nu" }
 }
 
 def check-catalog [run: closure]: nothing -> record {

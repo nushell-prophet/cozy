@@ -94,7 +94,7 @@ ENV HOMEBREW_NO_ASK=1 \
     HOMEBREW_NO_AUTO_UPDATE=1
 
 # Cache-prime latest nushell too — ensure-nu.sh (called by run-install.sh)
-# installs it when `nu` is absent, smoke-tests it against bootstrap.nu, and
+# installs it when `nu` is absent, checks that it can load bootstrap.nu, and
 # falls back to the pinned version if pre-1.0 syntax has drifted in latest.
 RUN brew install nushell
 
@@ -107,7 +107,7 @@ COPY --chown=agent:agent cozy-module/ /home/agent/repos/cozy/cozy-module/
 COPY --chown=agent:agent docker-files/ /home/agent/repos/cozy/docker-files/
 
 # The whole boot tail lives in one shared script — ensure brew (no-op here,
-# cached above) → ensure-nu.sh smoke test → nu bootstrap.nu. Same script the
+# cached above) → ensure-nu.sh compatibility gate → nu bootstrap.nu. Same script the
 # sbx kit and a host checkout run, so the paths can't drift in ordering.
 RUN /home/agent/repos/cozy/cozy-module/install/run-install.sh
 
