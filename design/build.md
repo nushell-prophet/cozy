@@ -52,7 +52,7 @@ The one script every path runs. Ensures brew — auto-installs only on Linux wit
 
 ## ensure-nu.sh
 
-Ensure `nu` can parse `bootstrap.nu`. Tries latest brew `nu` first; if it can't parse (nushell is pre-1.0 and syntax drifts between releases), downloads the pinned version from [`../cozy-module/install/.nushell-version`](../cozy-module/install/.nushell-version) into `~/.local/bin/nu`, which shadows brew's `nu` via the `PATH` order above. If even the pinned version can't parse it, `bootstrap.nu` has a real bug — fail loudly rather than install a broken environment.
+Install a `nu` that can run `bootstrap.nu`. Tries latest brew `nu` first; if it can't run it (nushell is pre-1.0 and syntax drifts between releases), downloads the pinned version from [`../cozy-module/install/.nushell-version`](../cozy-module/install/.nushell-version) into `~/.local/bin/nu`, which shadows brew's `nu` via the `PATH` order above. If even the pinned version can't run it, `bootstrap.nu` has a real bug — fail loudly rather than install a broken environment.
 **Code:** [`cozy-module/install/ensure-nu.sh`](../cozy-module/install/ensure-nu.sh)
 
 ## bootstrap.nu — install steps
