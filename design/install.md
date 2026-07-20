@@ -17,7 +17,7 @@ reconciled-at: 0eeb1329e2cc38cd941ba552592ecd09684ff189
 
 The per-tool builders `bootstrap.nu` invokes during the build, also exposed as `cozy install <tool>`. Exposing them is deliberate: the user can build an up-to-date app on demand inside the running sandbox, instead of being stuck with the version baked into the image. The trade-off is build time — a large crate like polars takes a while.
 
-What each builder *does* is in its own doc comment and code (wired in `../cozy-module/install/mod.nu`). This file records only why each one compiles from source rather than taking a packaged binary.
+What each builder *does* is in its own doc comment and code (wired in [`../cozy-module/install/mod.nu`](../cozy-module/install/mod.nu)). This file records only why each one compiles from source rather than taking a packaged binary.
 
 Shared by every Rust-based builder: idempotent (skips work already done), installs Rust on demand, and compiles with `-j 1` + `profile.release.lto=false` — the small sandbox VM runs out of RAM otherwise. Clones go through `_clone-or-fail`, which sets `GIT_TERMINAL_PROMPT=0` so a 404 fails fast instead of hanging on git's credential prompt.
 
@@ -29,4 +29,4 @@ Shared by every Rust-based builder: idempotent (skips work already done), instal
 - **nushell** — from source so cozy can track the latest release (or `main` via `--dev`), and drop the `mcp` feature with `--no-mcp` when needed.
 - **nu-plugin-image** — from source at the tag matching the running `nu` version; provides `to png` / `from png`.
 
-**Code:** `cozy-module/install/` — one file per tool. The boot sequence that calls them is in `build.md`.
+**Code:** [`cozy-module/install/`](../cozy-module/install/) — one file per tool. The boot sequence that calls them is in [`build.md`](build.md).
