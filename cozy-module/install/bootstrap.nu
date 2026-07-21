@@ -108,7 +108,8 @@ export def main [
     ^brew install nushell fzf lazygit helix zellij broot git-delta visidata bat topiary fd jj git-lfs
     ^brew cleanup --prune=all
 
-    # Step 2 — XDG git config. user.name/email is written here so `toolkit
+    # Step 2 — minimal XDG git config with an agent identity.
+    # user.name/email is written here so `toolkit
     # push-to-machine --commit-changes` (step 4) can commit; writing to XDG
     # rather than /etc/gitconfig avoids sudo and works for both apt-git
     # (build) and brew-git (runtime). It's also safe on a real host: git
@@ -141,8 +142,9 @@ export def main [
     # Step 3 — populate ~/repos/ with vendored modules
     populate-repos
 
-    # Step 3.5 — replace ~/.config/nushell/autoload/ with the current
-    # docker-files/nushell-autoload/ set. Runs on every path, host included.
+    # Step 3.5 — replace the nushell autoload dir with the current set.
+    # ~/.config/nushell/autoload/ from docker-files/nushell-autoload/,
+    # runs on every path, host included.
     # (visidata config is deployed via dotfiles push-to-machine — see
     # paths-docker.csv — not copied here.)
     # Wipe the autoload dir first: cozy owns it, any file not deployed by
@@ -253,10 +255,10 @@ def check-no-clobber [] {
         ($nu.home-dir | path join 'repos')
     ]
     let existing = $candidates | where {|p|
-        ($p | path exists) and (
-            ($p | path type) != 'dir' or (ls --all $p | is-not-empty)
-        )
-    }
+            ($p | path exists) and (
+                ($p | path type) != 'dir' or (ls --all $p | is-not-empty)
+            )
+        }
     if ($existing | is-empty) { return }
 
     print "cozy host install would clobber existing entries:"
@@ -299,7 +301,7 @@ def setup-docker-system [] {
     let apt_sources_files = (
         ['/etc/apt/sources.list']
         | append (ls /etc/apt/sources.list.d/ | get name)
-        | where { |p| $p | path exists }
+        | where {|p| $p | path exists }
     )
     for f in $apt_sources_files {
         let content = open --raw $f
