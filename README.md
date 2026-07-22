@@ -12,6 +12,8 @@ The install steps and the reasoning behind each of them are described in [design
 
 Cozy's primary target is [`sbx`](https://www.docker.com/products/docker-sandboxes/) (Docker's standalone sandbox runtime), so the quick start uses the `sbx` kit. Other targets — plain Docker, Apple `container`, a macOS host — run the same installer and land on the same toolset: see [Install elsewhere](#install-elsewhere) and [Debian image](#debian-image-in-testing) below.
 
+For a step-by-step walkthrough of these commands and what the installer does, see the [installation manual](https://github.com/nushell-prophet/nushell-prophet-manuals/blob/main/manuals/06-install-cozy/manual.md).
+
 First, install the `sbx` CLI: https://docs.docker.com/ai/sandboxes/#get-started
 
 ```sh
@@ -118,6 +120,8 @@ VisiData is a tabular viewer and data multitool by Saul Pwanson — years of han
 ### Wezterm
 
 I use Wezterm to connect to this environment on my Mac (on Windows, see the note at the end of this section). The config is vendored at [vendor/dotfiles/wezterm/wezterm.lua](vendor/dotfiles/wezterm/wezterm.lua); install Wezterm with `brew install wezterm --cask`.
+
+**Why Wezterm is a substantial part of the setup:** a terminal normally claims shortcuts like Cmd+T and Cmd+W for its own tabs and windows, so they never reach what runs inside it. This config disables all of Wezterm's default keybindings, so those familiar shortcuts pass through to Zellij and the apps behind it instead of the terminal window — which is what lets Zellij own the tab and pane shortcuts. **If you use a different terminal, free up its default keybindings the same way** (check its docs for disabling default shortcuts), or run `cozy swap-zellij-super` inside the sandbox to move Zellij's bindings from Super to Alt and sidestep most clashes.
 
 Changes from WezTerm defaults:
 
