@@ -18,26 +18,36 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# ▐ NUSHELL SHOW TAGS  —  #:nu-show-NN marks a setting demoed in a nushell-show episode
+# ═══════════════════════════════════════════════════════════════════════════════
+#   #:nu-show-09 - https://github.com/nushell-prophet/nushell-show/blob/main/shows/009-nushell-configs-1/README.md
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # ▐ BASIC CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # History Configuration
+#:nu-show-09
 $env.config.history.file_format = "Sqlite"
 $env.config.history.isolation = true
 $env.config.history.max_size = 5000000
 
 # Terminal & Display Settings
-$env.config.use_kitty_protocol = true
+#:nu-show-09
+$env.config.footer_mode = "Always"
 $env.config.table.header_on_separator = true
+
 $env.config.table.show_empty = false
 $env.config.table.trim = {
     methodology: "truncating"
     truncating_suffix: "…"
 }
-$env.config.footer_mode = "Always"
 $env.config.highlight_resolved_externals = true
 $env.config.render_right_prompt_on_last_line = true
 $env.config.show_banner = false
+
+$env.config.use_kitty_protocol = true
 
 # Completions Configuration
 $env.config.completions.algorithm = "Fuzzy"
@@ -58,9 +68,6 @@ $env.config.rm.always_trash = false
 # Terminal can launch files in associated applications.
 $env.config.shell_integration.osc8 = false
 
-# Why: exact timestamps over the humanized default ("a day ago") — humanizing throws away the exact value in table work.
-$env.config.datetime_format.table = '%y-%m-%d %H:%M:%S'
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # ▐ ABBREVIATIONS
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -68,6 +75,7 @@ $env.config.datetime_format.table = '%y-%m-%d %H:%M:%S'
 # Why: unlike aliases, the expanded command lands in history, so the fzf bindings, the hinter, and history queries see real commands. Replaces the former `alias lg = lazygit` (cozy standard-aliases.nu) for the same reason.
 # Keys collision-checked against 7.8k history entries (never typed as command or argument token) and PATH.
 
+#:nu-show-09
 $env.config.abbreviations = {
     cs: 'claude --dangerously-skip-permissions'
     cn: 'claude-nu'
@@ -82,12 +90,12 @@ $env.config.abbreviations = {
     lg: 'lazygit'
 }
 
-# Inline history hints (fish-style autosuggestions), preferring the current folder.
-# Set $env.LOCAL_COMPLETIONS = 0 to hint from the whole history by pure recency; unset or any other value means local-first.
-# Local-first, not local-only: a match from the current folder always wins, but when the folder has none, the newest match from anywhere fills in. Why: reusable commands typed in other folders never hinted under the old strict cwd filter, and those are missed often. A fallback hint carries no visual marker: the hint string is also the exact text reedline inserts on accept (complete_hint returns it raw), so any marker or ANSI code would land in the command line — until nushell grows a display-only styling channel, the two look the same.
-# Why: direct SQL with LIMIT 1 instead of the `history` builtin — the closure fires per keystroke and the builtin loads the whole table each time. Deliberately bypasses history.isolation (that's about up-arrow, not suggestions).
-# Note: str length counts UTF-8 bytes, sqlite substr counts characters — a non-ASCII prefix just yields no hint, never an error.
-# When the candidate's latest run failed, the hint ends with ` #exit_<code>`, built here from the exit_status column — nothing is written to history. Why: I repeat wrong commands; the tag signals "this failed last time", so I type a different command instead — or accept the hint and delete the tag while correcting the line. Once the corrected command succeeds, its latest run has exit 0 and the tag disappears on its own. Replaces a pre_prompt hook (formerly in hooks-config.nu) that wrote the tag into history rows.
+# Inline history hints (fish-style), local-first: a current-folder match wins, else the newest match from anywhere.
+# $env.LOCAL_COMPLETIONS = 0 hints from the whole history by recency; unset or any other value = local-first.
+# Why local-first, not local-only: reusable commands typed in other folders were missed under the old strict cwd filter. The fallback hint has no marker: reedline inserts the hint string verbatim on accept, so any marker would land in the command line.
+# Why direct SQL with LIMIT 1, not the `history` builtin: the closure fires per keystroke, and the builtin loads the whole table each time. Deliberately bypasses history.isolation (that's up-arrow, not hints).
+# str length counts UTF-8 bytes, sqlite substr counts characters — a non-ASCII prefix yields no hint, never an error.
+# A failed candidate's hint ends with ` #exit_<code>` (from exit_status; nothing written to history) to signal "this failed last time". Once a corrected run succeeds the tag disappears on its own. Replaces a pre_prompt hook that wrote the tag into history rows.
 $env.config.hinter.closure = {|ctx|
     if ($ctx.line | is-empty) { return null }
 
@@ -209,7 +217,7 @@ $env.config.keybindings ++= [
 # Shortcut: Alt+Shift+R
 # Usage: Browse directories from command history, Enter to cd
 # ───────────────────────────────────────────────────────────────────────────────
-
+#:nu-show-09
 $env.config.keybindings ++= [
     {
         name: working_dirs_cd_menu
@@ -222,7 +230,7 @@ $env.config.keybindings ++= [
 
 $env.config.menus ++= [
     {
-        # List all unique successful commands
+        # List unique directories from history, most recently used first
         name: working_dirs_cd_menu
         only_buffer_difference: true
         marker: "? "
@@ -258,12 +266,14 @@ $env.config.menus ++= [
 # Shortcut: Alt+O
 # Usage: Type part of variable name to filter, Enter to insert
 #
-# Note: $env.ignore-env-vars is initialized at the end of this configuration file
+# Note: the exclude list $env.ignore-env-vars is populated in `autoload/zzz_ignore_vars.nu`
+# (user-autoload runs after config.nu, so it captures vars added by modules too).
 # ───────────────────────────────────────────────────────────────────────────────
 
 # Not using nushell menu because `scope variables` inside a menu source closure
 # only sees closure-local scope since ~0.101 (nushell/nushell#14071).
 # Using `executehostcommand` + fzf instead — runs in REPL scope, sees all variables.
+#:nu-show-09
 $env.config.keybindings ++= [
     {
         name: vars_menu
@@ -303,7 +313,7 @@ def vars-menu-source [] {
 # Shortcut: Ctrl+V
 # Usage: Wraps current command in raw string format for easy copying
 # ───────────────────────────────────────────────────────────────────────────────
-
+#:nu-show-09
 $env.config.keybindings ++= [
     {
         name: prompt_to_raw_string
@@ -607,12 +617,3 @@ $env.config.menus ++= [
         }
     }
 ]
-
-# Custom module imports are handled in the autoload/ directory
-
-# Initialize list of environment variables to exclude from the Alt+O variables menu
-# This captures the baseline state before loading additional modules
-# 
-# mind that there is another invocation in
-# ~/.config/nushell/autoload/zzz_ignore_vars.nu
-$env.ignore-env-vars = (scope variables | get name)
