@@ -19,6 +19,7 @@ export def main [
     --config-file: path
     --background: string@"nu-complete wezterm background" = "000000" # hex without '#'
     --no-job # don't create background job for the proces
+    --zellij-session: string = '' # zellij session name to use instead of sandbox name
 ] {
     let conf = $config_file
         | default ($script_path | path dirname | path join ../vendor/dotfiles/wezterm/wezterm.lua)
@@ -35,7 +36,7 @@ export def main [
             nu
             --login
             --execute
-            $'zellij attach -c ($sandbox_name)'
+            $'zellij attach --create ($zellij_session | default --empty $sandbox_name)'
         ]
     }
 
