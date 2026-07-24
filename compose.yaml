@@ -1,35 +1,61 @@
 # Human-managed egress firewall for the plain-docker run path.
 #
-# The agent container sits on a network with no route to the internet. Its only
-# neighbour is a proxy that allows a list of domains and refuses everything else.
-# The list is a file on the host, mounted read-only into the proxy — the agent
-# cannot read it, cannot reach the proxy's config, and has nowhere else to send a
-# packet. That is what makes the policy human-only: structure, not permissions.
+# The agent container has no default route. Its only neighbour is a proxy that
+# allows a list of domains and refuses the rest. The list lives outside this
+# repo — under ~/.config/cozy/firewall by default — so it stays out of reach
+# even when the agent is working on cozy itself.
 #
-#   docker compose up -d
+# First run:
+#   mkdir -p ~/.config/cozy && cp -r firewall ~/.config/cozy/firewall
+#   COZY_WORKSPACE=~/path/to/project docker compose up -d
 #   docker compose exec cozy nu --login
-#   docker compose exec cozy nu -lc 'use cozy-module/verify.nu; verify'
+#   docker compose exec cozy nu -lc 'use ~/repos/cozy/cozy-module/verify.nu; verify'
 #
-# To change what is reachable: edit firewall/allowed-domains.txt on the host,
+# To change what is reachable: edit ~/.config/cozy/firewall/allowed-domains.txt,
 # then `docker compose restart egress`. Watch what gets refused with
 # `docker compose logs -f egress`.
+#
+# TWO RULES, both of which void everything above if broken:
+#
+# 1. COZY_WORKSPACE must not contain this repo, or any copy of the policy. The
+#    agent can write anywhere in its workspace, and compose.yaml, the Dockerfile
+#    and firewall/ are all read fresh from the host at the next `up` — an agent
+#    that can edit them writes its own policy for the next session.
+# 2. Never mount /var/run/docker.sock into the agent, and never add it to the
+#    docker group. That is root on the host; no network policy survives it.
 
 networks:
-  # `internal: true` is the whole enforcement: Docker attaches no gateway, so
-  # there is no route out of this network even for root, even by raw IP.
+  # `internal: true` is the enforcement: Docker attaches no gateway to this
+  # network, so the container has no default route and cannot resolve external
+  # names. What it does NOT do is hide the host — the bridge address itself is
+  # in-subnet and stays reachable, so anything bound on the host's 0.0.0.0 (a
+  # dev server, another container's published port, a proxy) can still be
+  # reached directly. See the residual-risk note in README.md.
   caged:
     internal: true
   out: {}
 
+volumes:
+  # Default workspace. A named volume, not a host path: Docker creates a missing
+  # bind-mount source as root, which the unprivileged agent then cannot write.
+  cozy-workspace: {}
+
 services:
   # The only container with a way out. Nothing the agent runs can reconfigure it
-  # — it is a separate container with its policy mounted read-only.
+  # — separate container, and its policy is mounted read-only from outside the
+  # agent's reach. Pinned by digest: this container holds the policy and is the
+  # one with internet, so it should not change under us on a `pull`.
   egress:
-    image: ubuntu/squid:latest
+    image: ubuntu/squid:latest@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
     networks: [caged, out]
+    # The whole policy directory, one mount. Not the two files individually:
+    # a bind-mounted *file* pins an inode, so an editor that saves atomically
+    # (write temp + rename) leaves the container reading the old copy and the
+    # human's edit silently never applies.
     volumes:
-      - ./firewall/squid.conf:/etc/squid/squid.conf:ro
-      - ./firewall/allowed-domains.txt:/etc/squid/allowed-domains.txt:ro
+      - ${COZY_FIREWALL:-${HOME}/.config/cozy/firewall}:/etc/squid/policy:ro
+    command: ["-f", "/etc/squid/policy/squid.conf", "-NYC"]
+    security_opt: [no-new-privileges:true]
     restart: unless-stopped
 
   cozy:
@@ -46,7 +72,7 @@ services:
       https_proxy: http://egress:3128
       NO_PROXY: localhost,127.0.0.1,::1
     volumes:
-      - ${COZY_WORKSPACE:-./workspace}:/home/agent/workspace
+      - ${COZY_WORKSPACE:-cozy-workspace}:/home/agent/workspace
     # The agent already runs unprivileged (the Dockerfile revokes build-time
     # sudo). Dropping every capability closes the `docker exec -u root` door too:
     # no NET_ADMIN means no new routes, no iptables, even for root in here.
