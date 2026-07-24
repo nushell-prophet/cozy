@@ -17,7 +17,7 @@ const annotation_prefix = '# => '
 # Check .nu module files to determine which commands depend on other commands.
 @example 'Analyze command dependencies in a module' {
     dotnu dependencies ...(glob tests/assets/module-say/say/*.nu)
-} --result [{caller: question filename_of_caller: "ask.nu" callee: null step: 0} {caller: hello filename_of_caller: "hello.nu" callee: null step: 0} {caller: say callee: hello filename_of_caller: "mod.nu" step: 0} {caller: say callee: hi filename_of_caller: "mod.nu" step: 0} {caller: say callee: question filename_of_caller: "mod.nu" step: 0} {caller: hi filename_of_caller: "mod.nu" callee: null step: 0} {caller: test-hi callee: hi filename_of_caller: "test-hi.nu" step: 0}]
+} --result [{caller: question, filename_of_caller: "ask.nu", callee: null, step: 0}, {caller: hello, filename_of_caller: "hello.nu", callee: null, step: 0}, {caller: say, callee: hello, filename_of_caller: "mod.nu", step: 0}, {caller: say, callee: hi, filename_of_caller: "mod.nu", step: 0}, {caller: say, callee: question, filename_of_caller: "mod.nu", step: 0}, {caller: hi, filename_of_caller: "mod.nu", callee: null, step: 0}, {caller: test-hi, callee: hi, filename_of_caller: "test-hi.nu", step: 0}]
 export def 'dependencies' [
     ...paths: path # paths to nushell module files
     --keep-builtins # keep builtin commands in the result page
@@ -66,8 +66,8 @@ export def 'dependencies' [
 # Filter commands after `dotnu dependencies` that aren't used by any test command.
 # Test commands are detected by: name contains 'test' OR file matches 'test*.nu'
 @example 'Find commands not covered by tests' {
-    dependencies ...(glob tests/assets/module-say/say/*.nu) | filter-commands-with-no-tests
-} --result [[caller filename_of_caller]; [question "ask.nu"] [hello "hello.nu"] [say "mod.nu"]]
+    dotnu dependencies ...(glob tests/assets/module-say/say/*.nu) | dotnu filter-commands-with-no-tests
+} --result [[caller, filename_of_caller]; [question, "ask.nu"], [hello, "hello.nu"], [say, "mod.nu"]]
 export def 'filter-commands-with-no-tests' [] {
     let input = $in
 
@@ -107,8 +107,8 @@ export def 'filter-commands-with-no-tests' [] {
 # hints and reports spans as byte offsets; this keeps only real diagnostics and makes
 # them actionable.
 @example 'Find static errors in a script' {
-    diagnose tests/assets/diagnose-demo.nu
-} --result [[line, severity, message, source, span]; [2, "Error", "Variable not found.", "print $undefined", "$undefined"]]
+    dotnu diagnose tests/assets/diagnose-demo.nu
+} --result [[line, severity, message, source, span]; [2, Error, "Variable not found.", "print $undefined", "$undefined"]]
 export def 'diagnose' [
     file: path # path to `.nu` file
 ] {
@@ -134,11 +134,11 @@ export def 'diagnose' [
 # Open a regular .nu script. Divide it into blocks by "\n\n". Generate a new script
 # that will print the code of each block before executing it, and print the timings of each block's execution.
 @example 'Generate script with timing instrumentation' {
-    set-x tests/assets/set-x-demo.nu --echo | lines | first 3 | to text
-} --result 'mut $prev_ts = ( date now )
-print ("> sleep 0.5sec" | nu-highlight)
+    dotnu set-x tests/assets/set-x-demo.nu --echo | lines | first 3 | to text
+} --result "mut $prev_ts = ( date now )
+print (\"> sleep 0.5sec\" | nu-highlight)
 sleep 0.5sec
-'
+"
 export def 'set-x' [
     file: path # path to `.nu` file
     --regex: string # regex to split on blocks (default: '\n+\n' - blank lines)
@@ -750,16 +750,31 @@ export def find-examples []: string -> table<original: string, code: string> {
             | enumerate
             | where {|r| $r.item.shape == "shape_block" }
 
-        if ($block_tokens | length) < 2 {
-            # Malformed @example - skip
-            return null
-        }
+        # Not "the first two block tokens": `ast --flatten` gives `(` and `)` the
+        # shape_block shape too, so an example calling `(glob ...)` resolved its
+        # closing brace to that `(`, never found --result, and was dropped with no
+        # warning. Match by content and depth-count instead, like --result below.
+        let open_block = $block_tokens | where {|b| $b.item.content | str starts-with "{" } | first
+        if $open_block == null { return null }
 
-        let open_brace = $block_tokens | first | get item
-        let close_brace = $block_tokens | get 1 | get item
+        let close_block = $block_tokens
+            | where index > $open_block.index
+            | reduce --fold {depth: 1 block: null} {|b acc|
+                if $acc.block != null { $acc } else {
+                    let opened = $b.item.content | str starts-with "{" | into int
+                    let closed = $b.item.content | str ends-with "}" | into int
+                    let depth = $acc.depth + $opened - $closed
+                    if $depth == 0 { {depth: 0 block: $b} } else { {depth: $depth block: null} }
+                }
+            }
+            | get block
+        if $close_block == null { return null }
+
+        let open_brace = $open_block.item
+        let close_brace = $close_block.item
 
         # Check for --result flag after the closing brace
-        let close_brace_idx = $block_tokens | get 1 | get index
+        let close_brace_idx = $close_block.index
         let after_block = $remaining | skip ($close_brace_idx + 1)
 
         # Skip whitespace/newlines to find the flag
@@ -837,16 +852,21 @@ export def execute-example [code: string file: path]: nothing -> string {
     let abs_file = $file | path expand
     let dir = $abs_file | path dirname
     let parent_dir = $dir | path dirname
-    let module_name = $dir | path basename
 
-    # Strip module prefix from code if present (e.g., "dotnu dependencies" -> "dependencies")
-    let normalized_code = $code | str replace --regex $'^($module_name) ' ''
+    # Why import twice: `source` brings the file's commands in under their bare names
+    # (what the internal examples call), `use` brings the public ones in under the
+    # `dotnu <cmd>` form the public examples are written in. Not a textual strip of the
+    # prefix, which is what this used to do: an example can name the module more than
+    # once (`dotnu dependencies ... | dotnu filter-commands-with-no-tests`), and only
+    # the leading occurrence was stripped — the rest died as an unknown external command.
+    let module_import = if ($dir | path join 'mod.nu' | path exists) { $"use '($dir)'" } else { '' }
 
     # Build script: cd to parent, source file directly to access all functions
     let script = $"
         cd '($parent_dir)'
         source '($abs_file)'
-        ($normalized_code) | to nuon
+        ($module_import)
+        ($code) | to nuon
     "
 
     let result = do --ignore-errors { ^$nu.current-exe -n -c $script } | complete
@@ -932,10 +952,10 @@ export def 'get-command-from-hist' [] {
 # Make a record from code with variable definitions
 @example '' {
     "let $quiet = false; let no_timestamp = false" | variable-definitions-to-record
-} --result {quiet: false no_timestamp: false}
+} --result {quiet: false, no_timestamp: false}
 @example '' {
     "let $a = 'b'\nlet $c = 'd'\n\n#comment" | variable-definitions-to-record
-} --result {a: b c: d}
+} --result {a: b, c: d}
 @example '' {
     "let $a = null" | variable-definitions-to-record
 } --result {a: null}
@@ -1010,18 +1030,26 @@ export def escape-for-quotes []: string -> string {
 # Command names to exclude from call analysis: keywords always, built-ins too
 # unless `--keep-builtins`. Single source of truth so `list-module-commands` and
 # `dependencies` can't disagree on what counts as excluded.
+#
+# Why the child process: `help commands` reports the *caller's* scope, and a shadowed
+# built-in vanishes from it entirely — a custom `print` drops the built-in `print` row,
+# so `print` stops counting as excluded and starts showing up as a dependency edge.
+# The same files would then yield a different answer depending on who called. nutest
+# does exactly this (`export def print` to capture test output). Asking a clean `nu -n`
+# instead costs one spawn (~7ms over the in-process call) and buys a deterministic result.
 export def excluded-command-names [--keep-builtins]: nothing -> list<string> {
     let excluded_types = if $keep_builtins { ['keyword'] } else { ['keyword' 'built-in'] }
-    help commands | where command_type in $excluded_types | get name
+    ^$nu.current-exe -n -c $"help commands | where command_type in ($excluded_types | to nuon) | get name | to nuon"
+    | from nuon
 }
 
 # Extract table with information on which commands use which commands
 @example '' {
     list-module-commands tests/assets/b/example-mod1.nu | first 3
-} --result [[caller callee filename_of_caller]; ["command-5" "command-3" "example-mod1.nu"] ["command-5" first-custom "example-mod1.nu"] ["command-5" append-random "example-mod1.nu"]]
+} --result [[caller, callee, filename_of_caller]; ["command-5", "command-3", "example-mod1.nu"], ["command-5", first-custom, "example-mod1.nu"], ["command-5", append-random, "example-mod1.nu"]]
 @example '' {
     list-module-commands --definitions-only tests/assets/b/example-mod1.nu | first 3
-} --result [[caller filename_of_caller]; ["example-mod1" "example-mod1.nu"] [lscustom "example-mod1.nu"] ["command-5" "example-mod1.nu"]]
+} --result [[caller, filename_of_caller]; ["example-mod1", "example-mod1.nu"], [lscustom, "example-mod1.nu"], ["command-5", "example-mod1.nu"]]
 export def list-module-commands [
     module_path: path # path to a .nu module file.
     --keep-builtins # keep builtin commands in the result page
@@ -1242,7 +1270,7 @@ export def dump-module-commands [
 # helper function for use inside of generate
 @example '' {
     [[caller callee step filename_of_caller]; [a b 0 test] [b c 0 test]] | join-next $in
-} --result [[caller callee step filename_of_caller]; [a c 1 test]]
+} --result [[caller, callee, step, filename_of_caller]; [a, c, 1, test]]
 export def 'join-next' [
     callees_to_merge: table
 ] {
@@ -1255,10 +1283,11 @@ export def 'join-next' [
 
 @example '' {
     [[a]; [b]] | table | comment-hash-colon
-} --result '# => ╭─#─┬─a─╮
+} --result "# => ╭───┬───╮
+# => │ # │ a │
+# => ├───┼───┤
 # => │ 0 │ b │
-# => ╰───┴───╯
-'
+# => ╰───┴───╯"
 export def 'comment-hash-colon' []: any -> string {
     into string | ansi strip | str trim --char "\n" | str replace --all --regex --multiline '^' $annotation_prefix
 }
@@ -1428,7 +1457,7 @@ export def extract-exported-commands [
 # - shape_gap: unclassified gap content
 @example 'Fill gaps in AST output' {
     'let x = 1;' | ast-complete | select content shape
-} --result [[content shape]; [let shape_internalcall] [" " shape_whitespace] [x shape_vardecl] [" = " shape_assignment] [1 shape_int] [";" shape_semicolon]]
+} --result [[content, shape]; [let, shape_internalcall], [" ", shape_whitespace], [x, shape_vardecl], [" = ", shape_assignment], ["1", shape_int], [";", shape_semicolon]]
 export def ast-complete []: string -> table {
     let source = $in
     let bytes = $source | encode utf8
@@ -1469,10 +1498,10 @@ def classify-gap [content: string]: nothing -> string {
 # Returns a table with statement text and byte positions.
 @example 'Split semicolon-separated statements' {
     'let x = 1; let y = 2' | split-statements | get statement
-} --result ["let x = 1" "let y = 2"]
+} --result ["let x = 1", "let y = 2"]
 @example 'Split newline-separated statements' {
     "let a = 1\nlet b = 2" | split-statements | get statement
-} --result ["let a = 1" "let b = 2"]
+} --result ["let a = 1", "let b = 2"]
 @example 'Preserve multi-line blocks as single statement' {
     "def foo [] {\n  1\n}" | split-statements | length
 } --result 1
