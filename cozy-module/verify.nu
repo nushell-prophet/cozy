@@ -38,7 +38,18 @@ const tls_passthrough_hosts = [api.anthropic.com]
 # because it *succeeds* when there is no cage — a name that can't resolve (.invalid)
 # would fail identically whether the policy is on or the network is simply down.
 # Under a working policy the request dies at the proxy and never reaches IANA.
-const egress_canary = 'example.com'
+#
+# Plain http, not https, and that is the whole point: a refused http request
+# gets a real 403 block page from the proxy, while every flavour of no-network
+# (dead proxy, unresolvable proxy name, timeout) yields no status at all. Over
+# https the refusal is a failed CONNECT, which is indistinguishable from a
+# broken firewall — and a broken firewall must never read as a pass.
+const egress_canary = 'http://example.com'
+
+# Reached directly, with the proxy bypassed, to prove the cage itself rather
+# than the proxy in front of it. An IP literal so no DNS is involved. Any answer
+# at all means a route out exists that the allowlist never sees.
+const egress_direct_probe = 'https://1.1.1.1'
 
 def ok [label: string detail?: string]: nothing -> record {
     {label: $label pass: true detail: ($detail | default "")}
@@ -206,12 +217,13 @@ def check-git-ignore [run: closure]: nothing -> record {
 # the proxy CA. Expected value is the CA's own CN, read from PROXY_CA_CERT_B64,
 # so a renamed or rotated CA can't slip past. Only check here that needs network.
 def check-tls-passthrough [run: closure]: nothing -> list {
+    # Null when no proxy CA exists at all (the compose path has none — squid
+    # refuses the CONNECT instead of forging a cert). Nothing to compare against
+    # then, but the handshake still runs: it is this suite's only positive
+    # control, the one check that proves an allowlisted host is truly reachable.
     let ca_cn = (do $run [bash -lc 'printenv PROXY_CA_CERT_B64 | base64 -d | openssl x509 -noout -subject -nameopt RFC2253']).stdout
         | parse --regex 'CN=(?<cn>[^,]+)'
         | get --optional cn.0
-    if $ca_cn == null {
-        return [(ok 'tls: proxy CA' 'none in env — nothing can intercept unseen')]
-    }
     $tls_passthrough_hosts | each {|h|
         let r = do $run [bash -lc $"curl -sS -o /dev/null -v https://($h) 2>&1"]
         let issuer = $r.stdout
@@ -223,7 +235,7 @@ def check-tls-passthrough [run: closure]: nothing -> list {
             | get --optional cn.0
         if $issuer == null {
             fail $"tls: ($h)" 'no TLS handshake — unreachable through the proxy'
-        } else if $issuer == $ca_cn {
+        } else if $ca_cn != null and $issuer == $ca_cn {
             fail $"tls: ($h)" $"intercepted — cert issued by ($ca_cn); TLS terminates at the proxy"
         } else {
             ok $"tls: ($h)" $"issuer ($issuer)"
@@ -231,36 +243,63 @@ def check-tls-passthrough [run: closure]: nothing -> list {
     }
 }
 
+# curl's status as a 3-char string, or null when curl produced no status at all
+# (missing binary, or the transport lost stdout). '000' is curl's own marker for
+# "never got an answer" and is returned as-is — the callers below read those two
+# cases very differently, so they must not collapse into one.
+def http-code [run: closure cmd: string]: nothing -> any {
+    (do $run [bash -lc $cmd]).stdout
+    | str trim
+    | parse --regex '^(?<n>\d{3})$'
+    | get --optional n.0
+}
+
 # Is an egress allowlist actually in force? Both run paths are supposed to have
 # one — sbx supplies its own proxy, the Debian image gets one from compose.yaml —
 # but a bare `docker run cozy` has none, and nothing else in the build would say
-# so. Two rows: an exit exists at all, and it defaults to deny. The proxy env is
-# read from a login shell for the same reason check-envs does it.
+# so. Two independent properties, because either alone can be faked:
+#
+#   - the cage: no way out except the proxy. Probed directly with the proxy
+#     bypassed, so `docker run -e HTTPS_PROXY=... ` on a normal bridge network
+#     can't dress an uncaged container up as a caged one.
+#   - the policy: the proxy defaults to deny. Probed over plain http so that a
+#     refusal (403 block page) stays distinguishable from a proxy that is simply
+#     down (no status). A broken firewall must fail, never pass.
 def check-egress-cage [run: closure]: nothing -> list {
+    let direct = http-code $run $"curl -sS --noproxy '*' --max-time 10 -o /dev/null -w '%{http_code}' ($egress_direct_probe)"
+    let route = if $direct == null {
+        fail 'egress: no direct route' 'could not probe — no usable curl'
+    } else if $direct == '000' {
+        ok 'egress: no direct route' $"($egress_direct_probe) unreachable without the proxy"
+    } else {
+        fail 'egress: no direct route' $"($egress_direct_probe) answered ($direct) with the proxy bypassed — traffic can leave unfiltered"
+    }
+
+    # Pointed at the proxy with -x rather than left to the environment: curl
+    # honours only the lowercase `http_proxy` for http URLs (httpoxy), and sbx
+    # sets just the uppercase one, so an env-driven canary would skip the proxy
+    # entirely and fail on DNS instead of testing anything.
     let proxy = (do $run [bash -lc 'printenv HTTPS_PROXY https_proxy HTTP_PROXY http_proxy'])
         | get stdout
         | lines
         | get --optional 0
         | default ''
-    if ($proxy | is-empty) {
-        return [
-            (fail 'egress: proxy' 'no *_PROXY set — this container talks to the whole internet')
-            (fail 'egress: default deny' 'not checked — no proxy to enforce it')
-        ]
-    }
-    # 000 means curl never got a connection (the proxy refused the CONNECT);
-    # anything >= 400 is a block page. A 2xx means the canary was fetched, so
-    # there is no allowlist in front of us.
-    let r = do $run [bash -lc $"curl -sS -o /dev/null -w '%{http_code}' --max-time 20 https://($egress_canary)"]
-    let code = $r.stdout | str trim | into int
-    let deny = if $code == 0 {
-        ok 'egress: default deny' $"($egress_canary) refused at the proxy"
-    } else if $code >= 400 {
-        ok 'egress: default deny' $"($egress_canary) blocked with ($code)"
+    let deny = if ($proxy | is-empty) {
+        fail 'egress: default deny' 'no *_PROXY set — there is no filtered exit at all'
     } else {
-        fail 'egress: default deny' $"($egress_canary) fetched ($code) — the allowlist is not in force"
+        let canary = http-code $run $"curl -sS -x ($proxy) --max-time 20 -o /dev/null -w '%{http_code}' ($egress_canary)"
+        if $canary == null {
+            fail 'egress: default deny' 'could not probe — no usable curl'
+        } else if $canary == '000' {
+            fail 'egress: default deny' $"no answer for ($egress_canary) — a refusal would be a 403; ($proxy) looks down"
+        } else if ($canary | into int) >= 400 {
+            ok 'egress: default deny' $"($egress_canary) blocked with ($canary)"
+        } else {
+            fail 'egress: default deny' $"($egress_canary) fetched ($canary) — the allowlist is not in force"
+        }
     }
-    [(ok 'egress: proxy' $proxy) $deny]
+
+    [$route $deny]
 }
 
 # Run every check with the given transport; one row per check.
