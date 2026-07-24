@@ -35,7 +35,7 @@ Note: the kit installs cozy from GitHub — the latest commit on the default bra
 
 ## Technologies
 
-**Installed**: [Nushell](#nushell), [Helix](#helix-editor), [Zellij](#zellij), [Lazygit](#lazygit), [Broot](#broot), [FZF](#fzf), git-delta, [VisiData](#visidata), bat, topiary, fd, jj, git-lfs, Claude Code, procps, file, gcc, libc6-dev (base image adds git, curl, Python, Node.js, Go, ripgrep, jq, gh)
+**Installed**: [Nushell](#nushell), [Helix](#helix-editor), [Zellij](#zellij), [Lazygit](#lazygit), [Broot](#broot), [FZF](#fzf), git-delta, [VisiData](#visidata), bat, topiary, fd, jj, git-lfs, Claude Code, procps, file, gcc, libc6-dev, xxd (base image adds git, curl, Python, Node.js, Go, ripgrep, jq, gh)
 
 **Optional** (`cozy install`): Rust, nu_plugin_polars, nu-plugin-image, Claude Code (reinstall)
 

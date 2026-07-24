@@ -313,8 +313,12 @@ def setup-docker-system [] {
 
     # apt deps: gcc/libc6-dev for tree-sitter-nu compile in `topiary install`,
     # procps/file as general runtime tools.
+    # Why xxd: agents reach for it constantly on binary files and it is absent
+    # from both container bases. Nushell's `into binary` covers viewing a hex
+    # dump, but nothing here replaces `xxd -r` (dump back to bytes). Tiny
+    # package, in main on both Ubuntu and bookworm — cheaper than the misses.
     ^sudo apt-get update
-    ^sudo apt-get install -y --no-install-recommends procps file gcc libc6-dev
+    ^sudo apt-get install -y --no-install-recommends procps file gcc libc6-dev xxd
     ^sudo rm -rf /var/lib/apt/lists/*
 
     # Runtime env exports (the sandbox shell sources this file on each login).
