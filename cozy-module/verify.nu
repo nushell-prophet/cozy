@@ -30,6 +30,10 @@ const tools = [
     [git-lfs "--version"] [git "--version"] [jq "--version"]
 ]
 
+# Hosts whose TLS must terminate at the origin, not at the sbx egress proxy.
+# Only hosts carrying traffic the proxy has no business reading belong here.
+const tls_passthrough_hosts = [api.anthropic.com]
+
 def ok [label: string detail?: string]: nothing -> record {
     {label: $label pass: true detail: ($detail | default "")}
 }
@@ -187,6 +191,40 @@ def check-git-ignore [run: closure]: nothing -> record {
     if ($unignored | is-empty) { ok 'git ignore: patterns' ($want | str join ' ') } else { fail 'git ignore: patterns' $"not ignored: ($unignored | str join ', ') — sbx excludesFile shadowing XDG default" }
 }
 
+# The sbx egress proxy can decrypt anything: its CA sits in the sandbox trust
+# bundle. Today it only uses that on hosts it refuses, to serve a readable block
+# page — allowed hosts are CONNECT-tunneled and keep the origin's own cert. That
+# split is policy, not architecture; it can change with no signal inside the
+# sandbox, and Certificate Transparency doesn't watch a local CA. So assert it
+# for the hosts that carry our secrets: the presented cert must not be issued by
+# the proxy CA. Expected value is the CA's own CN, read from PROXY_CA_CERT_B64,
+# so a renamed or rotated CA can't slip past. Only check here that needs network.
+def check-tls-passthrough [run: closure]: nothing -> list {
+    let ca_cn = (do $run [bash -lc 'printenv PROXY_CA_CERT_B64 | base64 -d | openssl x509 -noout -subject -nameopt RFC2253']).stdout
+        | parse --regex 'CN=(?<cn>[^,]+)'
+        | get --optional cn.0
+    if $ca_cn == null {
+        return [(ok 'tls: proxy CA' 'none in env — nothing can intercept unseen')]
+    }
+    $tls_passthrough_hosts | each {|h|
+        let r = do $run [bash -lc $"curl -sS -o /dev/null -v https://($h) 2>&1"]
+        let issuer = $r.stdout
+            | lines
+            | where {|l| $l =~ '^\*\s+issuer:' }
+            | get --optional 0
+            | default ''
+            | parse --regex 'CN=(?<cn>.+)$'
+            | get --optional cn.0
+        if $issuer == null {
+            fail $"tls: ($h)" 'no TLS handshake — unreachable through the proxy'
+        } else if $issuer == $ca_cn {
+            fail $"tls: ($h)" $"intercepted — cert issued by ($ca_cn); TLS terminates at the proxy"
+        } else {
+            ok $"tls: ($h)" $"issuer ($issuer)"
+        }
+    }
+}
+
 # Run every check with the given transport; one row per check.
 export def run-checks [run: closure]: nothing -> table {
     [
@@ -201,6 +239,7 @@ export def run-checks [run: closure]: nothing -> table {
         (check-topiary $run)
         (check-git-xdg $run)
         (check-git-ignore $run)
+        ...(check-tls-passthrough $run)
     ]
 }
 
