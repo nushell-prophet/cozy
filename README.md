@@ -203,18 +203,30 @@ Alongside the standard `sbx` path, the [Dockerfile](Dockerfile) builds a lean `d
 
 ### Egress firewall
 
-`compose.yaml` runs the image behind an allowlist you control. Start it with `docker compose up -d`, then `docker compose exec cozy nu --login`.
+`compose.yaml` runs the image behind an allowlist you control.
 
 ```
-docker compose up -d          # agent + proxy
-docker compose logs -f egress # watch what gets allowed and refused
+mkdir -p ~/.config/cozy && cp -r firewall ~/.config/cozy/firewall
+COZY_WORKSPACE=~/path/to/project docker compose up -d
+docker compose exec cozy nu --login
+docker compose logs -f egress   # watch what gets allowed and refused
 ```
 
-The agent container is attached to a network created with `internal: true`, so Docker gives it no gateway — it has no default route and cannot resolve external names. Its only neighbour is a squid proxy that allows the domains in `firewall/allowed-domains.txt` and refuses the rest. That file is mounted read-only into the proxy; the agent cannot read it, cannot reach the proxy's configuration, and has nowhere else to send a packet. To change what is reachable, edit the file and run `docker compose restart egress`.
+The agent container is attached to a network created with `internal: true`, so Docker gives it no default route and no way to resolve external names. Its only neighbour is a squid proxy that allows the domains in `allowed-domains.txt` and refuses the rest. To change what is reachable, edit that file and run `docker compose restart egress`.
 
-Nothing is decrypted. Squid refuses the `CONNECT` before TLS begins, so a blocked request never leaves the client — headers and tokens included. Allowed domains are tunneled end-to-end and keep the origin's own certificate, so no proxy CA is installed anywhere. `cozy verify` asserts both halves: that `api.anthropic.com` still presents a public issuer, and that a canary domain is refused.
+The policy lives in `~/.config/cozy/firewall/`, outside this repo, and the copy in `firewall/` is only a template. That separation is what makes the allowlist human-managed: an agent working on cozy itself would otherwise be editing the very files that define its cage, and they are read fresh from the host at the next `up`. **`COZY_WORKSPACE` must not point at this repo or any parent of it** — everything under it is agent-writable, including `compose.yaml` and the `Dockerfile`. For the same reason, never mount `/var/run/docker.sock` into the agent and never add it to the `docker` group; that is root on the host and no network policy survives it.
 
-A bare `docker run` of the image has no cage and no allowlist, and `cozy verify` reports that as two failed checks rather than passing quietly.
+Nothing is decrypted. Squid refuses the `CONNECT` before TLS begins, so a blocked request never leaves the client — headers and tokens included. Allowed domains are tunneled end-to-end and keep the origin's own certificate, so no proxy CA is installed anywhere. `cozy verify` asserts both halves: that `api.anthropic.com` reaches the origin with a public issuer, and that a canary domain is refused with a real block page. A bare `docker run` of the image has no cage, and it fails those checks rather than passing quietly.
+
+#### What this does not cover
+
+The allowlist bounds *where* the agent can connect, not what it can send. `github.com` carries `git push`, so with a credential in your workspace it is an outbound channel; the `githubusercontent` hosts are an inbound one. Read the list as "keep unvetted code out", not as containment.
+
+`internal: true` removes the route to the internet, but the Docker bridge's own gateway address stays in-subnet and reachable. Anything you have bound on the host's `0.0.0.0` — a dev server, a published container port, another proxy — can still be reached directly from the agent, and a proxy there would sidestep the allowlist entirely. Closing that needs a host-level `DOCKER-USER` iptables rule, which is outside what compose can express. The proxy itself refuses to fetch private addresses on the agent's behalf, so this is a direct-connection risk only.
+
+`cozy verify` is a smoke test, not a tamper detector. Its own source lives in the container at a path the agent owns.
+
+Some things break for reasons the allowlist cannot fix. `ssh` cannot travel through an HTTP proxy at all, so `git@github.com:` remotes fail — with an error that blames your credentials. Node's built-in `fetch` ignores the proxy environment, so scripts and HTTP-based MCP servers fail with a DNS error even for an allowlisted host; Claude Code itself is unaffected, it wires its own proxy agent. Claude Code's `WebFetch` now refuses anything off-list, while `WebSearch` keeps working since it goes through the API.
 
 **Apple `container` on Apple Silicon:** the first `container build` can fail with `Rosetta is not installed`. The builder VM defaults to `[build] rosetta = true`, so it wants Rosetta even for a native `arm64` build. Fix it without installing Rosetta — put `rosetta = false` under `[build]` in `~/.config/container/config.toml`, then `container builder stop && container builder start`. An `arm64` build never runs x86, so Rosetta stays unused either way.
 
