@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `cozy docs claude` / `cozy docs nushell` — fetch Claude Code and Nushell reference docs into a local folder from inside a sandbox (curl-based, works through the sandbox proxy). Moved out of claude-nu's toolkit. (05ac91d)
+- Vendored `claude-nu` — `gi enable --from-session` seeds the gi doc from the current Claude session's dialogue (`--tools` keeps tool-call placeholders). (b3cb3cc)
 
 ## [0.3.9] - 2026-07-20
 
