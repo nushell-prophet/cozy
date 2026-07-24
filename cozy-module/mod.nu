@@ -1,6 +1,7 @@
 export def main [] { }
 
 export use sync-repos.nu
+export use docs.nu
 export use mount.nu
 export use swap-zellij-super.nu
 export use sandbox-state/

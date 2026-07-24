@@ -91,6 +91,15 @@ cozy verify
 
 The `cozy` module is autoloaded only in an interactive nushell session, so run this from an interactive shell or the nushell MCP `evaluate` tool — a one-shot `nu -c` skips autoloads and won't have `cozy` unless you load it explicitly (`nu --config ~/.config/nushell/autoload/modules-core.nu -c 'cozy verify'`).
 
+### `cozy docs claude` / `cozy docs nushell`
+
+Fetches reference docs into a local folder for offline / in-sandbox use. `claude` downloads the Claude Code doc pages listed in the sitemap (in parallel); `nushell` makes a shallow sparse checkout of the Nushell docs (book, cookbook, blog) and re-runs as a `git pull`. Both fetch with curl — `http get` doesn't work through the sandbox proxy — and return a structured summary. Output dirs (`claude-code-docs/`, `nushell-docs/`, overridable with `--output-dir`) are generated content; refetch anytime.
+
+```nushell
+cozy docs claude      # -> ./claude-code-docs/
+cozy docs nushell     # -> ./nushell-docs/
+```
+
 ### `cozy logo`
 
 Prints the cozy ANSI logo banner (the same one bash login shows).
