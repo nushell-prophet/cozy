@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `cozy docs claude` / `cozy docs nushell` — fetch Claude Code and Nushell reference docs into a local folder from inside a sandbox (curl-based, works through the sandbox proxy). Moved out of claude-nu's toolkit. (05ac91d)
+
 ## [0.3.9] - 2026-07-20
 
 ### Changed
