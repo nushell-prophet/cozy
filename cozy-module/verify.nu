@@ -34,6 +34,12 @@ const tools = [
 # Only hosts carrying traffic the proxy has no business reading belong here.
 const tls_passthrough_hosts = [api.anthropic.com]
 
+# Canary for the default-deny rule. Must never appear in any allowlist. Chosen
+# because it *succeeds* when there is no cage — a name that can't resolve (.invalid)
+# would fail identically whether the policy is on or the network is simply down.
+# Under a working policy the request dies at the proxy and never reaches IANA.
+const egress_canary = 'example.com'
+
 def ok [label: string detail?: string]: nothing -> record {
     {label: $label pass: true detail: ($detail | default "")}
 }
@@ -225,6 +231,38 @@ def check-tls-passthrough [run: closure]: nothing -> list {
     }
 }
 
+# Is an egress allowlist actually in force? Both run paths are supposed to have
+# one — sbx supplies its own proxy, the Debian image gets one from compose.yaml —
+# but a bare `docker run cozy` has none, and nothing else in the build would say
+# so. Two rows: an exit exists at all, and it defaults to deny. The proxy env is
+# read from a login shell for the same reason check-envs does it.
+def check-egress-cage [run: closure]: nothing -> list {
+    let proxy = (do $run [bash -lc 'printenv HTTPS_PROXY https_proxy HTTP_PROXY http_proxy'])
+        | get stdout
+        | lines
+        | get --optional 0
+        | default ''
+    if ($proxy | is-empty) {
+        return [
+            (fail 'egress: proxy' 'no *_PROXY set — this container talks to the whole internet')
+            (fail 'egress: default deny' 'not checked — no proxy to enforce it')
+        ]
+    }
+    # 000 means curl never got a connection (the proxy refused the CONNECT);
+    # anything >= 400 is a block page. A 2xx means the canary was fetched, so
+    # there is no allowlist in front of us.
+    let r = do $run [bash -lc $"curl -sS -o /dev/null -w '%{http_code}' --max-time 20 https://($egress_canary)"]
+    let code = $r.stdout | str trim | into int
+    let deny = if $code == 0 {
+        ok 'egress: default deny' $"($egress_canary) refused at the proxy"
+    } else if $code >= 400 {
+        ok 'egress: default deny' $"($egress_canary) blocked with ($code)"
+    } else {
+        fail 'egress: default deny' $"($egress_canary) fetched ($code) — the allowlist is not in force"
+    }
+    [(ok 'egress: proxy' $proxy) $deny]
+}
+
 # Run every check with the given transport; one row per check.
 export def run-checks [run: closure]: nothing -> table {
     [
@@ -240,6 +278,7 @@ export def run-checks [run: closure]: nothing -> table {
         (check-git-xdg $run)
         (check-git-ignore $run)
         ...(check-tls-passthrough $run)
+        ...(check-egress-cage $run)
     ]
 }
 

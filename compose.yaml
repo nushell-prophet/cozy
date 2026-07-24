@@ -1,0 +1,56 @@
+# Human-managed egress firewall for the plain-docker run path.
+#
+# The agent container sits on a network with no route to the internet. Its only
+# neighbour is a proxy that allows a list of domains and refuses everything else.
+# The list is a file on the host, mounted read-only into the proxy — the agent
+# cannot read it, cannot reach the proxy's config, and has nowhere else to send a
+# packet. That is what makes the policy human-only: structure, not permissions.
+#
+#   docker compose up -d
+#   docker compose exec cozy nu --login
+#   docker compose exec cozy nu -lc 'use cozy-module/verify.nu; verify'
+#
+# To change what is reachable: edit firewall/allowed-domains.txt on the host,
+# then `docker compose restart egress`. Watch what gets refused with
+# `docker compose logs -f egress`.
+
+networks:
+  # `internal: true` is the whole enforcement: Docker attaches no gateway, so
+  # there is no route out of this network even for root, even by raw IP.
+  caged:
+    internal: true
+  out: {}
+
+services:
+  # The only container with a way out. Nothing the agent runs can reconfigure it
+  # — it is a separate container with its policy mounted read-only.
+  egress:
+    image: ubuntu/squid:latest
+    networks: [caged, out]
+    volumes:
+      - ./firewall/squid.conf:/etc/squid/squid.conf:ro
+      - ./firewall/allowed-domains.txt:/etc/squid/allowed-domains.txt:ro
+    restart: unless-stopped
+
+  cozy:
+    build: .
+    image: cozy:latest
+    depends_on: [egress]
+    networks: [caged]
+    # Not enforcement — the cage is the network. These just tell clients where
+    # the one exit is, so they get a clean 403 instead of a hang.
+    environment:
+      HTTP_PROXY: http://egress:3128
+      HTTPS_PROXY: http://egress:3128
+      http_proxy: http://egress:3128
+      https_proxy: http://egress:3128
+      NO_PROXY: localhost,127.0.0.1,::1
+    volumes:
+      - ${COZY_WORKSPACE:-./workspace}:/home/agent/workspace
+    # The agent already runs unprivileged (the Dockerfile revokes build-time
+    # sudo). Dropping every capability closes the `docker exec -u root` door too:
+    # no NET_ADMIN means no new routes, no iptables, even for root in here.
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true
+    command: sleep infinity

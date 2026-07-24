@@ -199,7 +199,22 @@ cozy-module/install/run-install.sh --force     # reinstall over existing user co
 
 ## Debian image (in testing)
 
-Alongside the standard `sbx` path, the [Dockerfile](Dockerfile) builds a lean `debian:12-slim` image for plain `docker run` and Apple `container`. The agent gets passwordless sudo only during the build and loses it in the final layer, so the running container is rootless — no standing privilege, which suits working with valuable data. It passes the full `cozy verify` suite.
+Alongside the standard `sbx` path, the [Dockerfile](Dockerfile) builds a lean `debian:12-slim` image for plain `docker run` and Apple `container`. The agent gets passwordless sudo only during the build and loses it in the final layer, so the running container is rootless — no standing privilege, which suits working with valuable data.
+
+### Egress firewall
+
+`compose.yaml` runs the image behind an allowlist you control. Start it with `docker compose up -d`, then `docker compose exec cozy nu --login`.
+
+```
+docker compose up -d          # agent + proxy
+docker compose logs -f egress # watch what gets allowed and refused
+```
+
+The agent container is attached to a network created with `internal: true`, so Docker gives it no gateway — it has no default route and cannot resolve external names. Its only neighbour is a squid proxy that allows the domains in `firewall/allowed-domains.txt` and refuses the rest. That file is mounted read-only into the proxy; the agent cannot read it, cannot reach the proxy's configuration, and has nowhere else to send a packet. To change what is reachable, edit the file and run `docker compose restart egress`.
+
+Nothing is decrypted. Squid refuses the `CONNECT` before TLS begins, so a blocked request never leaves the client — headers and tokens included. Allowed domains are tunneled end-to-end and keep the origin's own certificate, so no proxy CA is installed anywhere. `cozy verify` asserts both halves: that `api.anthropic.com` still presents a public issuer, and that a canary domain is refused.
+
+A bare `docker run` of the image has no cage and no allowlist, and `cozy verify` reports that as two failed checks rather than passing quietly.
 
 **Apple `container` on Apple Silicon:** the first `container build` can fail with `Rosetta is not installed`. The builder VM defaults to `[build] rosetta = true`, so it wants Rosetta even for a native `arm64` build. Fix it without installing Rosetta — put `rosetta = false` under `[build]` in `~/.config/container/config.toml`, then `container builder stop && container builder start`. An `arm64` build never runs x86, so Rosetta stays unused either way.
 

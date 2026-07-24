@@ -1,0 +1,26 @@
+# Domains the cozy container may reach. Everything else is refused.
+#
+# One per line. A bare name matches that host exactly. A leading dot matches the
+# domain and all its subdomains — prefer exact hosts, and reach for a dot only
+# when you mean to open the whole tree.
+#
+# After editing: docker compose restart egress
+
+# Claude Code. statsig.anthropic.com (telemetry) is deliberately absent —
+# Claude Code works without it.
+api.anthropic.com
+
+# git, gh, and the skills/vendor clones
+github.com
+codeload.github.com
+objects.githubusercontent.com
+raw.githubusercontent.com
+
+# Claude Code self-update
+registry.npmjs.org
+
+# Homebrew, for installing tools at runtime. Drop these if the image's toolset
+# is enough — the build already has everything.
+formulae.brew.sh
+ghcr.io
+pkg-containers.githubusercontent.com
