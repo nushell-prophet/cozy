@@ -49,6 +49,12 @@ const egress_canary = 'http://example.com'
 # Reached directly, with the proxy bypassed, to prove the cage itself rather
 # than the proxy in front of it. An IP literal so no DNS is involved. Any answer
 # at all means a route out exists that the allowlist never sees.
+#
+# https, unlike the canary above, and for the mirror-image reason: a transparent
+# filter that answers on :80 with its own block page would read as a route out.
+# The cost is that '000' here also covers "TCP reached something that killed the
+# handshake" — still not an unfiltered exit, so it passes, but that is why the
+# detail below says "no answer" and not "unreachable".
 const egress_direct_probe = 'https://1.1.1.1'
 
 def ok [label: string detail?: string]: nothing -> record {
@@ -270,7 +276,7 @@ def check-egress-cage [run: closure]: nothing -> list {
     let route = if $direct == null {
         fail 'egress: no direct route' 'could not probe — no usable curl'
     } else if $direct == '000' {
-        ok 'egress: no direct route' $"($egress_direct_probe) unreachable without the proxy"
+        ok 'egress: no direct route' $"($egress_direct_probe) gave no answer without the proxy"
     } else {
         fail 'egress: no direct route' $"($egress_direct_probe) answered ($direct) with the proxy bypassed — traffic can leave unfiltered"
     }
