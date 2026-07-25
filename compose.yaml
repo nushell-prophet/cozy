@@ -28,9 +28,10 @@ networks:
   # `internal: true` is the enforcement: Docker attaches no gateway to this
   # network, so the container has no default route and cannot resolve external
   # names. What it does NOT do is hide the host — the bridge address itself is
-  # in-subnet and stays reachable, so anything bound on the host's 0.0.0.0 (a
-  # dev server, another container's published port, a proxy) can still be
-  # reached directly. See the residual-risk note in README.md.
+  # in-subnet and stays reachable, so a process bound on the host's 0.0.0.0 (a
+  # dev server, a proxy) can still be reached directly. A published container
+  # port is not: forwarding out of an internal network is dropped. See the
+  # residual-risk note in README.md.
   caged:
     internal: true
   out: {}

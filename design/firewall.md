@@ -49,7 +49,7 @@ The entries were not guessed — each was confirmed by running the real tool ins
 
 ## Limits accepted, not fixed
 
-- **The Docker bridge gateway stays reachable.** `internal: true` removes the default route but the bridge address is in-subnet, so anything bound on the host's `0.0.0.0` — a dev server, another container's published port, a proxy — can still be reached directly, bypassing the allowlist. Closing it needs a host-level `DOCKER-USER` rule, which compose cannot express, so it is documented as residual risk in [`../README.md`](../README.md) instead.
+- **The Docker bridge gateway stays reachable.** `internal: true` removes the default route but the bridge address is in-subnet, so a process bound on the host's `0.0.0.0` — a dev server, a proxy — can still be reached directly, bypassing the allowlist. Confirmed on Docker 29.6 by proxying a blocked request through a host-bound squid from inside the cage. A container's *published* port (`-p`) is not reachable that way: the packet needs forwarding out of the internal network, which Docker drops, so it times out. Closing it needs a host-level `DOCKER-USER` rule, which compose cannot express, so it is documented as residual risk in [`../README.md`](../README.md) instead.
 - **`COZY_WORKSPACE` must not contain this repo**, or any copy of the policy (see above).
 - **`/var/run/docker.sock` must never be mounted into the agent**, and the agent must never join the `docker` group. That is root on the host; no network policy survives it.
 - **`cozy verify` is a smoke test, not a tamper detector** — it lives at a path the agent owns.
