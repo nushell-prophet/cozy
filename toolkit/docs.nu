@@ -11,7 +11,6 @@ const prefixes = [ai/sandboxes reference/cli/sbx]
 # top-level guide and lists sandboxes once). Parsing it means new sandbox / sbx
 # pages appear automatically -- no hardcoded list to keep in sync.
 def discover-pages []: nothing -> list<string> {
-    # Why: http get doesn't work through Docker sandbox proxy, curl does
     let index = do { ^curl -sfL $"($base_url)/llms-full.txt" } | complete
     if $index.exit_code != 0 {
         error make {msg: $"failed to fetch llms-full.txt \(curl exit ($index.exit_code)\)"}
@@ -41,7 +40,9 @@ export def main [] {
             let file = $dir | path join $"($page).md"
             mkdir ($file | path dirname)
 
-            # Why: http get doesn't work through Docker sandbox proxy, curl does
+            # Why: curl + complete gives a per-page exit code, so one dead page
+            # becomes a {status: failed} row instead of aborting the par-each.
+            # Not http get because: it would need a try/catch to build the same row.
             let result = do { ^curl -sfL $url } | complete
             if $result.exit_code == 0 {
                 $result.stdout | save -f $file
