@@ -26,7 +26,7 @@ timeouts — a nondeterministic flake. Serial is the correct model here. If you
 invoke `nutest run-tests` directly, pass `--strategy { threads: 1 }` yourself.
 
 Tests are written with nutest's **description-tag** attributes (`# [test]`,
-`# [before-each]`, `# [after-each]`, `# [ignore]`) rather than `@test`: the
+`# [before-each]`, `# [after-each]`) rather than `@test`: the
 vendored nutest predates nu 0.113's `attr`-command requirement, so `@test` fails
 to parse but the `[tag]` form discovers correctly.
 
@@ -95,9 +95,11 @@ See the todo for the full split.
   $i.name` on a `.md` file, but nu parses markdown into a *table*, so the `split
   row` errored on every row, `try {...} | default "draft"` swallowed it, and the
   completed/rejected filter never hid anything (fzf items even became nu error
-  strings). Fixed by `open --raw` in `todo.nu`; the intended-contract test is now
-  active and asserts the `2/2` count. Requires a build re-vendored at/after that
-  fix, since the test invokes the deployed `~/.config` copy.
+  strings). Fixed by `open --raw` in `vendor/dotfiles/zellij/todo-nu/todo.nu` —
+  a vendored copy, so the real edit belongs upstream in the sibling `dotfiles`
+  repo. The intended-contract test is now active and asserts the `2/2` count.
+  Requires a build re-vendored at/after that fix, since the test invokes the
+  deployed `~/.config` copy.
 - **OSC-52 clipboard is not observable.** `pbcopy` emits an OSC-52 escape to
   `/dev/tty`; zellij consumes it, it never renders and leaves no filesystem trace.
   The lstd test asserts the selection/edit-pane path instead.
