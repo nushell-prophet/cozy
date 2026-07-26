@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Egress firewall: a refused request no longer leaks a DNS query. The proxy resolved the hostname before deciding, so `http://<data>.attacker.example/` got logged as blocked *after* the lookup had left — a working exfiltration channel out of an allowlist that promises blocked requests never leave.
 - Debian image: `/etc/sandbox-persistent.sh` is now root-owned. `BASH_ENV` and the profile.d drop-in are image-wide, not per-user, so `docker exec -u root … bash` sourced a file the unprivileged agent could rewrite — undoing the point of revoking its sudo.
 - A blocked download now fails the install instead of passing it. Both `curl … | bash` sites (Homebrew and the Claude Code installer) reported success on an empty download, so a proxy 403 surfaced two steps later as "neither nu nor brew available — install Homebrew first", blaming you for a network failure.
 - Re-running the installer no longer dies at Step 9. `claude mcp add` exits 1 when the nushell MCP entry already exists and has no `--force`, which aborted the run before the `~/.cozy-installed` stamp was written — and a host install without that stamp then refuses to touch cozy's own deployed files.
