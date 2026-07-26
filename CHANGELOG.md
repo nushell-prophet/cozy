@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `nu toolkit/container-up.nu <name> <workspace>` gives the Apple `container` path the same egress allowlist compose provides for docker: the agent on a host-only network with no route out, the pinned squid dual-homed onto it. Needs macOS 26+; a plain `container run` still has no cage and fails `cozy verify`'s `egress:` rows.
+- `nu toolkit/container-up.nu <name> <folder> [more:ro ...]` gives the Apple `container` path the same egress allowlist compose provides for docker: the agent on a host-only network with no route out, the pinned squid dual-homed onto it. Needs macOS 26+; a plain `container run` still has no cage and fails `cozy verify`'s `egress:` rows.
+  Takes several folders like `sbx run` does — each mounted at its own host path, `:ro` for read-only, the first one being `WORKSPACE_DIR` and the start directory.
   Gives the VM 8 GB and 6 CPUs (`--memory`, `--cpus` to change): at `container`'s 1 GB default two agents thrash the page cache and burn cores in the kernel without ever being OOM-killed.
 - `nu toolkit/sbxw.nu <name> --runtime container` opens the WezTerm window against an Apple `container` instead of an sbx sandbox; `--workdir` sets the start directory, which `container` has no workspace notion to supply. Default stays `sbx`. (301c3c9)
 

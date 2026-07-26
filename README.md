@@ -224,9 +224,12 @@ Apple `container` has no compose, so `toolkit/container-up.nu` assembles the sam
 mkdir -p ~/.config/cozy && cp -r firewall ~/.config/cozy/firewall
 container build -t cozy:latest .
 nu toolkit/container-up.nu my-agent ~/path/to/project
+nu toolkit/container-up.nu my-agent ~/project-a ~/shared-libs:ro ~/docs:ro   # several folders
 nu toolkit/sbxw.nu my-agent --runtime container --workdir ~/path/to/project
 container logs -f cozy-egress   # watch what gets allowed and refused
 ```
+
+Several folders can be mounted, spelled the way `sbx run` spells it: each appears inside at its own absolute host path, and `:ro` makes one read-only. The first path is the primary workspace — it is what `WORKSPACE_DIR` points at and where the agent starts. A folder containing this repo is refused unless it is `:ro`, for the reason above: the script and the firewall template are read fresh at the next launch, so an agent that can write them writes its own cage.
 
 The agent VM gets 8 GB of RAM and 6 CPUs, not the 1 GB and 4 CPUs `container` defaults to — `--memory` and `--cpus` change both. Keep `--cpus` at or below your machine's core count. One Claude Code process holds around 300 MB, so at 1 GB two of them leave no room for the page cache and the kernel spends most of its time evicting their code pages and reading them straight back in. That shows up as a container pinning several cores with nothing running in it.
 

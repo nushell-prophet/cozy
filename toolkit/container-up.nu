@@ -11,6 +11,7 @@
 # this runtime at all, and `cozy verify`'s two `egress:` rows fail by design.
 #
 #   nu toolkit/container-up.nu my-agent ~/path/to/project
+#   nu toolkit/container-up.nu my-agent ~/project-a ~/shared-libs:ro ~/docs:ro
 #   nu toolkit/sbxw.nu my-agent --runtime container --workdir ~/path/to/project
 
 const cozy_root = (path self | path dirname | path dirname)
@@ -113,35 +114,58 @@ def egress-address []: nothing -> string {
     $found | first
 }
 
+# `path[:ro]` — the spelling `sbx run` uses for extra workspaces, kept identical
+# so the two run paths take the same arguments.
+def parse-workspace [entry: string]: nothing -> record<path: path, ro: bool> {
+    let ro = $entry | str ends-with ':ro'
+    let p = $entry | str replace --regex ':ro$' '' | path expand
+    if not ($p | path exists) {
+        error make {msg: $"workspace ($p) does not exist"}
+    }
+    {path: $p, ro: $ro}
+}
+
+# Why: everything the agent can write is what builds the cage on the next launch
+# — this script and the firewall template — so an agent with the cozy repo in a
+# writable mount writes its own policy. compose.yaml states the same rule for
+# COZY_WORKSPACE but only in a comment; it has already been stepped on, so here
+# it is an error. `:ro` is exempt because it removes exactly the ability the rule
+# is about: reading cozy is fine, editing it is not.
+def reject-writable-cozy [ws: record<path: path, ro: bool>]: nothing -> nothing {
+    if $ws.ro { return }
+    if (($cozy_root | path expand) + '/' | str starts-with (($ws.path | str trim --right --char '/') + '/')) {
+        error make {msg: $"workspace ($ws.path) contains the cozy repo — the agent would be able to edit this script and the firewall template, which are read fresh at the next launch. Pick a folder outside it, or mount it read-only as ($ws.path):ro."}
+    }
+}
+
 # Start a cozy agent container behind a human-managed egress allowlist.
 export def main [
     name: string # name for the agent container
-    workspace: path # host folder to mount and to expose as WORKSPACE_DIR
+    ...workspaces: string # host folders to mount, each at its own absolute path; the first is WORKSPACE_DIR and the default start dir. Append `:ro` for read-only
     --image: string = 'cozy:latest' # image built by `container build -t cozy:latest .`
     --policy: path # firewall policy directory (default: ~/.config/cozy/firewall)
-    --workdir: path # start directory inside the container (default: the workspace)
+    --workdir: path # start directory inside the container (default: the primary workspace)
     --memory: string = '8g' # RAM for the agent VM (Apple `container` defaults to 1g)
     --cpus: int = 6 # CPUs for the agent VM (Apple `container` defaults to 4)
     --reload-egress # recreate the proxy so an edited allowlist takes effect
 ]: nothing -> nothing {
-    let ws = $workspace | path expand
-    if not ($ws | path exists) {
-        error make {msg: $"workspace ($ws) does not exist"}
+    if ($workspaces | is-empty) {
+        error make {msg: "no workspace given — `container-up.nu <name> <folder> [more:ro ...]`"}
     }
+    let ws_list = $workspaces | each {|e| parse-workspace $e }
+    # Only the first one can be WORKSPACE_DIR: the variable is single-valued and
+    # `cozy sandbox-state` writes into it. Same rule as `sbx run`, where the first
+    # path is the primary workspace and the agent starts there.
+    let ws = $ws_list | first | get path
 
     let policy_dir = $policy | default ($nu.home-dir | path join .config cozy firewall) | path expand
     if not ($policy_dir | path exists) {
         error make {msg: $"no policy at ($policy_dir) — seed it once with `mkdir -p ~/.config/cozy and cp -r firewall ~/.config/cozy/firewall`. Keeping it outside this repo is what makes the allowlist human-managed."}
     }
 
-    # Why: everything under the workspace is agent-writable, and this script plus
-    # the firewall template are what build the cage on the next launch — an agent
-    # that can edit them writes its own policy. compose.yaml states the same rule
-    # for COZY_WORKSPACE but only in a comment; it has already been stepped on, so
-    # here it is an error. To work on cozy itself, run the image without the cage.
-    if (($cozy_root | path expand) + '/' | str starts-with (($ws | str trim --right --char '/') + '/')) {
-        error make {msg: $"workspace ($ws) contains the cozy repo — the agent would be able to edit this script and the firewall template, which are read fresh at the next launch. Pick a workspace outside it."}
-    }
+    # Every mount, not just the primary: an extra folder is as writable as the
+    # first one, so the cozy-repo rule has to cover all of them.
+    for w in $ws_list { reject-writable-cozy $w }
 
     ensure-network
     ensure-egress $policy_dir $reload_egress
@@ -174,6 +198,15 @@ export def main [
     # It buys parallelism, not relief from the thrash above — that was never a
     # shortage of CPU. Keep it at or below the host's core count; the VM cannot
     # conjure cores it does not have, and oversubscribing only adds scheduling.
+    #
+    # Every folder is mounted at its own host path — the cozy convention, and the
+    # one that keeps a path copied from the host valid inside the container.
+    #
+    # Spread into the one list literal rather than concatenating lists with `++`:
+    # nushell parses a list literal against the parameter's `list<string>` type,
+    # so `infinity` stays the string `sleep` wants. Behind `++` that hint is lost
+    # and it becomes the float `inf`, which then fails the type check.
+    let mounts = $ws_list | each {|w| [-v $"($w.path):($w.path)(if $w.ro { ':ro' } else { '' })"] } | flatten
     container-cli [
         run -d --name $name
         --network $caged_network
@@ -186,12 +219,13 @@ export def main [
         -e $"http_proxy=http://($ip):($proxy_port)"
         -e $"https_proxy=http://($ip):($proxy_port)"
         -e 'NO_PROXY=localhost,127.0.0.1,::1'
-        -v $"($ws):($ws)"
+        ...$mounts
         -w ($workdir | default $ws | path expand)
         $image
         sleep infinity
     ]
-    print $"  (ansi green)Agent:(ansi reset) ($name) on ($caged_network), workspace ($ws)"
+    let mounted = $ws_list | each {|w| $"($w.path)(if $w.ro { ' (ro)' } else { '' })" } | str join ', '
+    print $"  (ansi green)Agent:(ansi reset) ($name) on ($caged_network), workspace ($mounted)"
 
     print ""
     print $"  attach:  nu toolkit/sbxw.nu ($name) --runtime container --workdir ($ws)"
