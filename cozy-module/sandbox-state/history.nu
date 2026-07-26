@@ -1,5 +1,11 @@
 const history_db = '~/.config/nushell/history.sqlite3'
-const history_columns = "command_line, cwd, start_timestamp, duration_ms, exit_status"
+# The columns nushell itself surfaces (`history --long`), minus the ids.
+# Why: session_id groups the commands of one shell sitting, and hostname says
+# which machine or sandbox they ran on — provenance that is gone for good once
+# an export drops it. Left out: `id`, assigned by the receiving DB; `idx`, a
+# row number computed at display time; and `more_info`, a reedline slot for
+# embedders that nushell never writes and never shows.
+const history_columns = "command_line, cwd, start_timestamp, duration_ms, exit_status, session_id, hostname"
 const seed_file = path self | path dirname | path join .. history-seed.nuon
 
 def sandbox-state-dir []: nothing -> path {
@@ -52,8 +58,9 @@ export def export [
 # Import nushell history from a nuon file.
 #
 # Inserts directly into the sqlite database, so it works from any context.
-# The file should contain a table with columns:
-# command_line, cwd, start_timestamp, duration_ms, exit_status.
+# The file must have the columns command_line, cwd, start_timestamp,
+# duration_ms and exit_status; session_id and hostname are optional, so older
+# exports and history-seed.nuon still import.
 # Without a path, imports from the most recent history-*.nuon in sandbox-state.
 # Deduplicates incoming rows and skips entries already in the DB.
 # New rows are inserted oldest-first so recall stays chronological.
@@ -115,19 +122,24 @@ export def import [
     # data-loss path.
     # Batched: one multi-row INSERT per chunk opens the DB once per chunk
     # instead of once per row. Chunk size 100 keeps the bound-parameter count
-    # (5 per row) well under SQLite's limit on every build (999 before 3.32,
+    # (7 per row, so 700) under SQLite's limit on every build (999 before 3.32,
     # 32766 after).
     $new_items
     | sort-by start_timestamp
     | chunks 100
     | each {|batch|
-        let placeholders = $batch | each { "(?, ?, ?, ?, ?)" } | str join ', '
+        let placeholders = $batch | each { "(?, ?, ?, ?, ?, ?, ?)" } | str join ', '
         let params = $batch | each {|row| [
             $row.command_line
             $row.cwd
             $row.start_timestamp
             ($row.duration_ms | default 0)
             ($row.exit_status | default 0)
+            # Optional access: exports made before these columns were carried,
+            # and history-seed.nuon, have no such cell — null is the honest
+            # value for "this row never had a session".
+            $row.session_id?
+            $row.hostname?
         ] } | flatten
         open $db | query db $"INSERT INTO history \(($history_columns)\) VALUES ($placeholders)" --params $params
     } | ignore

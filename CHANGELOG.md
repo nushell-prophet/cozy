@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `cozy sandbox-state history export`/`import` now carry `session_id` and `hostname`, so restored history still says which sitting and which sandbox each command came from. Older 5-column exports still import.
+
 ### Added
 
 - `cozy docs claude` / `cozy docs nushell` — fetch Claude Code and Nushell reference docs into a local folder from inside a sandbox (curl-based, works through the sandbox proxy). Moved out of claude-nu's toolkit. (05ac91d)
