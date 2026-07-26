@@ -8,6 +8,13 @@
 # (apt, brew's chown, tree-sitter compile). So we start from plain Debian, grant
 # the agent passwordless sudo for the build, then revoke it in a final layer —
 # the running container has an unprivileged agent. Build root, run rootless.
+#
+# One qualification on "run rootless", because the image cannot fix it: ENV PATH
+# below leads with three agent-writable directories (~/.local/bin, ~/.cargo/bin
+# and the whole agent-owned linuxbrew prefix), and an ENV is image-wide, not
+# per-user. So any unqualified command name in a `docker exec -u root` resolves
+# to bytes the agent controls. Putting brew on PATH for the agent is the point
+# of the image, so the only real mitigation is not to run rootful execs here.
 
 FROM debian:12-slim
 
@@ -76,15 +83,30 @@ RUN NONINTERACTIVE=1 /bin/bash -c \
 ENV PATH="/home/agent/.local/bin:/home/agent/.cargo/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
 
 ENV HELIX_RUNTIME=/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime \
-    HOME=/home/agent \
     TERM=xterm-256color \
     COLORTERM=truecolor \
     TERM_PROGRAM=WezTerm \
     LANG=C.UTF-8
 
-ENV XDG_CONFIG_HOME=$HOME/.config \
-    XDG_DATA_HOME=$HOME/.local/share \
-    XDG_CACHE_HOME=$HOME/.cache
+# Not `ENV HOME=/home/agent` because: an ENV is image-wide, not per-user, so it
+# wins over the passwd lookup for *every* user — `docker exec -u root … bash -l`
+# would then read /home/agent/.profile and /home/agent/.bashrc, agent-owned
+# files from /etc/skel, as uid 0. Same primitive as the agent-writable
+# /etc/sandbox-persistent.sh the final layer takes ownership of. Both the
+# builder and the runtime derive HOME from the passwd entry for `USER agent`
+# instead; the assert makes a builder that doesn't fail here rather than silently
+# turning the XDG paths below into garbage. Values spelled literally for the
+# same reason — with no ENV HOME there is no $HOME to expand at ENV time.
+# (sbx-kit/spec.yaml:20-27 already spells them out; toolkit/check.nu normalizes
+# $HOME to /home/agent before comparing, so both forms pass the drift guard.)
+RUN [ "$HOME" = /home/agent ] || { \
+        echo "HOME is [$HOME], expected /home/agent — this builder does not set HOME from the passwd entry" >&2; \
+        exit 1; \
+    }
+
+ENV XDG_CONFIG_HOME=/home/agent/.config \
+    XDG_DATA_HOME=/home/agent/.local/share \
+    XDG_CACHE_HOME=/home/agent/.cache
 
 # Why: recent Homebrew prompts "Do you want to proceed?" on brew install when
 # it would also upgrade outdated deps. The build has no TTY, so brew hangs
