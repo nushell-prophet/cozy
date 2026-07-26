@@ -168,13 +168,11 @@ Command history stacking module.
 
 A Nushell toolbox for working with Claude Code sessions. Main commands:
 
-- `claude-nu -f 'regex'` — search user messages across sessions (add `--all-projects` to widen); with no `--find` it points at the subcommands
 - `claude-nu projects` — list projects under `~/.claude/projects`, most recent first
-- `claude-nu messages` — extract user messages from sessions (supports filtering, multi-session search, and assistant responses)
-- `claude-nu sessions` — parse session files into structured summaries, with selectable columns (`--columns`/`--all-columns`: file ops, tool stats, agents, etc.)
-- `claude-nu export-session` — export session dialogue as markdown
-- `claude-nu save-markdown` — save exported sessions to files
-- `claude-nu gi enable/disable/status/check` — set up the git-intent protocol in the current repo (seeds the Canvas style, skills, and a working doc); `gi enable --hook` also installs the Stop hook
+- `claude-nu messages 'regex'` — search user messages; scope is whatever is piped in (`claude-nu sessions --all-projects | claude-nu messages 'regex'` widens to every project), and with no input it reads the whole current project
+- `claude-nu sessions` — parse session files into structured summaries, with selectable columns (`--columns`/`--all-columns`: file ops, tool stats, agents, etc.); this is where session selection lives (`--last`, `--session`, `--all-projects`)
+- `claude-nu export-session` — export session dialogue as markdown; `--to` writes it to files
+- `claude-nu gi` — status of the git-intent protocol in the current repo; `gi enable` seeds it (Canvas style and skills), `gi open <doc>` launches a session bound to that canvas
 - `claude-nu commits` — per-commit Claude-authorship table for a git repo; `--by-month` rolls up Claude's share of commits each month
 - `claude-nu code-authorship` — Claude's share of the lines living in the tree now (via `git blame`)
 
