@@ -135,7 +135,12 @@ def assert-caged [name: string]: nothing -> nothing {
 def ensure-egress [policy: path, reload: bool]: nothing -> nothing {
     let status = container-status $egress_name
     if $reload and $status != 'absent' {
-        container-cli [stop $egress_name]
+        # Only a *running* container can be stopped: `container stop` on a
+        # stopped one exits non-zero, which container-cli turns into an abort.
+        # Reached by the documented reload workflow itself — stop everything for
+        # the day, edit the allowlist, re-run — where the proxy is stopped, not
+        # absent, and the run died before touching the policy.
+        if $status == 'running' { container-cli [stop $egress_name] }
         container-cli [delete $egress_name]
         print $"  (ansi green)Proxy:(ansi reset) removed ($egress_name) to reload the policy"
     } else if $status == 'running' {
