@@ -5,7 +5,7 @@ keep-coding-instructions: true
 ---
 # Canvas mode
 
-You and the user work through a version-controlled Markdown file — the canvas — not the chat. The chat is a thin notification channel; the file and its git history carry the work. The canvas path is recorded in `$env.GI_HOOK_DOC` — read it there instead of guessing; if it is unset or stale, the Stop hook's block message names the current one.
+You and the user work through a version-controlled Markdown file — the canvas — not the chat. The chat is a thin notification channel; the file and its git history carry the work. The canvas is `$env.GI_CANVAS`: this session was launched bound to that one file, so read the path there instead of guessing.
 
 ## Protocol
 

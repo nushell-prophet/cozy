@@ -50,7 +50,8 @@ export def resolve-session-file [
         if ($candidate | path exists) {
             return $candidate
         }
-        # Why: UUIDs are globally unique, but piped rows (or --session) may
+        # Why: UUIDs are globally unique, but piped rows (or `sessions
+        # --session`) may
         # point at a session from another project — search all projects
         # before giving up.
         let found = glob (projects-root | path join $"*/($session).jsonl")
@@ -133,69 +134,54 @@ export def discover-session-files [dir: path]: nothing -> table {
     $top_level | append $subagent_files | sort-by modified --reverse
 }
 
-# Session files (current project, or every project with --all-projects) whose
-# raw JSONL contains `pattern`, newest first. Uses ripgrep to skip files that
-# cannot match before the costly JSON parse; without rg it returns every
-# top-level session file and lets the caller's structured filter do the work.
-# Subagent transcripts are excluded — they carry no human-typed messages.
+# Top-level (human) session files of the current project, newest first — the
+# default scope of a command handed no input. Subagent transcripts are excluded:
+# they carry no human-typed messages, and asking for them is `sessions --subagents`.
+export def top-level-session-files []: nothing -> list<path> {
+    let dir = get-sessions-dir
+    if not ($dir | path exists) { return [] }
+    discover-session-files $dir | where parent_session_id == null | get path
+}
+
+# Narrow session files to those whose raw JSONL can match `pattern`, keeping the
+# given order. A pre-filter, not the filter: the caller re-applies the real regex
+# to the extracted text, so this only has to avoid parsing files that cannot
+# match. Missing rg is not an error — every file passes and the caller's regex
+# does all the work, just slower.
 # Why: rg scans the raw, escaped JSON, so it can't honor line anchors or match a
 # JSON-escaped quote/backslash the way the structured regex on extracted text
 # does. That only ever costs recall for such patterns; it never yields a wrong
-# hit, because `claude-nu -f` re-applies the real regex to the parsed text. For
-# ordinary word/phrase/regex searches rg and the structured filter agree (both
-# use Rust's regex engine), and we open only the few files that can match
-# instead of parsing every session in every project. --no-rg forces the full
-# enumeration so the caller's regex runs against the extracted text with exact
-# semantics — the escape hatch for a pattern rg's raw scan would under-match.
-export def find-session-files [
-    pattern: string # Regex (Rust syntax) matched against raw session JSONL
-    --all-projects # Search every project under ~/.claude/projects, not just the current one
-    --no-rg # Skip the ripgrep pre-filter; return every top-level file for the caller to filter
-]: nothing -> list<path> {
-    let rows = if $no_rg or (which rg | is-empty) {
-        top-level-session-files --all-projects=$all_projects
-    } else {
-        rg-session-files $pattern --all-projects=$all_projects
-    }
-    if ($rows | is-empty) { return [] }
-    $rows | sort-by modified --reverse | get path
-}
-
-# Top-level session files in scope as {path, modified} rows (no content filter).
-# The rg-less fallback for find-session-files, and the single place the
-# project-vs-all-projects enumeration lives.
-export def top-level-session-files [--all-projects]: nothing -> table {
-    let dirs = if $all_projects {
-        let root = projects-root
-        if not ($root | path exists) { return [] }
-        ls $root | where type == dir | get name
-    } else {
-        let dir = get-sessions-dir
-        if not ($dir | path exists) { return [] }
-        [$dir]
-    }
-    $dirs
-    | each {|d| discover-session-files $d | where parent_session_id == null | select path modified }
-    | flatten
-}
-
-# Top-level session files whose raw JSONL matches `pattern`, as {path, modified}.
-# Why: --no-ignore --hidden so a stray .gitignore or the dot in ~/.claude can't
-# hide a session; the subagents glob keeps us to human dialogue; the UUID-name
-# guard mirrors discover-session-files' definition of a session file. The pattern
-# goes through --regexp (which allows a leading `-`), not as a bare arg. rg exit
-# 1 means "no match" (empty); only a real failure (exit 2+) errors — fail fast on
-# a broken pattern instead of silently returning nothing.
-export def rg-session-files [pattern: string --all-projects]: nothing -> table {
-    let root = if $all_projects { projects-root } else { get-sessions-dir }
-    if not ($root | path exists) { return [] }
-    let res = rg --no-ignore --hidden --files-with-matches --glob '*.jsonl' --glob '!**/subagents/**' --regexp $pattern -- $root | complete
-    let files = match $res.exit_code {
-        0 => ($res.stdout | lines)
-        1 => []
-        _ => (error make $"rg failed \(exit ($res.exit_code)): ($res.stderr | str trim)")
-    }
-    $files
-    | where ($it | path basename) =~ $UUID_JSONL_PATTERN
-    | each {|p| {path: $p modified: (ls $p | get 0.modified) } }
+# hit. For ordinary word/phrase/regex searches rg and the structured filter agree
+# (both use Rust's regex engine), and we open only the few files that can match
+# instead of parsing every session in the scope.
+# Why --no-ignore --hidden: a stray .gitignore or the dot in ~/.claude must not
+# hide a session. The pattern goes through --regexp (which allows a leading `-`),
+# not as a bare arg. rg exit 1 means "no match" (empty); only a real failure
+# (exit 2+) errors — fail fast on a broken pattern instead of silently returning
+# nothing.
+export def rg-filter-session-files [pattern: string]: list<path> -> list<path> {
+    let files = $in
+    if ($files | is-empty) or (which rg | is-empty) { return $files }
+    # Why chunked: the paths travel through argv, so one call over a large enough
+    # corpus dies with a bare "I/O error" (measured: ~12k files still fit, 20k do
+    # not) — a limit the old directory-scoped call never had.
+    # Why RIPGREP_CONFIG_PATH is cleared: a user's rc file (--fixed-strings,
+    # --type, --max-filesize) would silently change what the pre-filter can see,
+    # and a file it then skips reads back as "you never said that".
+    let matched = $files
+        | chunks 5000
+        | each {|chunk|
+            let res = with-env {RIPGREP_CONFIG_PATH: null} {
+                rg --no-ignore --hidden --files-with-matches --regexp $pattern -- ...$chunk | complete
+            }
+            match $res.exit_code {
+                0 => ($res.stdout | lines)
+                1 => []
+                _ => (error make $"rg failed \(exit ($res.exit_code)): ($res.stderr | str trim)")
+            }
+        }
+        | flatten
+    # Why match against the input list (not rg's output): it keeps the caller's
+    # order and its own spelling of each path, whatever rg echoes back.
+    $files | where $it in $matched
 }
