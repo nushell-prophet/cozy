@@ -41,11 +41,12 @@ def container-cli [args: list<string>]: nothing -> string {
     $r.stdout
 }
 
-# `container ls --format json` keys the name under configuration.id — the same
-# shape toolkit/sbxw.nu's completer reads.
+# `container ls --format json` keys the name under configuration.id and the run
+# state under status.state — `status` is a record (state, networks,
+# startedDate), not a string. Same shape toolkit/sbxw.nu's completer reads.
 def container-status [name: string]: nothing -> string {
     let rows = container-cli [ls --all --format json] | from json | where configuration.id == $name
-    if ($rows | is-empty) { 'absent' } else { $rows | first | get status }
+    if ($rows | is-empty) { 'absent' } else { $rows | first | get status.state }
 }
 
 # `--internal` is the whole enforcement: a host-only network, no route out. The

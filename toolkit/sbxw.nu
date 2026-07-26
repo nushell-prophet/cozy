@@ -10,7 +10,7 @@ def "nu-complete runtimes" [] {
 def "nu-complete sandbox names" [context: string] {
     if ($context =~ '--runtime[=\s]+container') {
         ^container ls --format json | from json
-        | each {|x| {value: $x.configuration.id description: $x.status} }
+        | each {|x| {value: $x.configuration.id description: $x.status.state} }
     } else {
         ^sbx ls --json | from json | get sandboxes
         | each {|x| {value: $x.name description: $"($x.status) ($x.workspaces | str join ' ')"} }
