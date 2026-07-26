@@ -129,7 +129,7 @@ export def main [
         error make {msg: $"workspace ($ws) does not exist"}
     }
 
-    let policy_dir = $policy | default ($nu.home-path | path join .config cozy firewall) | path expand
+    let policy_dir = $policy | default ($nu.home-dir | path join .config cozy firewall) | path expand
     if not ($policy_dir | path exists) {
         error make {msg: $"no policy at ($policy_dir) — seed it once with `mkdir -p ~/.config/cozy and cp -r firewall ~/.config/cozy/firewall`. Keeping it outside this repo is what makes the allowlist human-managed."}
     }
