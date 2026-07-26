@@ -22,19 +22,36 @@
 
 # Claude Code: the API it talks to, plus the two hosts `claude install` and
 # `claude update` fetch from (claude.ai/install.sh redirects to downloads).
+# code.claude.com is the docs site `cozy docs claude` mirrors.
 # Its telemetry host (datadoghq.com) is deliberately absent and nothing breaks.
 api.anthropic.com
 claude.ai
 downloads.claude.ai
+code.claude.com
 
-# git over https, gh, and the skills/vendor clones. release-assets is where
-# GitHub serves release binaries — without it ensure-nu.sh cannot fall back to
-# the pinned nushell. github-cloud is where git-lfs objects actually live.
+# git over https and the skills/vendor clones. release-assets is where GitHub
+# serves release binaries — without it ensure-nu.sh cannot fall back to the
+# pinned nushell; objects is the other host that redirect has historically
+# landed on, and the fallback is the one recovery path when latest `nu` can't
+# load bootstrap.nu, so both are listed. github-cloud is where git-lfs objects
+# actually live. api.github.com is not used by `git clone` and `gh` is not
+# installed here — the one caller left is nu-goodies' nightly-release check.
 github.com
 api.github.com
 raw.githubusercontent.com
 release-assets.githubusercontent.com
+objects.githubusercontent.com
 github-cloud.githubusercontent.com
+
+# `cozy install rust | nushell | zellij | polars | nu-plugin-image` build from
+# source: rustup's installer, the toolchain it downloads, and the crates the
+# cargo builds pull. Without these the clone succeeds and the build dies on
+# crates.io — the worst-shaped failure. Drop them if source builds are not
+# wanted inside the cage; the image already ships the brew-installed versions.
+sh.rustup.rs
+static.rust-lang.org
+index.crates.io
+static.crates.io
 
 # Homebrew, for installing tools at runtime — these three are exactly the bottle
 # install chain (formula index → registry token + manifest → blob). A formula

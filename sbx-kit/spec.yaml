@@ -36,23 +36,40 @@ environment:
 # on a real `sbx run`. Add what fails, prune what doesn't fire.
 network:
   allowedDomains:
-    # Homebrew: install script + formula API + bottle storage
+    # Homebrew: install script + formula API + registry token/manifest + the
+    # blob host. ghcr.io serves the manifest and then redirects the bottle
+    # itself to pkg-containers — objects.githubusercontent.com, which used to
+    # stand here, is not on that path at all.
     - raw.githubusercontent.com
     - formulae.brew.sh
     - ghcr.io
-    - objects.githubusercontent.com
+    - pkg-containers.githubusercontent.com
     - api.github.com
-    # github.com covers the cozy repo clone below, brew tap clones,
-    # ensure-nu fallback release tarballs, the tree-sitter-nu clone in
-    # topiary install, and `jj`/`gh` runtime use.
+    # github.com covers the cozy repo clone below, brew tap clones, the
+    # tree-sitter-nu clone in topiary install, and `jj`/`gh` runtime use. It
+    # does NOT cover release downloads: an exact hostname matches that host
+    # only, and github.com/.../releases/download/ redirects off to a
+    # githubusercontent host — which is where ensure-nu.sh's pinned-nushell
+    # fallback fetches from. Both hosts that redirect has landed on are listed.
     - github.com
     - codeload.github.com
+    - release-assets.githubusercontent.com
+    - objects.githubusercontent.com
+    # `cozy install rust | nushell | zellij | polars | nu-plugin-image` build
+    # from source: rustup's installer, the toolchain, and the crates registry.
+    - sh.rustup.rs
+    - static.rust-lang.org
+    - index.crates.io
+    - static.crates.io
     # apt sources — bootstrap.nu rewrites /etc/apt/sources.list to https://
     - archive.ubuntu.com
     - security.ubuntu.com
     - ports.ubuntu.com
-    # claude install fetches https://claude.ai/install.sh
+    # claude install fetches https://claude.ai/install.sh, which redirects to
+    # downloads. code.claude.com is the docs site `cozy docs claude` mirrors.
     - claude.ai
+    - downloads.claude.ai
+    - code.claude.com
 
 # No `files/` — the cozy repo is cloned in-sandbox below. bootstrap.nu
 # derives cozy_root from `path self`, so cloning to /home/agent/repos/cozy/

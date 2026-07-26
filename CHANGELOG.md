@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Both egress allowlists now carry the hosts cozy's own commands need. `cozy install rust|nushell|zellij|polars|nu-plugin-image` died on crates.io after a successful clone, and `cozy docs claude` could not reach the docs site. The sbx kit also named the wrong GitHub host for Homebrew bottles (`objects`, not `pkg-containers`) and was missing the release host `ensure-nu.sh` falls back to.
 - `toolkit/container-up.nu --reload-egress` no longer strands a running agent. It used to delete and recreate the proxy first and only then notice the agent already existed, aborting with "a container named X already exists" — an error that reads as "nothing happened" while the agent had just lost its exit. It now reloads the policy in place and says so, or names the address change and tells you to recreate the agent.
 - Egress firewall: a refused request no longer leaks a DNS query. The proxy resolved the hostname before deciding, so `http://<data>.attacker.example/` got logged as blocked *after* the lookup had left — a working exfiltration channel out of an allowlist that promises blocked requests never leave.
 - Debian image: `/etc/sandbox-persistent.sh` is now root-owned. `BASH_ENV` and the profile.d drop-in are image-wide, not per-user, so `docker exec -u root … bash` sourced a file the unprivileged agent could rewrite — undoing the point of revoking its sudo.
