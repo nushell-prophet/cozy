@@ -136,12 +136,22 @@ def check-dirs [run: closure]: nothing -> list {
 # the agent actually commits from, and a login-shell check hid a real bug: every
 # agent commit in the Debian image was authored `Agent <agent@sandbox>` while
 # these rows stayed green.
+#
+# Scrubbed with `env -u` before reading, because a child bash inherits its
+# parent's environment: run from any shell that already has GIT_AUTHOR_NAME —
+# every interactive session, `sbx exec -it <name> nu`, `docker compose exec` —
+# and all ten rows passed with BASH_ENV unset and nothing sourcing the block.
+# What comes back now is what the sandbox itself supplies, not what verify was
+# launched with. BASH_ENV is deliberately not scrubbed: it is the wiring under
+# test, not a value under test.
 def check-envs [run: closure]: nothing -> list {
-    let actual = (do $run [bash -c printenv]).stdout
+    let want = expected-envs
+    let scrub = $want | columns | each {|k| [-u $k] } | flatten
+    let actual = (do $run ([env] ++ $scrub ++ [bash -c printenv])).stdout
         | lines
         | parse '{k}={v}'
         | reduce --fold {} {|row acc| $acc | insert $row.k $row.v }
-    expected-envs | items {|name expected|
+    $want | items {|name expected|
         let got = $actual | get --optional $name
         if $got == null {
             fail $"env: ($name)" 'not set in a bare `bash -c` (BASH_ENV not wired?)'
