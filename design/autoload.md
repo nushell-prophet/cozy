@@ -5,6 +5,7 @@ covers:                # source paths update-design reconciles this file against
   - docker-files/nushell-autoload/modules-repl.nu
   - docker-files/nushell-autoload/mcp-server.nu
   - docker-files/nushell-autoload/git-global-ignore.nu
+  - docker-files/nushell-autoload/git-identity.nu
   - docker-files/nushell-autoload/git-safe-directory.nu
   - docker-files/nushell-autoload/my-nu-completions.nu
   - docker-files/global-claude.md
@@ -22,11 +23,15 @@ Each entry records why the file ships — the self-healing or workaround it exis
 
 ## Autoload scripts (`~/.config/nushell/autoload/`)
 
-Nushell loads autoload scripts alphabetically; they're listed below in that order (`git-global-ignore` → `git-safe-directory` → `mcp-server` → `modules-core` → `modules-repl` → `my-nu-completions`). The only ordering dependency is `modules-core` before `modules-repl` — alphabetical naming guarantees it, so the REPL-only modules can build on the core overlays.
+Nushell loads autoload scripts alphabetically; they're listed below in that order (`git-global-ignore` → `git-identity` → `git-safe-directory` → `mcp-server` → `modules-core` → `modules-repl` → `my-nu-completions`). The only ordering dependency is `modules-core` before `modules-repl` — alphabetical naming guarantees it, so the REPL-only modules can build on the core overlays.
 
 ### git-global-ignore.nu
 Keep cozy's global gitignore patterns (`.DS_Store`, `Thumbs.db`, `desktop.ini`) active on shell start. Self-healing: `sbx` sets `core.excludesFile = ~/.gitignore_global` in `~/.gitconfig` on every create, which shadows git's XDG default (`~/.config/git/ignore`) where cozy wrote those patterns. git allows one excludesFile and `~/.gitconfig` wins over XDG, so cozy can't reclaim it — the autoload mirrors its canonical `~/.config/git/ignore` into whatever excludesFile resolves to, keeping sbx's `.sbx`. No-ops when excludesFile is unset (plain host reads the XDG default) or nothing is missing.
 **Code:** [`docker-files/nushell-autoload/git-global-ignore.nu`](../docker-files/nushell-autoload/git-global-ignore.nu)
+
+### git-identity.nu
+Write the human's own git identity into `~/.gitconfig` on shell start, from the `COZY_GIT_USER_NAME` / `COZY_GIT_USER_EMAIL` variables [`../toolkit/container-up.nu`](../toolkit/container-up.nu) reads off the host's `git config --global` and forwards at run time. Three layers, each narrower than the last, so a commit says who made it: the XDG file holds the `Agent <agent@sandbox>` placeholder (present so build-time commits work), `~/.gitconfig` overrides it for the human, and the `GIT_AUTHOR_*`/`GIT_COMMITTER_*` exports override that inside the agent's shell only. Not in `bootstrap.nu` because: those variables arrive at run time, long after the image is built. Written with `git config`, not as a file, so sbx's `core.excludesFile` in the same file survives. Guarded so the normal path writes nothing; no-ops when the variables are unset (a host with no global identity, or the sbx path, which has no forwarding yet).
+**Code:** [`docker-files/nushell-autoload/git-identity.nu`](../docker-files/nushell-autoload/git-identity.nu)
 
 ### git-safe-directory.nu
 Re-assert git `safe.directory = '*'` on shell start. Self-healing: sandbox creation overwrites the global setting with just the workspace-root path, so submodule repos beneath it trip "dubious ownership" under VirtioFS. Guarded so the normal path writes nothing.

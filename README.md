@@ -90,7 +90,17 @@ In Helix, `+ s` (custom `+` menu, then `s`) copies the selected lines and wraps 
 
 ### Git attribution
 
-Git environment variables (`GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL`) are exported from `/etc/sandbox-persistent.sh`, which the sandbox sources before every bash invocation — including Claude Code's bash tool, so commits made by Claude are attributed to `claude@anthropic.com`. Nushell does not source bash profiles itself, so a `nu` started directly — the usual `sbx exec -it NAME nu` — never sees these variables: commands you run there use your own git identity (`git config user.name` / `git config user.email`). A `nu` launched from a bash login shell inherits them like any other environment variable. Note the flip side: in a bash shell the exported variables override `git config`, so commits made from bash are attributed to Claude too.
+Your commits should say you made them, and the agent's should say the agent made them. Three layers of git config do that, each narrower than the last:
+
+| Layer | Identity | Applies to |
+| --- | --- | --- |
+| `~/.config/git/config` (XDG) | `Agent <agent@sandbox>` | the fallback — a placeholder so `git commit` works before anything else is set |
+| `~/.gitconfig` (global) | you | everything you run — `nu`, lazygit, jj; overrides the XDG file |
+| `GIT_AUTHOR_*` / `GIT_COMMITTER_*` env | `Claude <claude@anthropic.com>` | the agent's shell only; env beats every config file |
+
+The env variables live in `/etc/sandbox-persistent.sh`, which the sandbox sources before every bash invocation — including Claude Code's bash tool, which is how the agent's own commits get attributed to Claude. A `nu` you start yourself never sources it, so your session stays on your identity.
+
+The middle layer is the one you supply. On the Apple `container` path `toolkit/container-up.nu` reads your host's `git config --global user.name`/`user.email` and forwards them, so a fresh container already knows you — nothing personal is stored in the repo or the image, and it does nothing if you have no global identity set. Under `sbx` there is no forwarding yet: set it once per sandbox with `git config --global user.name '…'` and `git config --global user.email '…'`.
 
 ### Lazygit
 

@@ -114,6 +114,31 @@ def egress-address []: nothing -> string {
     $found | first
 }
 
+# Forward the host's own git identity as COZY_GIT_USER_* so the human's commits
+# inside the container are the human's. The image ships only the
+# `Agent <agent@sandbox>` placeholder, and the agent's GIT_AUTHOR_* env still
+# overrides everything for commits made from its shell — see the
+# git-identity.nu autoload, which turns these into ~/.gitconfig on shell start.
+# Read here rather than stored anywhere: this script runs on the host, where
+# `git config --global` already holds the right answer, so no personal name or
+# address has to live in the repo or the image.
+def host-git-identity []: nothing -> list<string> {
+    let id = ['user.name' 'user.email']
+        | each {|k| do { ^git config --global --get $k } | complete | get stdout | str trim }
+    # All or nothing. Half an identity is worse than none: the other half would
+    # fall through to the placeholder and commits would land as
+    # `Maxim Uvarov <agent@sandbox>` — a name that never existed.
+    if ($id | all {|v| $v | is-not-empty }) {
+        print $"  (ansi green)You:(ansi reset) ($id.0) <($id.1)> — the agent still commits as Claude"
+        [-e $"COZY_GIT_USER_NAME=($id.0)" -e $"COZY_GIT_USER_EMAIL=($id.1)"]
+    } else {
+        if ($id | any {|v| $v | is-not-empty }) {
+            print $"  (ansi yellow)You:(ansi reset) host `git config --global` has only one of user.name/user.email — forwarding neither"
+        }
+        []
+    }
+}
+
 # `path[:ro]` — the spelling `sbx run` uses for extra workspaces, kept identical
 # so the two run paths take the same arguments.
 def parse-workspace [entry: string]: nothing -> record<path: path, ro: bool> {
@@ -207,6 +232,7 @@ export def main [
     # so `infinity` stays the string `sleep` wants. Behind `++` that hint is lost
     # and it becomes the float `inf`, which then fails the type check.
     let mounts = $ws_list | each {|w| [-v $"($w.path):($w.path)(if $w.ro { ':ro' } else { '' })"] } | flatten
+    let git_identity = host-git-identity
     container-cli [
         run -d --name $name
         --network $caged_network
@@ -219,6 +245,7 @@ export def main [
         -e $"http_proxy=http://($ip):($proxy_port)"
         -e $"https_proxy=http://($ip):($proxy_port)"
         -e 'NO_PROXY=localhost,127.0.0.1,::1'
+        ...$git_identity
         ...$mounts
         -w ($workdir | default $ws | path expand)
         $image
