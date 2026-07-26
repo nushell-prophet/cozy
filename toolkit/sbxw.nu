@@ -9,7 +9,9 @@ def "nu-complete runtimes" [] {
 # name list depends on --runtime, which nushell can't otherwise pass to it.
 def "nu-complete sandbox names" [context: string] {
     if ($context =~ '--runtime[=\s]+container') {
-        ^container ls --format json | from json
+        # Why: --all so stopped containers are offered too and the state in the
+        # description carries information — without it every row reads `running`.
+        ^container ls --all --format json | from json
         | each {|x| {value: $x.configuration.id description: $x.status.state} }
     } else {
         ^sbx ls --json | from json | get sandboxes
