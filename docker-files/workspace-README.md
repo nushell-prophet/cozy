@@ -35,6 +35,7 @@ cozy ships a set of upstream modules *vendored* into `~/repos/` — committed in
 | `cozy swap-zellij-super` | Rewrite Zellij's Super-key bindings (→ Alt/Ctrl) for Windows hosts |
 | `cozy git-harden` | Apply safer git defaults |
 | `cozy verify` | Run the post-build check suite against this environment |
+| `cozy docs claude` / `cozy docs nushell` | Fetch Claude Code / Nushell reference docs into a local folder for offline use |
 | `cozy nu-demo-instance` | Put a bare throwaway-nushell launch line into the prompt (for demos); `--here` keeps the config in `./nushell/` |
 | `cozy configure claude-settings` | Fill in missing Claude Code defaults (existing values kept) and export `CLAUDE_CODE_EFFORT_LEVEL=max` into the calling shell |
 | `cozy sandbox-state export` / `import` | Snapshot/restore history + Claude sessions + global CLAUDE.md |

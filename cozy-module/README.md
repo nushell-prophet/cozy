@@ -83,7 +83,7 @@ Copies the global `~/.claude/CLAUDE.md` to/from `$env.WORKSPACE_DIR/sandbox-stat
 
 ### `cozy verify`
 
-Runs the post-build checks against the sandbox you are inside: tools launch, expected files/dirs/env vars exist, and the nushell MCP, pbcopy, topiary, and git-XDG wiring is in place. Every expected value is derived from repo sources (`vendored-repos.nuon`, the autoload glob, `bootstrap.nu`), so the checklist can't drift from the build.
+Runs the post-build checks against the sandbox you are inside: tools launch, expected files/dirs/env vars exist, the nushell MCP, pbcopy, topiary, and git-XDG wiring is in place, and — the only checks that touch the network — that `api.anthropic.com` is not intercepted and that an egress allowlist is in force. Every expected value is derived from repo sources (`vendored-repos.nuon`, the autoload glob, `bootstrap.nu`), so the checklist can't drift from the build.
 
 ```nushell
 cozy verify

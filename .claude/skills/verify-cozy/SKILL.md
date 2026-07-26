@@ -27,7 +27,9 @@ no machine-readable source of truth. Add a brew tool, add it there too.
 The checks cover: that each expected binary *launches* (not merely resolves on
 PATH), vendored repos, autoload scripts, runtime env, MCP wiring, pbcopy, the
 appended CLAUDE.md tool catalog, that `bootstrap.nu` parses on the shipped nu,
-topiary's grammar, the global-ignore patterns, and XDG git config.
+topiary's grammar, the global-ignore patterns, XDG git config, and the two
+network rows — that `api.anthropic.com` is tunneled rather than intercepted
+(`tls:`), and that an egress allowlist is in force (`egress:`).
 
 `cozy` is a Nushell overlay (loaded by the `modules-core.nu` autoload), not a PATH
 binary. Autoloads fire in an interactive shell and the MCP `evaluate` tool but
@@ -60,6 +62,11 @@ docker run --rm cozy:verify \
   editing base deps re-runs brew (minutes).
 - Build egress: the sandbox VM blocks `:80`, allows `:443`. The Dockerfile already
   uses https apt sources, so builds work in restricted networks.
+- **The two `egress:` rows fail on this target, by design.** A bare `docker run`
+  has no allowlist in front of it — the cage comes from `compose.yaml`, not the
+  image. Expect 2 failures here and read the other 57; to see all 59 pass, bring
+  the container up with `docker compose up -d` and verify through
+  `docker compose exec cozy`.
 - **Boundary:** this validates the shared install logic, NOT sbx-specific wiring
   (the kit spec, sbx's git-config rewrites, the microVM). It is a fast pre-check —
   do a final `sbx run` smoke test before relying on a change.

@@ -29,7 +29,7 @@ The workspace default is a named volume rather than a host path, because Docker 
 
 ## Why no CA and no TLS interception
 
-Squid refuses the `CONNECT` **before** the handshake starts, so a blocked request never leaves the client — headers and auth tokens included. An intercepting proxy would have to read those before it could reject them, which is the opposite of what this is for. Allowed domains are tunneled end-to-end and keep the origin's own certificate; no CA is installed anywhere. `cozy verify`'s `tls:` row asserts the second half by checking that `api.anthropic.com` still presents a public issuer.
+Squid refuses the `CONNECT` **before** the handshake starts, so a blocked request never leaves the client — headers and auth tokens included. An intercepting proxy would have to read those before it could reject them, which is the opposite of what this is for. Allowed domains are tunneled end-to-end and keep the origin's own certificate; no CA is installed anywhere. `cozy verify`'s `tls:` row reads that end: it handshakes with `api.anthropic.com` and reports the issuer. Having no CA is also why the row cannot assert much *here* — it compares the issuer against the proxy CA's own CN, read from `PROXY_CA_CERT_B64`, and on this path that variable is unset. So the row is this path's positive control (an allowlisted host is genuinely reachable), and the interception assertion only bites where a CA does exist, as under `sbx`.
 
 ## What squid.conf restates and why
 
