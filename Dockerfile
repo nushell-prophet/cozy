@@ -57,8 +57,10 @@ RUN groupadd --gid 1000 agent \
 
 # bootstrap Step 0 (setup-docker-system) is gated on this marker OR /.dockerenv.
 # BuildKit does not create /.dockerenv during RUN, so ship the marker to make
-# Step 0 fire at build. Keep it agent-writable — bootstrap appends the cozy env
-# block to it. Interactive shells source it via the bash.bashrc line below.
+# Step 0 fire at build. Agent-writable only for the build — bootstrap appends
+# the cozy env block to it; the final root layer takes ownership back, because
+# root shells source this file too. Interactive shells source it via the
+# bash.bashrc line below.
 RUN install -o agent -g agent -m 0644 /dev/null /etc/sandbox-persistent.sh \
     && printf '\n[ -f /etc/sandbox-persistent.sh ] && . /etc/sandbox-persistent.sh\n' \
         >> /etc/bash.bashrc
@@ -135,12 +137,20 @@ COPY --chown=agent:agent docker-files/workspace-README.md /home/agent/workspace/
 # chown, apt, tree-sitter compile). Deleting the drop-in leaves the running
 # container with an agent that cannot escalate — the whole point of moving off
 # the permanent-sudo template. sudo the binary stays, but with no rule it's inert.
+#
+# chown the env file: revoking sudo is not enough while /etc/sandbox-persistent.sh
+# stays agent-owned. BASH_ENV (below) and the profile.d line here are image-wide,
+# not per-user, so `docker exec -u root … bash` sources that file as uid 0 — the
+# agent could write a payload and wait for the operator's next rootful exec.
+# Nothing writes it after bootstrap: Step 0 is the only writer and it cannot
+# re-run here anyway, since it needs the sudo this layer just removed.
 USER root
 RUN printf '%s\n' \
         'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' \
         'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' \
         '[ -f /etc/sandbox-persistent.sh ] && . /etc/sandbox-persistent.sh' \
         > /etc/profile.d/cozy.sh \
+    && chown root:root /etc/sandbox-persistent.sh \
     && rm -f /etc/sudoers.d/agent-build
 USER agent
 
