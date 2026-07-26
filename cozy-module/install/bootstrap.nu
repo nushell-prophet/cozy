@@ -338,8 +338,10 @@ export XDG_DATA_HOME="$HOME/.local/share"
 export XDG_CACHE_HOME="$HOME/.cache"
 export HELIX_RUNTIME="/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime"
 export LANG="C.UTF-8"
-# Why: the base image sources this file from /etc/profile.d, /etc/bash.bashrc and ~/.bashrc, so one login prints the banner 2-3x. Exported guard shows it once per session (export also silences nested/BASH_ENV shells).
-[ -t 1 ] && [ -z "$COZY_MOTD_SHOWN" ] && { export COZY_MOTD_SHOWN=1; [ -f "$HOME/repos/cozy/docker-files/logo.ans" ] && cat "$HOME/repos/cozy/docker-files/logo.ans"; echo "cozy ready — run nu to start"; }
+# Why: the base image sources this file from /etc/profile.d, /etc/bash.bashrc and ~/.bashrc, so one login prints the banner 2-3x. Exported guard shows it once per session.
+# Why the $- test: BASH_ENV makes every *non-interactive* bash source this file, and a `bash script.sh` run from an already-open nu session has a tty on stdout with no COZY_MOTD_SHOWN inherited — so [ -t 1 ] alone printed the banner into the output of that script. Interactivity is the real question, and $- answers it; a tty does not.
+# No apostrophe anywhere in this block: it is a single-quoted nushell string, and one would close it early — the parse then fails far below, pointing at innocent lines.
+case $- in *i*) [ -t 1 ] && [ -z "$COZY_MOTD_SHOWN" ] && { export COZY_MOTD_SHOWN=1; [ -f "$HOME/repos/cozy/docker-files/logo.ans" ] && cat "$HOME/repos/cozy/docker-files/logo.ans"; echo "cozy ready — run nu to start"; } ;; esac
 '
     # Wrap with markers so re-runs replace the block in place instead of
     # `save --append`-ing a duplicate copy on every bootstrap invocation.

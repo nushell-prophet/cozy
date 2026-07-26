@@ -40,9 +40,11 @@ The env checks read a bare `bash -c`, not verify's own process, so they report t
 same result however verify was launched. The git identity (`GIT_AUTHOR_*`,
 `GIT_COMMITTER_*`) and `JJ_CONFIG` live only in `/etc/sandbox-persistent.sh`, and
 a non-interactive non-login shell reads neither `/etc/profile` nor
-`/etc/bash.bashrc` — so only `BASH_ENV` (the sbx base sets it up; the Debian image
-sets it in the `Dockerfile`) carries them, or those five checks false-fail. That is
-deliberate: it is the shell the agent commits from.
+`/etc/bash.bashrc` — so something must carry them there, or those five checks
+false-fail. That is deliberate: it is the shell the agent commits from. The Debian
+image uses `BASH_ENV`, set in the `Dockerfile`. How the sbx base does it is
+unconfirmed — its docs promise the file is sourced for non-interactive shells but
+do not say by what; if those five rows fail on an sbx sandbox, start there.
 
 Read the printed table; any `pass: false` row names what to fix and, for files,
 the owning repo. To add or change a check, edit `cozy-module/verify.nu`.

@@ -144,13 +144,17 @@ RUN printf '%s\n' \
     && rm -f /etc/sudoers.d/agent-build
 USER agent
 
-# The third shell flavour: non-interactive, non-login bash — what Claude Code's
-# Bash tool and every `docker exec ... bash -c` actually run. It reads neither
-# /etc/profile nor /etc/bash.bashrc, so without this the cozy env block was
+# The uncovered shell flavour: non-interactive, non-login bash — what Claude
+# Code's Bash tool and every `docker exec ... bash -c` actually run. It reads
+# neither /etc/profile nor /etc/bash.bashrc, so without this the cozy env block was
 # invisible exactly where the agent works: commits landed as the XDG-config
 # identity `Agent <agent@sandbox>` instead of Claude. BASH_ENV is bash's hook for
 # that case, and it's how the sbx base image gets "sourced before every bash
 # invocation" — this makes the Debian image match. Set after the build RUNs on
 # purpose: build-time bash must not inherit GIT_AUTHOR_*, or bootstrap's own
 # commits would be attributed to Claude.
+#
+# BASH_ENV applies to every non-interactive bash, so `bash -lc` now sources the
+# file twice — once here, once via profile.d. The exports are idempotent, and the
+# profile.d line is still needed for the PATH that /etc/profile rebuilds away.
 ENV BASH_ENV=/etc/sandbox-persistent.sh

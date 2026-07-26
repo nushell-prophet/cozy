@@ -95,12 +95,19 @@ Your commits should say you made them, and the agent's should say the agent made
 | Layer | Identity | Applies to |
 | --- | --- | --- |
 | `~/.config/git/config` (XDG) | `Agent <agent@sandbox>` | the fallback — a placeholder so `git commit` works before anything else is set |
-| `~/.gitconfig` (global) | you | everything you run — `nu`, lazygit, jj; overrides the XDG file |
+| `~/.gitconfig` (global) | you | every git you run — `nu`, lazygit; overrides the XDG file. jj is separate: it reads `JJ_CONFIG`, not git config |
 | `GIT_AUTHOR_*` / `GIT_COMMITTER_*` env | `Claude <claude@anthropic.com>` | the agent's shell only; env beats every config file |
 
 The env variables live in `/etc/sandbox-persistent.sh`, which the sandbox sources before every bash invocation — including Claude Code's bash tool, which is how the agent's own commits get attributed to Claude. A `nu` you start yourself never sources it, so your session stays on your identity.
 
-The middle layer is the one you supply. On the Apple `container` path `toolkit/container-up.nu` reads your host's `git config --global user.name`/`user.email` and forwards them, so a fresh container already knows you — nothing personal is stored in the repo or the image, and it does nothing if you have no global identity set. Under `sbx` there is no forwarding yet: set it once per sandbox with `git config --global user.name '…'` and `git config --global user.email '…'`.
+The middle layer is the one you supply. On the Apple `container` path `toolkit/container-up.nu` reads your host's `git config --global user.name`/`user.email` and forwards them, so a fresh container already knows you — nothing personal is stored in the repo or the image, and it does nothing if you have no global identity set. Under `sbx` there is no forwarding yet; set it once per sandbox:
+
+```sh
+git config --file ~/.gitconfig user.name '…'
+git config --file ~/.gitconfig user.email '…'
+```
+
+Name the file rather than using `--global`. `--global` does not mean `~/.gitconfig`: git writes there only when that file already exists, and otherwise writes `$XDG_CONFIG_HOME/git/config` when *that* one does — which is cozy's layout, so it would overwrite the bottom layer instead of adding the middle one. (Under `sbx` the two happen to be the same thing, because sandbox creation pre-creates `~/.gitconfig`.)
 
 ### Lazygit
 

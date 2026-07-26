@@ -125,9 +125,10 @@ def egress-address []: nothing -> string {
 def host-git-identity []: nothing -> list<string> {
     let id = ['user.name' 'user.email']
         | each {|k| do { ^git config --global --get $k } | complete | get stdout | str trim }
-    # All or nothing. Half an identity is worse than none: the other half would
-    # fall through to the placeholder and commits would land as
-    # `Maxim Uvarov <agent@sandbox>` — a name that never existed.
+    # All or nothing — the same rule git-identity.nu enforces on the writing
+    # side. Half an identity is worse than none: the other half falls through to
+    # the placeholder and commits land as `Someone <agent@sandbox>`, a name that
+    # never existed. Reported here too, because here we can say what is missing.
     if ($id | all {|v| $v | is-not-empty }) {
         print $"  (ansi green)You:(ansi reset) ($id.0) <($id.1)> — the agent still commits as Claude"
         [-e $"COZY_GIT_USER_NAME=($id.0)" -e $"COZY_GIT_USER_EMAIL=($id.1)"]

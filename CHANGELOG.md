@@ -13,12 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Takes several folders like `sbx run` does — each mounted at its own host path, `:ro` for read-only, the first one being `WORKSPACE_DIR` and the start directory.
   Gives the VM 8 GB and 6 CPUs (`--memory`, `--cpus` to change): at `container`'s 1 GB default two agents thrash the page cache and burn cores in the kernel without ever being OOM-killed.
 - `nu toolkit/sbxw.nu <name> --runtime container` opens the WezTerm window against an Apple `container` instead of an sbx sandbox; `--workdir` sets the start directory, which `container` has no workspace notion to supply. Default stays `sbx`. (301c3c9)
-
 - `nu toolkit/container-up.nu` forwards your host `git config --global user.name`/`user.email` into the container, so your own commits there are yours instead of the `Agent <agent@sandbox>` placeholder. The agent still commits as Claude — its `GIT_AUTHOR_*` env overrides config. Nothing is stored: the identity is read on the host at run time. No-ops when you have no global identity; `sbx` has no forwarding yet.
 
 ### Fixed
 
-- Debian image: the agent's commits are attributed to Claude again. `BASH_ENV` now points at `/etc/sandbox-persistent.sh`, so non-interactive bash — what Claude Code's Bash tool runs — sees the `GIT_AUTHOR_*` block; before this it read neither `/etc/profile` nor `/etc/bash.bashrc` and commits landed as `Agent <agent@sandbox>`. Unaffected on `sbx`, whose base image already sources the file for every bash invocation.
+- Debian image: the agent's commits are attributed to Claude again. `BASH_ENV` now points at `/etc/sandbox-persistent.sh`, so non-interactive bash — what Claude Code's Bash tool runs — sees the `GIT_AUTHOR_*` block; before this it read neither `/etc/profile` nor `/etc/bash.bashrc` and commits landed as `Agent <agent@sandbox>`.
+- `cozy verify` reads the environment through a plain `bash -c` instead of `bash -lc`, the shell the agent actually commits from. It is a stricter check: five `env:` rows now fail on any image that does not carry the identity into non-interactive bash — which is how the bug above went unnoticed. Unconfirmed on `sbx`; if they fail there, its base image needs the same wiring.
 - `compose.yaml` now sets `WORKSPACE_DIR`, which only `sbx` had been injecting. Without it every `cozy sandbox-state` and `cozy dev-link` call on the plain-docker path died with "WORKSPACE_DIR not set". Set it yourself (`-e WORKSPACE_DIR=<mounted path>`) when running the image outside compose.
 
 ## [0.4.0] - 2026-07-26
