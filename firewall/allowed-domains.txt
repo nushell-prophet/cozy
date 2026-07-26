@@ -28,6 +28,7 @@ api.anthropic.com
 claude.ai
 downloads.claude.ai
 code.claude.com
+platform.claude.com
 
 # git over https and the skills/vendor clones. release-assets is where GitHub
 # serves release binaries — without it ensure-nu.sh cannot fall back to the
