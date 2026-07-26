@@ -36,15 +36,15 @@ binary. Autoloads fire in an interactive shell and the MCP `evaluate` tool but
 **not** under `nu -c`, so there load the overlay yourself:
 `nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'`.
 
-The env checks read a bare `bash -c`, not verify's own process, so they report the
-same result however verify was launched. The git identity (`GIT_AUTHOR_*`,
+The env checks read a bare `bash -c` with each expected key stripped from the
+child's environment first (`env -u`), so they report what the sandbox itself
+supplies, however verify was launched. The git identity (`GIT_AUTHOR_*`,
 `GIT_COMMITTER_*`) and `JJ_CONFIG` live only in `/etc/sandbox-persistent.sh`, and
 a non-interactive non-login shell reads neither `/etc/profile` nor
 `/etc/bash.bashrc` — so something must carry them there, or those five checks
-false-fail. That is deliberate: it is the shell the agent commits from. The Debian
-image uses `BASH_ENV`, set in the `Dockerfile`. How the sbx base does it is
-unconfirmed — its docs promise the file is sourced for non-interactive shells but
-do not say by what; if those five rows fail on an sbx sandbox, start there.
+false-fail. That is deliberate: it is the shell the agent commits from. `BASH_ENV`
+is what carries them — set in the `Dockerfile` for the Debian image, and supplied
+by the sbx base itself (confirmed on a live sandbox 2026-07).
 
 Read the printed table; any `pass: false` row names what to fix and, for files,
 the owning repo. To add or change a check, edit `cozy-module/verify.nu`.
@@ -74,10 +74,9 @@ docker run --rm cozy:verify \
 - **Boundary:** this validates the shared install logic, NOT sbx-specific wiring
   (the kit spec, sbx's git-config rewrites, the microVM). It is a fast pre-check —
   do a final `sbx run` smoke test before relying on a change.
-- If `cozy verify` aborts on a missing external command (e.g. `gh` on a lean
-  image) rather than reporting it as a `pass: false` row, that absent tool is
-  itself the finding — note it. (`verify.nu` throwing instead of reporting on a
-  fully-absent tool is a known robustness gap.)
+- A missing external command (e.g. `gh` on a lean image) is reported as a
+  `pass: false` row, not an abort — the transport turns command-not-found into
+  exit 127.
 
 ### `<sandbox-name>` — verify a running sbx sandbox
 
