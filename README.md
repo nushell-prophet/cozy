@@ -228,6 +228,8 @@ nu toolkit/sbxw.nu my-agent --runtime container --workdir ~/path/to/project
 container logs -f cozy-egress   # watch what gets allowed and refused
 ```
 
+The agent VM gets 8 GB of RAM, not the 1 GB `container` defaults to — `--memory` changes it, `--cpus` sets the core count. One Claude Code process holds around 300 MB, so at 1 GB two of them leave no room for the page cache and the kernel spends most of its time evicting their code pages and reading them straight back in. That shows up as a container pinning several cores with nothing running in it.
+
 The agent lands on a `--internal` (host-only) network with no route out, and the same pinned squid is dual-homed onto that network and the default one. Two things differ from the docker path. A host-only network has no resolver, so the agent runs with `--no-dns` and reaches allowed hosts by handing the name to the proxy — which resolves it on the default network. And `container` has no static-IP flag, so the proxy is addressed by IP, read back from it after it starts, rather than by name.
 
 `container run` on its own sets none of this up: no allowlist, and no `WORKSPACE_DIR` (which only `sbx` injects), so `cozy sandbox-state` and `cozy dev-link` fail. Such a container fails `cozy verify`'s two `egress:` rows, which is the intended signal — there is no cage in front of it. Pass `-e WORKSPACE_DIR=<mounted path>` if you deliberately want an uncaged one.

@@ -120,6 +120,8 @@ export def main [
     --image: string = 'cozy:latest' # image built by `container build -t cozy:latest .`
     --policy: path # firewall policy directory (default: ~/.config/cozy/firewall)
     --workdir: path # start directory inside the container (default: the workspace)
+    --memory: string = '8g' # RAM for the agent VM (Apple `container` defaults to 1g)
+    --cpus: int # CPUs for the agent VM (default: Apple `container`'s own, 4)
     --reload-egress # recreate the proxy so an edited allowlist takes effect
 ]: nothing -> nothing {
     let ws = $workspace | path expand
@@ -158,10 +160,24 @@ export def main [
     # only tell clients where the one exit is, so a blocked request gets a clean
     # 403 instead of hanging. WORKSPACE_DIR has no other source outside sbx, and
     # `cozy sandbox-state` and `cozy dev-link` hard-error without it.
+    #
+    # Why --memory: Apple `container` gives a VM 1g by default, and one Claude
+    # Code process holds ~300MB. Two of them fill the cgroup, the page cache is
+    # squeezed to nothing, and the kernel evicts the agents' own code pages and
+    # faults them straight back in — 53M file refaults and 74% system CPU in five
+    # minutes, with no OOM kill to end it. Nothing is throttled and nothing dies;
+    # it just grinds. Headroom for the page cache is the fix, so the default is
+    # raised here rather than left to the runtime.
+    #
+    # --cpus is passed only when asked: 4 is already reasonable, and the thrash
+    # above was never a shortage of CPU.
+    let cpu_flag = if $cpus == null { [] } else { ['--cpus' ($cpus | into string)] }
     container-cli [
         run -d --name $name
         --network $caged_network
         --no-dns
+        --memory $memory
+        ...$cpu_flag
         -e $"WORKSPACE_DIR=($ws)"
         -e $"HTTP_PROXY=http://($ip):($proxy_port)"
         -e $"HTTPS_PROXY=http://($ip):($proxy_port)"
