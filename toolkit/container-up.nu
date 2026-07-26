@@ -121,7 +121,7 @@ export def main [
     --policy: path # firewall policy directory (default: ~/.config/cozy/firewall)
     --workdir: path # start directory inside the container (default: the workspace)
     --memory: string = '8g' # RAM for the agent VM (Apple `container` defaults to 1g)
-    --cpus: int # CPUs for the agent VM (default: Apple `container`'s own, 4)
+    --cpus: int = 6 # CPUs for the agent VM (Apple `container` defaults to 4)
     --reload-egress # recreate the proxy so an edited allowlist takes effect
 ]: nothing -> nothing {
     let ws = $workspace | path expand
@@ -169,15 +169,17 @@ export def main [
     # it just grinds. Headroom for the page cache is the fix, so the default is
     # raised here rather than left to the runtime.
     #
-    # --cpus is passed only when asked: 4 is already reasonable, and the thrash
-    # above was never a shortage of CPU.
-    let cpu_flag = if $cpus == null { [] } else { ['--cpus' ($cpus | into string)] }
+    # --cpus is raised past the runtime's 4 for the same reason as --memory:
+    # a cozy container runs several agents plus their tool processes, not one.
+    # It buys parallelism, not relief from the thrash above — that was never a
+    # shortage of CPU. Keep it at or below the host's core count; the VM cannot
+    # conjure cores it does not have, and oversubscribing only adds scheduling.
     container-cli [
         run -d --name $name
         --network $caged_network
         --no-dns
         --memory $memory
-        ...$cpu_flag
+        --cpus ($cpus | into string)
         -e $"WORKSPACE_DIR=($ws)"
         -e $"HTTP_PROXY=http://($ip):($proxy_port)"
         -e $"HTTPS_PROXY=http://($ip):($proxy_port)"
