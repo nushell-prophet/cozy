@@ -45,6 +45,11 @@ const egress_name = 'cozy-egress'
 # upstream CVE fixes never arrive; re-pin deliberately.
 const egress_image = 'ubuntu/squid@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029'
 const proxy_port = 3128
+# The config path inside the proxy, shared by the run arguments and the reload.
+# One literal because `squid -k` has to be pointed at the same file the running
+# instance was started with: given another one it validates that instead, and
+# reports success about a policy nobody is enforcing.
+const policy_conf = '/etc/squid/policy/squid.conf'
 
 # Why: every `container` call goes through here so an unsupported flag surfaces
 # as the failing command and its stderr. Apple `container` is young and this
@@ -153,23 +158,49 @@ def assert-caged [name: string]: nothing -> nothing {
     }
 }
 
+# Squid re-reads its whole config on reconfigure — including the files quoted
+# from it, which is what the allowlist is — so an edited policy reaches a
+# *running* proxy without a new container. That is the difference between an
+# edit that simply lands and one that can strand the agent: Apple `container`
+# has no static-IP flag, and the proxy's address is baked into the agent's
+# *_PROXY env at creation, so every recreation is a chance for the agent to lose
+# its exit. This used to stop, delete and re-run the proxy for every edit.
+#
+# `-k parse` first is the safety, not a nicety. It validates in a separate
+# process and signals only if that succeeds, so a bad list dies in the validator
+# while the running squid keeps enforcing the previous one. Sending SIGHUP by
+# hand (`kill -HUP 1`) has the opposite failure: squid exits mid-reconfigure on
+# a fatal ACL error — an entry that is a subdomain of a wildcard entry is one —
+# which takes the proxy down and forces exactly the recreate this avoids. `-k`
+# also finds squid through its pid file instead of assuming it is PID 1, true of
+# this image's entrypoint but not of the rock-based successor.
+#
+# What a running proxy will NOT pick up is a different `--policy` directory: the
+# mount is fixed at creation, so only a recreated proxy can change which host
+# folder it reads. Hence the message names the mount, not the host path.
+def reload-policy []: nothing -> nothing {
+    container-cli [exec $egress_name squid -k parse -f $policy_conf]
+    container-cli [exec $egress_name squid -k reconfigure -f $policy_conf]
+    print $"  (ansi green)Proxy:(ansi reset) ($egress_name) re-read its policy mount in place — same address, no restart"
+}
+
 def ensure-egress [policy: path reload: bool]: nothing -> nothing {
     let status = container-status $egress_name
-    if $reload and $status != 'absent' {
-        # Only a *running* container can be stopped: `container stop` on a
-        # stopped one exits non-zero, which container-cli turns into an abort.
-        # Reached by the documented reload workflow itself — stop everything for
-        # the day, edit the allowlist, re-run — where the proxy is stopped, not
-        # absent, and the run died before touching the policy.
-        if $status == 'running' { container-cli [stop $egress_name] }
-        container-cli [delete $egress_name]
-        print $"  (ansi green)Proxy:(ansi reset) removed ($egress_name) to reload the policy"
-    } else if $status == 'running' {
-        print $"  (ansi green)Proxy:(ansi reset) ($egress_name) already running"
+    if $status == 'running' {
+        if $reload {
+            reload-policy
+        } else {
+            print $"  (ansi green)Proxy:(ansi reset) ($egress_name) already running"
+        }
         return
-    } else if $status != 'absent' {
-        container-cli [delete $egress_name]
     }
+
+    # Not running, so there is nothing to reconfigure and `--reload-egress` needs
+    # no special case: a proxy reads the policy at startup anyway. Recreated
+    # rather than started, because `run` is where the mount and the two networks
+    # are declared and an existing container may carry older ones. This is the
+    # one path that can move the address; `main up` compares it afterwards.
+    if $status != 'absent' { container-cli [delete $egress_name] }
 
     # Dual-homed: `default` is the only way out, the caged network is the only
     # way in. Repeating --network is what Apple's maintainers point to for this;
@@ -191,7 +222,7 @@ def ensure-egress [policy: path reload: bool]: nothing -> nothing {
         $"($policy):/etc/squid/policy:ro"
         $egress_image
         -f
-        /etc/squid/policy/squid.conf
+        $policy_conf
         -NYC
     ]
     print $"  (ansi green)Proxy:(ansi reset) started ($egress_name) with ($policy)"
@@ -284,7 +315,7 @@ export def "main up" [
     --workdir: path # start directory inside the container (default: the primary workspace)
     --memory: string = '8g' # RAM for the agent VM (Apple `container` defaults to 1g)
     --cpus: int = 6 # CPUs for the agent VM (Apple `container` defaults to 4)
-    --reload-egress # recreate the proxy so an edited allowlist takes effect
+    --reload-egress # re-read an edited allowlist into the running proxy (a stopped one is recreated instead)
 ]: nothing -> nothing {
     if ($workspaces | is-empty) {
         error make {msg: "no workspace given — `container.nu up <name> <folder> [more:ro ...]`"}
@@ -318,9 +349,11 @@ export def "main up" [
     }
 
     ensure-network
-    # Apple `container` has no static-IP flag, so a recreated proxy may or may
-    # not come back on the same address. Capture it first; that is the only way
-    # to tell a live allowlist reload from one that stranded the agent.
+    # Only a proxy that was *not* running gets recreated, and only a recreated
+    # one can move — Apple `container` has no static-IP flag. Capture the address
+    # first; comparing it afterwards is the only way to tell a reload that landed
+    # from one that stranded the agent. An in-place reload always compares equal,
+    # which is the point of preferring it.
     let old_ip = if $reload_egress and (container-status $egress_name) == 'running' { egress-address } else { null }
     ensure-egress $policy_dir $reload_egress
     let ip = egress-address
