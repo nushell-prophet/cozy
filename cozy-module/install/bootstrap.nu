@@ -199,6 +199,13 @@ export def main [
 
     # Step 9 — Claude Code + nushell MCP
     claude install
+    # Why remove-then-add: `claude mcp add` exits 1 when the entry already
+    # exists and has no --force, so a re-run died right here — before the
+    # externalEditorContext merge below and before the .cozy-installed stamp,
+    # which then made the *next* host run trip check-no-clobber on cozy's own
+    # deployed files. `remove` exits 1 on a not-yet-registered server, so its
+    # status is the one thing here we genuinely don't care about.
+    ^claude mcp remove --scope user nushell | complete | ignore
     ^claude mcp add --scope user --transport stdio nushell -- (which nu | get path.0) --mcp
 
     # Enable "Show last response in external editor". externalEditorContext is a
