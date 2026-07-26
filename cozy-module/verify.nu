@@ -352,11 +352,17 @@ export def run-checks [run: closure]: nothing -> table {
 }
 
 # Transport that runs each command locally, in the current sandbox.
+#
+# The `try` is what makes an absent binary reportable: `run-external` raises on
+# command-not-found and `complete` does not catch it, so one missing tool used
+# to abort the whole run — no table at all, and `check-tools`' 'launch failed'
+# branch was unreachable for exactly the case it was written for. 127 is the
+# shell's own code for command-not-found, so callers need no special case.
 export def local-runner []: nothing -> closure {
     {|argv|
         let cmd = $argv | first
         let rest = $argv | skip 1
-        let r = (run-external $cmd ...$rest) | complete
+        let r = try { (run-external $cmd ...$rest) | complete } catch { {stdout: '' exit_code: 127} }
         {stdout: ($r.stdout | str trim), exit: $r.exit_code}
     }
 }
