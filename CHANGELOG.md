@@ -7,18 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- `cozy sandbox-state history export`/`import` now carry `session_id` and `hostname`, so restored history still says which sitting and which sandbox each command came from. Older 5-column exports still import.
-- Pinned nushell fallback bumped 0.113.0 → 0.114.1 (used by `ensure-nu.sh` when the latest brew nu can't load `bootstrap.nu`). (beae2c0)
+## [0.4.0] - 2026-07-26
 
 ### Added
 
-- `cozy docs claude` / `cozy docs nushell` — fetch Claude Code and Nushell reference docs into a local folder from inside a sandbox (curl-based, works through the sandbox proxy). Moved out of claude-nu's toolkit. (05ac91d)
-- Vendored `claude-nu` — `gi enable --from-session` seeds the gi doc from the current Claude session's dialogue (`--tools` keeps tool-call placeholders). (b3cb3cc)
-- `xxd` is now installed in containers — agents kept reaching for it on binary files and neither base image ships it. For viewing only, `open --raw file | into binary` is still the nicer hex dump. (b89aae1)
 - Egress firewall for the Debian image: `docker compose up -d` runs the agent on a gateway-less network whose only exit is a proxy that allows the domains in `firewall/allowed-domains.txt` and refuses the rest. The agent can't reach the list or the proxy config; you edit the file and `docker compose restart egress`. No CA, no TLS interception — blocked requests never leave the container. (6790339)
 - `cozy verify` now checks that `api.anthropic.com` is tunneled rather than intercepted, and that an egress allowlist is actually in force (59 checks, up from 56). A bare `docker run` fails the two `egress:` checks. (51aa646, 6790339)
+- `cozy docs claude` / `cozy docs nushell` — fetch Claude Code and Nushell reference docs into a local folder from inside a sandbox (curl-based, works through the sandbox proxy). Moved out of claude-nu's toolkit. (05ac91d)
+- Vendored `claude-nu` — `gi enable <doc> --from-session` seeds the canvas from the current Claude session's dialogue (`--tools` keeps tool-call placeholders). (b3cb3cc)
+- New `nushell-reviewer` agent — reviews `.nu` code and plans against project rules and Nushell failure modes, reporting problems without editing. (2db704a)
+- `xxd` is now installed in containers — agents kept reaching for it on binary files and neither base image ships it. For viewing only, `open --raw file | into binary` is still the nicer hex dump. (b89aae1)
+- WezTerm `CTRL-SHIFT-f` opens search prefilled from the selection; Enter closes it in copy mode on the match, ready for a `CTRL-v` block selection. (062b22d)
+
+### Changed
+
+- Vendored `claude-nu` — session search now carries its scope left of the pipe: `messages 'x'` for this project, `sessions --all-projects | messages 'x'` for every project. The `claude-nu -f` umbrella and `save-markdown` are gone (`export-session --to <dir>` replaces the latter). (7b3c4af)
+- Vendored `claude-nu` — `gi` gained real subcommands: `gi enable` seeds a repo, `gi open` starts a session bound to one canvas, bare `gi` is the status. `gi status` is gone and `$env.GI_HOOK_DOC` is now `$env.GI_CANVAS`. (7b3c4af)
+- `cozy sandbox-state history export`/`import` now carry `session_id` and `hostname`, so restored history still says which sitting and which sandbox each command came from. Older 5-column exports still import. (e8b8a47)
+- Vendored `nu-goodies` — `ansi-to-png` defaults to the font and palette WezTerm actually uses, plus `--colorscheme`, `--recolor` and `--width`, so a captured terminal image matches what you saw. (04b54bc)
+- Vendored `dotfiles` — new `cozy-focus` zellij theme (active pane frame bold green, inactive near-black), and mouse hover highlighting is off. (7156788)
+- Vendored `dotfiles` — helix `+ p` aligns markdown tables with `nu-hx align-table` instead of pandoc: no external binary, and only the padding inside cells changes. (a2bda0f)
+- The topiary install no longer clones the grammar from GitHub when `vendor/` is missing — it fails and names the real cause instead of installing an unpinned upstream revision. (fac4c64)
+- Pinned nushell fallback bumped 0.113.0 → 0.114.1 (used by `ensure-nu.sh` when the latest brew nu can't load `bootstrap.nu`). (beae2c0)
+
+### Fixed
+
+- Vendored `dotfiles` — the pipe completions menu matches multiline buffers again, and dedups history first (11k entries collapse to ~3.7k). (2d5fe49)
+- Vendored `dotnu` — `@example` blocks calling `(glob ...)` are no longer silently dropped, and an example piping one module command into another runs. (d7b9f17)
 
 ## [0.3.9] - 2026-07-20
 
@@ -491,7 +506,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.3.9...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/nushell-prophet/cozy/compare/0.3.9...0.4.0
 [0.3.9]: https://github.com/nushell-prophet/cozy/compare/0.3.8...0.3.9
 [0.3.8]: https://github.com/nushell-prophet/cozy/compare/0.3.7...0.3.8
 [0.3.7]: https://github.com/nushell-prophet/cozy/compare/0.3.6...0.3.7
