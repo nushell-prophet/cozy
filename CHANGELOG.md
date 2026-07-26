@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `nu toolkit/sbxw.nu <name> --runtime container` opens the WezTerm window against an Apple `container` instead of an sbx sandbox; `--workdir` sets the start directory, which `container` has no workspace notion to supply. Default stays `sbx`. (301c3c9)
+
 ### Fixed
 
 - `compose.yaml` now sets `WORKSPACE_DIR`, which only `sbx` had been injecting. Without it every `cozy sandbox-state` and `cozy dev-link` call on the plain-docker path died with "WORKSPACE_DIR not set". Set it yourself (`-e WORKSPACE_DIR=<mounted path>`) when running the image outside compose.
