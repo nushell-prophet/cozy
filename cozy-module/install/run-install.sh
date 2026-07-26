@@ -25,10 +25,24 @@ cd "$(dirname "$0")"
 # before calling this script, so there this block no-ops.
 command -v brew >/dev/null || {
     if [ "$(uname)" = Linux ] && sudo -n true 2>/dev/null; then
-        NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        # Not `bash -c "$(curl …)"` because: when curl fails the substitution is
+        # empty and `bash -c ''` exits 0, so a blocked host or a proxy 403 read
+        # as a successful install. `set -e` never fired, and the real cause
+        # surfaced two steps later at ensure-nu.sh as "neither nu nor brew
+        # available — install Homebrew first", blaming the user for a network
+        # failure. Download to a file so curl's own exit status is checked.
+        brew_installer="$(mktemp)"
+        trap 'rm -f "$brew_installer"' EXIT
+        curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o "$brew_installer"
+        NONINTERACTIVE=1 /bin/bash "$brew_installer"
         # The installer never touches this shell's PATH — without this line a
         # fresh Linux host installs brew and can't find it one command later.
+        # `eval` of an empty string also exits 0, so assert rather than assume.
         eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+        command -v brew >/dev/null || {
+            echo "the Homebrew installer finished but brew is not on PATH" >&2
+            exit 1
+        }
     else
         echo "Install Homebrew first: https://brew.sh"
         echo '  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'

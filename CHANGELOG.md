@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A blocked download now fails the install instead of passing it. Both `curl … | bash` sites (Homebrew and the Claude Code installer) reported success on an empty download, so a proxy 403 surfaced two steps later as "neither nu nor brew available — install Homebrew first", blaming you for a network failure.
 - Re-running the installer no longer dies at Step 9. `claude mcp add` exits 1 when the nushell MCP entry already exists and has no `--force`, which aborted the run before the `~/.cozy-installed` stamp was written — and a host install without that stamp then refuses to touch cozy's own deployed files.
 - Debian image: the agent's commits are attributed to Claude again. `BASH_ENV` now points at `/etc/sandbox-persistent.sh`, so non-interactive bash — what Claude Code's Bash tool runs — sees the `GIT_AUTHOR_*` block; before this it read neither `/etc/profile` nor `/etc/bash.bashrc` and commits landed as `Agent <agent@sandbox>`.
 - `cozy verify` reads the environment through a plain `bash -c` instead of `bash -lc`, the shell the agent actually commits from. It is a stricter check: five `env:` rows now fail on any image that does not carry the identity into non-interactive bash — which is how the bug above went unnoticed. Unconfirmed on `sbx`; if they fail there, its base image needs the same wiring.
