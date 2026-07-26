@@ -86,6 +86,8 @@ def expected-dirs []: nothing -> list<string> {
     | each {|r| $repos | path join $r }
     | append [
         ($repos | path join cozy cozy-module)
+        # Holds logo.ans, pbcopy and the autoload scripts expected-files globs.
+        ($repos | path join cozy docker-files)
         ($home | path join .config broot)
     ]
 }
@@ -100,6 +102,19 @@ def expected-envs []: nothing -> record {
     | parse --regex '(?m)export[ \t]+(?<k>\w+)="(?<v>[^"]*)"'
     | reduce --fold {} {|row acc|
         $acc | insert $row.k ($row.v | str replace --all '$HOME' $home)
+    }
+}
+
+# The suite asserts no row count, and `glob` on a missing directory returns []
+# without erroring — so a build that never deposited docker-files/ would drop 7
+# `file:` rows and report "All 53 checks passed". Guard the derivation itself:
+# an empty glob is a failure, not a smaller suite.
+def check-autoload-source []: nothing -> record {
+    let found = glob ($autoload_src | path join '*.nu') | length
+    if $found > 0 {
+        ok 'autoload source' $"($found) scripts to check"
+    } else {
+        fail 'autoload source' $"no .nu under ($autoload_src) — every file: row derived from it vanishes silently"
     }
 }
 
@@ -336,6 +351,7 @@ def check-egress-cage [run: closure]: nothing -> list {
 export def run-checks [run: closure]: nothing -> table {
     [
         ...(check-tools $run)
+        (check-autoload-source)
         ...(check-files $run)
         ...(check-dirs $run)
         ...(check-envs $run)
