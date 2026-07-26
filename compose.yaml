@@ -53,16 +53,49 @@ services:
     # a bind-mounted *file* pins an inode, so an editor that saves atomically
     # (write temp + rename) leaves the container reading the old copy and the
     # human's edit silently never applies.
+    #
+    # Long form for create_host_path: false. The short `src:dst:ro` form lets
+    # Docker invent a missing source as an empty root-owned directory — squid
+    # then finds no squid.conf and dies, while the agent comes up fine and the
+    # human sees a healthy container with mysteriously dead network. Refusing to
+    # create it turns a forgotten `cp -r firewall ~/.config/cozy/firewall` into
+    # an error that names the path. toolkit/container-up.nu already errors on
+    # this; the two run paths now agree.
     volumes:
-      - ${COZY_FIREWALL:-${HOME}/.config/cozy/firewall}:/etc/squid/policy:ro
+      - type: bind
+        source: ${COZY_FIREWALL:-${HOME}/.config/cozy/firewall}
+        target: /etc/squid/policy
+        read_only: true
+        bind:
+          create_host_path: false
     command: ["-f", "/etc/squid/policy/squid.conf", "-NYC"]
     security_opt: [no-new-privileges:true]
-    restart: unless-stopped
+    # The directory can exist and still be empty or half-copied, which the mount
+    # cannot catch. `test -f` is the same precondition, checked from inside, and
+    # it is what `cozy` waits on below — a proxy without its policy must never
+    # let the agent start in front of it.
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /etc/squid/policy/squid.conf"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    # No restart policy on purpose. `unless-stopped` was here, and the failure
+    # this proxy actually has is a missing or unparseable policy — which no
+    # restart can heal, so it looped and hid the cause behind a container that
+    # was always about to be up. Now it exits once and `docker compose logs
+    # egress` says why. A proxy that stays down also fails closed: the agent
+    # keeps its route to nowhere, so nothing leaks while it is gone.
 
   cozy:
     build: .
     image: cozy:latest
-    depends_on: [egress]
+    # `service_healthy`, not the bare list form: that one only waits for
+    # "started", so a proxy that started and immediately died still let the
+    # agent up — the exact shape of "everything looks fine, nothing works".
+    depends_on:
+      egress:
+        condition: service_healthy
     networks: [caged]
     environment:
       # sbx injects WORKSPACE_DIR; compose has to set it by hand. Without it
