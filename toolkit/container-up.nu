@@ -292,8 +292,23 @@ export def main [
     print $"  (ansi green)Exit:(ansi reset) http://($ip):($proxy_port)"
 
     if $agent_state != 'absent' {
+        # old_ip is null when the proxy was not running to be read — which is
+        # what "stop everything, edit the list, re-run" produces. The address the
+        # agent was built with is then unknowable from here, so neither "still
+        # the same" nor "changed" can be claimed. Say so, and name the one place
+        # the answer does exist: the agent's own environment.
+        if $old_ip == null {
+            error make {msg: $"($egress_name) was not running, so the exit address ($name) was built with could not be read — it may or may not still be ($ip). Start the agent and look: `container start ($name); container exec ($name) printenv HTTPS_PROXY`. If it names ($ip) nothing more is needed; otherwise recreate the agent \(`container stop ($name); container delete ($name)`, then re-run without --reload-egress)."}
+        }
         if $old_ip == $ip {
-            print $"  (ansi green)Done:(ansi reset) ($name) keeps its exit at ($ip) — the edited allowlist is live"
+            # A stopped agent reaches here too: its baked exit is still correct,
+            # but nothing was started. Saying "live" about a container that is
+            # not running is what this used to print.
+            if $agent_state == 'running' {
+                print $"  (ansi green)Done:(ansi reset) ($name) keeps its exit at ($ip) — the edited allowlist is live"
+            } else {
+                print $"  (ansi green)Done:(ansi reset) ($name) is ($agent_state) and keeps its exit at ($ip) — the edited allowlist is live for it. Start it: `container start ($name)`"
+            }
             return
         }
         error make {msg: $"the proxy came back at ($ip), not ($old_ip) — ($name) still points at the old address and now has no way out. Recreate it: `container stop ($name); container delete ($name)`, then re-run without --reload-egress."}
