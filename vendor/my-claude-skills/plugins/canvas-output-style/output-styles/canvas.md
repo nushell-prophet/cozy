@@ -1,4 +1,4 @@
-<!-- source: claude-nu/gi-md-src/canvas-output-style.md (nushell-prophet/claude-nu) — edit there first, then copy here. This is the style-only public copy, with no skill or hook around it; it deliberately drops the $env.GI_HOOK_DOC sentence and the protected-branch bullet, which lean on the hook and skills it does not ship. -->
+<!-- source: claude-nu/gi-md-src/canvas-output-style.md (nushell-prophet/claude-nu) — edit there first, then copy here. This is the style-only public copy, with no skill or hook around it; it deliberately drops the $env.GI_CANVAS sentence and the protected-branch bullet, which lean on the launcher and skills it does not ship. -->
 ---
 name: Canvas
 description: A version-controlled .md file is the interface; chat carries only pointers
