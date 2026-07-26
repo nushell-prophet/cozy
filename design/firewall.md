@@ -4,7 +4,7 @@ covers:                # source paths update-design reconciles this file against
   - compose.yaml
   - firewall/squid.conf
   - firewall/allowed-domains.txt
-reconciled-at: 9707db733ac88af0f6bb4a8e775436ea11b6e293
+reconciled-at: 362dbe2adb9e5c04ce100efc40f7b6a0f8ec50de
 ---
 
 # firewall — human-managed egress for the Debian image
