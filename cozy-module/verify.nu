@@ -125,21 +125,26 @@ def check-dirs [run: closure]: nothing -> list {
     }
 }
 
-# Read env from a login shell, not this process. Why: the git identity and
-# JJ_CONFIG live only in /etc/sandbox-persistent.sh, which a login shell sources
-# but a directly-spawned nu does not — so reading `$env`/`printenv` here false-
-# fails when verify runs under the nushell MCP tool (its nu isn't a login child).
-# A login shell is also the true contract: it catches a real regression where the
-# base image stops sourcing the persistent file, which a plain file read wouldn't.
+# Read env from a bare `bash -c`, not this process. Why: the git identity and
+# JJ_CONFIG live only in /etc/sandbox-persistent.sh, which a shell sources but a
+# directly-spawned nu does not — so reading `$env`/`printenv` here false-fails
+# when verify runs under the nushell MCP tool (its nu isn't a shell child).
+#
+# Not `bash -lc` because: non-interactive and non-login is the strictest of the
+# three bash flavours — the only one reaching neither /etc/profile nor
+# /etc/bash.bashrc, so it passes only when BASH_ENV is wired. It is also the one
+# the agent actually commits from, and a login-shell check hid a real bug: every
+# agent commit in the Debian image was authored `Agent <agent@sandbox>` while
+# these rows stayed green.
 def check-envs [run: closure]: nothing -> list {
-    let actual = (do $run [bash -lc printenv]).stdout
+    let actual = (do $run [bash -c printenv]).stdout
         | lines
         | parse '{k}={v}'
         | reduce --fold {} {|row acc| $acc | insert $row.k $row.v }
     expected-envs | items {|name expected|
         let got = $actual | get --optional $name
         if $got == null {
-            fail $"env: ($name)" 'not set (checked a login shell)'
+            fail $"env: ($name)" 'not set in a bare `bash -c` (BASH_ENV not wired?)'
         } else if $got == $expected {
             ok $"env: ($name)" $got
         } else {

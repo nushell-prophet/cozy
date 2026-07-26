@@ -36,11 +36,13 @@ binary. Autoloads fire in an interactive shell and the MCP `evaluate` tool but
 **not** under `nu -c`, so there load the overlay yourself:
 `nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'`.
 
-The env checks read a login shell (via `bash -lc`), not verify's own process, so
-they report the same result however verify was launched. The git identity
-(`GIT_AUTHOR_*`, `GIT_COMMITTER_*`) and `JJ_CONFIG` live only in
-`/etc/sandbox-persistent.sh`; a login shell must source it (the sbx base does this;
-the Debian image does it via `/etc/profile.d`), or those five checks false-fail.
+The env checks read a bare `bash -c`, not verify's own process, so they report the
+same result however verify was launched. The git identity (`GIT_AUTHOR_*`,
+`GIT_COMMITTER_*`) and `JJ_CONFIG` live only in `/etc/sandbox-persistent.sh`, and
+a non-interactive non-login shell reads neither `/etc/profile` nor
+`/etc/bash.bashrc` — so only `BASH_ENV` (the sbx base sets it up; the Debian image
+sets it in the `Dockerfile`) carries them, or those five checks false-fail. That is
+deliberate: it is the shell the agent commits from.
 
 Read the printed table; any `pass: false` row names what to fix and, for files,
 the owning repo. To add or change a check, edit `cozy-module/verify.nu`.
