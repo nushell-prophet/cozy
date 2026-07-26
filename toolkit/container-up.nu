@@ -52,13 +52,61 @@ def container-status [name: string]: nothing -> string {
 
 # `--internal` is the whole enforcement: a host-only network, no route out. The
 # agent sits here alone with the proxy and can reach nothing else.
+#
+# Why whole tokens and not `str contains`: the substring test also accepted a
+# leftover `cozy-caged-old` and returned "already up" for a network that isn't
+# ours. `network ls --format json` would be exact, but Apple's ls/inspect schema
+# is undocumented (see egress-address), so compare whitespace-separated tokens —
+# that needs no column layout and no key names.
+#
+# An existing network is still only a name. Nothing observable here proves it
+# was created with --internal, and one made by hand or by an older version
+# without it hands the agent a route around the proxy — while this function
+# prints green and the run continues to success. That is why assert-caged
+# probes the finished cage from the agent itself; the property is checked where
+# it can be seen, not assumed here.
 def ensure-network []: nothing -> nothing {
-    if ((^container network list | complete).stdout | str contains $caged_network) {
-        print $"  (ansi green)Network:(ansi reset) ($caged_network) already up"
+    let names = (^container network list | complete).stdout | split row --regex '\s+' | str trim
+    if $caged_network in $names {
+        print $"  (ansi green)Network:(ansi reset) ($caged_network) already up — cage probed after the agent starts"
         return
     }
     container-cli [network create --internal --subnet $caged_subnet $caged_network]
     print $"  (ansi green)Network:(ansi reset) created ($caged_network) ($caged_subnet), host-only"
+}
+
+# Reached with the proxy bypassed, from inside the agent, to prove the cage
+# itself rather than the proxy in front of it. An IP literal, so no DNS is
+# involved and --no-dns can't be mistaken for isolation. Same probe as
+# cozy-module/verify.nu's `egress: no direct route` row, on purpose: that row is
+# the on-demand check a human runs inside a sandbox, this one is the launch-time
+# check the script owes for the cage it just built. A builder that reports
+# success without looking at its own result is the gap being closed.
+const direct_probe = 'https://1.1.1.1'
+
+def assert-caged [name: string]: nothing -> nothing {
+    # Retried for the same reason egress-address is: `run -d` returns before the
+    # container's VM has finished booting, so the first execs fail with nothing
+    # on stdout. An empty stdout is "not ready yet"; curl always prints a status,
+    # even for a connection that never happened.
+    mut r = {stdout: '', stderr: '', exit_code: 0}
+    for _ in 1..15 {
+        $r = ^container exec $name curl -sS --noproxy '*' --max-time 10 -o /dev/null -w '%{http_code}' $direct_probe | complete
+        if ($r.stdout | str trim | is-not-empty) { break }
+        sleep 1sec
+    }
+    let code = $r.stdout | str trim
+    # curl prints 000 and exits non-zero when the connection never happens —
+    # that is the pass. Any real status means traffic left unfiltered. Anything
+    # else (no curl, garbage) is an unproven cage, which is a failure too: the
+    # whole point is that "we could not check" must not read as "it is fine".
+    if $code == '000' {
+        print $"  (ansi green)Cage:(ansi reset) ($name) cannot reach ($direct_probe) with the proxy bypassed"
+    } else if ($code =~ '^\d{3}$') {
+        error make {msg: $"($name) reached ($direct_probe) directly \(HTTP ($code)) — the cage is open and traffic bypasses the allowlist. ($caged_network) was almost certainly created without --internal: `container delete ($name)`, `container network delete ($caged_network)`, then re-run to rebuild both."}
+    } else {
+        error make {msg: $"could not probe the cage from ($name): curl gave no status \(exit ($r.exit_code))(if ($r.stderr | is-not-empty) { $', stderr: ' + ($r.stderr | str trim) })"}
+    }
 }
 
 def ensure-egress [policy: path, reload: bool]: nothing -> nothing {
@@ -275,6 +323,7 @@ export def main [
     ]
     let mounted = $ws_list | each {|w| $"($w.path)(if $w.ro { ' (ro)' } else { '' })" } | str join ', '
     print $"  (ansi green)Agent:(ansi reset) ($name) on ($caged_network), workspace ($mounted)"
+    assert-caged $name
 
     print ""
     print $"  attach:  nu toolkit/sbxw.nu ($name) --runtime container --workdir ($ws)"
