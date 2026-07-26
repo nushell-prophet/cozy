@@ -107,10 +107,28 @@ def assert-caged [name: string]: nothing -> nothing {
     # whole point is that "we could not check" must not read as "it is fine".
     if $code == '000' {
         print $"  (ansi green)Cage:(ansi reset) ($name) cannot reach ($direct_probe) with the proxy bypassed"
-    } else if ($code =~ '^\d{3}$') {
-        error make {msg: $"($name) reached ($direct_probe) directly \(HTTP ($code)) — the cage is open and traffic bypasses the allowlist. ($caged_network) was almost certainly created without --internal: `container delete ($name)`, `container network delete ($caged_network)`, then re-run to rebuild both."}
+        return
+    }
+
+    # Past this point the agent is running and is not a proven cage, so stop it
+    # before raising. Raising alone left it up with whatever route the probe just
+    # found, for as long as the human takes to read the message — the leak the
+    # error is about, still open. Stopped, not deleted: `container logs` and
+    # `inspect` still work, and the messages below already say to delete.
+    #
+    # Not container-cli because: a failed stop must not replace the diagnosis
+    # with its own error. Report what happened and let the real cause through.
+    let stopped = ^container stop $name | complete
+    let cleanup = if $stopped.exit_code == 0 {
+        $" ($name) has been stopped."
     } else {
-        error make {msg: $"could not probe the cage from ($name): curl gave no status \(exit ($r.exit_code))(if ($r.stderr | is-not-empty) { $', stderr: ' + ($r.stderr | str trim) })"}
+        $" ($name) could NOT be stopped and is still running: ($stopped.stderr | str trim)"
+    }
+
+    if ($code =~ '^\d{3}$') {
+        error make {msg: $"($name) reached ($direct_probe) directly \(HTTP ($code)) — the cage is open and traffic bypasses the allowlist. ($caged_network) was almost certainly created without --internal: `container delete ($name)`, `container network delete ($caged_network)`, then re-run to rebuild both.($cleanup)"}
+    } else {
+        error make {msg: $"could not probe the cage from ($name): curl gave no status \(exit ($r.exit_code))(if ($r.stderr | is-not-empty) { $', stderr: ' + ($r.stderr | str trim) }).($cleanup)"}
     }
 }
 
