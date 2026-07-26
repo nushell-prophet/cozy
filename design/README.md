@@ -22,6 +22,10 @@ The build sequence, in order:
 
 - [`autoload.md`](autoload.md) — the [`docker-files/`](../docker-files/) shipped into the sandbox and why each one is needed (self-healing config, the `pbcopy` shim, the global CLAUDE.md tool catalog).
 
+Wrapped around the finished build, not part of it:
+
+- [`firewall.md`](firewall.md) — the human-managed egress cage for the Debian rootless path ([`../compose.yaml`](../compose.yaml) + [`../firewall/`](../firewall/)): why it sits outside the image, why two containers instead of iptables, why the policy lives outside the repo, and which limits were accepted.
+
 Host-side build tooling:
 
 - [`toolkit.md`](toolkit.md) — how modules get vendored and the build's invariants get checked, from the host. The mechanism and its source of truth, not a command catalog.

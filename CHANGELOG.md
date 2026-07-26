@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `cozy docs claude` / `cozy docs nushell` — fetch Claude Code and Nushell reference docs into a local folder from inside a sandbox (curl-based, works through the sandbox proxy). Moved out of claude-nu's toolkit. (05ac91d)
 - Vendored `claude-nu` — `gi enable --from-session` seeds the gi doc from the current Claude session's dialogue (`--tools` keeps tool-call placeholders). (b3cb3cc)
+- `xxd` is now installed in containers — agents kept reaching for it on binary files and neither base image ships it. For viewing only, `open --raw file | into binary` is still the nicer hex dump. (b89aae1)
+- Egress firewall for the Debian image: `docker compose up -d` runs the agent on a gateway-less network whose only exit is a proxy that allows the domains in `firewall/allowed-domains.txt` and refuses the rest. The agent can't reach the list or the proxy config; you edit the file and `docker compose restart egress`. No CA, no TLS interception — blocked requests never leave the container. (6790339)
+- `cozy verify` now checks that `api.anthropic.com` is tunneled rather than intercepted, and that an egress allowlist is actually in force (59 checks, up from 57). A bare `docker run` fails the two `egress:` checks. (51aa646, 6790339)
 
 ## [0.3.9] - 2026-07-20
 

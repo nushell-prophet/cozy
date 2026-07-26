@@ -15,6 +15,7 @@ This file is appended to `~/.claude/CLAUDE.md` by every cozy install path, so ch
 - `vd` (visidata)
 - `python3`, `node`, `go` — from the `sbx` base image only; absent on the Debian image
 - `jq`
+- `xxd` — hex dump; for viewing only, prefer `open --raw file | into binary`
 - `topiary` — Nushell grammar support
 - `brew` — install more as needed
 - `sudo` — passwordless on `sbx`; **revoked** on the Debian image, which runs rootless by design

