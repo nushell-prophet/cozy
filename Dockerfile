@@ -128,7 +128,8 @@ COPY --chown=agent:agent docker-files/workspace-README.md /home/agent/workspace/
 # false-fail. profile.d is sourced by /etc/profile unconditionally, so both
 # interactive and non-interactive login shells get it. The sbx base wired all
 # this for us; on plain Debian the profile.d drop-in does. Non-login shells
-# still get PATH from the ENV directive and the env block from /etc/bash.bashrc.
+# still get PATH from the ENV directive, and the env block from /etc/bash.bashrc
+# (interactive) or BASH_ENV (non-interactive — see the ENV below).
 #
 # revoke sudo: the agent kept passwordless sudo through every RUN above (brew
 # chown, apt, tree-sitter compile). Deleting the drop-in leaves the running
@@ -142,3 +143,14 @@ RUN printf '%s\n' \
         > /etc/profile.d/cozy.sh \
     && rm -f /etc/sudoers.d/agent-build
 USER agent
+
+# The third shell flavour: non-interactive, non-login bash — what Claude Code's
+# Bash tool and every `docker exec ... bash -c` actually run. It reads neither
+# /etc/profile nor /etc/bash.bashrc, so without this the cozy env block was
+# invisible exactly where the agent works: commits landed as the XDG-config
+# identity `Agent <agent@sandbox>` instead of Claude. BASH_ENV is bash's hook for
+# that case, and it's how the sbx base image gets "sourced before every bash
+# invocation" — this makes the Debian image match. Set after the build RUNs on
+# purpose: build-time bash must not inherit GIT_AUTHOR_*, or bootstrap's own
+# commits would be attributed to Claude.
+ENV BASH_ENV=/etc/sandbox-persistent.sh

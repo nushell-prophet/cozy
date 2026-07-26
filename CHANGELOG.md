@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Debian image: the agent's commits are attributed to Claude again. `BASH_ENV` now points at `/etc/sandbox-persistent.sh`, so non-interactive bash — what Claude Code's Bash tool runs — sees the `GIT_AUTHOR_*` block; before this it read neither `/etc/profile` nor `/etc/bash.bashrc` and commits landed as `Agent <agent@sandbox>`. Unaffected on `sbx`, whose base image already sources the file for every bash invocation.
 - `compose.yaml` now sets `WORKSPACE_DIR`, which only `sbx` had been injecting. Without it every `cozy sandbox-state` and `cozy dev-link` call on the plain-docker path died with "WORKSPACE_DIR not set". Set it yourself (`-e WORKSPACE_DIR=<mounted path>`) when running the image outside compose.
 
 ## [0.4.0] - 2026-07-26
