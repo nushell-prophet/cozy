@@ -10,6 +10,8 @@ const manifest = ($cozy_root | path join cozy-module vendored-repos.nuon)
 const dockerfile = ($cozy_root | path join Dockerfile)
 const bootstrap = ($cozy_root | path join cozy-module install bootstrap.nu)
 const kit_spec = ($cozy_root | path join sbx-kit spec.yaml)
+const compose = ($cozy_root | path join compose.yaml)
+const container_up = ($cozy_root | path join toolkit container-up.nu)
 
 # Env vars that MUST agree across the three injection points: the Dockerfile
 # ENV block, sbx-kit/spec.yaml's environment.variables, and the export block
@@ -116,9 +118,29 @@ def "main manifest" []: nothing -> record {
     {check: manifest, repos: ($have | length), ok: true}
 }
 
+# The egress proxy is pinned by digest in two places — compose.yaml for the
+# docker path, toolkit/container-up.nu for the Apple `container` one. Both cage
+# the agent behind the same proxy holding the same policy, so the two literals
+# must agree, and nothing but this check makes them. The digest itself is also
+# asserted: replacing it with a floating tag silently un-pins the one container
+# that has internet, which no comparison of the two copies would catch.
+def "main egress-image" []: nothing -> record {
+    let compose_ref = open $compose | get services.egress.image
+    let m = open --raw $container_up | parse --regex "(?m)^const egress_image = '(?<v>[^']+)'"
+    let up_ref = if ($m | is-empty) { '(missing)' } else { $m.v.0 }
+    if $compose_ref != $up_ref {
+        error make {msg: $"egress image drift: compose.yaml has ($compose_ref), toolkit/container-up.nu has ($up_ref)"}
+    }
+    if not ($compose_ref | str contains '@sha256:') {
+        error make {msg: $"egress image ($compose_ref) is not pinned by digest — the proxy that holds the policy must not float"}
+    }
+    {check: 'egress-image', ref: $compose_ref, ok: true}
+}
+
 # Run every check; errors (non-zero exit) if any drift is found.
 export def main [] {
     main manifest | print
+    main egress-image | print
     print (main env)
     print $"(ansi green)All consistency checks passed(ansi reset)"
 }

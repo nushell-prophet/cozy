@@ -26,8 +26,13 @@ const caged_subnet = '192.168.216.0/24'
 const egress_name = 'cozy-egress'
 # Same pin as compose.yaml, deliberately: both paths must enforce the identical
 # policy with the identical proxy, and this is the one container that holds the
-# policy and has internet, so it should not change under us on a pull.
-const egress_image = 'ubuntu/squid:latest@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029'
+# policy and has internet, so it should not change under us on a pull. The two
+# literals are guarded against each other by `nu toolkit/check.nu egress-image`.
+#
+# Digest only, no tag: a tag next to a digest is ignored, so the `:latest` this
+# carried read as a lie. Pinned 2026-07-24, squid 6.13. Frozen also means
+# upstream CVE fixes never arrive; re-pin deliberately.
+const egress_image = 'ubuntu/squid@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029'
 const proxy_port = 3128
 
 # Why: every `container` call goes through here so an unsupported flag surfaces

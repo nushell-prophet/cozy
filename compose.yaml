@@ -46,8 +46,13 @@ services:
   # — separate container, and its policy is mounted read-only from outside the
   # agent's reach. Pinned by digest: this container holds the policy and is the
   # one with internet, so it should not change under us on a `pull`.
+  #
+  # Digest only, no tag: with both, the tag is ignored and reads as a lie — this
+  # carried `:latest` while being frozen. Pinned 2026-07-24, squid 6.13. Frozen
+  # also means upstream CVE fixes never arrive; re-pin deliberately.
+  # toolkit/check.nu guards this against toolkit/container-up.nu's copy.
   egress:
-    image: ubuntu/squid:latest@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
+    image: ubuntu/squid@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
     networks: [caged, out]
     # The whole policy directory, one mount. Not the two files individually:
     # a bind-mounted *file* pins an inode, so an editor that saves atomically
