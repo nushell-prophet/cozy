@@ -1,7 +1,7 @@
 ---
 status: 'in_progress'
 created: '20260528-172203 #yyyyMMdd-hhmmss'
-updated: '20260529-221142 #yyyyMMdd-hhmmss'
+updated: '20260726-003638 #yyyyMMdd-hhmmss'
 related_files:
   - vendor/dotfiles/zellij/config.kdl
   - vendor/dotfiles/zellij/todo-nu/todo.nu
@@ -9,6 +9,14 @@ related_files:
   - vendor/dotfiles/zellij/broot-paste.nu
   - vendor/dotfiles/nushell/autoload/hooks-config.nu
 ---
+
+# Status 20260726 — the harness exists; the research below still drives what's left
+
+Built from scratch on the `script`-PTY approach, not zjctl: `test/e2e/harness.nu` + `test/e2e/toolkit.nu`, suites in `test/e2e/suites/`. Targets 1 (`create-todo`), 2 (`lstd`) and 5 (PWD tab rename) are covered. Everything below stays accurate — it is the design rationale the harness encodes (the #4508 PTY-client constraint, the pinned terminal size, the Layer 1/2 split) and the backlog for the rest.
+
+Still open: targets 3 (`lazygit-helix.nu`), 4 (`broot-paste.nu`), 6 (reedline keybinds) and 7 (helix/lazygit/broot program shortcuts), plus the Layer-1 manual-testing protocol for zellij's own keybind chords.
+
+The side finding is resolved without a test: `docker-files/nushell-autoload/hooks-config.nu` no longer exists, so there is no dead copy left to shadow the dotfiles version.
 
 # Goal
 
@@ -129,11 +137,11 @@ at the client's input stream, before actions exist. This splits the surface:
    (`lazygit/config.yml:16-23`); **broot `e`/`vd`/`pb*` verbs**
    (`verbs.hjson`) — program-level shortcuts, drivable.
 
-## Side finding (out of scope, worth a test assertion)
+## Side finding — RESOLVED
 
-cozy's `docker-files/nushell-autoload/hooks-config.nu` is overwritten at
-bootstrap Step 4 by the dotfiles version, so the docker-files copy's PWD hook is
-dead code. A test should assert the dotfiles version is the one in effect.
+cozy's `docker-files/nushell-autoload/hooks-config.nu` was overwritten at
+bootstrap Step 4 by the dotfiles version, making the docker-files copy dead
+code. That file is gone from `docker-files/nushell-autoload/`; nothing to test.
 
 # Proposed harness shape (Nushell)
 
@@ -145,6 +153,8 @@ research; decide zjctl-vs-`script` first.
 
 # Next
 
-- [ ] Decide: adopt/embed zjctl, or build the `script`-PTY harness from scratch.
-- [ ] Build the harness CLI and pick where it lives (sibling module? in dotfiles?).
-- [ ] Write the first e2e test against target #1 (create-todo delete-on-unmodified).
+- [x] Decide: adopt/embed zjctl, or build the `script`-PTY harness from scratch → built from scratch.
+- [x] Build the harness CLI and pick where it lives → `test/e2e/` in this repo.
+- [x] First e2e test against target #1 (create-todo delete-on-unmodified).
+- [ ] Targets 3, 4, 6, 7.
+- [ ] Layer-1 manual-testing protocol for zellij's own keybind chords (mainly the `cozy ln` Super→Alt rewrite).

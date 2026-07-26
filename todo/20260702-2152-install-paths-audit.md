@@ -2,7 +2,7 @@
 task-name: install paths audit — sbx kit / Dockerfile / host-install.sh
 status: in_progress
 created: '20260702-215200 #yyyyMMdd-hhmmss'
-updated: '20260702-235512 #yyyyMMdd-hhmmss'
+updated: '20260726-003638 #yyyyMMdd-hhmmss'
 original_session: 08d41519-11d5-4a07-ba92-022e10afb0a8
 related_files:
   - Dockerfile
@@ -19,6 +19,14 @@ related_files:
 ---
 
 # Install paths audit — problems, inconsistencies, refactoring opportunities
+
+## Re-verified 2026-07-26 against HEAD
+
+Fixed since the audit: the topiary clone fallback is gone (`fac4c64`), so the fail-fast wording in `bootstrap.nu` and `design/build.md:96` is now true and the open decision below is closed. The "apt proxy" phrase is gone from `CLAUDE.md`, the `Dockerfile` and the README. `design/build.md:41` now names both `HOMEBREW_*` vars. `run-install.sh:39` now puts `~/.local/bin` on PATH — but only inside the script; the rc-block it writes still targets `~/.bash_profile` and still carries no PATH line, so that finding is only half-addressed.
+
+Everything else re-checked and still true: `bootstrap.nu:176` still appends the catalog unwrapped (D4), there is still no `which claude` assert, `check.nu:20` still guards 5 env keys plus a PATH prefix (E1), `verify.nu:360` still refuses to run outside a sandbox and `const tools` is still hand-listed (E3), and `design/` is still 7 install-path commits behind its `reconciled-at` baseline.
+
+E4 stopped being a guess: `firewall/allowed-domains.txt` — written against what the tools actually fetch — carries `release-assets.githubusercontent.com`, `pkg-containers.githubusercontent.com`, `downloads.claude.ai` and `github-cloud.githubusercontent.com`, none of which are in `sbx-kit/spec.yaml`. The two lists disagree in both directions and nothing guards them; see `20260724-023000-sbx-allowlist-same-hole.md`, which supersedes E4.
 
 ## Task from user (original)
 
@@ -53,10 +61,10 @@ Baseline fact that drives most findings: all three paths converge on `bootstrap.
 
 - README.md:34 — "deploys the full environment ... into virtually any Ubuntu-based sandbox": full only with the sbx marker; plain Ubuntu loses Step 0 (env block, apt deps).
 - README.md:47 — Technologies list: `procps file gcc libc6-dev` are Step-0-only; the "base image adds rg, jq, gh…" parenthetical means hosts get no `rg`/`jq`/`gh` from cozy at all — no host/sandbox distinction is made.
-- CLAUDE.md:18 — "apt proxy" is stale; Step 0 does an http→https sources rewrite, no proxy (`bootstrap.nu:246-260`). Same stale phrase in `Dockerfile:57` ("/etc/apt proxy file").
+- ~~CLAUDE.md:18 / Dockerfile:57 — stale "apt proxy" phrase~~ — fixed; no site mentions a proxy now.
 - CLAUDE.md:27 — Step 9 also merges `externalEditorContext` and writes the stamp; not mentioned.
-- design/build.md:74-76 + bootstrap.nu:137-140 — "No clone fallback (fail-fast)" is **wrong**: `topiary.nu:22-28` clones `topiary-nushell` from GitHub whenever `~/git/topiary-nushell` is absent. The fail-fast intent is not enforced by the code. Either delete the fallback in topiary.nu (align code to stated intent) or fix the three doc sites.
-- design/build.md:31 — ENV list omits the two `HOMEBREW_*` vars; "Step 0 mirrors this block" is imprecise (subset + git/jj additions).
+- ~~design/build.md:74-76 + bootstrap.nu — "No clone fallback (fail-fast)" contradicted by `topiary.nu`~~ — fixed by deleting the fallback (`fac4c64`), the option this note recommended.
+- ~~design/build.md:31 — ENV list omits the two `HOMEBREW_*` vars~~ — fixed. "Step 0 mirrors this block" is still imprecise (subset + git/jj additions).
 - design/ `reconciled-at: 03a87ce` is 5 install-path commits behind (`3645ca8`, `3c23179`, `8251c9f`, `4a7aa11`, `05fd413`) — run `/update-design`.
 - run-install.sh's rc-block on Ubuntu (was host-install.sh's): writing a new `~/.bash_profile` (`run-install.sh:53`) makes bash login shells skip `~/.profile` — the conventional home of `eval "$(brew shellenv)"` on Linux — potentially dropping brew off PATH for login shells. Also the block never adds `~/.local/bin` to PATH, so a pinned-nu fallback (`ensure-nu.sh:80`) stops shadowing brew's nu the moment the script exits. Fix: append to `~/.bashrc` (or to `~/.profile` if no `~/.bash_profile` existed), and include `~/.local/bin` in PATH.
 
@@ -72,13 +80,13 @@ Baseline fact that drives most findings: all three paths converge on `bootstrap.
 Quick wins (one-liners, no design decisions):
 - [ ] Marker-wrap the Step-6 catalog append
 - [ ] `which claude` assert before `claude mcp add`
-- [ ] run-install.sh rc-block: target `~/.bashrc`/`~/.profile` correctly, add `~/.local/bin` to PATH
+- [ ] run-install.sh rc-block: target `~/.bashrc`/`~/.profile` correctly (still writes `~/.bash_profile`), and add `~/.local/bin` to the exported PATH (the script's own `export` at `:39` does not survive it)
 
 Decisions needed from user before implementing:
-- [ ] topiary clone fallback: delete it (fail-fast intent) or document it?
+- [x] topiary clone fallback — deleted (`fac4c64`)
 
 Doc fixes (can batch into one commit):
-- [ ] README lines 34, 47; CLAUDE.md lines 18, 27; design/build.md:31, 74-76; then `/update-design` to advance `reconciled-at` (README:36 and Dockerfile:57 were absorbed by the run-install.sh rewrite, 45cb593)
+- [ ] README lines 34, 47; CLAUDE.md line 27; design/build.md's "Step 0 mirrors this block"; then `/update-design` to advance `reconciled-at` (7 install-path commits behind)
 
 Verify on a live `sbx run` (can't be determined from the repo):
 - [ ] Whether kit `environment.variables` reach a direct `sbx exec ... nu` process (assumed yes)
