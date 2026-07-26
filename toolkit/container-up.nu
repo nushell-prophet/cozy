@@ -193,13 +193,34 @@ export def main [
     # first one, so the cozy-repo rule has to cover all of them.
     for w in $ws_list { reject-writable-cozy $w }
 
+    # Why this is read before anything is touched: the proxy's address is baked
+    # into the agent's env at creation and cannot be changed afterwards, so
+    # whether an agent already exists decides what recreating the proxy means.
+    # The check used to sit *below* ensure-egress, which made the documented
+    # `--reload-egress` workflow destructive: it stopped and deleted the proxy
+    # the running agent pointed at, then aborted here with "a container named X
+    # already exists" — leaving that agent with a dead exit and an error message
+    # the user reads as "nothing happened".
+    let agent_state = container-status $name
+    if $agent_state != 'absent' and not $reload_egress {
+        error make {msg: $"a container named ($name) already exists — `container stop ($name); container delete ($name)` first"}
+    }
+
     ensure-network
+    # Apple `container` has no static-IP flag, so a recreated proxy may or may
+    # not come back on the same address. Capture it first; that is the only way
+    # to tell a live allowlist reload from one that stranded the agent.
+    let old_ip = if $reload_egress and (container-status $egress_name) == 'running' { egress-address } else { null }
     ensure-egress $policy_dir $reload_egress
     let ip = egress-address
     print $"  (ansi green)Exit:(ansi reset) http://($ip):($proxy_port)"
 
-    if (container-status $name) != 'absent' {
-        error make {msg: $"a container named ($name) already exists — `container stop ($name); container delete ($name)` first"}
+    if $agent_state != 'absent' {
+        if $old_ip == $ip {
+            print $"  (ansi green)Done:(ansi reset) ($name) keeps its exit at ($ip) — the edited allowlist is live"
+            return
+        }
+        error make {msg: $"the proxy came back at ($ip), not ($old_ip) — ($name) still points at the old address and now has no way out. Recreate it: `container stop ($name); container delete ($name)`, then re-run without --reload-egress."}
     }
 
     # --no-dns: a host-only network has no resolver, so configuring one buys
