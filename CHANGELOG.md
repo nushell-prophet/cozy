@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `compose.yaml` now sets `WORKSPACE_DIR`, which only `sbx` had been injecting. Without it every `cozy sandbox-state` and `cozy dev-link` call on the plain-docker path died with "WORKSPACE_DIR not set". Set it yourself (`-e WORKSPACE_DIR=<mounted path>`) when running the image outside compose.
+
 ## [0.4.0] - 2026-07-26
 
 ### Added

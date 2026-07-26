@@ -64,9 +64,13 @@ services:
     image: cozy:latest
     depends_on: [egress]
     networks: [caged]
-    # Not enforcement — the cage is the network. These just tell clients where
-    # the one exit is, so they get a clean 403 instead of a hang.
     environment:
+      # sbx injects WORKSPACE_DIR; compose has to set it by hand. Without it
+      # `cozy sandbox-state` and `cozy dev-link` hard-error, since neither has
+      # anything else to fall back on. Keep it equal to the mount path below.
+      WORKSPACE_DIR: /home/agent/workspace
+      # Not enforcement — the cage is the network. These just tell clients where
+      # the one exit is, so they get a clean 403 instead of a hang.
       HTTP_PROXY: http://egress:3128
       HTTPS_PROXY: http://egress:3128
       http_proxy: http://egress:3128
