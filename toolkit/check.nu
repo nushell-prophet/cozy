@@ -11,7 +11,7 @@ const dockerfile = ($cozy_root | path join Dockerfile)
 const bootstrap = ($cozy_root | path join cozy-module install bootstrap.nu)
 const kit_spec = ($cozy_root | path join sbx-kit spec.yaml)
 const compose = ($cozy_root | path join compose.yaml)
-const container_up = ($cozy_root | path join toolkit container-up.nu)
+const container_nu = ($cozy_root | path join toolkit container.nu)
 
 # Env vars that MUST agree across the three injection points: the Dockerfile
 # ENV block, sbx-kit/spec.yaml's environment.variables, and the export block
@@ -119,17 +119,17 @@ def "main manifest" []: nothing -> record {
 }
 
 # The egress proxy is pinned by digest in two places — compose.yaml for the
-# docker path, toolkit/container-up.nu for the Apple `container` one. Both cage
+# docker path, toolkit/container.nu for the Apple `container` one. Both cage
 # the agent behind the same proxy holding the same policy, so the two literals
 # must agree, and nothing but this check makes them. The digest itself is also
 # asserted: replacing it with a floating tag silently un-pins the one container
 # that has internet, which no comparison of the two copies would catch.
 def "main egress-image" []: nothing -> record {
     let compose_ref = open $compose | get services.egress.image
-    let m = open --raw $container_up | parse --regex "(?m)^const egress_image = '(?<v>[^']+)'"
+    let m = open --raw $container_nu | parse --regex "(?m)^const egress_image = '(?<v>[^']+)'"
     let up_ref = if ($m | is-empty) { '(missing)' } else { $m.v.0 }
     if $compose_ref != $up_ref {
-        error make {msg: $"egress image drift: compose.yaml has ($compose_ref), toolkit/container-up.nu has ($up_ref)"}
+        error make {msg: $"egress image drift: compose.yaml has ($compose_ref), toolkit/container.nu has ($up_ref)"}
     }
     if not ($compose_ref | str contains '@sha256:') {
         error make {msg: $"egress image ($compose_ref) is not pinned by digest — the proxy that holds the policy must not float"}

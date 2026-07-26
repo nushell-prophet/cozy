@@ -1,5 +1,5 @@
 # Restore the human's own git identity on shell start, from the COZY_GIT_USER_*
-# variables `toolkit/container-up.nu` forwards from the host's `git config --global`.
+# variables `toolkit/container.nu` forwards from the host's `git config --global`.
 #
 # Three layers, each narrower than the last, so every commit is attributed to
 # whoever actually made it:
@@ -27,7 +27,7 @@ let identity = {
 # through to the placeholder and commits land as `Someone <agent@sandbox>` — a
 # name that never existed. Enforced here, in the writer, so it holds for whoever
 # set the variables — a hand-passed `-e`, a future sbx path — and not only for
-# the host-side reader in toolkit/container-up.nu.
+# the host-side reader in toolkit/container.nu.
 if ($identity | values | all {|v| $v | is-not-empty }) {
     $identity | items {|key value|
         let current = do { git config --file $gitconfig --get $key } | complete | get stdout | str trim

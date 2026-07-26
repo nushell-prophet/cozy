@@ -100,7 +100,7 @@ Your commits should say you made them, and the agent's should say the agent made
 
 The env variables live in `/etc/sandbox-persistent.sh`, which the sandbox sources before every bash invocation — including Claude Code's bash tool, which is how the agent's own commits get attributed to Claude. A `nu` you start yourself never sources it, so your session stays on your identity.
 
-The middle layer is the one you supply. On the Apple `container` path `toolkit/container-up.nu` reads your host's `git config --global user.name`/`user.email` and forwards them, so a fresh container already knows you — nothing personal is stored in the repo or the image, and it does nothing if you have no global identity set. Under `sbx` there is no forwarding yet; set it once per sandbox:
+The middle layer is the one you supply. On the Apple `container` path `nu toolkit/container.nu up` reads your host's `git config --global user.name`/`user.email` and forwards them, so a fresh container already knows you — nothing personal is stored in the repo or the image, and it does nothing if you have no global identity set. Under `sbx` there is no forwarding yet; set it once per sandbox:
 
 ```sh
 git config --file ~/.gitconfig user.name '…'
@@ -235,14 +235,15 @@ Nothing is decrypted. Squid refuses the `CONNECT` before TLS begins, so a blocke
 
 #### Apple `container`
 
-Apple `container` has no compose, so `toolkit/container-up.nu` assembles the same three pieces by hand. It needs **macOS 26 or later** — `container network create` does not exist before that, and on macOS 15 there is no way to build the cage at all.
+Apple `container` has no compose, so `toolkit/container.nu` assembles the same three pieces by hand — `up` builds the cage, `restart` brings it back, `attach` opens a window on it. It needs **macOS 26 or later** — `container network create` does not exist before that, and on macOS 15 there is no way to build the cage at all.
 
 ```
 mkdir -p ~/.config/cozy && cp -r firewall ~/.config/cozy/firewall
 container build -t cozy:latest .
-nu toolkit/container-up.nu my-agent ~/path/to/project
-nu toolkit/container-up.nu my-agent ~/project-a ~/shared-libs:ro ~/docs:ro   # several folders
-nu toolkit/sbxw.nu my-agent --runtime container --workdir ~/path/to/project
+nu toolkit/container.nu up my-agent ~/path/to/project
+nu toolkit/container.nu up my-agent ~/project-a ~/shared-libs:ro ~/docs:ro   # several folders
+nu toolkit/container.nu attach my-agent --workdir ~/path/to/project
+nu toolkit/container.nu restart my-agent   # after the `container` runtime itself restarts
 container logs -f cozy-egress   # watch what gets allowed and refused
 ```
 
@@ -254,7 +255,9 @@ The agent lands on a `--internal` (host-only) network with no route out, and the
 
 `container run` on its own sets none of this up: no allowlist, and no `WORKSPACE_DIR` (which only `sbx` injects), so `cozy sandbox-state` and `cozy dev-link` fail. Such a container fails `cozy verify`'s two `egress:` rows, which is the intended signal — there is no cage in front of it. Pass `-e WORKSPACE_DIR=<mounted path>` if you deliberately want an uncaged one.
 
-To change what is reachable, edit `~/.config/cozy/firewall/allowed-domains.txt` and re-run with `--reload-egress`.
+To change what is reachable, edit `~/.config/cozy/firewall/allowed-domains.txt` and re-run `up` with `--reload-egress`.
+
+After `container system stop/start`, an upgrade or a reboot, both containers are stopped rather than gone — the one state `up` cannot recover from. `restart` is for that: it starts the pair, re-proves the cage, and compares the exit address the agent was built with against the one the proxy came back on. `container` has no static-IP flag, so that address can move; when it does, the agent has no way out and must be recreated, which `restart` says in as many words.
 
 #### What this does not cover
 

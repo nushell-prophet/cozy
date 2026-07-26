@@ -50,7 +50,7 @@ services:
   # Digest only, no tag: with both, the tag is ignored and reads as a lie — this
   # carried `:latest` while being frozen. Pinned 2026-07-24, squid 6.13. Frozen
   # also means upstream CVE fixes never arrive; re-pin deliberately.
-  # toolkit/check.nu guards this against toolkit/container-up.nu's copy.
+  # toolkit/check.nu guards this against toolkit/container.nu's copy.
   egress:
     image: ubuntu/squid@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
     networks: [caged, out]
@@ -64,7 +64,7 @@ services:
     # then finds no squid.conf and dies, while the agent comes up fine and the
     # human sees a healthy container with mysteriously dead network. Refusing to
     # create it turns a forgotten `cp -r firewall ~/.config/cozy/firewall` into
-    # an error that names the path. toolkit/container-up.nu already errors on
+    # an error that names the path. toolkit/container.nu already errors on
     # this; the two run paths now agree.
     volumes:
       - type: bind
