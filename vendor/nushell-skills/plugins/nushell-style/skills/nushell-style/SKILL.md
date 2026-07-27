@@ -1,6 +1,6 @@
 ---
 name: nushell-style
-description: This skill should be used when writing, editing, reviewing, or debugging Nushell (.nu) files. Covers opinionated pipeline composition, command choices (where vs filter, match vs if/else, get --optional), formatting conventions (Topiary), type signatures, module structure, testing with nutest (unit tests, snapshot tests, @example attributes, coverage), NUON data format, toolkit.nu patterns, nu --ide-check debugging, the Nushell MCP server, and migration guide for updating scripts across Nushell versions (0.100–0.114: breaking changes, renamed commands, new idioms). Relevant when the user says "write nushell code," "review my .nu file," "nushell style," "nushell best practices," "format nushell," "nushell pipeline," "nutest," "NUON," "nu --ide-check," "nushell MCP," "update nushell script," "nushell breaking changes," or "nushell migration."
+description: This skill should be used when writing, editing, reviewing, or debugging Nushell (.nu) files. Covers opinionated pipeline composition, command choices (where vs filter, match vs if/else, get --optional), formatting conventions (Topiary), type signatures, module structure, testing with nutest (unit tests, snapshot tests, @example attributes, coverage), NUON data format, the fancy-regex flavor behind =~ and --regex flags, toolkit.nu patterns, nu --ide-check debugging, the Nushell MCP server, and migration guide for updating scripts across Nushell versions (0.100–0.114: breaking changes, renamed commands, new idioms). Relevant when the user says "write nushell code," "review my .nu file," "nushell style," "nushell best practices," "format nushell," "nushell pipeline," "nutest," "NUON," "nushell regex," "lookahead," "lookbehind," "backreference," "nu --ide-check," "nushell MCP," "update nushell script," "nushell breaking changes," or "nushell migration."
 ---
 
 # Nushell Code Style Guide
@@ -13,6 +13,7 @@ description: This skill should be used when writing, editing, reviewing, or debu
 | [patterns.md](references/patterns.md) | Pipeline composition, command examples, code structure |
 | [formatting.md](references/formatting.md) | Topiary conventions, spacing, declarations |
 | [debugging.md](references/debugging.md) | `--ide-check` for agents, diagnostic parsing |
+| [regex.md](references/regex.md) | fancy-regex flavor — lookaround, backrefs, where it applies |
 | [nuon.md](references/nuon.md) | NUON format, data serialization, config files |
 | [testing.md](references/testing.md) | nutest framework, snapshots, coverage |
 | [toolkit.md](references/toolkit.md) | toolkit.nu, repo utilities, commit conventions |
@@ -50,6 +51,17 @@ $'($header), changed \(trailing whitespace only\)'   # ✗ tries to run `trailin
 ```
 
 If the string needs both interpolation and literal parens, use `$"..."`.
+
+## Agent Tip: Regex Is fancy-regex, Not Rust `regex`
+
+`=~`, `!~`, `find --regex`, `parse --regex`, `split * --regex` and `str replace --regex` all run on [`fancy-regex`](https://docs.rs/fancy-regex). Lookahead, lookbehind (including variable-length), backreferences, atomic groups and recursion **all work** — don't fall back to a multi-step pipeline because "Rust regex has no lookaround".
+
+```nushell
+$lines | where $it =~ '^(?!\s*#)'                 # ✓ drop comment lines, no `not (...)`
+'a:b:c' | str replace --regex '(?<=a:)b' 'B'      # ✓ => a:B:c
+```
+
+The one exception is `idx search --regex`, which uses the ripgrep engine and silently matches nothing for those constructs. See [regex.md](references/regex.md).
 
 ---
 
@@ -121,6 +133,24 @@ $list | url encode                   # $list | each { url encode }
 
 ### Leading `|`
 Place `|` at start of continuation lines, aligned with `let`.
+
+`|` is the **only** operator that continues a line by itself. `++`, `+`, `and`, `or` and the rest are a parse error when the expression spans lines — leading gives ``Command `++` not found``, trailing gives `Incomplete math expression`. Wrap the whole expression in `( … )`, or rewrite it as a pipeline:
+
+```nushell
+# Fails to parse
+let a = [x y]
+    ++ (if $flag { [z] } else { [] })
+
+# Preferred — a pipeline
+let a = [x y]
+| append (if $flag { [z] } else { [] })
+
+# Also fine — parens make the line break legal
+let a = (
+    [x y]
+    ++ (if $flag { [z] } else { [] })
+)
+```
 
 ### Omit `$in |`
 When body starts with pipeline command (`each`, `where`, `select`), input flows automatically.
