@@ -1,5 +1,12 @@
 # Open an sbx sandbox in a new WezTerm window and attach to its zellij session.
-# The Apple `container` twin of this is `nu toolkit/container.nu attach`.
+# The Apple `container` twin of this is `container attach` in toolkit/container.nu.
+#
+# Needs an interactive nu — the window is a background job, and a job dies with
+# the nu that spawned it, so a one-shot `nu toolkit/sbxw.nu <name>` leaves no
+# window behind:
+#
+#   use toolkit/sbxw.nu
+#   sbxw my-sandbox
 
 use ./wezterm.nu *
 

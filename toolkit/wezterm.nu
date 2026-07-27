@@ -31,6 +31,17 @@ export def attach-window [
 
     let launch = $exec_argv ++ [nu --login --execute $'zellij attach --create ($session)']
 
+    # Why: a `job spawn`ed process dies with the nu that spawned it, so a
+    # one-shot `nu toolkit/container.nu attach NAME` exits before the window is
+    # up and nothing ever appears — silently. Say so here, where the contract
+    # breaks, instead of leaving the caller wondering.
+    if not ($nu.is-interactive or $no_job) {
+        error make {
+            msg: "the WezTerm window is spawned as a background job, and a job dies when the nu that spawned it exits — run as a one-shot script, it would leave no window"
+            help: "run it from an interactive nu: `use toolkit/container.nu; container attach <name>` (or `use toolkit/sbxw.nu; sbxw <name>`). Pass --no-job to run wezterm in the foreground of this shell instead — it blocks until the window closes."
+        }
+    }
+
     let closure = {
         # Why: set the background via --config at window creation rather than the
         # SANDBOX_MODE OSC user-var trick, which applied it only after the shell

@@ -242,10 +242,14 @@ mkdir -p ~/.config/cozy && cp -r firewall ~/.config/cozy/firewall
 container build -t cozy:latest .
 nu toolkit/container.nu up my-agent ~/path/to/project
 nu toolkit/container.nu up my-agent ~/project-a ~/shared-libs:ro ~/docs:ro   # several folders
-nu toolkit/container.nu attach my-agent --workdir ~/path/to/project
 nu toolkit/container.nu restart my-agent   # after the `container` runtime itself restarts
 container logs -f cozy-egress   # watch what gets allowed and refused
+
+use toolkit/container.nu                   # attach needs an interactive nu, see below
+container attach my-agent --workdir ~/path/to/project
 ```
+
+`attach` opens the WezTerm window as a background job, and a nushell job dies with the nu that spawned it — so `nu toolkit/container.nu attach …` would exit before the window is up and no window would appear. Load the module in your REPL instead (the same holds for `toolkit/sbxw.nu` on the sbx path). `--no-job` runs wezterm in the foreground of the current shell, which does work from a script, but blocks it until the window closes.
 
 Several folders can be mounted, spelled the way `sbx run` spells it: each appears inside at its own absolute host path, and `:ro` makes one read-only. The first path is the primary workspace — it is what `WORKSPACE_DIR` points at and where the agent starts. A folder containing this repo is refused unless it is `:ro`, for the reason above: the script and the firewall template are read fresh at the next launch, so an agent that can write them writes its own cage.
 

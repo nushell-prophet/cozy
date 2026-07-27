@@ -14,7 +14,12 @@
 #   nu toolkit/container.nu up my-agent ~/path/to/project
 #   nu toolkit/container.nu up my-agent ~/project-a ~/shared-libs:ro ~/docs:ro
 #   nu toolkit/container.nu restart my-agent
-#   nu toolkit/container.nu attach my-agent --workdir ~/path/to/project
+#
+# `attach` is the exception — it opens the WezTerm window as a background job,
+# which dies with a one-shot `nu <script>`, so it needs an interactive nu:
+#
+#   use toolkit/container.nu
+#   container attach my-agent --workdir ~/path/to/project
 #
 # Why a group per runtime rather than one command per job: everything here is
 # specific to `container` — its flags, its two-address proxy, its lack of a
@@ -452,7 +457,7 @@ export def "main up" [
     assert-caged $name
 
     print ""
-    print $"  attach:  nu toolkit/container.nu attach ($name) --workdir ($ws)"
+    print $"  attach:  use toolkit/container.nu; container attach ($name) --workdir ($ws)"
     print $"  check:   container exec ($name) nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'"
     print $"  refused: container logs -f ($egress_name)"
 }
@@ -521,12 +526,16 @@ export def "main restart" [
     }
 
     print ""
-    print $"  attach:  nu toolkit/container.nu attach ($name)"
+    print $"  attach:  use toolkit/container.nu; container attach ($name)"
     print $"  refused: container logs -f ($egress_name)"
 }
 
 # Open the agent in a new WezTerm window, attached to its zellij session — the
-# `container` twin of `nu toolkit/sbxw.nu`.
+# `container` twin of `toolkit/sbxw.nu`.
+#
+# Unlike `up` and `restart`, this one cannot be run as a script: the window is a
+# background job and a job dies with the nu that spawned it. Run it from an
+# interactive nu instead — `use toolkit/container.nu`, then `container attach`.
 export def "main attach" [
     name: string@"nu-complete container names"
     --config-file: path
@@ -538,8 +547,14 @@ export def "main attach" [
     # Why --cwd: `container` has no notion of a workspace, so an exec starts
     # wherever the image left WORKDIR — pass it when the start directory matters.
     let exec_argv = [container exec -it]
-        ++ (if ($workdir | is-not-empty) { [--cwd $workdir] } else { [] })
-        ++ [$name]
+        | append (if ($workdir | is-not-empty) { [--cwd $workdir] } else { [] })
+        | append $name
 
     attach-window $exec_argv ($zellij_session | default --empty $name) --config-file $config_file --background $background --no-job=$no_job
 }
+
+# Why an alias: `main attach` is the name the script path dispatches on, but a
+# module imports it as `container main attach` — nushell collapses only bare
+# `main` into the module name. Since attach is the one subcommand that has to be
+# called from an imported module, it needs a name that reads well there.
+export alias attach = main attach

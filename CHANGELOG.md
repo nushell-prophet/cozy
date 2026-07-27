@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `container attach` (Apple `container`) works, and the hints printed by `up`/`restart` now show a form that runs. It has to be called from an interactive nu — `use toolkit/container.nu; container attach <name>` — because the WezTerm window is a background job and a job dies with the nu that spawned it; run as `nu toolkit/container.nu attach <name>` it silently opened nothing, and now says so. Its argument list also never built (a leading `++` on a continuation line parses as an external command).
+
 - Debian image: the image no longer sets `HOME`. An `ENV HOME` is image-wide, not per-user, so `docker exec -u root … bash -l` read the agent's own `~/.profile` and `~/.bashrc` as root — the same hole the env-file ownership fix closed, reached without `BASH_ENV`. Both the builder and the runtime take `HOME` from the passwd entry instead.
 - `toolkit/container.nu up` now proves the cage instead of trusting a network name. It accepted any existing `cozy-caged` on a substring match and asserted nothing about `--internal`, so a leftover or hand-made network let the agent out while the script printed green; it now probes from inside the started agent that no address is reachable with the proxy bypassed.
 - `docker compose up` fails loudly when the firewall policy is missing. Docker used to invent `~/.config/cozy/firewall` as an empty root-owned directory, squid crash-looped behind `restart: unless-stopped`, and the agent came up anyway — a healthy-looking container with no network and no explanation.
