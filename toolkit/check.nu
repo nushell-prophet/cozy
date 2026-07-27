@@ -40,10 +40,13 @@ def dockerfile-env []: nothing -> record {
     }
 }
 
+# No `^` anchor: the first export shares its line with the `let env_exports = '`
+# that opens the block, so an anchored pattern silently drops whichever key
+# happens to be first — and a key missing from a source reads as "no drift".
 def bootstrap-env []: nothing -> record {
     let text = open --raw $bootstrap
     $shared_env_keys | reduce --fold {} {|k acc|
-        let m = $text | parse --regex ('(?m)^export ' + $k + '="(?<v>[^"]*)"')
+        let m = $text | parse --regex ('(?m)export[ \t]+' + $k + '="(?<v>[^"]*)"')
         if ($m | is-empty) { $acc } else { $acc | insert $k (norm-env $m.v.0) }
     }
 }

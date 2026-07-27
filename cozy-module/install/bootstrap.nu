@@ -38,6 +38,24 @@ use claude.nu
 # cozy-module/install/bootstrap.nu  →  three dirnames up
 const cozy_root = path self | path dirname | path dirname | path dirname
 
+# The agent's own identity. Step 9 writes it into Claude Code's `env` setting,
+# so it lives in the *agent process*, not in a shell rc — Claude Code exports it
+# into its own environment and every child inherits it: the Bash tool, the
+# nushell MCP server, subagents. Not in /etc/sandbox-persistent.sh because: that
+# file is sourced by every shell in the sandbox, the human's included, so the
+# agent's name overrode the human's own git config the moment they typed `git
+# commit` in a container shell — and it still missed the two places the agent
+# actually works (non-interactive bash needed the BASH_ENV hook to see it; the
+# MCP `nu` is not a shell child at all and never saw it).
+# $HOME is expanded at install time — settings.json values are literal strings.
+const agent_env = {
+    GIT_AUTHOR_NAME: "Claude"
+    GIT_AUTHOR_EMAIL: "claude@anthropic.com"
+    GIT_COMMITTER_NAME: "Claude"
+    GIT_COMMITTER_EMAIL: "claude@anthropic.com"
+    JJ_CONFIG: "$HOME/.config/jj/jj-config-claude-ai.toml"
+}
+
 export def main [
     --force # skip the host-install safety check that refuses to clobber existing user configs
 ] {
@@ -215,6 +233,18 @@ export def main [
     let existing = if ($claude_json | path exists) { open $claude_json } else { {} }
     $existing | upsert externalEditorContext true | save -f $claude_json
 
+    # Give Claude Code its own identity (see $agent_env above). Merged into the
+    # `env` field rather than written over the file: Step 4 already deployed the
+    # dotfiles settings.json here, and merging into the existing `env` leaves any
+    # variable cozy does not own alone.
+    let settings = $nu.home-dir | path join '.claude' 'settings.json'
+    let expanded = $agent_env
+        | items {|k v| {$k: ($v | str replace '$HOME' $nu.home-dir)} }
+        | reduce --fold {} {|it acc| $acc | merge $it }
+    let current = if ($settings | path exists) { open $settings } else { {} }
+    mkdir ($settings | path dirname)
+    $current | upsert env (($current.env? | default {}) | merge $expanded) | save -f $settings
+
     # Stamp: tells check-no-clobber on re-runs that cozy owns these dirs
     # now, so its guard doesn't trip on cozy's own deployed files. Written
     # last so a partial failure leaves no stamp — user has to pass --force
@@ -223,8 +253,8 @@ export def main [
 
     # If setup-docker-system just appended env exports to /etc/sandbox-persistent.sh
     # but the user's interactive shell predates this run, those exports won't be
-    # in their bash env yet — tools like helix, jj, etc. would launch without
-    # HELIX_RUNTIME/JJ_CONFIG/etc. Detect via missing XDG_DATA_HOME (the marker
+    # in their bash env yet — tools like helix would launch without
+    # HELIX_RUNTIME/XDG_*/etc. Detect via missing XDG_DATA_HOME (the marker
     # we baked) and tell them to re-login. env.nu has a fallback so nu itself
     # won't crash, but the broader env still needs the refresh.
     if ('/etc/sandbox-persistent.sh' | path exists) and ($env.XDG_DATA_HOME? | is-empty) {
@@ -335,12 +365,11 @@ def setup-docker-system [] {
     # in-sandbox installs against the base image get the same runtime env
     # cozy:v1 has baked in (XDG_DATA_HOME is what dotfiles' env.nu reads —
     # without it `nu` fails to start with "Cannot find column XDG_DATA_HOME").
-    let env_exports = 'export GIT_AUTHOR_NAME="Claude"
-export GIT_AUTHOR_EMAIL="claude@anthropic.com"
-export GIT_COMMITTER_NAME="Claude"
-export GIT_COMMITTER_EMAIL="claude@anthropic.com"
-export JJ_CONFIG="$HOME/.config/jj/jj-config-claude-ai.toml"
-export XDG_CONFIG_HOME="$HOME/.config"
+    #
+    # Machine env only — everyone in the sandbox gets these, human included.
+    # The agent's identity is not here; it belongs to the agent process, see
+    # $agent_env at the top of this file.
+    let env_exports = 'export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_DATA_HOME="$HOME/.local/share"
 export XDG_CACHE_HOME="$HOME/.cache"
 export HELIX_RUNTIME="/home/linuxbrew/.linuxbrew/opt/helix/libexec/runtime"

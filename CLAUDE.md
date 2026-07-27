@@ -23,7 +23,7 @@ bootstrap.nu (all install logic; every path reaches it via run-install.sh)
 ├── Step 6: append docker-files/global-claude.md to ~/.claude/CLAUDE.md (tool catalog)
 ├── Step 7: broot init
 ├── Step 8: topiary install (binary + grammar via vendored topiary-nushell + config)
-└── Step 9: Claude Code install + register nushell as stdio MCP via `claude mcp add`
+└── Step 9: Claude Code install + register nushell as stdio MCP via `claude mcp add` + merge the agent's identity (agent_env) into ~/.claude/settings.json `env`
 ```
 
 ## Run

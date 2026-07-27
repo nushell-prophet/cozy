@@ -51,7 +51,7 @@ A Nushell MCP server is registered in `~/.claude.json`. It provides `evaluate`, 
 Two caveats:
 
 - **The session persists.** All `evaluate` calls share one long-lived nushell state — variables, `$env`, and loaded modules stay between calls. Handy, but a trap when you edit a module: the old version stays loaded until you re-run `use module.nu` (or `overlay use`) for it. Agents forget this and keep debugging against stale code. A one-shot `nu -c '…'` from Bash starts fresh every time — slower to set up, but straightforward and predictable.
-- **It skips the login environment.** The MCP `nu` is spawned directly, not from a login shell, so it never sources `/etc/sandbox-persistent.sh` — the git identity (`GIT_AUTHOR_*`, `GIT_COMMITTER_*`) and `JJ_CONFIG` are absent there. Real container ENV (`XDG_*`, `HELIX_RUNTIME`, `LANG`) is inherited fine, so the gap is easy to miss. If a command depends on those git/jj vars, run it via `nu -c` from Bash (whose shell sourced the profile) or `bash -lc 'nu -c "…"'`.
+- **It skips the login environment.** The MCP `nu` is spawned directly, not from a login shell, so it never sources `/etc/sandbox-persistent.sh` — anything that lives only in that file is absent there. Real container ENV (`XDG_*`, `HELIX_RUNTIME`, `LANG`) is inherited fine, so the gap is easy to miss. If a command depends on a var only the shell sets, run it via `nu -c` from Bash (whose shell sourced the profile) or `bash -lc 'nu -c "…"'`. Your identity is not affected: `GIT_AUTHOR_*`, `GIT_COMMITTER_*` and `JJ_CONFIG` come from Claude Code's own `env` setting, so every process it spawns — the Bash tool, this MCP server, subagents — has them.
 
 ## Constraints
 

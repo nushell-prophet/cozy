@@ -92,7 +92,7 @@ def expected-dirs []: nothing -> list<string> {
     ]
 }
 
-# Runtime env cozy sets, parsed from the export block bootstrap.nu writes to
+# Machine env cozy sets, parsed from the export block bootstrap.nu writes to
 # /etc/sandbox-persistent.sh — the same values check.nu guards across the
 # Dockerfile and kit. No `^` anchor: the first export shares its line with the
 # `let env_exports = '...` that opens the block. $HOME is expanded the way the
@@ -100,6 +100,21 @@ def expected-dirs []: nothing -> list<string> {
 def expected-envs []: nothing -> record {
     open --raw $bootstrap
     | parse --regex '(?m)export[ \t]+(?<k>\w+)="(?<v>[^"]*)"'
+    | reduce --fold {} {|row acc|
+        $acc | insert $row.k ($row.v | str replace --all '$HOME' $home)
+    }
+}
+
+# The agent's identity, parsed from bootstrap.nu's `agent_env` record — the one
+# cozy value that is deliberately *not* in any shell env, so check-envs above
+# would never see it. Bounded to the record's own lines so the regex can't drift
+# onto some later `key: "value"` in the file.
+def expected-agent-env []: nothing -> record {
+    open --raw $bootstrap
+    | parse --regex '(?s)const agent_env = \{(?<body>.*?)\n\}'
+    | get --optional body.0
+    | default ''
+    | parse --regex '(?m)^\s+(?<k>\w+): "(?<v>[^"]*)"'
     | reduce --fold {} {|row acc|
         $acc | insert $row.k ($row.v | str replace --all '$HOME' $home)
     }
@@ -140,22 +155,23 @@ def check-dirs [run: closure]: nothing -> list {
     }
 }
 
-# Read env from a bare `bash -c`, not this process. Why: the git identity and
-# JJ_CONFIG live only in /etc/sandbox-persistent.sh, which a shell sources but a
-# directly-spawned nu does not — so reading `$env`/`printenv` here false-fails
-# when verify runs under the nushell MCP tool (its nu isn't a shell child).
+# Read env from a bare `bash -c`, not this process. Why: on a base image that
+# bakes no ENV these values live only in /etc/sandbox-persistent.sh, which a
+# shell sources but a directly-spawned nu does not — so reading `$env`/`printenv`
+# here false-fails when verify runs under the nushell MCP tool (its nu isn't a
+# shell child).
 #
 # Not `bash -lc` because: non-interactive and non-login is the strictest of the
 # three bash flavours — the only one reaching neither /etc/profile nor
-# /etc/bash.bashrc, so it passes only when BASH_ENV is wired. It is also the one
-# the agent actually commits from, and a login-shell check hid a real bug: every
-# agent commit in the Debian image was authored `Agent <agent@sandbox>` while
-# these rows stayed green.
+# /etc/bash.bashrc, so it passes only when BASH_ENV is wired. It is also the
+# flavour the agent's Bash tool runs, and a login-shell check hid a real bug once
+# already: every agent commit in the Debian image was authored `Agent
+# <agent@sandbox>` while these rows stayed green.
 #
 # Scrubbed with `env -u` before reading, because a child bash inherits its
-# parent's environment: run from any shell that already has GIT_AUTHOR_NAME —
+# parent's environment: run from any shell that already has XDG_DATA_HOME —
 # every interactive session, `sbx exec -it <name> nu`, `docker compose exec` —
-# and all ten rows passed with BASH_ENV unset and nothing sourcing the block.
+# and all rows passed with BASH_ENV unset and nothing sourcing the block.
 # What comes back now is what the sandbox itself supplies, not what verify was
 # launched with. BASH_ENV is deliberately not scrubbed: it is the wiring under
 # test, not a value under test.
@@ -196,6 +212,35 @@ def check-mcp [run: closure]: nothing -> record {
         ok 'mcp: nushell' 'connected'
     } else {
         fail 'mcp: nushell' $"registered but not connected: ($row)"
+    }
+}
+
+# The agent's identity, checked where it lives: the `env` field of
+# ~/.claude/settings.json, which Claude Code exports into its own process and
+# every child inherits — Bash tool, nushell MCP, subagents.
+#
+# A file check, not an env check, and that is the ceiling of what verify can
+# assert: nothing here runs inside Claude Code, so the effective value is out of
+# reach. `claude -p 'run: git var GIT_AUTHOR_IDENT'` would reach it and costs a
+# model call per row. The gap this leaves is a Claude Code that stops honouring
+# the setting; the gap it closes is the one that actually happened — the
+# identity silently not being deployed.
+def check-claude-env [run: closure]: nothing -> list {
+    let want = expected-agent-env
+    let path = $home | path join .claude settings.json
+    let got = try {
+        (do $run [cat $path]).stdout | from json | get --optional env | default {}
+    } catch { null }
+    if $got == null {
+        return [(fail 'claude env' $"($path) missing or not JSON — bootstrap step 9 did not run")]
+    }
+    $want | items {|name expected|
+        let actual = $got | get --optional $name
+        if $actual == $expected {
+            ok $"claude env: ($name)" $actual
+        } else {
+            fail $"claude env: ($name)" $"expected ($expected), got ($actual | default '<unset>')"
+        }
     }
 }
 
@@ -360,6 +405,7 @@ export def run-checks [run: closure]: nothing -> table {
         ...(check-files $run)
         ...(check-dirs $run)
         ...(check-envs $run)
+        ...(check-claude-env $run)
         (check-mcp $run)
         (check-pbcopy $run)
         (check-bootstrap-parses $run)

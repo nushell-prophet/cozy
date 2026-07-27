@@ -96,9 +96,9 @@ Your commits should say you made them, and the agent's should say the agent made
 | --- | --- | --- |
 | `~/.config/git/config` (XDG) | `Agent <agent@sandbox>` | the fallback — a placeholder so `git commit` works before anything else is set |
 | `~/.gitconfig` (global) | you | every git you run — `nu`, lazygit; overrides the XDG file. jj is separate: it reads `JJ_CONFIG`, not git config |
-| `GIT_AUTHOR_*` / `GIT_COMMITTER_*` env | `Claude <claude@anthropic.com>` | the agent's shell only; env beats every config file |
+| `GIT_AUTHOR_*` / `GIT_COMMITTER_*` env | `Claude <claude@anthropic.com>` | the Claude Code process only; env beats every config file |
 
-The env variables live in `/etc/sandbox-persistent.sh`, which the sandbox sources before every bash invocation — including Claude Code's bash tool, which is how the agent's own commits get attributed to Claude. A `nu` you start yourself never sources it, so your session stays on your identity.
+The top layer lives in the `env` field of `~/.claude/settings.json`, which bootstrap step 9 writes. Claude Code exports it into its own process, so everything it spawns inherits it — the bash tool, the nushell MCP server, subagents. That is how the agent's commits get attributed to Claude, and why nothing you run yourself is: your shells are not children of Claude Code. Attaching it to the agent rather than to a shell rc is deliberate — as a shell export it hit your shells too, and still missed the MCP `nu`, which is no shell's child.
 
 The middle layer is the one you supply. On the Apple `container` path `nu toolkit/container.nu up` reads your host's `git config --global user.name`/`user.email` and forwards them, so a fresh container already knows you — nothing personal is stored in the repo or the image, and it does nothing if you have no global identity set. Under `sbx` there is no forwarding yet; set it once per sandbox:
 
