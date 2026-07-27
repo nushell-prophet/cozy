@@ -243,6 +243,7 @@ container build -t cozy:latest .
 nu toolkit/container.nu up my-agent ~/path/to/project
 nu toolkit/container.nu up my-agent ~/project-a ~/shared-libs:ro ~/docs:ro   # several folders
 nu toolkit/container.nu restart my-agent   # after the `container` runtime itself restarts
+nu toolkit/container.nu reload-egress my-agent   # after editing the allowlist
 container logs -f cozy-egress   # watch what gets allowed and refused
 
 use toolkit/container.nu                   # attach needs an interactive nu, see below
@@ -259,7 +260,7 @@ The agent lands on a `--internal` (host-only) network with no route out, and the
 
 `container run` on its own sets none of this up: no allowlist, and no `WORKSPACE_DIR` (which only `sbx` injects), so `cozy sandbox-state` and `cozy dev-link` fail. Such a container fails `cozy verify`'s two `egress:` rows, which is the intended signal — there is no cage in front of it. Pass `-e WORKSPACE_DIR=<mounted path>` if you deliberately want an uncaged one.
 
-To change what is reachable, edit `~/.config/cozy/firewall/allowed-domains.txt` and re-run `up` with `--reload-egress`. A *running* proxy re-reads the policy in place — `squid -k parse`, then `squid -k reconfigure` — so no container is replaced, the address cannot move, and the agent keeps its exit. The parse step is what makes that safe rather than merely quick: it validates in a separate process and signals only on success, so a list that does not parse leaves the previous one in force. (Signalling squid by hand fails the other way: on a fatal ACL error — an entry that is a subdomain of a wildcard entry is one — it exits mid-reload and takes the proxy with it.) Only a proxy that is *stopped* gets recreated, which is the one case where the address can change; the docker path never had this problem, since there the agent reaches the proxy by the name `egress`.
+To change what is reachable, edit `~/.config/cozy/firewall/allowed-domains.txt` and run `nu toolkit/container.nu reload-egress <name>` — the agent's name is all it needs, since its mounts cannot change and only its baked exit address is at stake. A *running* proxy re-reads the policy in place — `squid -k parse`, then `squid -k reconfigure` — so no container is replaced, the address cannot move, and the agent keeps its exit. The parse step is what makes that safe rather than merely quick: it validates in a separate process and signals only on success, so a list that does not parse leaves the previous one in force. (Signalling squid by hand fails the other way: on a fatal ACL error — an entry that is a subdomain of a wildcard entry is one — it exits mid-reload and takes the proxy with it.) Only a proxy that is *stopped* gets recreated, which is the one case where the address can change; the docker path never had this problem, since there the agent reaches the proxy by the name `egress`.
 
 After `container system stop/start`, an upgrade or a reboot, both containers are stopped rather than gone — the one state `up` cannot recover from. `restart` is for that: it starts the pair, re-proves the cage, and compares the exit address the agent was built with against the one the proxy came back on. `container` has no static-IP flag, so that address can move; when it does, the agent has no way out and must be recreated, which `restart` says in as many words.
 
