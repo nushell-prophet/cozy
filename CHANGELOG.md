@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Gives the VM 8 GB and 6 CPUs (`--memory`, `--cpus` to change): at `container`'s 1 GB default two agents thrash the page cache and burn cores in the kernel without ever being OOM-killed.
 - `nu toolkit/container.nu attach <name>` opens the WezTerm window against an Apple `container`; `--workdir` sets the start directory, which `container` has no workspace notion to supply. `toolkit/sbxw.nu` stays the sbx one. (301c3c9)
 - `nu toolkit/container.nu restart <name>` brings the agent and its proxy back after the `container` runtime restarts — the state `up` cannot recover from. It re-proves the cage and refuses quietly-broken results: an agent whose baked exit address no longer matches the proxy is named as needing a rebuild.
+- `use ./toolkit` reaches the container commands too: `toolkit container up|restart|reload-egress|attach` and `toolkit sbxw`, spelled without the `main` a module import otherwise leaves in the middle (`toolkit vendor check` works for the same reason now). Script mode is unchanged.
+- The `container` commands return a record — agent, state, exit URL, proxy, network — instead of only printing, so the result can be piped and survives the nushell MCP, which does not capture stdout.
 - `nu toolkit/container.nu up` forwards your host `git config --global user.name`/`user.email` into the container, so your own commits there are yours instead of the `Agent <agent@sandbox>` placeholder. The agent still commits as Claude — its `GIT_AUTHOR_*` env overrides config. Nothing is stored: the identity is read on the host at run time. No-ops when you have no global identity; `sbx` has no forwarding yet.
 
 ### Fixed

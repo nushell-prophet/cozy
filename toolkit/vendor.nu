@@ -115,6 +115,11 @@ export def "main check" [--add (-a)] {
     }
 }
 
+# Drops the `main` a module import would otherwise leave in the middle
+# (`toolkit vendor main check`), which is how design/toolkit.md already spells
+# it. Script mode is unaffected: `nu toolkit/vendor.nu check`.
+export alias check = main check
+
 # Commit the freshly vendored files with a standard message. Pathspec-scoped
 # to the touched vendor/ dir(s) so unrelated staged changes stay out of the
 # commit, and a no-op (no diff) just prints instead of failing.

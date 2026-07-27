@@ -25,7 +25,7 @@ export def attach-window [
     --config-file: path
     --background: string@"nu-complete wezterm background" = "000000" # hex without '#'
     --no-job # don't create a background job for the process
-] {
+]: nothing -> any {   # the spawned job's id, so `job kill` can reach it; nothing with --no-job
     let conf = $config_file
         | default ($script_path | path dirname | path join ../vendor/dotfiles/wezterm/wezterm.lua)
 

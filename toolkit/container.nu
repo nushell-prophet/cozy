@@ -77,7 +77,7 @@ def container-status [name: string]: nothing -> string {
     if ($rows | is-empty) { 'absent' } else { $rows | first | get status.state }
 }
 
-def "nu-complete container names" [] {
+def "nu-complete container names" []: nothing -> table<value: string, description: string> {
     # Why --all: stopped containers are the ones `restart` is for, and without it
     # every description reads `running`.
     ^container ls --all --format json | from json
@@ -258,6 +258,21 @@ def egress-address []: nothing -> string {
 
 def proxy-url [ip: string]: nothing -> string { $"http://($ip):($proxy_port)" }
 
+# What every subcommand returns, so the three answer the same question in the
+# same shape. Why return anything when the run already prints: `print` reaches
+# stdout only — it cannot be piped, and the nushell MCP does not capture it, so
+# a caller gets an empty result. toolkit/docs.nu returns its summary for exactly
+# that reason. The prints stay; they narrate a slow build while it runs.
+def summary [name: string state: string ip: string]: nothing -> record {
+    {
+        agent: $name
+        state: $state
+        exit: (proxy-url $ip)
+        proxy: $egress_name
+        network: $caged_network
+    }
+}
+
 # Forward the host's own git identity as COZY_GIT_USER_* so the human's commits
 # inside the container are the human's. The image ships only the
 # `Agent <agent@sandbox>` placeholder, and the agent's GIT_AUTHOR_* env still
@@ -329,7 +344,7 @@ export def "main up" [
     --workdir: path # start directory inside the container (default: the primary workspace)
     --memory: string = '8g' # RAM for the agent VM (Apple `container` defaults to 1g)
     --cpus: int = 6 # CPUs for the agent VM (Apple `container` defaults to 4)
-]: nothing -> nothing {
+]: nothing -> record {
     if ($workspaces | is-empty) {
         error make {msg: "no workspace given — `container.nu up <name> <folder> [more:ro ...]`"}
     }
@@ -433,6 +448,8 @@ export def "main up" [
     print $"  attach:  use toolkit/container.nu; container attach ($name) --workdir ($ws)"
     print $"  check:   container exec ($name) nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'"
     print $"  refused: container logs -f ($egress_name)"
+
+    summary $name running $ip | merge {workspaces: $ws_list}
 }
 
 # Apply an edited allowlist to a container that is already up.
@@ -448,7 +465,7 @@ export def "main up" [
 export def "main reload-egress" [
     name: string@"nu-complete container names" # the agent whose exit must not move
     --policy: path # firewall policy directory (default: ~/.config/cozy/firewall)
-]: nothing -> nothing {
+]: nothing -> record {
     let policy_dir = resolve-policy $policy
     let agent_state = container-status $name
     if $agent_state == 'absent' {
@@ -486,6 +503,8 @@ export def "main reload-egress" [
     } else {
         print $"  (ansi green)Done:(ansi reset) ($name) is ($agent_state) and keeps its exit at ($ip) — the edited allowlist is live for it. Start it: `nu toolkit/container.nu restart ($name)`"
     }
+
+    summary $name $agent_state $ip | merge {policy: $policy_dir}
 }
 
 # Bring the pair back after the runtime itself restarted (`container system
@@ -499,7 +518,7 @@ export def "main reload-egress" [
 # because the proxy it would read it from is not running either.
 export def "main restart" [
     name: string@"nu-complete container names" # the agent container to bring back
-]: nothing -> nothing {
+]: nothing -> record {
     let agent_state = container-status $name
     if $agent_state == 'absent' {
         error make {msg: $"no container named ($name) — nothing to restart. Create it: `nu toolkit/container.nu up ($name) <folder>`"}
@@ -553,6 +572,8 @@ export def "main restart" [
     print ""
     print $"  attach:  use toolkit/container.nu; container attach ($name)"
     print $"  refused: container logs -f ($egress_name)"
+
+    summary $name running $ip
 }
 
 # Open the agent in a new WezTerm window, attached to its zellij session — the
@@ -568,7 +589,7 @@ export def "main attach" [
     --no-job # don't create background job for the proces
     --zellij-session: string = '' # zellij session name to use instead of the container name
     --workdir: path # start directory inside the container
-] {
+]: nothing -> any {   # the window's job id — `job kill` it to close the window
     # Why --cwd: `container` has no notion of a workspace, so an exec starts
     # wherever the image left WORKDIR — pass it when the start directory matters.
     let exec_argv = [container exec -it]
@@ -578,8 +599,12 @@ export def "main attach" [
     attach-window $exec_argv ($zellij_session | default --empty $name) --config-file $config_file --background $background --no-job=$no_job
 }
 
-# Why an alias: `main attach` is the name the script path dispatches on, but a
-# module imports it as `container main attach` — nushell collapses only bare
-# `main` into the module name. Since attach is the one subcommand that has to be
-# called from an imported module, it needs a name that reads well there.
+# `main <sub>` is the name the script path dispatches on (`nu toolkit/container.nu
+# up …`), but a module imports it as `container main up` — nushell collapses only
+# bare `main` into the module name. These aliases drop that `main` for module
+# users, so the same four commands read the same way both ways. attach is not
+# merely nicer for it: it has to be called from an imported module.
+export alias up = main up
+export alias restart = main restart
+export alias reload-egress = main reload-egress
 export alias attach = main attach
