@@ -22,4 +22,10 @@ export def install [] {
     curl -fsSL https://claude.ai/install.sh -o $script
     bash $script
     rm --force $script
+
+    # `-a` for the same reason as above — without it this assert fired on every
+    # build, whatever the installer did.
+    if (which -a claude | where type == external | is-empty) {
+        error make {msg: "the claude installer finished but `claude` is not on PATH — bootstrap Step 9 needs it for `claude mcp add`"}
+    }
 }
