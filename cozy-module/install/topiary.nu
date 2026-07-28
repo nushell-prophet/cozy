@@ -12,7 +12,12 @@ export def main [] { help topiary }
 # Safe to re-run — skips the brew install and the grammar build when already done.
 export def install []: nothing -> nothing {
     # 1. Install topiary binary
-    if (which topiary | is-empty) {
+    # Why `-a` + the external filter: bootstrap.nu does `use topiary.nu`, and
+    # this module's `main` makes `topiary` a custom command in that scope, so
+    # plain `which topiary` was never empty — this branch always reported
+    # "already installed", brew or no brew. Masked so far only because Step 1's
+    # brew list already installs topiary.
+    if (which -a topiary | where type == external | is-empty) {
         print "  Installing topiary via brew..."
         ^brew install topiary
     } else {

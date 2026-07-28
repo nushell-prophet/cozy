@@ -4,7 +4,11 @@ export def main [] { }
 # Skipped when claude is already on PATH — e.g. inside `sbx run claude`,
 # whose base image ships Claude Code pre-installed.
 export def install [] {
-    let external = which claude | where type == external
+    # Why `-a`: bootstrap.nu does `use claude.nu`, and this module's `main`
+    # makes `claude` a custom command in that scope. Plain `which claude`
+    # returns only the first match — that custom command — so the external
+    # filter was always empty and this skip could never fire.
+    let external = which -a claude | where type == external
     if ($external | is-not-empty) {
         print $"claude already installed at ($external | get path.0) — skipping install"
         return
