@@ -43,7 +43,7 @@ Two run paths need host-side orchestration; they are split by runtime rather tha
 - [`toolkit/container.nu`](../toolkit/container.nu) — the Apple `container` path (`up` / `restart` / `reload-egress` / `attach`), i.e. what `compose.yaml` plus `docker compose exec` are for the docker path. `container` has no compose, so the three pieces compose declares are assembled by hand: a host-only network with no way out, a squid dual-homed onto it and the default network, and the agent attached to the caged one only. Same image, same policy directory, same residual risks — see [`firewall.md`](firewall.md). Needs macOS 26+: `container network create` does not exist before it, and without the network there is no cage at all.
 - [`toolkit/sbxw.nu`](../toolkit/sbxw.nu) — the sbx twin of `container attach`: open a sandbox in a new WezTerm window and attach its zellij session. It knows nothing about the cage.
 
-Both need an **interactive** nu (`use toolkit/sbxw.nu`, not `nu toolkit/sbxw.nu`): the window is a background job, and a job dies with the one-shot nu that spawned it. The one thing the two paths genuinely share — opening that window — lives in [`toolkit/wezterm.nu`](../toolkit/wezterm.nu), which both `use`.
+Opening the window needs an **interactive** nu (`use toolkit/sbxw.nu`, not `nu toolkit/sbxw.nu`; same for `container attach`): the window is a background job, and a job dies with the one-shot nu that spawned it. That holds for `sbxw` and `container attach` only — `container up` / `restart` / `reload-egress` run fine as `nu toolkit/container.nu <sub>`. The one thing the two paths genuinely share — opening that window — lives in [`toolkit/wezterm.nu`](../toolkit/wezterm.nu), which both `use`.
 
 ## Local docs
 

@@ -235,7 +235,7 @@ Nothing is decrypted. Squid refuses the `CONNECT` before TLS begins, so a blocke
 
 #### Apple `container`
 
-Apple `container` has no compose, so `toolkit/container.nu` assembles the same three pieces by hand — `up` builds the cage, `restart` brings it back, `attach` opens a window on it. It needs **macOS 26 or later** — `container network create` does not exist before that, and on macOS 15 there is no way to build the cage at all.
+Apple `container` has no compose, so `toolkit/container.nu` assembles the same three pieces by hand — `up` builds the cage, `restart` brings it back, `reload-egress` applies an edited allowlist, `attach` opens a window on it. It needs **macOS 26 or later** — `container network create` does not exist before that, and on macOS 15 there is no way to build the cage at all.
 
 ```
 mkdir -p ~/.config/cozy && cp -r firewall ~/.config/cozy/firewall
