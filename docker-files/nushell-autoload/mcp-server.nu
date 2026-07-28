@@ -1,3 +1,14 @@
+# Raise the MCP output cap from its 10kb default (nu-mcp evaluation.rs:19).
+# Why: over the cap the tool returns *no* output at all — only a note pointing
+# at $history.N — so every long result cost a second round trip, and in the
+# session logs more than half of those were never fetched at all. The Bash tool
+# at least shows the head. Set here, not via `claude mcp add --env`: nu-mcp
+# reads it with `as_filesize`, which takes a real filesize value and refuses a
+# string, so a process env var is silently ignored.
+# Not `0` (unlimited) because: one stray `open big.json` would then push the
+# whole file into the context window. Keep a backstop, just a roomier one.
+$env.NU_MCP_OUTPUT_LIMIT = 64kb
+
 # Ensure nushell MCP server is registered in Claude Code user config.
 # Self-healing: sandbox create may overwrite ~/.claude.json, this restores the MCP entry.
 # Note: MCP servers are read from ~/.claude.json (user scope), NOT ~/.claude/settings.json.
