@@ -1,6 +1,6 @@
 <p align="center"><img src="https://github.com/user-attachments/assets/96b23749-53c4-48dd-a80c-6e0d5567257a" alt="Cozy" width="40%"></p>
 
-<p align="center">A convenient terminal environment for AI sandboxes.</p>
+<h1 align="center">A convenient terminal environment for AI sandboxes.</h1>
 
 Tuning my terminal setup is my unpaid full-time job. Now it's packaged so others can pick it up as inspiration or as a working starting point.
 
