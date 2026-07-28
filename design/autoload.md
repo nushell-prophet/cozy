@@ -12,7 +12,7 @@ covers:                # source paths update-design reconciles this file against
   - docker-files/pbcopy
   - docker-files/logo.ans
   - docker-files/workspace-README.md
-reconciled-at: 0eeb1329e2cc38cd941ba552592ecd09684ff189
+reconciled-at: 6dd20b1779e5df6bb4a2f60d02c1aa7674d2389d
 ---
 
 # cozy autoload & shipped docker-files
@@ -38,7 +38,7 @@ Re-assert git `safe.directory = '*'` on shell start. Self-healing: sandbox creat
 **Code:** [`docker-files/nushell-autoload/git-safe-directory.nu`](../docker-files/nushell-autoload/git-safe-directory.nu)
 
 ### mcp-server.nu
-Ensure the nushell MCP server is registered in Claude Code user config. Self-healing: sandbox create may overwrite `~/.claude.json`, this restores the `mcpServers.nushell` stdio entry (the resolved `nu` path + `--mcp`, matching Step 9).
+Two jobs. First, raise `$env.NU_MCP_OUTPUT_LIMIT` to 64kb from nu-mcp's 10kb default: over the cap the tool returns *no* output at all, only a note pointing at `$history.N`, so every long result cost a second round trip — and in the session logs more than half were never fetched. Set here rather than via `claude mcp add --env` because nu-mcp reads it with `as_filesize`, which refuses a string, so a process env var is silently ignored. Not `0` (unlimited): one stray `open big.json` would then push a whole file into the context window — a roomier backstop, still a backstop. Second, ensure the nushell MCP server is registered in Claude Code user config. Self-healing: sandbox create may overwrite `~/.claude.json`, this restores the `mcpServers.nushell` stdio entry (the resolved `nu` path + `--mcp`, matching Step 9).
 > NOTE: registered in `~/.claude.json` (user scope), NOT `~/.claude/settings.json`.
 **Code:** [`docker-files/nushell-autoload/mcp-server.nu`](../docker-files/nushell-autoload/mcp-server.nu)
 
@@ -55,7 +55,7 @@ Custom completions for external tools — defines the `tte` extern with style-na
 **Code:** [`docker-files/nushell-autoload/my-nu-completions.nu`](../docker-files/nushell-autoload/my-nu-completions.nu) → `export extern tte`
 
 ## global-claude.md
-The tool catalog appended to `~/.claude/CLAUDE.md` by `bootstrap.nu` Step 6. A markdown brief that tells the agent what cozy built around it: available tools (shell, editors, git, search, data/languages, formatting, package managers), where Nushell modules live, a Nushell pitfalls cheatsheet, the registered Nushell MCP server and its two usage caveats (the `evaluate` session persists across calls, so edited modules stay stale until re-`use`d; the MCP `nu` skips the login shell, so anything set only in `/etc/sandbox-persistent.sh` is absent — the agent's own identity is not, it rides Claude Code's `env` setting), sandbox constraints, a note that the code here is agent-written and the agent should keep an eye on it, and a privacy section.
+The tool catalog appended to `~/.claude/CLAUDE.md` by `bootstrap.nu` Step 6. A markdown brief that tells the agent what cozy built around it: available tools (shell, editors, git, search, data/languages, formatting, package managers), where Nushell modules live, a Nushell pitfalls cheatsheet, the registered Nushell MCP server and its two usage caveats (the `evaluate` session persists across calls, so edited modules stay stale until re-`use`d; the MCP `nu` skips the login shell, so anything set only in `/etc/sandbox-persistent.sh` is absent — the agent's own identity is not, it rides Claude Code's `env` setting), git rules for the sandbox (chiefly: never `git add -A`/`git add .`, which stage parked notes and another task's edits), sandbox constraints, a note that the code here is agent-written and the agent should keep an eye on it, and a privacy section.
 **Code:** [`docker-files/global-claude.md`](../docker-files/global-claude.md)
 
 ## pbcopy

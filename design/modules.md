@@ -4,7 +4,7 @@ covers:
   - toolkit/vendor.yml
   - docker-files/nushell-autoload/modules-core.nu
   - docker-files/nushell-autoload/modules-repl.nu
-reconciled-at: 0eeb1329e2cc38cd941ba552592ecd09684ff189
+reconciled-at: 6dd20b1779e5df6bb4a2f60d02c1aa7674d2389d
 ---
 
 # Vendored Nushell modules — why and how they load
