@@ -73,6 +73,14 @@ The kit re-clones cozy and re-runs `bootstrap.nu` on every `sbx run`, so picking
 - Do NOT suggest pushing images or tags to Docker Hub or any registry. All images are local-only.
 - Keep command output visible — don't use quiet/silent flags (`-qq`, `-s`, `--quiet`) in scripts. Users should see what's happening during installation and setup.
 
+## Commit messages
+
+`<type>(<area>): <subject>` — types are `feat`, `fix`, `docs`, `refactor`, `test`, `chore`; the area is the subsystem the change lives in (`container`, `install`, `toolkit`, `verify`, `mcp`, `egress`, `firewall`, `global-claude`, `design`, `readme`). Drop the parens only when no single area owns the change (`fix: the agent's identity belongs to Claude Code, not to a shell`). The script-generated `vendor: update <repo>` is the one prefix that is neither.
+
+Why write it down: the style oscillates. Of the commits since May, 173 use `type(area)`, 98 a bare type, and 150 an ad-hoc area prefix — since June alone those spread over 45 distinct prefixes, most used once, including `fixes from diff review:`, `changelog + todo:`, `rename:` and `path:`. June ran almost entirely on bare types, July swung back to scoped ones. Each session was re-deriving the convention from whatever the last few commits happened to look like.
+
+Body rules come from the global instructions (the user's reasoning, verbatim or closely paraphrased) — this section only fixes the subject line.
+
 ## Changelog
 
 `CHANGELOG.md` targets potential new users (there are no existing users yet). Each entry should answer: "would this matter to someone deciding whether to adopt cozy, or how to use it?"
