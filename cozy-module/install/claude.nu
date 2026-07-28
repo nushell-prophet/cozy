@@ -18,8 +18,4 @@ export def install [] {
     curl -fsSL https://claude.ai/install.sh -o $script
     bash $script
     rm --force $script
-
-    if (which claude | where type == external | is-empty) {
-        error make {msg: "the claude installer finished but `claude` is not on PATH — bootstrap Step 9 needs it for `claude mcp add`"}
-    }
 }
