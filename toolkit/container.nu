@@ -332,7 +332,7 @@ export def main []: nothing -> nothing {
 def resolve-policy [policy: oneof<path, nothing>]: nothing -> path {
     let dir = $policy | default ($nu.home-dir | path join .config cozy firewall) | path expand
     if not ($dir | path exists) {
-        error make {msg: $"no policy at ($dir) — seed it once with `mkdir -p ~/.config/cozy and cp -r firewall ~/.config/cozy/firewall`. Keeping it outside this repo is what makes the allowlist human-managed."}
+        error make {msg: $"no policy at ($dir) — seed it once with `mkdir ~/.config/cozy; cp -r firewall ~/.config/cozy/firewall`. Keeping it outside this repo is what makes the allowlist human-managed."}
     }
     $dir
 }
