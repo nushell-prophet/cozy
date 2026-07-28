@@ -74,7 +74,7 @@ docker run --rm cozy:verify \
   uses https apt sources, so builds work in restricted networks.
 - **The two `egress:` rows fail on this target, by design.** A bare `docker run`
   has no allowlist in front of it — the cage comes from `compose.yaml`, not the
-  image. Expect 2 failures here and read the other 57; to see all 59 pass, bring
+  image. Expect 2 failures here and read the other 60; to see all 62 pass, bring
   the container up with `docker compose up -d` and verify through
   `docker compose exec cozy`.
 - **Boundary:** this validates the shared install logic, NOT sbx-specific wiring
