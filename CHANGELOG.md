@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Debian image: `less` is installed, so paging works. Debian slim ships no pager, and git, git-delta and nu-goodies' `L` all expect one — on the sbx path the Ubuntu template supplied it, so the gap was Debian-only.
 - Debian image: the image no longer sets `HOME`. An `ENV HOME` is image-wide, not per-user, so `docker exec -u root … bash -l` read the agent's own `~/.profile` and `~/.bashrc` as root — the same hole the env-file ownership fix closed, reached without `BASH_ENV`. Both the builder and the runtime take `HOME` from the passwd entry instead.
 - `docker compose up` fails loudly when the firewall policy is missing. Docker used to invent `~/.config/cozy/firewall` as an empty root-owned directory, squid crash-looped behind `restart: unless-stopped`, and the agent came up anyway — a healthy-looking container with no network and no explanation.
 - Both egress allowlists now carry the hosts cozy's own commands need. `cozy install rust|nushell|zellij|polars|nu-plugin-image` died on crates.io after a successful clone, and `cozy docs claude` could not reach the docs site. The sbx kit also named the wrong GitHub host for Homebrew bottles (`objects`, not `pkg-containers`) and was missing the release host `ensure-nu.sh` falls back to.

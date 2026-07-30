@@ -28,11 +28,16 @@ FROM debian:12-slim
 # tree-sitter-nu compile in `topiary install`. All of these ship in the
 # docker/sandbox-templates base but not in debian:12-slim.
 #
-# ripgrep+jq are agent tools the template bundled and slim lacks — kept on apt
-# (not brew) so the change stays local to this image; the shared brew list in
+# ripgrep+jq+less are agent tools the template bundled and slim lacks — kept on
+# apt (not brew) so the change stays local to this image; the shared brew list in
 # bootstrap.nu Step 1 is untouched. bookworm's rg 13 / jq 1.6 are adequate as
 # leaf tools (nushell is cozy's primary data tool); brew would only buy newer
 # versions at the cost of touching every install path.
+#
+# less is the pager everything here assumes: git and git-delta pipe through it
+# (delta's own output is unreadable without a pager), and nu-goodies' `L` runs
+# `less -R`. Debian slim ships no pager at all, so on this image those commands
+# either dump raw to the terminal or fail outright.
 #
 # Rewrite apt sources http://→https:// first — same rationale as bootstrap's
 # Step 0: the sandbox VM refuses egress to :80 but allows :443, so http sources
@@ -50,7 +55,7 @@ RUN set -e; \
     apt-get $apt_opts update; \
     apt-get $apt_opts install -y --no-install-recommends \
         sudo ca-certificates curl git build-essential procps file rsync \
-        ripgrep jq; \
+        ripgrep jq less; \
     rm -rf /var/lib/apt/lists/*
 
 # uid/gid 1000 = the conventional first non-root user. Passwordless sudo is

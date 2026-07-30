@@ -8,7 +8,7 @@ Every install path (docker build, sbx kit, plain host checkout) runs the same bo
 
 ```
 Dockerfile (Debian base — in testing; the standard sbx path uses the template instead)
-├── Base: debian:12-slim + an `agent` user given passwordless sudo only for the build, revoked in the final layer → rootless runtime. ripgrep/jq added via apt. (The sbx path instead runs on docker/sandbox-templates:shell — Ubuntu; git, curl, Python, Node.js, Go, rg, jq, gh.)
+├── Base: debian:12-slim + an `agent` user given passwordless sudo only for the build, revoked in the final layer → rootless runtime. ripgrep/jq/less added via apt. (The sbx path instead runs on docker/sandbox-templates:shell — Ubuntu; git, curl, Python, Node.js, Go, rg, jq, gh.)
 ├── RUN install Homebrew + brew install nushell (cached layers; run-install.sh re-checks, so they're optional for correctness)
 ├── COPY vendor/ → /tmp/vendor/; cozy-module/ + docker-files/ → ~/repos/cozy/
 └── RUN run-install.sh — the shared boot tail: ensure brew (no-op here) → ensure-nu.sh → nu bootstrap.nu
