@@ -189,7 +189,8 @@ A Nushell toolbox for working with Claude Code sessions. Main commands:
 - `claude-nu messages 'regex'` — search user messages; scope is whatever is piped in (`claude-nu sessions --all-projects | claude-nu messages 'regex'` widens to every project), and with no input it reads the whole current project
 - `claude-nu sessions` — parse session files into structured summaries, with selectable columns (`--columns`/`--all-columns`: file ops, tool stats, agents, etc.); this is where session selection lives (`--last`, `--session`, `--all-projects`)
 - `claude-nu export-session` — export session dialogue as markdown; `--to` writes it to files
-- `claude-nu gi` — status of the git-intent protocol in the current repo; `gi enable` seeds it (Canvas style and skills), `gi open <doc>` launches a session bound to that canvas
+- `claude-nu project-move` — retarget Claude's stored state after a project directory moves
+- `claude-nu gi` — status of the git-intent protocol in the current repo; `gi enable` seeds it (Canvas style and skills), `gi import` turns a session's dialogue into a canvas, `gi open <doc>` launches a session bound to that canvas
 - `claude-nu commits` — per-commit Claude-authorship table for a git repo; `--by-month` rolls up Claude's share of commits each month
 - `claude-nu code-authorship` — Claude's share of the lines living in the tree now (via `git blame`)
 
