@@ -14,9 +14,18 @@ export def projects-root []: nothing -> path {
     $env.HOME | path join ".claude" "projects"
 }
 
+# The directory name Claude Code gives a project under ~/.claude/projects: its
+# absolute path with every `/` turned into `-`. Lossy on purpose — a `-` already
+# in the path is indistinguishable from a separator — so the name identifies a
+# directory, never a project. Recovering the real path means reading a session's
+# `cwd` (see `projects`).
+export def encode-project-dir []: path -> string {
+    str replace --all '/' '-'
+}
+
 # Sessions directory for the current project: ~/.claude/projects/<encoded-pwd>
 export def get-sessions-dir []: nothing -> path {
-    projects-root | path join ($env.PWD | path expand | str replace --all '/' '-')
+    projects-root | path join ($env.PWD | path expand | encode-project-dir)
 }
 
 # Project directory name a session file belongs to — the first path segment
@@ -143,6 +152,29 @@ export def top-level-session-files []: nothing -> list<path> {
     discover-session-files $dir | where parent_session_id == null | get path
 }
 
+# Path bytes one rg call may carry. Deliberately far under the smallest cap in
+# play (macOS 1 MB, Linux 2 MB): argv shares that budget with the environment,
+# and a session path is as long as the encoded project path it sits in — a deeply
+# nested workspace makes every path longer at once, which is exactly the case a
+# fixed file count cannot see.
+const RG_ARGV_BUDGET = 262144
+
+# Split paths into batches whose argv bytes stay under `budget`, keeping order.
+# A path longer than the budget on its own still gets a call: one path per batch
+# is the floor, because skipping it would silently lose a session.
+def batch-by-argv-bytes [budget: int]: list<path> -> list<list<path>> {
+    reduce --fold {batches: [] used: 0} {|file acc|
+        # +1: argv charges each entry its bytes plus the terminating NUL
+        let cost = ($file | str length) + 1
+        if ($acc.batches | is-empty) or ($acc.used + $cost) > $budget {
+            {batches: ($acc.batches | append [[$file]]) used: $cost}
+        } else {
+            {batches: ($acc.batches | update (($acc.batches | length) - 1) { append $file }) used: ($acc.used + $cost)}
+        }
+    }
+    | get batches
+}
+
 # Narrow session files to those whose raw JSONL can match `pattern`, keeping the
 # given order. A pre-filter, not the filter: the caller re-applies the real regex
 # to the extracted text, so this only has to avoid parsing files that cannot
@@ -163,13 +195,15 @@ export def rg-filter-session-files [pattern: string]: list<path> -> list<path> {
     let files = $in
     if ($files | is-empty) or (which rg | is-empty) { return $files }
     # Why chunked: the paths travel through argv, so one call over a large enough
-    # corpus dies with a bare "I/O error" (measured: ~12k files still fit, 20k do
-    # not) — a limit the old directory-scoped call never had.
+    # corpus dies with a bare "I/O error" — a limit the old directory-scoped call
+    # never had. The limit is bytes, not files: measured here, 3012 paths are
+    # 383 KB of argv (~127 B each), so the "~12k files fit, 20k do not" boundary
+    # was really 1.5 MB vs 2.5 MB — Linux ARG_MAX (2 MB) exactly.
     # Why RIPGREP_CONFIG_PATH is cleared: a user's rc file (--fixed-strings,
     # --type, --max-filesize) would silently change what the pre-filter can see,
     # and a file it then skips reads back as "you never said that".
     let matched = $files
-        | chunks 5000
+        | batch-by-argv-bytes $RG_ARGV_BUDGET
         | each {|chunk|
             let res = with-env {RIPGREP_CONFIG_PATH: null} {
                 rg --no-ignore --hidden --files-with-matches --regexp $pattern -- ...$chunk | complete

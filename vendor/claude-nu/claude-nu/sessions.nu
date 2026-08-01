@@ -666,6 +666,10 @@ export def export-session [
 # what is returned, not how many rows.
 def write-markdown [dir: path]: [record -> record table -> table] {
     let input = $in
+    # Why before mkdir: a selection that matched nothing wrote nothing, yet still
+    # left the named directory behind. Naming the directory is what asks for the
+    # write — with nothing to write there is nothing to ask for.
+    if ($input | is-empty) { return $input }
     let rows = if ($input | is-record) { [$input] } else { $input }
 
     let rows = $rows
