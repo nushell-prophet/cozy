@@ -3,24 +3,25 @@
 #
 # Apple `container` has no compose, so the three pieces compose declares are
 # assembled here instead: a host-only network with no way out, a squid holding
-# the allowlist dual-homed onto that network and the default one, and the agent
-# attached to the caged network only. Same image, same policy directory, same
-# residual risks as the docker path — see README's "Egress firewall".
+# the allowlist dual-homed onto that network and the default one, and the cozy
+# container attached to the caged network only. Same image, same policy
+# directory, same residual risks as the docker path — see README's "Egress
+# firewall".
 #
 # Requires macOS 26 or later: `container network create` does not exist before
 # it, and on macOS 15 `--network` is an error. Without it there is no cage on
 # this runtime at all, and `cozy verify`'s two `egress:` rows fail by design.
 #
-#   nu toolkit/container.nu up my-agent ~/path/to/project
-#   nu toolkit/container.nu up my-agent ~/project-a ~/shared-libs:ro ~/docs:ro
-#   nu toolkit/container.nu restart my-agent
-#   nu toolkit/container.nu reload-egress my-agent   # after editing the allowlist
+#   nu toolkit/container.nu up my-cozy ~/path/to/project
+#   nu toolkit/container.nu up my-cozy ~/project-a ~/shared-libs:ro ~/docs:ro
+#   nu toolkit/container.nu restart my-cozy
+#   nu toolkit/container.nu reload-egress my-cozy   # after editing the allowlist
 #
 # `attach` is the exception — it opens the WezTerm window as a background job,
 # which dies with a one-shot `nu <script>`, so it needs an interactive nu:
 #
 #   use toolkit/container.nu
-#   container attach my-agent --workdir ~/path/to/project
+#   container attach my-cozy --workdir ~/path/to/project
 #
 # Why a group per runtime rather than one command per job: everything here is
 # specific to `container` — its flags, its two-address proxy, its lack of a
@@ -79,9 +80,27 @@ def container-status [name: string]: nothing -> string {
 
 def "nu-complete container names" []: nothing -> table<value: string, description: string> {
     # Why --all: stopped containers are the ones `restart` is for, and without it
-    # every description reads `running`.
-    ^container ls --all --format json | from json
+    # every description reads `running`. `complete` because a completer that
+    # errors when the runtime is down turns tab into a stack trace — no names is
+    # the right answer then. The proxy is not offered: these commands manage the
+    # cozy container, and running them against the proxy is refused anyway
+    # (reject-proxy-name).
+    let r = ^container ls --all --format json | complete
+    if $r.exit_code != 0 { return [] }
+    $r.stdout | from json
+    | where configuration.id != $egress_name
     | each {|x| {value: $x.configuration.id description: $x.status.state} }
+}
+
+# `cozy-egress` pattern-matches like any container name, but it is the proxy —
+# and the cozy commands are not harmless against it: assert-caged, probing from
+# inside the dual-homed proxy, reaches the internet by design, so restart would
+# stop the proxy over that "leak" and cut the exit of the running cozy
+# container, with a diagnosis blaming the network. Refused by name instead.
+def reject-proxy-name [name: string]: nothing -> nothing {
+    if $name == $egress_name {
+        error make {msg: $"($egress_name) is the egress proxy, not a cozy container. It is managed for you: `up` and `restart` start or recreate it, and `reload-egress <container>` applies an edited allowlist to it."}
+    }
 }
 
 # Why whole tokens and not `str contains`: the substring test also accepted a
@@ -90,30 +109,30 @@ def "nu-complete container names" []: nothing -> table<value: string, descriptio
 # is undocumented (see egress-address), so compare whitespace-separated tokens —
 # that needs no column layout and no key names.
 def caged-network-exists []: nothing -> bool {
-    let names = (^container network list | complete).stdout | split row --regex '\s+' | str trim
+    let names = container-cli [network list] | split row --regex '\s+'
     $caged_network in $names
 }
 
 # `--internal` is the whole enforcement: a host-only network, no route out. The
-# agent sits here alone with the proxy and can reach nothing else.
+# cozy container sits here alone with the proxy and can reach nothing else.
 #
 # An existing network is still only a name. Nothing observable here proves it
 # was created with --internal, and one made by hand or by an older version
-# without it hands the agent a route around the proxy — while this function
-# prints green and the run continues to success. That is why assert-caged
-# probes the finished cage from the agent itself; the property is checked where
-# it can be seen, not assumed here.
+# without it hands the caged container a route around the proxy — while this
+# function prints green and the run continues to success. That is why
+# assert-caged probes the finished cage from the container itself; the property
+# is checked where it can be seen, not assumed here.
 def ensure-network []: nothing -> nothing {
     if (caged-network-exists) {
-        print $"  (ansi green)Network:(ansi reset) ($caged_network) already up — cage probed after the agent starts"
+        print $"  (ansi green)Network:(ansi reset) ($caged_network) already up — cage probed after the container starts"
         return
     }
     container-cli [network create --internal --subnet $caged_subnet $caged_network]
     print $"  (ansi green)Network:(ansi reset) created ($caged_network) ($caged_subnet), host-only"
 }
 
-# Reached with the proxy bypassed, from inside the agent, to prove the cage
-# itself rather than the proxy in front of it. An IP literal, so no DNS is
+# Reached with the proxy bypassed, from inside the cozy container, to prove the
+# cage itself rather than the proxy in front of it. An IP literal, so no DNS is
 # involved and --no-dns can't be mistaken for isolation. Same probe as
 # cozy-module/verify.nu's `egress: no direct route` row, on purpose: that row is
 # the on-demand check a human runs inside a sandbox, this one is the launch-time
@@ -142,7 +161,7 @@ def assert-caged [name: string]: nothing -> nothing {
         return
     }
 
-    # Past this point the agent is running and is not a proven cage, so stop it
+    # Past this point the container is running and is not a proven cage, so stop it
     # before raising. Raising alone left it up with whatever route the probe just
     # found, for as long as the human takes to read the message — the leak the
     # error is about, still open. Stopped, not deleted: `container logs` and
@@ -166,11 +185,11 @@ def assert-caged [name: string]: nothing -> nothing {
 
 # Squid re-reads its whole config on reconfigure — including the files quoted
 # from it, which is what the allowlist is — so an edited policy reaches a
-# *running* proxy without a new container. That is the difference between an
-# edit that simply lands and one that can strand the agent: Apple `container`
-# has no static-IP flag, and the proxy's address is baked into the agent's
-# *_PROXY env at creation, so every recreation is a chance for the agent to lose
-# its exit. This used to stop, delete and re-run the proxy for every edit.
+# *running* proxy without a new container. Recreation no longer strands the
+# cozy container — since the exit moved to a name, its hosts mapping follows the
+# proxy wherever it lands — but in-place still wins: nothing moves, nothing
+# needs re-mapping, and it works the same whether that container is up or
+# stopped. This used to stop, delete and re-run the proxy for every edit.
 #
 # `-k parse` first is the safety, not a nicety. It validates in a separate
 # process and signals only if that succeeds, so a bad list dies in the validator
@@ -204,8 +223,9 @@ def ensure-egress [policy: path reload: bool]: nothing -> nothing {
     # Not running, so there is nothing to reconfigure and a reload needs no
     # special case: a proxy reads the policy at startup anyway. Recreated rather
     # than started, because `run` is where the mount and the two networks are
-    # declared and an existing container may carry older ones. This is the one
-    # path that can move the address; `main reload-egress` compares it afterwards.
+    # declared and an existing container may carry older ones. This path can
+    # move the address; callers re-map the cozy container's hosts line
+    # afterwards (set-egress-hosts).
     if $status != 'absent' { container-cli [delete $egress_name] }
 
     # Dual-homed: `default` is the only way out, the caged network is the only
@@ -236,8 +256,8 @@ def ensure-egress [policy: path reload: bool]: nothing -> nothing {
 
 # Why: Apple `container` has no static-IP flag and its `inspect` schema is
 # undocumented, so the proxy is asked for its own addresses. It is dual homed,
-# so keep the one inside the caged subnet — the only address the agent can
-# reach. Retried because the address appears when the container's VM finishes
+# so keep the one inside the caged subnet — the only address the caged
+# container can reach. Retried because the address appears when the container's VM finishes
 # booting, not when `run -d` returns.
 def egress-address []: nothing -> string {
     let prefix = ($caged_subnet | split row '.' | first 3 | str join '.') + '.'
@@ -256,7 +276,46 @@ def egress-address []: nothing -> string {
     $found | first
 }
 
-def proxy-url [ip: string]: nothing -> string { $"http://($ip):($proxy_port)" }
+def proxy-url [host: string]: nothing -> string { $"http://($host):($proxy_port)" }
+
+# The one mutable link between the cozy container and its exit. Nothing on this
+# network keeps its address across a start (probed 2026-08-02: even the cozy
+# container's own address moved on a plain stop/start), so its *_PROXY env
+# carries the proxy's *name* — the convention compose.yaml already uses with
+# `egress` — and this line maps the name to wherever the proxy is right now.
+# /etc/hosts because a host-only network has no DNS; written as root because the
+# `agent` user has no sudo (`exec --uid 0` works regardless — probed on
+# container CLI 1.1.0). The
+# runtime regenerates the file on every start, so a stale mapping cannot
+# survive — but only starts made by this script write a fresh one. A bare
+# `container start` leaves the name unresolvable (loud: "could not resolve host
+# cozy-egress") until `restart` runs.
+def set-egress-hosts [name: string ip: string]: nothing -> nothing {
+    container-cli [exec --uid 0 $name sh -c $"sed -i '/ ($egress_name)$/d' /etc/hosts; echo '($ip) ($egress_name)' >> /etc/hosts"]
+    print $"  (ansi green)Hosts:(ansi reset) ($egress_name) -> ($ip), mapped inside ($name)"
+}
+
+# Guard for containers created before the exit moved to a name: their env
+# carries a fixed address, which cannot be updated on an existing container, so
+# they cannot follow the proxy. A one-time recreation is the only fix.
+def assert-exit-by-name [name: string]: nothing -> nothing {
+    let r = ^container exec $name printenv HTTPS_PROXY | complete
+    let baked = $r.stdout | str trim
+    # `printenv` on an unset var exits 1 with both streams empty; an exec that
+    # failed outright also has empty stdout but says why on stderr. Tell them
+    # apart, or a broken exec reads as "not created by up". Checked only on the
+    # failure path: successful execs can still carry runtime noise on stderr
+    # (probed: a SIGWINCH complaint on exit 0).
+    if $r.exit_code != 0 and ($r.stderr | str trim | is-not-empty) {
+        error make {msg: $"could not read HTTPS_PROXY from ($name): ($r.stderr | str trim)"}
+    }
+    if ($baked | is-empty) {
+        error make {msg: $"($name) has no HTTPS_PROXY — it was not created by `container.nu up`, so it has no exit at all \(a bare `container run` has no cage; `cozy verify`'s egress: rows fail on it by design)."}
+    }
+    if $baked != (proxy-url $egress_name) {
+        error make {msg: $"($name) was built with the fixed exit ($baked) instead of the name (proxy-url $egress_name) — a baked address cannot be updated, so it cannot follow the proxy. Recreate it once: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>`."}
+    }
+}
 
 # What every subcommand returns, so the three answer the same question in the
 # same shape. Why return anything when the run already prints: `print` reaches
@@ -265,7 +324,7 @@ def proxy-url [ip: string]: nothing -> string { $"http://($ip):($proxy_port)" }
 # that reason. The prints stay; they narrate a slow build while it runs.
 def summary [name: string state: string ip: string]: nothing -> record {
     {
-        agent: $name
+        container: $name
         state: $state
         exit: (proxy-url $ip)
         proxy: $egress_name
@@ -283,7 +342,15 @@ def summary [name: string state: string ip: string]: nothing -> record {
 # address has to live in the repo or the image.
 def host-git-identity []: nothing -> list<string> {
     let id = ['user.name' 'user.email']
-        | each {|k| do { ^git config --global --get $k } | complete | get stdout | str trim }
+        | each {|k|
+            let r = ^git config --global --get $k | complete
+            # Exit 1 is git's "key not set" — the expected miss. Anything else
+            # is a broken config, which must not read as "no identity".
+            if $r.exit_code not-in [0 1] {
+                error make {msg: $"`git config --global --get ($k)` failed \(exit ($r.exit_code)): ($r.stderr | str trim)"}
+            }
+            $r.stdout | str trim
+        }
     # All or nothing — the same rule git-identity.nu enforces on the writing
     # side. Half an identity is worse than none: the other half falls through to
     # the placeholder and commits land as `Someone <agent@sandbox>`, a name that
@@ -310,16 +377,30 @@ def parse-workspace [entry: string]: nothing -> record<path: path, ro: bool> {
     {path: $p ro: $ro}
 }
 
+# Overlap in either direction, both slash-terminated so `cozy-2` never matches
+# `cozy`: a path above the target hands the target over wholesale, and a path
+# *inside* it hands over a piece — mounting cozy/toolkit is mounting this very
+# script.
+def paths-overlap [a: path b: path]: nothing -> bool {
+    let a = (($a | path expand | str trim --right --char '/') + '/')
+    let b = (($b | path expand | str trim --right --char '/') + '/')
+    ($a | str starts-with $b) or ($b | str starts-with $a)
+}
+
 # Why: everything the agent can write is what builds the cage on the next launch
-# — this script and the firewall template — so an agent with the cozy repo in a
-# writable mount writes its own policy. compose.yaml states the same rule for
-# COZY_WORKSPACE but only in a comment; it has already been stepped on, so here
-# it is an error. `:ro` is exempt because it removes exactly the ability the rule
-# is about: reading cozy is fine, editing it is not.
-def reject-writable-cozy [ws: record<path: path, ro: bool>]: nothing -> nothing {
+# — this script, the firewall template, and above all the live policy the proxy
+# re-reads on every reload — so no writable mount may overlap the cozy repo or
+# the policy directory. compose.yaml states the same rule for COZY_WORKSPACE but
+# only in a comment; it has already been stepped on, so here it is an error.
+# `:ro` is exempt because it removes exactly the ability the rule is about:
+# reading is fine, editing is not.
+def reject-writable [ws: record<path: path, ro: bool> policy: path]: nothing -> nothing {
     if $ws.ro { return }
-    if (($cozy_root | path expand) + '/' | str starts-with (($ws.path | str trim --right --char '/') + '/')) {
-        error make {msg: $"workspace ($ws.path) contains the cozy repo — the agent would be able to edit this script and the firewall template, which are read fresh at the next launch. Pick a folder outside it, or mount it read-only as ($ws.path):ro."}
+    if (paths-overlap $ws.path $cozy_root) {
+        error make {msg: $"workspace ($ws.path) overlaps the cozy repo — the agent would be able to edit this script and the firewall template, which are read fresh at the next launch. Pick a folder outside it, or mount it read-only as ($ws.path):ro."}
+    }
+    if (paths-overlap $ws.path $policy) {
+        error make {msg: $"workspace ($ws.path) overlaps the firewall policy ($policy) — the agent would be able to edit its own allowlist, which the proxy re-reads on the next reload. Pick a folder outside it, or mount it read-only as ($ws.path):ro."}
     }
 }
 
@@ -332,48 +413,55 @@ export def main []: nothing -> nothing {
 def resolve-policy [policy: oneof<path, nothing>]: nothing -> path {
     let dir = $policy | default ($nu.home-dir | path join .config cozy firewall) | path expand
     if not ($dir | path exists) {
-        error make {msg: $"no policy at ($dir) — seed it once with `mkdir ~/.config/cozy; cp -r firewall ~/.config/cozy/firewall`. Keeping it outside this repo is what makes the allowlist human-managed."}
+        error make {msg: $"no policy at ($dir) — seed it once with `mkdir ~/.config/cozy; cp -r ($cozy_root)/firewall ~/.config/cozy/firewall`. Keeping it outside this repo is what makes the allowlist human-managed."}
     }
     $dir
 }
 
-# Start a cozy agent container behind a human-managed egress allowlist.
+# Start a cozy container behind a human-managed egress allowlist.
 export def "main up" [
-    name: string # name for the agent container
+    name: string # name for the cozy container
     ...workspaces: string # host folders to mount, each at its own absolute path; the first is WORKSPACE_DIR and the default start dir. Append `:ro` for read-only
     --image: string = 'cozy:latest' # image built by `container build -t cozy:latest .`
     --policy: path # firewall policy directory (default: ~/.config/cozy/firewall)
     --workdir: path # start directory inside the container (default: the primary workspace)
-    --memory: string = '8g' # RAM for the agent VM (Apple `container` defaults to 1g)
-    --cpus: int = 6 # CPUs for the agent VM (Apple `container` defaults to 4)
+    --memory: string = '8g' # RAM for the container VM (Apple `container` defaults to 1g)
+    --cpus: int = 6 # CPUs for the container VM (Apple `container` defaults to 4)
 ]: nothing -> record {
+    reject-proxy-name $name
     if ($workspaces | is-empty) {
         error make {msg: "no workspace given — `container.nu up <name> <folder> [more:ro ...]`"}
     }
     let ws_list = $workspaces | each {|e| parse-workspace $e }
     # Only the first one can be WORKSPACE_DIR: the variable is single-valued and
     # `cozy sandbox-state` writes into it. Same rule as `sbx run`, where the first
-    # path is the primary workspace and the agent starts there.
+    # path is the primary workspace and the session starts there.
     let ws = $ws_list | first | get path
 
     let policy_dir = resolve-policy $policy
 
     # Every mount, not just the primary: an extra folder is as writable as the
-    # first one, so the cozy-repo rule has to cover all of them.
-    for w in $ws_list { reject-writable-cozy $w }
+    # first one, so the overlap rule has to cover all of them.
+    for w in $ws_list { reject-writable $w $policy_dir }
 
-    # Why this is read before anything is touched: the proxy's address is baked
-    # into the agent's env at creation and cannot be changed afterwards, so an
-    # existing agent means nothing here may recreate the proxy. The check used to
-    # sit *below* ensure-egress, which made the reload workflow destructive: it
-    # stopped and deleted the proxy the running agent pointed at, then aborted
-    # here with "a container named X already exists" — leaving that agent with a
-    # dead exit and an error message the user reads as "nothing happened".
+    # `up` creates; an existing name means the user wants restart or
+    # reload-egress, so abort before anything is touched. The check used to sit
+    # *below* ensure-egress, which made the reload workflow destructive: it
+    # stopped and deleted the proxy the running container pointed at (fatal
+    # back when that container held the proxy's address rather than its name),
+    # then aborted here with "a container named X already exists" — an error
+    # the user reads as "nothing happened".
     if (container-status $name) != 'absent' {
         error make {msg: $"a container named ($name) already exists — `nu toolkit/container.nu restart ($name)` brings it back, `nu toolkit/container.nu reload-egress ($name)` applies an edited allowlist to it, or `container stop ($name); container delete ($name)` to rebuild it"}
     }
 
     ensure-network
+    # --policy picks the directory only when the proxy is (re)created — a
+    # running proxy keeps the mount it was created with. Explicitly asked for
+    # and silently ignored must not look the same.
+    if $policy != null and (container-status $egress_name) == 'running' {
+        print $"  (ansi yellow)Policy:(ansi reset) ($egress_name) is already running and keeps the policy directory it was created with — `container stop ($egress_name)` first to have it recreated with ($policy_dir)"
+    }
     ensure-egress $policy_dir false
     let ip = egress-address
     print $"  (ansi green)Exit:(ansi reset) (proxy-url $ip)"
@@ -384,7 +472,11 @@ export def "main up" [
     #
     # The proxy variables are not the enforcement — the missing route is. They
     # only tell clients where the one exit is, so a blocked request gets a clean
-    # 403 instead of hanging. WORKSPACE_DIR has no other source outside sbx, and
+    # 403 instead of hanging. They carry the proxy's *name*, not its address:
+    # env cannot be changed on an existing container, and no address here
+    # survives a start — the name plus a rewritable /etc/hosts line
+    # (set-egress-hosts) is what lets `restart` reconnect the pair instead of
+    # demanding a rebuild. WORKSPACE_DIR has no other source outside sbx, and
     # `cozy sandbox-state` and `cozy dev-link` hard-error without it.
     #
     # Why --memory: Apple `container` gives a VM 1g by default, and one Claude
@@ -425,13 +517,13 @@ export def "main up" [
         -e
         $"WORKSPACE_DIR=($ws)"
         -e
-        $"HTTP_PROXY=(proxy-url $ip)"
+        $"HTTP_PROXY=(proxy-url $egress_name)"
         -e
-        $"HTTPS_PROXY=(proxy-url $ip)"
+        $"HTTPS_PROXY=(proxy-url $egress_name)"
         -e
-        $"http_proxy=(proxy-url $ip)"
+        $"http_proxy=(proxy-url $egress_name)"
         -e
-        $"https_proxy=(proxy-url $ip)"
+        $"https_proxy=(proxy-url $egress_name)"
         -e
         'NO_PROXY=localhost,127.0.0.1,::1'
         ...$git_identity
@@ -443,8 +535,11 @@ export def "main up" [
         infinity
     ]
     let mounted = $ws_list | each {|w| $"($w.path)(if $w.ro { ' (ro)' } else { '' })" } | str join ', '
-    print $"  (ansi green)Agent:(ansi reset) ($name) on ($caged_network), workspace ($mounted)"
+    print $"  (ansi green)Container:(ansi reset) ($name) on ($caged_network), workspace ($mounted)"
+    # The cage first: assert-caged also carries the boot wait, so by the time it
+    # returns the container can take the root exec the mapping needs.
     assert-caged $name
+    set-egress-hosts $name $ip
 
     print ""
     print $"  attach:  use toolkit/container.nu; container attach ($name) --workdir ($ws)"
@@ -461,83 +556,87 @@ export def "main up" [
 # container's mounts cannot be changed, so retyping the folders did nothing and
 # typing a *different* folder said nothing either. Nothing else `up` takes
 # (--image, --memory, --cpus, --workdir) applies to a reload. What is left is the
-# agent's name, and it is needed for one thing only: the proxy's address is baked
-# into that agent's env at creation, so a reload that moved the address has to be
-# caught here.
+# container's name, and it is needed for one thing only: if the reload had to
+# recreate the proxy on a new address, that container's hosts mapping is
+# rewritten here to follow it.
 export def "main reload-egress" [
-    name: string@"nu-complete container names" # the agent whose exit must not move
+    name: string@"nu-complete container names" # the cozy container whose exit mapping is refreshed
     --policy: path # firewall policy directory (default: ~/.config/cozy/firewall)
 ]: nothing -> record {
+    reject-proxy-name $name
     let policy_dir = resolve-policy $policy
-    let agent_state = container-status $name
-    if $agent_state == 'absent' {
-        error make {msg: $"no container named ($name) — nothing to reload for. A new agent reads the current allowlist at startup: `nu toolkit/container.nu up ($name) <folder>`"}
+    let container_state = container-status $name
+    if $container_state == 'absent' {
+        error make {msg: $"no container named ($name) — nothing to reload for. A new container reads the current allowlist at startup: `nu toolkit/container.nu up ($name) <folder>`"}
     }
 
-    ensure-network
-    # Only a proxy that was *not* running gets recreated, and only a recreated
-    # one can move — Apple `container` has no static-IP flag. Capture the address
-    # first; comparing it afterwards is the only way to tell a reload that landed
-    # from one that stranded the agent. An in-place reload always compares equal,
-    # which is the point of preferring it.
-    let old_ip = if (container-status $egress_name) == 'running' { egress-address } else { null }
+    # Not ensure-network: recreating a missing network would leave the existing
+    # container attached to nothing while this command prints "live" — the same
+    # state restart refuses, refused the same way.
+    if not (caged-network-exists) {
+        error make {msg: $"($caged_network) is gone — ($name) has no cage, and a reload cannot re-attach it. Rebuild: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>` recreates the network."}
+    }
+    # Checked before the reload touches anything: a legacy container (fixed
+    # exit) cannot follow a proxy that a recreation may move, and an error
+    # *after* the policy already landed reads as "the reload failed".
+    if $container_state == 'running' { assert-exit-by-name $name }
     ensure-egress $policy_dir true
     let ip = egress-address
     print $"  (ansi green)Exit:(ansi reset) (proxy-url $ip)"
 
-    # old_ip is null when the proxy was not running to be read — which is what
-    # "stop everything, edit the list, re-run" produces. The address the agent
-    # was built with is then unknowable from here, so neither "still the same"
-    # nor "changed" can be claimed. Say so, and name the one place the answer
-    # does exist: the agent's own environment, which `restart` reads for exactly
-    # this reason.
-    if $old_ip == null {
-        error make {msg: $"($egress_name) was not running, so the exit address ($name) was built with could not be read — it may or may not still be ($ip). `nu toolkit/container.nu restart ($name)` starts it and compares the two. If they disagree, recreate the agent \(`container stop ($name); container delete ($name)`, then `up`)."}
-    }
-    if $old_ip != $ip {
-        error make {msg: $"the proxy came back at ($ip), not ($old_ip) — ($name) still points at the old address and now has no way out. Recreate it: `container stop ($name); container delete ($name)`, then `up`."}
-    }
-    # A stopped agent reaches here too: its baked exit is still correct, but
-    # nothing was started. Saying "live" about a container that is not running is
-    # what this used to print.
-    if $agent_state == 'running' {
-        print $"  (ansi green)Done:(ansi reset) ($name) keeps its exit at ($ip) — the edited allowlist is live"
+    if $container_state == 'running' {
+        # Re-asserted even after an in-place reload, where the address did not
+        # move — a no-op then, and one code path instead of two claims.
+        set-egress-hosts $name $ip
+        print $"  (ansi green)Done:(ansi reset) the edited allowlist is live for ($name)"
     } else {
-        print $"  (ansi green)Done:(ansi reset) ($name) is ($agent_state) and keeps its exit at ($ip) — the edited allowlist is live for it. Start it: `nu toolkit/container.nu restart ($name)`"
+        # A stopped container needs no mapping: the runtime regenerates /etc/hosts
+        # at start anyway, and `restart` writes the line right after. Saying
+        # "live" about a container that is not running is what this used to
+        # print.
+        print $"  (ansi green)Done:(ansi reset) ($name) is ($container_state) — the allowlist is live; `nu toolkit/container.nu restart ($name)` starts it and maps its exit"
     }
 
-    summary $name $agent_state $ip | merge {policy: $policy_dir}
+    summary $name $container_state $ip | merge {policy: $policy_dir}
 }
 
 # Bring the pair back after the runtime itself restarted (`container system
 # stop/start`, an upgrade, a reboot), or after you stopped them for the day.
+# Also the fix after a bare `container start <name>`: the runtime regenerates
+# /etc/hosts at start, so the container's exit mapping exists only once restart
+# rewrites it.
 #
 # Why its own subcommand and not `up --restart`: it shares the cage helpers with
 # `up` and none of its build steps — no network to create, no mounts to parse,
 # no run arguments. It also fills the one state `up` cannot recover from, both
-# containers *stopped rather than absent*: a plain `up` aborts on "already
-# exists", and `reload-egress` cannot read the address the agent was built with,
-# because the proxy it would read it from is not running either.
+# containers existing *stopped rather than absent*: a plain `up` aborts on
+# "already exists". restart starts what exists — recreating the proxy if it is
+# gone — and re-maps the container's exit to wherever the proxy came up.
 export def "main restart" [
-    name: string@"nu-complete container names" # the agent container to bring back
+    name: string@"nu-complete container names" # the cozy container to bring back
+    --policy: path # firewall policy directory, read only if the proxy is gone and must be recreated (default: ~/.config/cozy/firewall)
 ]: nothing -> record {
-    let agent_state = container-status $name
-    if $agent_state == 'absent' {
+    reject-proxy-name $name
+    let container_state = container-status $name
+    if $container_state == 'absent' {
         error make {msg: $"no container named ($name) — nothing to restart. Create it: `nu toolkit/container.nu up ($name) <folder>`"}
     }
 
-    # Both of these rebuild instructions delete the agent rather than repair it,
-    # for the same reason: the exit address is baked into its environment at
-    # creation, so an agent whose proxy is gone cannot be pointed at a new one.
+    # The one rebuild instruction left: the container was attached to the
+    # network at creation, and nothing proves a container comes back into a
+    # *recreated* network rather than around it — an unproven cage must not
+    # come back quietly.
     if not (caged-network-exists) {
         error make {msg: $"($caged_network) is gone — ($name) has no cage to come back to. Rebuild both: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>` recreates the network."}
     }
     let egress_state = container-status $egress_name
     if $egress_state == 'absent' {
-        error make {msg: $"($egress_name) is gone, and a new one may land on a different address than ($name) was built with — which cannot be read from a proxy that no longer exists. Rebuild both: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>`."}
-    }
-
-    if $egress_state != 'running' {
+        # A gone proxy used to force rebuilding the cozy container too — its env
+        # held the old address, unreachable and unchangeable. The container
+        # points at the name now, so a fresh proxy on a fresh address is fine:
+        # it is mapped below like any other.
+        ensure-egress (resolve-policy $policy) false
+    } else if $egress_state != 'running' {
         container-cli [start $egress_name]
         print $"  (ansi green)Proxy:(ansi reset) started ($egress_name)"
     } else {
@@ -546,30 +645,25 @@ export def "main restart" [
     let ip = egress-address
     print $"  (ansi green)Exit:(ansi reset) (proxy-url $ip)"
 
-    if $agent_state != 'running' {
+    if $container_state != 'running' {
         container-cli [start $name]
-        print $"  (ansi green)Agent:(ansi reset) started ($name)"
+        print $"  (ansi green)Container:(ansi reset) started ($name)"
     } else {
-        print $"  (ansi green)Agent:(ansi reset) ($name) already running"
+        print $"  (ansi green)Container:(ansi reset) ($name) already running"
     }
 
     # The cage first, the exit second: a cage that came back open is a leak and
-    # assert-caged stops the container over it, while a stale exit only leaves
-    # the agent with no way out. The restart is also where the cage is most
+    # assert-caged stops the container over it, while a missing exit only leaves
+    # the container with no way out. The restart is also where the cage is most
     # worth re-proving — the runtime rebuilt the network, we did not.
     assert-caged $name
 
-    # The one place the address the agent was built with still exists. Apple
-    # `container` has no static-IP flag, so a proxy that just restarted may have
-    # come back somewhere else, and nothing inside the agent would say so: its
-    # requests would simply hang against an address nobody answers.
-    let baked = (^container exec $name printenv HTTPS_PROXY | complete).stdout | str trim
-    if ($baked | is-empty) {
-        error make {msg: $"($name) has no HTTPS_PROXY — it was not created by `container.nu up`, so it has no exit at all \(a bare `container run` has no cage; `cozy verify`'s egress: rows fail on it by design)."}
-    }
-    if $baked != (proxy-url $ip) {
-        error make {msg: $"($name) points at ($baked) but ($egress_name) came back at (proxy-url $ip) — it now has no way out, and the address cannot be changed on an existing container. Recreate it: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>`."}
-    }
+    # Reconnect the exit: wherever the proxy came back, the container's hosts
+    # line follows it. This repair is what restart is for — before the exit
+    # moved to a name, all it could do here was detect the mismatch and demand a
+    # rebuild.
+    assert-exit-by-name $name
+    set-egress-hosts $name $ip
 
     print ""
     print $"  attach:  use toolkit/container.nu; container attach ($name)"
@@ -578,8 +672,8 @@ export def "main restart" [
     summary $name running $ip
 }
 
-# Open the agent in a new WezTerm window, attached to its zellij session — the
-# `container` twin of `toolkit/sbxw.nu`.
+# Open the cozy container in a new WezTerm window, attached to its zellij
+# session — the `container` twin of `toolkit/sbxw.nu`.
 #
 # Unlike `up` and `restart`, this one cannot be run as a script: the window is a
 # background job and a job dies with the nu that spawned it. Run it from an

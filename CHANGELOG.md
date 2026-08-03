@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Docs and `toolkit/container.nu` now say "the cozy container" where they used to say "the agent": cozy is a terminal workspace with an agent inside, not an agent product. The record the `container` commands return renames its `agent` field to `container` accordingly; example names read `my-cozy`.
+
+### Fixed
+
+- `toolkit/container.nu` refuses `cozy-egress` as a container name (and stops offering it in completion): `restart cozy-egress` used to probe the cage from inside the dual-homed proxy, reach the internet by design, stop the proxy over that "leak" — cutting the running cozy container's exit — and blame the network.
+- `up` now rejects a writable workspace that overlaps the cozy repo in *either* direction (a subdirectory like `cozy/toolkit` used to pass, mounting the cage-building script itself) — and one that overlaps the live firewall policy directory, which would let the agent edit its own allowlist.
+
+- The Apple `container` agent now reaches its proxy by the name `cozy-egress` (pinned in its `/etc/hosts`) instead of a baked IP, so `restart` reconnects the pair after the proxy comes back on a new address — and recreates a proxy that is gone entirely (`--policy` names the policy directory) — instead of demanding the agent be rebuilt. Agents created before this change carry a fixed address and need one `container delete` + `up`.
+
 ## [0.4.1] - 2026-08-01
 
 ### Added

@@ -34,6 +34,11 @@ FROM debian:12-slim
 # leaf tools (nushell is cozy's primary data tool); brew would only buy newer
 # versions at the cost of touching every install path.
 #
+# openssh-client is the package that carries `ssh-keygen` — slim ships no ssh
+# client at all, so key generation and any git remote over ssh fail with
+# "command not found". Same apt-not-brew choice as above; it also brings `ssh`,
+# `scp` and `ssh-agent`, which the same work needs anyway.
+#
 # less is the pager everything here assumes: git and git-delta pipe through it
 # (delta's own output is unreadable without a pager), and nu-goodies' `L` runs
 # `less -R`. Debian slim ships no pager at all, so on this image those commands
@@ -55,7 +60,7 @@ RUN set -e; \
     apt-get $apt_opts update; \
     apt-get $apt_opts install -y --no-install-recommends \
         sudo ca-certificates curl git build-essential procps file rsync \
-        ripgrep jq less; \
+        ripgrep jq less openssh-client; \
     rm -rf /var/lib/apt/lists/*
 
 # uid/gid 1000 = the conventional first non-root user. Passwordless sudo is
