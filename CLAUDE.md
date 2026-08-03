@@ -1,6 +1,6 @@
 # cozy
 
-Modern, beginner-friendly terminal environment for AI agents, running inside `sbx` (Docker's standalone sandbox runtime, formerly `docker sandbox`). Tested with Claude Code; other agents can be configured via `sbx`.
+Modern, beginner-friendly terminal workspace where a human and an AI agent work side by side, running inside `sbx` (Docker's standalone sandbox runtime, formerly `docker sandbox`). The agent is a required part of the environment, not its centerpiece. Tested with Claude Code; other agents can be configured via `sbx`.
 
 ## Architecture
 
@@ -42,9 +42,9 @@ sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
 
 A second run path is **in testing**: the `Dockerfile` builds a `debian:12-slim` image for plain `docker run` and Apple `container`. Its point is a rootless runtime — the `agent` has passwordless sudo only during the build, revoked in the final layer — which suits working with valuable data. It runs the same `bootstrap.nu` and passes `cozy verify` (all 62 checks) when launched via `compose.yaml`; a bare `docker run` fails the two `egress:` checks because it has no allowlist in front of it. This is a separate path, not fed to `sbx` (see the registry note above); `sbx` stays primary. Verify a build of it with `verify-cozy docker`.
 
-`compose.yaml` + `firewall/` give that path a human-managed egress allowlist: the agent sits on an `internal: true` network (no default route) whose only neighbour is a squid proxy holding the policy. What keeps the policy human-managed is that it lives at `~/.config/cozy/firewall/`, outside the repo and outside the agent's workspace mount — `firewall/` here is only a template. The `:ro` on the proxy's mount protects the file from squid, not from the agent; don't cite it as the reason. No CA and no TLS interception: squid refuses the `CONNECT`, so blocked requests never leave the client.
+`compose.yaml` + `firewall/` give that path a human-managed egress allowlist: the cozy container sits on an `internal: true` network (no default route) whose only neighbour is a squid proxy holding the policy. What keeps the policy human-managed is that it lives at `~/.config/cozy/firewall/`, outside the repo and outside the agent's workspace mount — `firewall/` here is only a template. The `:ro` on the proxy's mount protects the file from squid, not from the agent; don't cite it as the reason. No CA and no TLS interception: squid refuses the `CONNECT`, so blocked requests never leave the client.
 
-Two documented limits, both real: `internal: true` does not hide the Docker bridge gateway, so host-bound services stay reachable from the agent (a host proxy would bypass the allowlist); and `COZY_WORKSPACE` pointing at this repo would hand the agent `compose.yaml` and the `Dockerfile`, which are re-read on every `up`.
+Two documented limits, both real: `internal: true` does not hide the Docker bridge gateway, so host-bound services stay reachable from inside the container (a host proxy would bypass the allowlist); and `COZY_WORKSPACE` pointing at this repo would hand the agent `compose.yaml` and the `Dockerfile`, which are re-read on every `up`.
 
 The agent name (`claude`, `shell`, etc.) selects which agent process runs inside the sandbox — it is independent of the base image (`docker/sandbox-templates:shell`) the sbx sandbox runs on.
 
