@@ -1,0 +1,9 @@
+{
+  "name": "upstream",
+  "version": "0.1.0",
+  "description": "Third-party skills vendored verbatim from their upstream repos. Not authored here — see each skill's entry in plugins/upstream/SOURCES.md for its origin and the commit it was taken at.",
+  "author": {
+    "name": "maxim-uvarov"
+  },
+  "keywords": ["vendored", "upstream", "third-party"]
+}

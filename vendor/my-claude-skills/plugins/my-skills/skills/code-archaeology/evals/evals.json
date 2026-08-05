@@ -1,0 +1,59 @@
+{
+  "skill_name": "code-archaeology",
+  "note": "Ground truth for each eval was verified against the real repos in the cozy workspace before the prompts were written. These evals assume that workspace. Rewritten twice. Iteration 1 scored 29/30 in both arms; the rewrite for iteration 2 scored 36/36 and was worse, because it was drafted from watching the winning arm and so only checked behaviours already present. It let an answer containing a false claim on the central question score full marks. The lesson, and the shape of this set: assertions must be able to fail, and the ones that separate arms check whether a specific fact was found and whether anything asserted as found is contradicted by the repo — not whether the answer has the right headings.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "vendored-reverted-approach",
+      "cwd": "/Users/user/git/ai-sandbox-dev-container/cozy",
+      "prompt": "работаю в cozy. `hist` из vendor/nu-goodies криво себя ведёт, когда в строке истории нет таймстампа. хочу поставить туда default, чтобы не ломалось. посмотри сначала — это уже трогали или нет?",
+      "expected_output": "The guard was already tried and deliberately reverted. cozy's own log holds only `vendor:` bumps; the reasoning is in the sibling repo ../nu-goodies, in the revert commit f23e9e7 of dd78aba. Recorded reason: `default 0 start_timestamp` treats a symptom and renders as 1970 where an error would have named the real problem; also it never fired, because no start_timestamp is NULL and the 14 rows carrying a literal 0 are handled by `into datetime` anyway. The answer should open by telling the user not to add it.",
+      "assertions": [
+        "The opening paragraph tells the user not to add the default, before any evidence is presented",
+        "Names the upstream revert commit f23e9e7, which exists only in the sibling repo and not anywhere in cozy",
+        "Reports that the guard was added and then reverted, rather than never considered",
+        "Quotes the recorded reason rather than paraphrasing it: the default treats a symptom and renders 1970 where an error would have named the real problem",
+        "Reports that the root cause was afterwards fixed at its source in cozy, by the history-seed commit 140c5e1",
+        "Contains no claim presented as found in the history that the repos contradict — in particular does not assert that the root cause was never chased",
+        "Any claim that the history records nothing on some point names the search that establishes it"
+      ],
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "archive-tag-hop",
+      "cwd": "/Users/user/git/ai-sandbox-dev-container/my-claude-skills",
+      "prompt": "toolkit.nu push копирует в `$dest~`, потом mv на место. три операции там, где хватило бы одного `cp -r`. хочу упростить — есть причина, почему так?",
+      "expected_output": "Yes — the tmp-path swap is deliberate. The full reasoning is in 9f616b1, reachable only through the archive/add-toolkit-nu tag: rm -rf then cp -r was non-atomic, so a cp failure (permissions, disk full) left nothing at $dest even though the old copy was fine seconds earlier. It came out of a nushell-reviewer pass. The trunk commit db41073 keeps only a one-line compressed version. Replacing the three operations with a single `cp -r` is wrong; proposing `rsync -a --delete` instead is a legitimate answer as long as the single-`cp -r` premise is rejected.",
+      "assertions": [
+        "Opens by answering the question — there is a recorded reason — before presenting the evidence",
+        "Names commit 9f616b1 and says it is reachable only through the archive/add-toolkit-nu tag, not from main",
+        "Quotes the recorded reason: rm -rf then cp -r was non-atomic, so a failed cp left nothing at $dest even though the old copy was fine seconds earlier",
+        "Reports that the trunk commit db41073 preserves only a compressed one-line version of that reasoning",
+        "Rejects the user's specific proposal of replacing the tmp-path swap with a single `cp -r`",
+        "The number of filesystem operations it attributes to the current code stays consistent throughout the answer",
+        "Contains no claim presented as found in the history that the repos contradict",
+        "Any claim that the history records nothing on some point names the search that establishes it"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "co-change-coupling",
+      "cwd": "/Users/user/git/ai-sandbox-dev-container/cozy",
+      "prompt": "надо добавить пакет в Dockerfile. что в этом репо обычно приходится править вместе с Dockerfile? не хочу оставить рассинхрон.",
+      "expected_output": "Answer derived from co-change data, not from reading the tree. Across the 30 most recent commits touching the Dockerfile: CHANGELOG.md 16, design/build.md 10, cozy-module/install/bootstrap.nu 9, CLAUDE.md 7, sbx-kit/spec.yaml 5. The window matters: the brew package list moved out of the Dockerfile into bootstrap.nu in 52d0c50 / 118ff3c around 2026-05, so older Dockerfile commits show one-file package adds and are a misleading model.",
+      "assertions": [
+        "Names cozy-module/install/bootstrap.nu as a file that changes together with the Dockerfile",
+        "Names design/build.md as a file that changes together with the Dockerfile",
+        "Derives the coupling from commit history across several commits, not from reading the current tree",
+        "States the window of commits the co-change counts were taken over, and the counts it reports reproduce over that stated window",
+        "Flags that Dockerfile history from before the brew list moved into bootstrap.nu is a misleading model for a package add today",
+        "Accounts for all three recent package-adding commits, including b89aae1 (the Step 0 apt list), not only the two that touched the Dockerfile",
+        "Contains no claim presented as found in the history that the repos contradict",
+        "Any claim that the history records nothing on some point names the search that establishes it"
+      ],
+      "files": []
+    }
+  ]
+}
