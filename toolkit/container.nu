@@ -16,6 +16,7 @@
 #   nu toolkit/container.nu up my-cozy ~/project-a ~/shared-libs:ro ~/docs:ro
 #   nu toolkit/container.nu restart my-cozy
 #   nu toolkit/container.nu reload-egress my-cozy   # after editing the allowlist
+#   nu toolkit/container.nu refresh-egress          # move the pin to upstream's newest
 #
 # `attach` is the exception — it opens the WezTerm window as a background job,
 # which dies with a one-shot `nu <script>`, so it needs an interactive nu:
@@ -69,6 +70,23 @@ const policy_conf = '/etc/squid/policy/squid.conf'
 # `squid-gnutls` and has no `squid` on PATH at all, so the bare name fails with
 # `cannot find executable` — which is what every `-k` call below would hit.
 const squid_bin = '/usr/sbin/squid-gnutls'
+
+# What `refresh-egress` needs to move the pin forward. The pin stays a digest —
+# what changes is that finding the next one costs a command instead of an
+# afternoon.
+const egress_repo = 'ubuntu/squid'
+# `latest` and `edge` are dead: upstream last moved them in Dec 2025, and they
+# still resolve to a squid 6.6 build. The maintained stream is the tags naming
+# both versions, `<squid>-<ubuntu>_edge`, so that is the family to search.
+const egress_tag_pattern = '^\d+\.\d+-\d+\.\d+_edge$'
+# The digest lives in exactly two files and in this one shape, which is what
+# lets one regex rewrite both and `toolkit/check.nu egress-image` keep guarding
+# them against each other.
+const pin_pattern = 'ubuntu/squid@sha256:[0-9a-f]{64}'
+const compose_yaml = ($cozy_root | path join 'compose.yaml')
+const this_file = (path self)
+# A name of its own so nothing here can touch the live proxy, whatever fails.
+const rehearsal_name = 'cozy-egress-rehearsal'
 
 # Why: every `container` call goes through here so an unsupported flag surfaces
 # as the failing command and its stderr. Apple `container` is young and this
@@ -447,7 +465,7 @@ def reject-writable [ws: record<path: path, ro: bool> policy: path]: nothing -> 
 }
 
 export def main []: nothing -> nothing {
-    print "usage: nu toolkit/container.nu <up|restart|reload-egress|attach> ... — `--help` on each"
+    print "usage: nu toolkit/container.nu <up|restart|reload-egress|refresh-egress|attach> ... — `--help` on each"
 }
 
 # `oneof<path, nothing>` because an unset `--policy` flag is null, and a bare
@@ -741,8 +759,142 @@ export def "main attach" [
 # up …`), but a module imports it as `container main up` — nushell collapses only
 # bare `main` into the module name. These aliases drop that `main` for module
 # users, so the same four commands read the same way both ways. attach is not
+# Upstream's newest image in the maintained tag family. Errors rather than
+# returning nothing, because a refresh that quietly found nothing to do looks
+# exactly like one that could not reach the registry.
+def newest-egress-tag []: nothing -> record {
+    let body = try {
+        http get $"https://hub.docker.com/v2/repositories/($egress_repo)/tags?page_size=100&ordering=last_updated"
+    } catch {|e|
+        error make {msg: $"could not reach Docker Hub to look for a newer proxy image: ($e.msg). Nothing was changed — the pin in the repo still names the image you are running."}
+    }
+    # `digest?`: some tags carry none at all. Where it is present it is the
+    # multi-arch index digest, which is the kind the pin is — the per-platform
+    # digests under `images` would never match it.
+    let candidates = $body
+        | get results
+        | select name last_updated digest?
+        | where name =~ $egress_tag_pattern
+        | where digest != null
+        | sort-by last_updated --reverse
+    if ($candidates | is-empty) {
+        error make {msg: $"no tag in ($egress_repo) matched ($egress_tag_pattern) with a digest. Upstream's tag naming has changed, so the search itself has to be re-read before its answer can be trusted — `dotnu embeds-update todo/20260806-212701-egress-image-versions.nu` prints the current list."}
+    }
+    $candidates | first
+}
+
+# Prove a candidate before it is written anywhere: it must come up, take our
+# policy, and answer `-k parse`. Its own name, no networks, so the live proxy
+# keeps running throughout and a candidate that fails costs only the time to
+# find out.
+#
+# The launch shape is deliberately the same one ensure-egress uses. The thing
+# being tested is our invocation against their image: when upstream changed the
+# contract — a rock, `pebble enter`, `squid-gnutls` — the invocation is what
+# broke, and this is where that must surface, rather than in a dead cage at a
+# moment nobody chose.
+def rehearse-egress [image: string policy: path]: nothing -> nothing {
+    ^container stop $rehearsal_name | complete | ignore
+    ^container delete $rehearsal_name | complete | ignore
+
+    container-cli [
+        run
+        -d
+        --name
+        $rehearsal_name
+        -e
+        PEBBLE_VERBOSE=1
+        -v
+        $"($policy):/etc/squid/policy:ro"
+        $image
+        --args
+        squid
+        -f
+        $policy_conf
+        -NYC
+    ]
+
+    mut listening = false
+    for _ in 1..15 {
+        let r = ^container logs $rehearsal_name | complete
+        if (($r.stdout + $r.stderr) | str contains 'listening port') {
+            $listening = true
+            break
+        }
+        sleep 1sec
+    }
+    let parse = ^container exec $rehearsal_name $squid_bin -k parse -f $policy_conf | complete
+    let logs = ^container logs $rehearsal_name | complete
+
+    # Cleaned up before anything is raised: a failed rehearsal must not leave a
+    # container behind for the next run to trip over.
+    ^container stop $rehearsal_name | complete | ignore
+    ^container delete $rehearsal_name | complete | ignore
+
+    if not $listening {
+        error make {msg: $"($image) never reported a listening port. The image's contract has probably changed again — check the launch arguments and the entrypoint before trusting it. The repo still pins ($egress_image), which is untouched.\n\nWhat it logged:\n($logs.stdout | str trim)\n($logs.stderr | str trim)"}
+    }
+    if $parse.exit_code != 0 {
+        error make {msg: $"($image) came up but `($squid_bin) -k parse` failed, so the policy and this squid disagree. The repo still pins ($egress_image), which is untouched.\n\n($parse.stderr | str trim)"}
+    }
+}
+
+# Both files are checked before either is written: a half-applied pin would
+# leave the two run paths enforcing different proxies, which is the one thing
+# `toolkit/check.nu egress-image` exists to prevent.
+def write-egress-pin [digest: string]: nothing -> nothing {
+    let files = [$this_file $compose_yaml]
+    for file in $files {
+        let hits = open --raw $file | lines | where $it =~ $pin_pattern | length
+        if $hits != 1 {
+            error make {msg: $"expected exactly one pinned digest in ($file), found ($hits) — nothing was rewritten. Both run paths must carry the same single literal; fix the file by hand and re-run."}
+        }
+    }
+    for file in $files {
+        open --raw $file | str replace --regex $pin_pattern $"($egress_repo)@($digest)" | save --force $file
+    }
+}
+
+# Move the pin forward: ask upstream what is newest, prove it on a throwaway
+# container, then write it into both files.
+#
+# Why a command and not a floating tag in the image field: compose.yaml cannot
+# compute anything, so a self-updating pin would work on this path only and the
+# two paths would drift — and they must enforce the identical proxy. Keeping the
+# refresh a command keeps one literal in both files, keeps the repo an accurate
+# record of what is running, and puts the moment a new image is adopted where a
+# human is present. That last part is the point: the move to squid 7.2 failed to
+# start at all, and meeting that here is a different thing from meeting it when
+# the cage is needed.
+export def "main refresh-egress" [
+    --policy: path # firewall policy directory used for the rehearsal (default: ~/.config/cozy/firewall)
+]: nothing -> record {
+    let policy_dir = resolve-policy $policy
+    let current = $egress_image | split row '@' | last
+    let newest = newest-egress-tag
+    print $"  (ansi green)Upstream:(ansi reset) newest is ($newest.name), updated ($newest.last_updated)"
+
+    if $newest.digest == $current {
+        print $"  (ansi green)Pin:(ansi reset) already current — nothing to write"
+        return {tag: $newest.name digest: $newest.digest changed: false}
+    }
+
+    print $"  (ansi yellow)Rehearsing:(ansi reset) ($newest.name) as ($rehearsal_name) — ($egress_name) keeps running"
+    rehearse-egress $"($egress_repo)@($newest.digest)" $policy_dir
+    print $"  (ansi green)Rehearsal:(ansi reset) came up, took the policy, answered -k parse"
+
+    write-egress-pin $newest.digest
+    print $"  (ansi green)Pin:(ansi reset) rewritten in compose.yaml and toolkit/container.nu"
+    print ""
+    print $"  review: git diff"
+    print $"  adopt:  container stop ($egress_name); container delete ($egress_name); nu toolkit/container.nu restart <container>"
+
+    {tag: $newest.name digest: $newest.digest changed: true}
+}
+
 # merely nicer for it: it has to be called from an imported module.
 export alias up = main up
 export alias restart = main restart
 export alias reload-egress = main reload-egress
+export alias refresh-egress = main refresh-egress
 export alias attach = main attach
