@@ -25,6 +25,8 @@ Each entry records why the file ships — the self-healing or workaround it exis
 
 Nushell loads autoload scripts alphabetically; they're listed below in that order (`git-global-ignore` → `git-identity` → `git-safe-directory` → `mcp-server` → `modules-core` → `modules-repl` → `my-nu-completions`). The only ordering dependency is `modules-core` before `modules-repl` — alphabetical naming guarantees it, so the REPL-only modules can build on the core overlays.
 
+Cozy is not the only writer of that directory: Step 4's dotfiles deploy lands `br.nu`, `completions.nu`, `hooks-config.nu` and `zzz_ignore_vars.nu` there too, from `vendor/dotfiles/nushell/autoload/`. Only the cozy-owned files are documented below. Note also that nushell reads that one directory and does not recurse into subdirectories of it, and that it `source`s each file rather than `use`-ing it — which is why `completions.nu` is a loader of `use` lines instead of the completion files simply being dropped in (they define `export extern main`, a name that only resolves through `use`).
+
 ### git-global-ignore.nu
 Keep cozy's global gitignore patterns (`.DS_Store`, `Thumbs.db`, `desktop.ini`) active on shell start. Self-healing: `sbx` sets `core.excludesFile = ~/.gitignore_global` in `~/.gitconfig` on every create, which shadows git's XDG default (`~/.config/git/ignore`) where cozy wrote those patterns. git allows one excludesFile and `~/.gitconfig` wins over XDG, so cozy can't reclaim it — the autoload mirrors its canonical `~/.config/git/ignore` into whatever excludesFile resolves to, keeping sbx's `.sbx`. No-ops when excludesFile is unset (plain host reads the XDG default) or nothing is missing.
 **Code:** [`docker-files/nushell-autoload/git-global-ignore.nu`](../docker-files/nushell-autoload/git-global-ignore.nu)
@@ -47,7 +49,7 @@ Resolve `$env.WORKSPACE_DIR` to the in-VM mount path, then overlay the vendored 
 **Code:** [`docker-files/nushell-autoload/modules-core.nu`](../docker-files/nushell-autoload/modules-core.nu) → `def resolve-workspace-mount`
 
 ### modules-repl.nu
-Interactive-only module additions, `use`d on every interactive shell start: claude-nu, the shell completions claude-nu ships (claude/nu/fd/zellij — `zellij` without `*` so its bare `action …` subcommands stay module-prefixed), zellij's todo.nu, nu-cmd-stack (followed by `cmd-stack init`, which registers its keybindings — a bare `use` binds no keys). Split out from the core set so non-interactive `-c` consumers don't load session tools that have no meaning there.
+Interactive-only module additions, `use`d on every interactive shell start: claude-nu, the two completions claude-nu still ships (claude/nu), zellij's todo.nu, nu-cmd-stack (followed by `cmd-stack init`, which registers its keybindings — a bare `use` binds no keys). Split out from the core set so non-interactive `-c` consumers don't load session tools that have no meaning there. The completions for tools claude-nu has nothing to do with (zellij, fd, chafa, sandbox-exec) moved to the dotfiles repo and arrive via its own `completions.nu` autoload; `claude.nu` and `nu.nu` stayed because the first imports four internals of `sessions.nu` for the live session picker and the second is the only one claude-nu's test suite covers.
 **Code:** [`docker-files/nushell-autoload/modules-repl.nu`](../docker-files/nushell-autoload/modules-repl.nu)
 
 ### my-nu-completions.nu
