@@ -45,7 +45,6 @@ export extern main [
     --max-panes: int # Maximum panes on screen
     --new-session-with-layout (-n): string@"nu-complete zellij layouts" # Start new session with layout
     --session (-s): string # Session name
-    --help (-h) # Print help information
     --version (-V) # Print version information
 ]
 
@@ -53,34 +52,28 @@ export extern main [
 
 # Send actions to a specific session
 export extern "action" [
-    --help (-h) # Print help information
 ]
 
 # Clear all buffers for focused pane
 export extern "action clear" [
-    --help (-h) # Print help information
 ]
 
 # Close the focused pane
 export extern "action close-pane" [
-    --help (-h) # Print help information
 ]
 
 # Close the current tab
 export extern "action close-tab" [
-    --help (-h) # Print help information
 ]
 
 # Dump current layout to stdout
 export extern "action dump-layout" [
-    --help (-h) # Print help information
 ]
 
 # Dump the focused pane to a file
 export extern "action dump-screen" [
     path: path # Output file path
     --full (-f) # Dump with full scrollback
-    --help (-h) # Print help information
 ]
 
 # Open file in a new pane with default editor
@@ -96,55 +89,45 @@ export extern "action edit" [
     --width: string # Width (integer or percent)
     --x (-x): string # X coordinate (integer or percent)
     --y (-y): string # Y coordinate (integer or percent)
-    --help (-h) # Print help information
 ]
 
 # Open pane scrollback in default editor
 export extern "action edit-scrollback" [
-    --help (-h) # Print help information
 ]
 
 # Change focus to next pane
 export extern "action focus-next-pane" [
-    --help (-h) # Print help information
 ]
 
 # Change focus to previous pane
 export extern "action focus-previous-pane" [
-    --help (-h) # Print help information
 ]
 
 # Go to next tab
 export extern "action go-to-next-tab" [
-    --help (-h) # Print help information
 ]
 
 # Go to previous tab
 export extern "action go-to-previous-tab" [
-    --help (-h) # Print help information
 ]
 
 # Go to tab by index
 export extern "action go-to-tab" [
     index: int # Tab index (1-based)
-    --help (-h) # Print help information
 ]
 
 # Go to tab by name
 export extern "action go-to-tab-name" [
     name: string # Tab name
     --create (-c) # Create tab if it doesn't exist
-    --help (-h) # Print help information
 ]
 
 # Scroll down half page in focus pane
 export extern "action half-page-scroll-down" [
-    --help (-h) # Print help information
 ]
 
 # Scroll up half page in focus pane
 export extern "action half-page-scroll-up" [
-    --help (-h) # Print help information
 ]
 
 # Launch or focus a plugin
@@ -155,7 +138,6 @@ export extern "action launch-or-focus-plugin" [
     --in-place (-i) # Open in place of current pane
     --move-to-focused-tab (-m) # Move to focused tab
     --skip-plugin-cache (-s) # Skip plugin cache
-    --help (-h) # Print help information
 ]
 
 # Launch a plugin
@@ -165,41 +147,34 @@ export extern "action launch-plugin" [
     --floating (-f) # Open in floating mode
     --in-place (-i) # Open in place of current pane
     --skip-plugin-cache (-s) # Skip plugin cache
-    --help (-h) # Print help information
 ]
 
 # List connected clients
 export extern "action list-clients" [
-    --help (-h) # Print help information
 ]
 
 # Move focus in specified direction
 export extern "action move-focus" [
     direction: string@$directions # Direction to move focus
-    --help (-h) # Print help information
 ]
 
 # Move focus to pane or tab at screen edge
 export extern "action move-focus-or-tab" [
     direction: string@$directions # Direction to move
-    --help (-h) # Print help information
 ]
 
 # Move pane in specified direction
 export extern "action move-pane" [
     direction?: string@$directions # Direction to move pane
-    --help (-h) # Print help information
 ]
 
 # Rotate pane location backwards
 export extern "action move-pane-backwards" [
-    --help (-h) # Print help information
 ]
 
 # Move tab in specified direction
 export extern "action move-tab" [
     direction: string@$directions_horizontal # Direction to move tab
-    --help (-h) # Print help information
 ]
 
 # Open a new pane
@@ -221,7 +196,6 @@ export extern "action new-pane" [
     --width: string # Width (integer or percent)
     --x (-x): string # X coordinate (integer or percent)
     --y (-y): string # Y coordinate (integer or percent)
-    --help (-h) # Print help information
 ]
 
 # Create a new tab
@@ -230,22 +204,18 @@ export extern "action new-tab" [
     --layout (-l): string@"nu-complete zellij layouts" # Layout for new tab
     --layout-dir: path # Layout directory
     --name (-n): string # Tab name
-    --help (-h) # Print help information
 ]
 
 # Switch to next swap layout
 export extern "action next-swap-layout" [
-    --help (-h) # Print help information
 ]
 
 # Scroll down one page in focus pane
 export extern "action page-scroll-down" [
-    --help (-h) # Print help information
 ]
 
 # Scroll up one page in focus pane
 export extern "action page-scroll-up" [
-    --help (-h) # Print help information
 ]
 
 # Send data to plugins via pipe
@@ -261,133 +231,109 @@ export extern "action pipe" [
     --in-place-plugin (-i): string@$bool_options # Launch plugin in-place
     --plugin-cwd (-w): path # Plugin working directory
     --plugin-title (-t): string # Plugin pane title
-    --help (-h) # Print help information
 ]
 
 # Switch to previous swap layout
 export extern "action previous-swap-layout" [
-    --help (-h) # Print help information
 ]
 
 # Query all tab names
 export extern "action query-tab-names" [
-    --help (-h) # Print help information
 ]
 
 # Rename the focused pane
 export extern "action rename-pane" [
     name: string # New pane name
-    --help (-h) # Print help information
 ]
 
 # Rename the current session
 export extern "action rename-session" [
     name: string # New session name
-    --help (-h) # Print help information
 ]
 
 # Rename the focused tab
 export extern "action rename-tab" [
     name: string # New tab name
-    --help (-h) # Print help information
 ]
 
 # Resize focused pane
 export extern "action resize" [
     resize: string@$resize_actions # Resize action
     direction?: string@$directions # Direction to resize
-    --help (-h) # Print help information
 ]
 
 # Scroll down in focus pane
 export extern "action scroll-down" [
-    --help (-h) # Print help information
 ]
 
 # Scroll to bottom in focus pane
 export extern "action scroll-to-bottom" [
-    --help (-h) # Print help information
 ]
 
 # Scroll to top in focus pane
 export extern "action scroll-to-top" [
-    --help (-h) # Print help information
 ]
 
 # Scroll up in focus pane
 export extern "action scroll-up" [
-    --help (-h) # Print help information
 ]
 
 # Stack panes by their IDs
 export extern "action stack-panes" [
     ...pane_ids: string # Pane IDs (terminal_1, plugin_2, or bare int)
-    --help (-h) # Print help information
 ]
 
 # Start or reload a plugin
 export extern "action start-or-reload-plugin" [
     url: string # Plugin URL
     --configuration (-c): string # Plugin configuration
-    --help (-h) # Print help information
 ]
 
 # Switch input mode
 export extern "action switch-mode" [
     mode: string@$input_modes # Input mode
-    --help (-h) # Print help information
 ]
 
 # Toggle sync for all panes in tab
 export extern "action toggle-active-sync-tab" [
-    --help (-h) # Print help information
 ]
 
 # Toggle floating panes visibility
 export extern "action toggle-floating-panes" [
-    --help (-h) # Print help information
 ]
 
 # Toggle fullscreen for focused pane
 export extern "action toggle-fullscreen" [
-    --help (-h) # Print help information
 ]
 
 # Toggle pane between embedded and floating
 export extern "action toggle-pane-embed-or-floating" [
-    --help (-h) # Print help information
 ]
 
 # Toggle pane frames in UI
 export extern "action toggle-pane-frames" [
-    --help (-h) # Print help information
 ]
 
 # Toggle pane pinned state
 export extern "action toggle-pane-pinned" [
-    --help (-h) # Print help information
 ]
 
 # Remove pane name
 export extern "action undo-rename-pane" [
-    --help (-h) # Print help information
 ]
 
 # Remove tab name
 export extern "action undo-rename-tab" [
-    --help (-h) # Print help information
 ]
 
 # Write bytes to terminal
 export extern "action write" [
     ...bytes: int # Bytes to write
-    --help (-h) # Print help information
 ]
 
 # Write characters to terminal
 export extern "action write-chars" [
     chars: string # Characters to write
-    --help (-h) # Print help information
 ]
 
 # Change floating pane coordinates
@@ -398,7 +344,6 @@ export extern "action change-floating-pane-coordinates" [
     --width: string # Width (integer or percent)
     --x (-x): string # X coordinate (integer or percent)
     --y (-y): string # Y coordinate (integer or percent)
-    --help (-h) # Print help information
 ]
 
 # ===== Attach Subcommand =====
@@ -410,29 +355,24 @@ export extern "attach" [
     --create-background (-b) # Create detached session if not exists
     --force-run-commands (-f) # Run commands on resurrect
     --index: int # Session index by creation date
-    --help (-h) # Print help information
 ]
 
 # Options for attach
 export extern "attach options" [
-    --help (-h) # Print help information
 ]
 
 # ===== Convert Commands =====
 
 # Convert configuration format
 export extern "convert-config" [
-    --help (-h) # Print help information
 ]
 
 # Convert layout format
 export extern "convert-layout" [
-    --help (-h) # Print help information
 ]
 
 # Convert theme format
 export extern "convert-theme" [
-    --help (-h) # Print help information
 ]
 
 # ===== Session Management =====
@@ -441,38 +381,32 @@ export extern "convert-theme" [
 export extern "delete-all-sessions" [
     --force (-f) # Kill running sessions first
     --yes (-y) # Skip confirmation
-    --help (-h) # Print help information
 ]
 
 # Delete a specific session
 export extern "delete-session" [
     target_session?: string@"nu-complete zellij sessions" # Session to delete
     --force (-f) # Kill running session first
-    --help (-h) # Print help information
 ]
 
 # Kill all sessions
 export extern "kill-all-sessions" [
     --yes (-y) # Skip confirmation
-    --help (-h) # Print help information
 ]
 
 # Kill a specific session
 export extern "kill-session" [
     target_session?: string@"nu-complete zellij sessions" # Session to kill
-    --help (-h) # Print help information
 ]
 
 # List active sessions
 export extern "list-sessions" [
     --no-formatting (-n) # No formatting (for scripts)
     --short (-s) # Short format
-    --help (-h) # Print help information
 ]
 
 # List existing plugin aliases
 export extern "list-aliases" [
-    --help (-h) # Print help information
 ]
 
 # ===== Edit Subcommand =====
@@ -490,7 +424,6 @@ export extern "edit" [
     --width: string # Width (integer or percent)
     --x (-x): string # X coordinate (integer or percent)
     --y (-y): string # Y coordinate (integer or percent)
-    --help (-h) # Print help information
 ]
 
 # ===== Options Subcommand =====
@@ -533,7 +466,6 @@ export extern "options" [
     --theme-dir: path # Theme directory
     --web-server: string@$bool_options # Start web server
     --web-sharing: string@$web_sharing_values # Web sharing mode
-    --help (-h) # Print help information
 ]
 
 # ===== Pipe Subcommand =====
@@ -545,7 +477,6 @@ export extern "pipe" [
     --args (-a): string # Pipe arguments
     --plugin (-p): string # Plugin URL
     --plugin-configuration (-c): string # Plugin configuration
-    --help (-h) # Print help information
 ]
 
 # ===== Plugin Subcommand =====
@@ -562,7 +493,6 @@ export extern "plugin" [
     --width: string # Width (integer or percent)
     --x (-x): string # X coordinate (integer or percent)
     --y (-y): string # Y coordinate (integer or percent)
-    --help (-h) # Print help information
 ]
 
 # ===== Run Subcommand =====
@@ -583,7 +513,6 @@ export extern "run" [
     --width: string # Width (integer or percent)
     --x (-x): string # X coordinate (integer or percent)
     --y (-y): string # Y coordinate (integer or percent)
-    --help (-h) # Print help information
 ]
 
 # ===== Setup Subcommand =====
@@ -598,7 +527,6 @@ export extern "setup" [
     --dump-swap-layout: string # Dump swap layout
     --generate-auto-start: string@$shells # Auto-start script
     --generate-completion: string@$shells # Shell completion
-    --help (-h) # Print help information
 ]
 
 # ===== Web Subcommand =====
@@ -617,7 +545,6 @@ export extern "web" [
     --port: int # Listen port (default 8082)
     --cert: path # SSL certificate path
     --key: path # SSL key path
-    --help (-h) # Print help information
 ]
 
 # ===== Help Subcommand =====

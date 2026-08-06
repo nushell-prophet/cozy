@@ -98,6 +98,5 @@ export extern main [
     --search-path: path # Search path as alternative to positional arg (repeatable)
     --strip-cwd-prefix: string@"nu-complete fd strip-cwd-prefix" # Control stripping of ./ prefix
     --one-file-system # Do not descend into a different file system
-    --help (-h) # Print help
     --version (-V) # Print version
 ]

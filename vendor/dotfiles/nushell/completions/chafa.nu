@@ -127,7 +127,6 @@ export extern main [
     ...files: path # Image files to display
     --files: path # Read file list from PATH (or "-" for stdin)
     --files0: path # Read NUL-separated file list from PATH
-    --help (-h) # Show help
     --probe: string@"nu-complete chafa probe" # Probe terminal capabilities [auto, on, off, or timeout]
     --version # Show version
     --verbose (-v) # Be verbose
