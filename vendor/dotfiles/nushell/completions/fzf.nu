@@ -253,7 +253,12 @@ export extern main [
     --layout: string@[default reverse reverse-list] # Choose layout
     --margin: string # Screen margin (TRBL | TB,RL | T,RL,B | T,R,B,L)
     --padding: string # Padding inside border
-    --border: string@$border_styles # Draw border around the finder
+    # Why the *-border flags are switches even though their styles are known: fzf takes the style optionally, and no Nushell signature expresses that. Typing them `string@$border_styles` buys a value menu at the price of `ls | fzf --border` becoming a parse error, and breaking the commonest spelling is worse than losing a menu. The styles still complete where fzf requires them, in --style and --preview-window.
+    #
+    # Not `--border?: string@$border_styles` because: the `?` does make every spelling parse, but it leaks into the flag menu — completing `fzf --bor` inserts the literal `--border?`, which then fails to parse at all. It also drops the value menu anyway, so it costs the same and adds a trap.
+    #
+    # The residual cost of the switch, and it is real: `--border=rounded` now fails with "expected bool". `--border rounded` and bare `--border` both work. Same trade for the other optional-value flags here: --multi, --wrap, --gap, --gap-line, --scrollbar, --popup, --tmux, --listen.
+    --border # Draw border around the finder
     --border-label: string # Label to print on the border
     --border-label-pos: string # Position of the border label, COL[:bottom]
 
@@ -286,7 +291,7 @@ export extern main [
     --tabstop: int # Number of spaces for a tab character
     --scrollbar # Scrollbar character(s)
     --no-scrollbar # Hide scrollbar
-    --list-border: string@$border_styles # Draw border around the list section
+    --list-border # Draw border around the list section
     --list-label: string # Label to print on the list border
     --list-label-pos: string # Position of the list label, COL[:bottom]
 
@@ -299,14 +304,14 @@ export extern main [
     --no-separator # Hide info line separator
     --ghost: string # Ghost text to display when the input is empty
     --filepath-word # Make word-wise movements respect path separators
-    --input-border: string@$border_styles # Draw border around the input section
+    --input-border # Draw border around the input section
     --input-label: string # Label to print on the input border
     --input-label-pos: string # Position of the input label, COL[:bottom]
 
     # PREVIEW WINDOW
     --preview: string # Command to preview highlighted line ({})
     --preview-window: string@"nu-complete fzf preview-window" # Preview window layout
-    --preview-border: string@$border_styles # Short for --preview-window=border-STYLE
+    --preview-border # Short for --preview-window=border-STYLE
     --preview-label: string # Label to print on the preview border
     --preview-label-pos: string # Position of the preview label, COL[:bottom]
     --preview-wrap-sign: string # Indicator for wrapped lines in the preview window
@@ -315,14 +320,14 @@ export extern main [
     --header: string # String to print as header
     --header-lines: int # Treat the first N lines of the input as header
     --header-first # Print header before the prompt line
-    --header-border: string@$border_styles # Draw border around the header section
-    --header-lines-border: string@$border_styles # Separate border for --header-lines
+    --header-border # Draw border around the header section
+    --header-lines-border # Separate border for --header-lines
     --header-label: string # Label to print on the header border
     --header-label-pos: string # Position of the header label, COL[:bottom]
 
     # FOOTER
     --footer: string # String to print as footer
-    --footer-border: string@$border_styles # Draw border around the footer section
+    --footer-border # Draw border around the footer section
     --footer-label: string # Label to print on the footer border
     --footer-label-pos: string # Position of the footer label, COL[:bottom]
 
