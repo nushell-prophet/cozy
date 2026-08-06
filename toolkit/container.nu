@@ -255,23 +255,38 @@ def ensure-egress [policy: path reload: bool]: nothing -> nothing {
 }
 
 # Why: Apple `container` has no static-IP flag and its `inspect` schema is
-# undocumented, so the proxy is asked for its own addresses. It is dual homed,
-# so keep the one inside the caged subnet — the only address the caged
-# container can reach. Retried because the address appears when the container's VM finishes
-# booting, not when `run -d` returns.
+# undocumented, so this used to ask the proxy for its own addresses with
+# `exec hostname -I` and keep the one matching the caged subnet. That broke on an
+# image without `hostname` in it: the exec fails, the loop finds nothing, and 15
+# seconds later `restart` dies claiming the proxy never got an address — while
+# the proxy is up and perfectly healthy. A minimal image is not a strange thing
+# to meet here, so asking the container to run a program was the wrong question.
+#
+# The runtime already knows. `container ls --format json` carries
+# `status.networks`, a row per attachment with `network` naming it and
+# `ipv4Address` in CIDR form — so the caged one is selected by name rather than
+# guessed from an address prefix, and the image needs to contain nothing at all.
+# Retried because the address appears when the container's VM finishes booting,
+# not when `run -d` returns.
 def egress-address []: nothing -> string {
-    let prefix = ($caged_subnet | split row '.' | first 3 | str join '.') + '.'
     mut found = []
     for _ in 1..15 {
-        let r = ^container exec $egress_name hostname -I | complete
+        let r = ^container ls --all --format json | complete
         if $r.exit_code == 0 {
-            $found = $r.stdout | split row ' ' | str trim | where {|a| $a | str starts-with $prefix }
+            $found = $r.stdout
+                | from json
+                | where configuration.id == $egress_name
+                | get --optional 0.status.networks
+                | default []
+                | where network == $caged_network
+                | get ipv4Address
+                | each { split row '/' | first }
             if ($found | is-not-empty) { break }
         }
         sleep 1sec
     }
     if ($found | is-empty) {
-        error make {msg: $"($egress_name) never got an address in ($caged_subnet) — check `container logs ($egress_name)` and that it is attached to ($caged_network)"}
+        error make {msg: $"($egress_name) never got an address on ($caged_network) — check `container logs ($egress_name)` and that it is attached to it"}
     }
     $found | first
 }
