@@ -2,7 +2,9 @@
 export def 'parse-frontmatter' [
     file?: path # path to a markdow file. Might be ommited if markdown content is piped in
 ]: [string -> record nothing -> record] {
-    let input = if $file == null { } else { open $file }
+    # Why: since 0.112 a bare `open` on a `.md` path runs `from md` and yields a table,
+    # which `split row` below can't take. `--raw` keeps it a string.
+    let input = if $file == null { } else { open --raw $file }
         | if $in != null { } else {
             error make {msg: 'no path or content of file were provided'}
         }
