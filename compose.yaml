@@ -48,11 +48,19 @@ services:
   # one with internet, so it should not change under us on a `pull`.
   #
   # Digest only, no tag: with both, the tag is ignored and reads as a lie — this
-  # carried `:latest` while being frozen. Pinned 2026-07-24, squid 6.13. Frozen
-  # also means upstream CVE fixes never arrive; re-pin deliberately.
-  # toolkit/check.nu guards this against toolkit/container.nu's copy.
+  # carried `:latest` while being frozen. Pinned 2026-08-06 to `7.2-26.04_edge`
+  # — squid 7.2 on Ubuntu 26.04. `:latest` is not the fresher alternative it
+  # looks like: upstream has not moved it in eight months and it still resolves
+  # to a squid 6.6 `_beta` build. Frozen means upstream CVE fixes never arrive;
+  # re-pin deliberately. toolkit/check.nu guards this against container.nu's copy.
+  #
+  # This image is a rock: its entrypoint is `pebble enter`, and squid is a Pebble
+  # *service* whose command line lives in a layer file. Hence `--args squid`
+  # below — see the command and environment keys. Validate any future candidate
+  # on a throwaway container before it goes near the running cage; the whole
+  # rehearsal is in todo/20260806-221500-rehearse-squid7-proxy.nu.
   egress:
-    image: ubuntu/squid@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
+    image: ubuntu/squid@sha256:739595239b20999cbddcbd48eb56ec3dfa6df360166fa624fd66201d592dcf89
     networks: [caged, out]
     # The whole policy directory, one mount. Not the two files individually:
     # a bind-mounted *file* pins an inode, so an editor that saves atomically
@@ -73,7 +81,17 @@ services:
         read_only: true
         bind:
           create_host_path: false
-    command: ["-f", "/etc/squid/policy/squid.conf", "-NYC"]
+    # `--args squid` addresses these to the Pebble service, not to Pebble. The
+    # layer file declares `command: /usr/local/bin/entrypoint.sh [ -f
+    # /etc/squid/squid.conf -NYC ]`, and the brackets are Pebble's *default*
+    # arguments — `--args` replaces them. Without it, Pebble's own flag parser
+    # takes `-f` and dies with `unknown flag 'f'`, so the proxy never comes up.
+    command: ["--args", "squid", "-f", "/etc/squid/policy/squid.conf", "-NYC"]
+    # Pebble does not forward a service's output to its own stdout unless told
+    # to, so `docker compose logs -f egress` showed Pebble's lines and nothing
+    # from squid — silencing the refusal log the human manages the allowlist by.
+    environment:
+      PEBBLE_VERBOSE: "1"
     security_opt: [no-new-privileges:true]
     # The directory can exist and still be empty or half-copied, which the mount
     # cannot catch. `test -f` is the same precondition, checked from inside, and

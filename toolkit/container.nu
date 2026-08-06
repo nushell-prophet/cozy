@@ -48,15 +48,27 @@ const egress_name = 'cozy-egress'
 # literals are guarded against each other by `nu toolkit/check.nu egress-image`.
 #
 # Digest only, no tag: a tag next to a digest is ignored, so the `:latest` this
-# carried read as a lie. Pinned 2026-07-24, squid 6.13. Frozen also means
-# upstream CVE fixes never arrive; re-pin deliberately.
-const egress_image = 'ubuntu/squid@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029'
+# carried read as a lie. Pinned 2026-08-06 to `7.2-26.04_edge` — squid 7.2 on
+# Ubuntu 26.04. `:latest` is not the fresher alternative it looks like: upstream
+# has not moved it in eight months and it still resolves to a squid 6.6 `_beta`
+# build. Frozen means upstream CVE fixes never arrive; re-pin deliberately.
+#
+# This image is a rock — entrypoint `pebble enter`, squid supervised as a Pebble
+# service — which is why the run arguments below carry `--args squid` and the
+# binary named further down is not `squid`. Validate any future candidate on a
+# throwaway container before it goes near the running cage; the rehearsal that
+# proved this one is todo/20260806-221500-rehearse-squid7-proxy.nu.
+const egress_image = 'ubuntu/squid@sha256:739595239b20999cbddcbd48eb56ec3dfa6df360166fa624fd66201d592dcf89'
 const proxy_port = 3128
 # The config path inside the proxy, shared by the run arguments and the reload.
 # One literal because `squid -k` has to be pointed at the same file the running
 # instance was started with: given another one it validates that instead, and
 # reports success about a policy nobody is enforcing.
 const policy_conf = '/etc/squid/policy/squid.conf'
+# The binary, by absolute path. Not `squid`: this rock ships it as
+# `squid-gnutls` and has no `squid` on PATH at all, so the bare name fails with
+# `cannot find executable` — which is what every `-k` call below would hit.
+const squid_bin = '/usr/sbin/squid-gnutls'
 
 # Why: every `container` call goes through here so an unsupported flag surfaces
 # as the failing command and its stderr. Apple `container` is young and this
@@ -197,15 +209,17 @@ def assert-caged [name: string]: nothing -> nothing {
 # hand (`kill -HUP 1`) has the opposite failure: squid exits mid-reconfigure on
 # a fatal ACL error — an entry that is a subdomain of a wildcard entry is one —
 # which takes the proxy down and forces exactly the recreate this avoids. `-k`
-# also finds squid through its pid file instead of assuming it is PID 1, true of
-# this image's entrypoint but not of the rock-based successor.
+# also finds squid through its pid file instead of assuming it is PID 1 — which
+# is what keeps this working now that the image is a rock and Pebble, not squid,
+# is process 1. Verified against it: `-k reconfigure` exits 0 and the log shows
+# `Reconfiguring Squid Cache (version 7.2)` followed by a re-read of the policy.
 #
 # What a running proxy will NOT pick up is a different `--policy` directory: the
 # mount is fixed at creation, so only a recreated proxy can change which host
 # folder it reads. Hence the message names the mount, not the host path.
 def reload-policy []: nothing -> nothing {
-    container-cli [exec $egress_name squid -k parse -f $policy_conf]
-    container-cli [exec $egress_name squid -k reconfigure -f $policy_conf]
+    container-cli [exec $egress_name $squid_bin -k parse -f $policy_conf]
+    container-cli [exec $egress_name $squid_bin -k reconfigure -f $policy_conf]
     print $"  (ansi green)Proxy:(ansi reset) ($egress_name) re-read its policy mount in place — same address, no restart"
 }
 
@@ -235,6 +249,15 @@ def ensure-egress [policy: path reload: bool]: nothing -> nothing {
     # The whole policy directory, one mount — not the two files individually. A
     # bind-mounted *file* pins an inode, so an editor that saves atomically
     # leaves the proxy reading the old copy and the edit silently never applies.
+    #
+    # PEBBLE_VERBOSE, and `--args squid` before the squid arguments, are both the
+    # rock's doing. Pebble owns the command line: the layer file declares
+    # `command: /usr/local/bin/entrypoint.sh [ -f /etc/squid/squid.conf -NYC ]`,
+    # where the brackets are *default* arguments that `--args <service>` replaces
+    # — without it Pebble's own parser takes `-f` and dies with `unknown flag
+    # 'f'`. And Pebble keeps a service's output to itself unless asked, so
+    # without PEBBLE_VERBOSE `container logs` carries Pebble's lines and nothing
+    # from squid, which silences the refusal log the allowlist is managed by.
     container-cli [
         run
         -d
@@ -244,9 +267,13 @@ def ensure-egress [policy: path reload: bool]: nothing -> nothing {
         default
         --network
         $caged_network
+        -e
+        PEBBLE_VERBOSE=1
         -v
         $"($policy):/etc/squid/policy:ro"
         $egress_image
+        --args
+        squid
         -f
         $policy_conf
         -NYC
