@@ -149,6 +149,9 @@ export def main [
 [core]
 	fsync = all
 	fsyncMethod = fsync
+	pager = delta
+[interactive]
+	diffFilter = delta --color-only
 ' | save -f ($git_xdg | path join 'config')
     # Global ignore, git's XDG-default path. Read directly when core.excludesFile
     # is unset (Dockerfile / host path); under sbx — which sets excludesFile and
