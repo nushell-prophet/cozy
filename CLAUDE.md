@@ -4,27 +4,9 @@ Modern, beginner-friendly terminal workspace where a human and an AI agent work 
 
 ## Architecture
 
-Every install path (docker build, sbx kit, plain host checkout) runs the same boot tail, `cozy-module/install/run-install.sh`: ensure brew → `ensure-nu.sh` (install nu, check that it can load bootstrap.nu, pin on syntax drift) → `nu bootstrap.nu`. All install logic lives in `cozy-module/install/bootstrap.nu`; the Dockerfile cache-primes brew + nushell, COPYs repo bits, and calls the shared script — plus, on its Debian base, it creates the `agent` user with build-time-only sudo and wires the login-shell env/PATH (things the sbx template supplies for free).
+Every install path (docker build, sbx kit, plain host checkout) runs the same boot tail, `cozy-module/install/run-install.sh`: ensure brew → `ensure-nu.sh` → `nu bootstrap.nu`, whose steps 0–9 hold all the install logic.
 
-```
-Dockerfile (Debian base — in testing; the standard sbx path uses the template instead)
-├── Base: debian:12-slim + an `agent` user given passwordless sudo only for the build, revoked in the final layer → rootless runtime. ripgrep/jq/less added via apt. (The sbx path instead runs on docker/sandbox-templates:shell — Ubuntu; git, curl, Python, Node.js, Go, rg, jq, gh.)
-├── RUN install Homebrew + brew install nushell (cached layers; run-install.sh re-checks, so they're optional for correctness)
-├── COPY vendor/ → /tmp/vendor/; cozy-module/ + docker-files/ → ~/repos/cozy/
-└── RUN run-install.sh — the shared boot tail: ensure brew (no-op here) → ensure-nu.sh → nu bootstrap.nu
-
-bootstrap.nu (all install logic; every path reaches it via run-install.sh)
-├── Step 0: setup-docker-system (gated on /etc/sandbox-persistent.sh or /.dockerenv) — apt sources → https, apt deps, runtime env exports (pbcopy shim installs separately, on every Linux)
-├── Step 1: brew install the tool set (nushell again, fzf, helix, lazygit, zellij, broot, git-delta, visidata, bat, topiary, fd, jj, git-lfs)
-├── Step 2: XDG git config (~/.config/git/{config,ignore})
-├── Step 3: populate ~/repos/ from /tmp/vendor (docker) or cozy_root/vendor (host); modules: nu-goodies, dotnu, numd, claude-nu, nu-cmd-stack, nu-kv, nutest, topiary-nushell, dotfiles, my-claude-skills, nushell-skills
-├── Step 3.5: copy docker-files/nushell-autoload/*.nu → ~/.config/nushell/autoload/ (visidata config ships via dotfiles in Steps 4–5)
-├── Steps 4–5: dotfiles deploy via `toolkit push-to-machine --docker`; install Claude skills via `toolkit install-skills --all`
-├── Step 6: append docker-files/global-claude.md to ~/.claude/CLAUDE.md (tool catalog)
-├── Step 7: broot init
-├── Step 8: topiary install (binary + grammar via vendored topiary-nushell + config)
-└── Step 9: Claude Code install + register nushell as stdio MCP via `claude mcp add` + merge the agent's identity (agent_env) into ~/.claude/settings.json `env`
-```
+The build order and the reason behind each step live in `design/README.md` (the map) and `design/build.md` (the spine — both entry points, the shared boot tail, then every step). The code they describe is `Dockerfile` + `cozy-module/install/bootstrap.nu`.
 
 ## Run
 
@@ -49,16 +31,6 @@ Two documented limits, both real: `internal: true` does not hide the Docker brid
 The agent name (`claude`, `shell`, etc.) selects which agent process runs inside the sandbox — it is independent of the base image (`docker/sandbox-templates:shell`) the sbx sandbox runs on.
 
 Requires Docker Desktop 4.58+ on macOS or Windows.
-
-## Sandbox Management
-
-```sh
-sbx ls
-sbx exec -it <name> nu        # shell into sandbox with nushell
-sbx exec -it -w /home/agent <name> nu  # start from home dir
-sbx stop <name>
-sbx rm <name>
-```
 
 ## Local Docs
 
