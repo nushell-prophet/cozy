@@ -9,9 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `nu toolkit/container.nu refresh-egress` moves the proxy pin to upstream's newest maintained image: it resolves the newest `<squid>-<ubuntu>_edge` tag, rehearses it on a throwaway container (must boot, take the policy, pass `-k parse`), then rewrites the digest in `compose.yaml` and `toolkit/container.nu` together. Nothing is written if the rehearsal fails, and the running proxy is never touched — adopting the result is the usual delete-and-`restart`.
+
+- The egress proxy moves to squid 7.2 on Ubuntu 26.04 (`7.2-26.04_edge`), from a squid 6.6 build that upstream's `:latest` had not moved in eight months. That image is a rock, so both run paths now address squid as a Pebble service — `--args squid`, the binary `/usr/sbin/squid-gnutls`, and `PEBBLE_VERBOSE=1` so `logs` still shows what the allowlist refused. `firewall/squid.conf` is unchanged and an allowlist edit is still an in-place reload. (1fb647d, 095b957)
+
 - Docs and `toolkit/container.nu` now say "the cozy container" where they used to say "the agent": cozy is a terminal workspace with an agent inside, not an agent product. The record the `container` commands return renames its `agent` field to `container` accordingly; example names read `my-cozy`.
 
 ### Fixed
+
+- `toolkit/container.nu` reads the proxy's address from the runtime (`container ls`'s `status.networks`) instead of running `hostname -I` inside it, so a minimal proxy image no longer makes `restart` fail with "never got an address" about a proxy that is up and serving. (095b957)
 
 - `toolkit/container.nu` refuses `cozy-egress` as a container name (and stops offering it in completion): `restart cozy-egress` used to probe the cage from inside the dual-homed proxy, reach the internet by design, stop the proxy over that "leak" — cutting the running cozy container's exit — and blame the network.
 - `up` now rejects a writable workspace that overlaps the cozy repo in *either* direction (a subdirectory like `cozy/toolkit` used to pass, mounting the cage-building script itself) — and one that overlaps the live firewall policy directory, which would let the agent edit its own allowlist.
