@@ -52,7 +52,7 @@ The user rarely writes code or commits directly — you do. The user's explanati
 
 ### Park off-topic findings
 
-While working you'll often spot real drift, latent bugs, or improvements that don't belong to the current task. Don't fix them inline — that breaks atomic, on-scope work — and don't rely on mentioning them in chat, where they're lost once the session ends. Write each as its own file under the project's `todo/` directory (create it if the project uses that convention; otherwise ask where such notes should live), named distinctively (`<yyyyMMdd-HHmmss>-<short-slug>.md`), with the originating Claude session UUID in the frontmatter (`session: <uuid>`) so the finding can be traced back to its full context, stating the problem and a proposed fix. Leave these files **uncommitted**: they're notes to the user, not part of the change, and the distinct name keeps them out of an unrelated `git add`. Note in your reply what you parked and where.
+While working you'll often spot real drift, latent bugs, or improvements that don't belong to the current task. Don't fix them inline — that breaks atomic, on-scope work — and don't rely on mentioning them in chat, where they're lost once the session ends. Write each as its own file under the project's `todo/` directory (create it if the project uses that convention; otherwise ask where such notes should live), named distinctively (`<yyyyMMdd-HHmmss>-<short-slug>.md`), with the originating Claude session UUID in the frontmatter (`origin_session: <uuid>` — not `session:`, which a gi canvas claims for the session it is bound to and rewrites in place) so the finding can be traced back to its full context, stating the problem and a proposed fix. Leave these files **uncommitted**: they're notes to the user, not part of the change, and the distinct name keeps them out of an unrelated `git add`. Note in your reply what you parked and where.
 
 ### Inline Comments
 
@@ -99,3 +99,9 @@ Your default is verbose; "be brief" alone does not counteract training. Violate 
 - **Don't list non-findings.** "I checked X and found nothing", "no conflicts elsewhere", "no other references" — absence is the default, report only presence.
 
 **Reconciling with Intent Preservation:** the mandatory commit body is not a loophole for bloat. Include the user's reasoning (paraphrased or verbatim), not your elaboration of it. 1–3 sentences usually suffices; a single line when the trigger is clear and no new reasoning exists.
+
+## Nushell
+
+### Pitfalls cheatsheet
+
+- A command name is prose: **letters, digits, spaces and hyphens only**. A name is data other tools put back into source code — nutest re-emits every test name as a bare command call inside generated Nushell, so the parser reads every character. One apostrophe in `def "the signer's endorsement"` fails **every** test in the file with `nu::parser::unexpected_eof`, pointing at generated code that names nothing you wrote. Also fatal: `` ` `` `"` `(` `)` `[` `]` `|` `#`, unbalanced `{`. English wants the apostrophe, so rephrase: `X's Y` → `the Y of X`, contractions spelled out. Never embed a code fragment or literal in a name either (`def "a record {a: 1} round-trips"`) — it happens to parse, but it repeats the body and reads as syntax where a reader expects a sentence.
