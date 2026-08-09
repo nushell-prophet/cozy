@@ -59,6 +59,10 @@ network:
     - release-assets.githubusercontent.com
     - objects.githubusercontent.com
     - github-cloud.githubusercontent.com
+    # Codeberg (Forgejo), for git over https. Exact host only — a second
+    # codeberg host, if one turns out to be on the path, gets added when it
+    # fails.
+    - codeberg.org
     # `cozy install rust | nushell | zellij | polars | nu-plugin-image` build
     # from source: rustup's installer, the toolchain, and the crates registry.
     - sh.rustup.rs

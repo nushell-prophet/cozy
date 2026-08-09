@@ -44,6 +44,11 @@ release-assets.githubusercontent.com
 objects.githubusercontent.com
 github-cloud.githubusercontent.com
 
+# Codeberg (Forgejo), for git over https. Exact host only — if a clone stalls on
+# a second codeberg host (release attachments, LFS), squid's 403 names it and it
+# gets added then.
+codeberg.org
+
 # `cozy install rust | nushell | zellij | polars | nu-plugin-image` build from
 # source: rustup's installer, the toolchain it downloads, and the crates the
 # cargo builds pull. Without these the clone succeeds and the build dies on
