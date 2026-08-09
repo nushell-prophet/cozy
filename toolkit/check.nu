@@ -20,8 +20,29 @@ const container_nu = ($cozy_root | path join toolkit container.nu)
 # guard turns silent drift into a loud failure instead.
 const shared_env_keys = [XDG_CONFIG_HOME XDG_DATA_HOME XDG_CACHE_HOME HELIX_RUNTIME LANG]
 
+# Keys that only two of the three sources carry: the Dockerfile ENV and the kit
+# spec. They are deliberately absent from bootstrap.nu's block — that block is
+# sourced by every login shell in the sandbox, and TERM belongs to the terminal
+# that connected, not to a file. HOME is the container's, not something a login
+# rc should assert. But Dockerfile and kit must still agree with each other, and
+# nothing checked them at all: a TERM_PROGRAM changed in one place and not the
+# other is exactly the silent drift the block above exists to catch.
+#
+# Not HOME, though the audit that prompted this listed it: the Dockerfile omits
+# it on purpose (an ENV is image-wide, so `ENV HOME=/home/agent` would hand a
+# root exec the agent's home — see the comment at Dockerfile:101). Both sides
+# derive it from the passwd entry instead, and only the kit has to spell it out.
+const paired_env_keys = [TERM COLORTERM TERM_PROGRAM HOMEBREW_NO_ASK HOMEBREW_NO_AUTO_UPDATE]
+
 # The PATH prefix the Dockerfile prepends (before its `${PATH}`) — sbx-kit/spec.yaml
 # has no ${PATH} to expand, so it must start with this exact prefix.
+#
+# Prefix only, deliberately: the Dockerfile's tail *is* `${PATH}`, whatever the
+# base image happens to set, and no file in this repo says what that expands to.
+# Comparing full tails would mean hardcoding a second guess at the base image's
+# PATH here — a guard that fails when the base changes and is right for no
+# reason when it passes. The tails can still drift; proving it needs a built
+# image, which belongs to `cozy verify`, not to a file-comparison check.
 const path_prefix = '/home/agent/.local/bin:/home/agent/.cargo/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin'
 
 # Normalize a value for comparison: strip surrounding quotes and expand the
@@ -32,9 +53,9 @@ def norm-env [v: string]: nothing -> string {
     | str replace --all '$HOME' '/home/agent'
 }
 
-def dockerfile-env []: nothing -> record {
+def dockerfile-env [keys: list<string>]: nothing -> record {
     let text = open --raw $dockerfile
-    $shared_env_keys | reduce --fold {} {|k acc|
+    $keys | reduce --fold {} {|k acc|
         let m = $text | parse --regex ('(?m)^[ \t]*(?:ENV[ \t]+)?' + $k + '=(?<v>\S+)')
         if ($m | is-empty) { $acc } else { $acc | insert $k (norm-env $m.v.0) }
     }
@@ -51,20 +72,22 @@ def bootstrap-env []: nothing -> record {
     }
 }
 
-def kit-env []: nothing -> record {
+def kit-env [keys: list<string>]: nothing -> record {
     let vars = open $kit_spec | get environment.variables
-    $shared_env_keys | reduce --fold {} {|k acc|
+    $keys | reduce --fold {} {|k acc|
         let v = $vars | get --optional $k
-        if ($v == null) { $acc } else { $acc | insert $k (norm-env $v) }
+        # `into string`: YAML types unquoted values, so HOMEBREW_NO_ASK: 1 is an
+        # int here while every other source spells it as text.
+        if ($v == null) { $acc } else { $acc | insert $k (norm-env ($v | into string)) }
     }
 }
 
 # Compare the shared env keys across the three sources. Returns rows so a
 # mismatch shows exactly which key and which source disagrees.
 def "main env" []: nothing -> table {
-    let d = dockerfile-env
+    let d = dockerfile-env ($shared_env_keys ++ $paired_env_keys)
     let b = bootstrap-env
-    let k = kit-env
+    let k = kit-env ($shared_env_keys ++ $paired_env_keys)
     let rows = $shared_env_keys | each {|key|
         let dv = $d | get --optional $key
         let bv = $b | get --optional $key
@@ -79,6 +102,21 @@ def "main env" []: nothing -> table {
         }
     }
 
+    # Two sources, so the bootstrap column reads n/a — but both must carry the
+    # key and agree. A key silently dropped from one file is drift too, which is
+    # why a missing value fails rather than being skipped.
+    let paired_rows = $paired_env_keys | each {|key|
+        let dv = $d | get --optional $key
+        let kv = $k | get --optional $key
+        {
+            key: $key
+            dockerfile: ($dv | default '(missing)')
+            bootstrap: '(n/a)'
+            kit: ($kv | default '(missing)')
+            ok: ($dv != null and $dv == $kv)
+        }
+    }
+
     let dpath = (dockerfile-env-path)
     let kpath = (kit-env-path)
     let path_row = {
@@ -89,7 +127,7 @@ def "main env" []: nothing -> table {
         ok: (($dpath | default '' | str starts-with $path_prefix) and ($kpath | default '' | str starts-with $path_prefix))
     }
 
-    let all = $rows | append $path_row
+    let all = $rows | append $paired_rows | append $path_row
     let bad = $all | where not ok
     if ($bad | is-not-empty) {
         print ($all | select key dockerfile bootstrap kit ok)

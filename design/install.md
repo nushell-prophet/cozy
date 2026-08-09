@@ -10,7 +10,7 @@ covers:                # source paths update-design reconciles this file against
   - cozy-module/install/nushell.nu
   - cozy-module/install/nu-plugin-image.nu
   - cozy-module/install/_clone-or-fail.nu
-reconciled-at: 6dd20b1779e5df6bb4a2f60d02c1aa7674d2389d
+reconciled-at: 301b2b2f4d1656d073d34d3ea080c83c10b9053f
 ---
 
 # cozy install — why these compile from source
@@ -22,7 +22,7 @@ What each builder *does* is in its own doc comment and code (wired in [`../cozy-
 Shared by every Rust-based builder: installs Rust on demand, and holds memory down for the small sandbox VM — `zellij`, `nushell` and `nu-plugin-image` build with `-j 1` + `profile.release.lto=false`, `polars` with `-j 1`. Re-running skips the clone but rebuilds: only the already-built check in `polars` short-circuits. Clones go through `_clone-or-fail`, which sets `GIT_TERMINAL_PROMPT=0` so a 404 fails fast instead of hanging on git's credential prompt.
 
 - **claude** — official install script; skipped when `claude` is already on PATH (e.g. inside [`sbx run claude`](https://docs.docker.com/ai/sandboxes/agents/claude-code/), whose base image ships it).
-- **rust** — via rustup. Writes `~/.cargo/config.toml` (retries, long timeout, sparse registry) to survive the flaky sandbox proxy.
+- **rust** — via rustup. Writes `~/.cargo/config.toml` (retries, long timeout, sparse registry) to survive the flaky sandbox proxy, and raises `RUSTUP_MAX_RETRIES` for the fetcher that config does not cover: rustup never reads `~/.cargo/config.toml`, and a pinned toolchain (zellij's `rust-toolchain.toml`) is downloaded by rustup *before* cargo fetches a crate, so the first download died on the proxy with rustup's default of 3 tries. Exported with `--env` so it reaches the caller — the failing download happens in the calling builder's process, not in this one.
 - **polars** — `nu_plugin_polars` from source, then `plugin add`. Source because there's no packaged build matching the running `nu`.
 - **topiary** — binary via brew, but the tree-sitter-nu grammar `.so` is compiled by hand (clone + gcc) because `topiary prefetch`'s HTTP client can fail behind the sandbox proxy.
 - **zellij** — from source with `--no-default-features` to exclude `web_server_capability` (no web session sharing). `--low-resource-compilation` raises `codegen-units` and drops `opt-level` to 0 — the optimization passes are the dominant memory consumer.

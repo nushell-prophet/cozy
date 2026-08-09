@@ -10,7 +10,7 @@ covers:
   - toolkit/sbxw.nu
   - toolkit/wezterm.nu
   - cozy-module/vendored-repos.nuon
-reconciled-at: 6dd20b1779e5df6bb4a2f60d02c1aa7674d2389d
+reconciled-at: 301b2b2f4d1656d073d34d3ea080c83c10b9053f
 ---
 
 # toolkit — host-side vendor tooling
@@ -32,7 +32,7 @@ Wired in [`toolkit/vendor.nu`](../toolkit/vendor.nu).
 
 `toolkit check` (in [`toolkit/check.nu`](../toolkit/check.nu)) is a host-side guard, no sandbox needed — run it before building. Three invariants that nothing else enforces:
 
-- The env block (XDG dirs, `HELIX_RUNTIME`, `LANG`) is spelled out three times — [`../Dockerfile`](../Dockerfile) `ENV`, [`../sbx-kit/spec.yaml`](../sbx-kit/spec.yaml) `environment.variables`, and the `export` block `bootstrap.nu` writes to `/etc/sandbox-persistent.sh`. The three formats can't share one literal, so the check asserts they agree and fails loud on drift. The `PATH` prefix is checked across two of the three only — `bootstrap.nu`'s block writes no `PATH`, so `check.nu` records it as `(n/a)` there. Values are normalized before comparing (`$HOME`/`${HOME}` → `/home/agent`), because the kit spells the paths out while the other two expand a variable.
+- The env block is spelled out in three places — [`../Dockerfile`](../Dockerfile) `ENV`, [`../sbx-kit/spec.yaml`](../sbx-kit/spec.yaml) `environment.variables`, and the `export` block `bootstrap.nu` writes to `/etc/sandbox-persistent.sh`. The three formats can't share one literal, so the check asserts they agree and fails loud on drift. Two key sets, because not every key belongs in all three: the *shared* five (XDG dirs, `HELIX_RUNTIME`, `LANG`) are compared across all three, and the *paired* five (`TERM`, `COLORTERM`, `TERM_PROGRAM`, `HOMEBREW_NO_ASK`, `HOMEBREW_NO_AUTO_UPDATE`) only across Dockerfile and kit — they are deliberately absent from `bootstrap.nu`'s block, which every login shell sources, and `TERM` belongs to the terminal that connected. A paired key missing from one of the two counts as drift rather than being skipped. `HOME` is in neither set: the Dockerfile omits it on purpose, so only the kit spells it out. The `PATH` is a *prefix* comparison across the same two — `bootstrap.nu`'s block writes no `PATH` (recorded as `(n/a)`), and the Dockerfile's tail is the base image's `${PATH}`, which no file here can say, so checking the full tail would only hardcode a second guess. Values are normalized before comparing (`$HOME`/`${HOME}` → `/home/agent`), because the kit spells the paths out while the other two expand a variable.
 - `vendored-repos.nuon` matches `vendor.yml` (catches a manifest left stale).
 - The egress proxy image is pinned by digest and identical in its two copies — `services.egress.image` in [`../compose.yaml`](../compose.yaml) and `egress_image` in [`toolkit/container.nu`](../toolkit/container.nu). Both cage the agent behind the same proxy holding the same policy, so the two literals must agree. The `@sha256:` is asserted separately: swapping in a floating tag silently un-pins the one container that has internet, and comparing the copies alone would not catch it. See [`firewall.md`](firewall.md).
 
@@ -40,10 +40,10 @@ Wired in [`toolkit/vendor.nu`](../toolkit/vendor.nu).
 
 Two run paths need host-side orchestration; they are split by runtime rather than by job, because almost nothing generalizes between them.
 
-- [`toolkit/container.nu`](../toolkit/container.nu) — the Apple `container` path (`up` / `restart` / `reload-egress` / `attach`), i.e. what `compose.yaml` plus `docker compose exec` are for the docker path. `container` has no compose, so the three pieces compose declares are assembled by hand: a host-only network with no way out, a squid dual-homed onto it and the default network, and the cozy container attached to the caged one only. Same image, same policy directory, same residual risks — see [`firewall.md`](firewall.md). Needs macOS 26+: `container network create` does not exist before it, and without the network there is no cage at all.
+- [`toolkit/container.nu`](../toolkit/container.nu) — the Apple `container` path (`up` / `restart` / `reload-egress` / `refresh-egress` / `attach`), i.e. what `compose.yaml` plus `docker compose exec` are for the docker path. `container` has no compose, so the three pieces compose declares are assembled by hand: a host-only network with no way out, a squid dual-homed onto it and the default network, and the cozy container attached to the caged one only. Same image, same policy directory, same residual risks — see [`firewall.md`](firewall.md). Needs macOS 26+: `container network create` does not exist before it, and without the network there is no cage at all.
 - [`toolkit/sbxw.nu`](../toolkit/sbxw.nu) — the sbx twin of `container attach`: open a sandbox in a new WezTerm window and attach its zellij session. It knows nothing about the cage.
 
-Opening the window needs an **interactive** nu (`use toolkit/sbxw.nu`, not `nu toolkit/sbxw.nu`; same for `container attach`): the window is a background job, and a job dies with the one-shot nu that spawned it. That holds for `sbxw` and `container attach` only — `container up` / `restart` / `reload-egress` run fine as `nu toolkit/container.nu <sub>`. The one thing the two paths genuinely share — opening that window — lives in [`toolkit/wezterm.nu`](../toolkit/wezterm.nu), which both `use`.
+Opening the window needs an **interactive** nu (`use toolkit/sbxw.nu`, not `nu toolkit/sbxw.nu`; same for `container attach`): the window is a background job, and a job dies with the one-shot nu that spawned it. That holds for `sbxw` and `container attach` only — `container up` / `restart` / `reload-egress` / `refresh-egress` run fine as `nu toolkit/container.nu <sub>`, and the script form is the safer one anyway: an imported module can serve a stale definition long after the file changed (see [`autoload.md`](autoload.md)), which is how a moved egress pin was nearly recorded as applied while the old proxy came back up. The one thing the two paths genuinely share — opening that window — lives in [`toolkit/wezterm.nu`](../toolkit/wezterm.nu), which both `use`.
 
 ## Local docs
 

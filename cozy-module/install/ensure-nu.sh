@@ -29,6 +29,14 @@ fi
 # Compatibility gate: can this nu load bootstrap.nu? `use` parses it and
 # evaluates its top-level declarations (consts + nested `use topiary.nu`/
 # `use claude.nu`) — the whole surface bootstrap.nu exposes before main runs.
+#
+# That surface and nothing more. The autoload scripts, the dotfiles
+# config.nu/env.nu and the lazy install modules (rust.nu, zellij.nu, …) are
+# NOT parsed here, so a nu syntax drift in one of those still installs
+# cleanly and breaks the interactive shell afterwards. Deliberate: this gate
+# only picks between latest and pinned nu, and falling back to the pinned one
+# does not fix a broken autoload script. A check with that reach belongs to
+# `cozy verify`, which runs against the finished environment.
 if nu -c "use '$BOOTSTRAP'" >/dev/null 2>&1; then
     exit 0
 fi

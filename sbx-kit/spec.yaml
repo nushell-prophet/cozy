@@ -51,10 +51,14 @@ network:
     # only, and github.com/.../releases/download/ redirects off to a
     # githubusercontent host — which is where ensure-nu.sh's pinned-nushell
     # fallback fetches from. Both hosts that redirect has landed on are listed.
+    # github-cloud is a third githubusercontent host on a different path — it
+    # serves git-lfs objects, and cozy brew-installs git-lfs, so a clone of any
+    # repo using it stalls without this entry.
     - github.com
     - codeload.github.com
     - release-assets.githubusercontent.com
     - objects.githubusercontent.com
+    - github-cloud.githubusercontent.com
     # `cozy install rust | nushell | zellij | polars | nu-plugin-image` build
     # from source: rustup's installer, the toolchain, and the crates registry.
     - sh.rustup.rs

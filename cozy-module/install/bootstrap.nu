@@ -191,10 +191,28 @@ export def main [
     ^nu --no-config-file --commands 'use toolkit.nu; toolkit install-skills --all'
 
     # Step 6 — append global Claude instructions to ~/.claude/CLAUDE.md
+    #
+    # Marker-wrapped and replaced in place, exactly like the env block in Step 0.
+    # A plain `save --append` converged only by hidden coupling: Step 4 deploys a
+    # fresh CLAUDE.md over this one (it is a row in dotfiles' paths-docker.csv),
+    # so the append landed on a clean file every time. Nothing stated or guarded
+    # that. Drop the CSV row or reorder the steps and the catalog starts
+    # stacking on every re-run, and verify.nu's `check-catalog` — a grep for one
+    # tool name — would go on passing while the file grew a copy per install.
     let claude_md = $nu.home-dir | path join '.claude' 'CLAUDE.md'
     mkdir ($claude_md | path dirname)
-    "\n" | save --append $claude_md
-    open --raw ($cozy_root | path join 'docker-files' 'global-claude.md') | save --append $claude_md
+    let catalog = open --raw ($cozy_root | path join 'docker-files' 'global-claude.md')
+    let block = $"# >>> cozy catalog >>>\n($catalog)\n# <<< cozy catalog <<<\n"
+    let existing = if ($claude_md | path exists) { open --raw $claude_md } else { '' }
+    let marker_re = '(?ms)# >>> cozy catalog >>>.*?# <<< cozy catalog <<<\n?'
+    # `$` -> `$$` for the same reason as the env block: str replace --regex reads
+    # `$name` in the replacement as a capture-group backref.
+    let updated = if ($existing =~ $marker_re) {
+        $existing | str replace --regex $marker_re ($block | str replace --all '$' '$$')
+    } else {
+        $existing + "\n" + $block
+    }
+    $updated | save --force $claude_md
 
     # Step 7 — broot init (moved here from Dockerfile so host gets it too)
     let xdg_config = $env.XDG_CONFIG_HOME? | default ($nu.home-dir | path join '.config')

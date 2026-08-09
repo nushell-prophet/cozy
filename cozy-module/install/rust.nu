@@ -3,7 +3,18 @@ export def main [] { help rust }
 # Install Rust via rustup.
 #
 # Safe to re-run — skips if rustc is already available.
-export def install []: nothing -> nothing {
+# `--env` so the retry setting below reaches the caller: every `cozy install`
+# that needs rust calls this first, and the download that actually fails happens
+# in *their* process, not this one.
+export def --env install []: nothing -> nothing {
+    # Why here and not in the cargo config below: rustup does not read
+    # ~/.cargo/config.toml. A pinned toolchain (zellij's rust-toolchain.toml
+    # asks for 1.92.0) is downloaded by rustup *before* cargo fetches a single
+    # crate, so the retries below never covered the first download — it died on
+    # the flaky proxy with "tls handshake eof" and rustup's default of 3 tries
+    # ran out. Same mitigation, the other fetcher.
+    $env.RUSTUP_MAX_RETRIES = '10'
+
     # Why: sandbox proxy (host.docker.internal:3128) is flaky; cargo's default
     # 30s timeout with no retries fails on first hiccup. Originally set in
     # Dockerfile, restored here since rust moved to runtime install (commit

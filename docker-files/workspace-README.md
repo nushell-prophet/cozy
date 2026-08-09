@@ -53,7 +53,7 @@ Most come from `~/repos/dotfiles/`; a few Nushell autoload scripts come from coz
 **Nushell** — `~/.config/nushell/`
 
 - `config.nu`, `env.nu` — opinionated shell settings (from dotfiles)
-- `autoload/*.nu` — loaded when nu starts an **interactive** session (a one-shot `nu -c '…'` skips them). From cozy's `docker-files/`: `git-global-ignore.nu`, `git-safe-directory.nu`, `mcp-server.nu`, `modules-core.nu`, `modules-repl.nu`, `my-nu-completions.nu`. From dotfiles: `br.nu`, `hooks-config.nu`, `zzz_ignore_vars.nu`
+- `autoload/*.nu` — loaded when nu starts an **interactive** session (a one-shot `nu -c '…'` skips them). From cozy's `docker-files/`: `git-global-ignore.nu`, `git-identity.nu`, `git-safe-directory.nu`, `mcp-server.nu`, `modules-core.nu`, `modules-repl.nu`. From dotfiles: `br.nu`, `hooks-config.nu`, `zzz_ignore_vars.nu`
 
 **Other tools** — under `~/.config/`
 

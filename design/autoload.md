@@ -7,12 +7,11 @@ covers:                # source paths update-design reconciles this file against
   - docker-files/nushell-autoload/git-global-ignore.nu
   - docker-files/nushell-autoload/git-identity.nu
   - docker-files/nushell-autoload/git-safe-directory.nu
-  - docker-files/nushell-autoload/my-nu-completions.nu
   - docker-files/global-claude.md
   - docker-files/pbcopy
   - docker-files/logo.ans
   - docker-files/workspace-README.md
-reconciled-at: 6dd20b1779e5df6bb4a2f60d02c1aa7674d2389d
+reconciled-at: 301b2b2f4d1656d073d34d3ea080c83c10b9053f
 ---
 
 # cozy autoload & shipped docker-files
@@ -23,7 +22,7 @@ Each entry records why the file ships — the self-healing or workaround it exis
 
 ## Autoload scripts (`~/.config/nushell/autoload/`)
 
-Nushell loads autoload scripts alphabetically; they're listed below in that order (`git-global-ignore` → `git-identity` → `git-safe-directory` → `mcp-server` → `modules-core` → `modules-repl` → `my-nu-completions`). The only ordering dependency is `modules-core` before `modules-repl` — alphabetical naming guarantees it, so the REPL-only modules can build on the core overlays.
+Nushell loads autoload scripts alphabetically; they're listed below in that order (`git-global-ignore` → `git-identity` → `git-safe-directory` → `mcp-server` → `modules-core` → `modules-repl`). The only ordering dependency is `modules-core` before `modules-repl` — alphabetical naming guarantees it, so the REPL-only modules can build on the core overlays.
 
 Cozy is not the only writer of that directory: Step 4's dotfiles deploy lands `br.nu`, `completions.nu`, `hooks-config.nu` and `zzz_ignore_vars.nu` there too, from `vendor/dotfiles/nushell/autoload/`. Only the cozy-owned files are documented below. Note also that nushell reads that one directory and does not recurse into subdirectories of it, and that it `source`s each file rather than `use`-ing it — which is why `completions.nu` is a loader of `use` lines instead of the completion files simply being dropped in (they define `export extern main`, a name that only resolves through `use`).
 
@@ -52,12 +51,8 @@ Resolve `$env.WORKSPACE_DIR` to the in-VM mount path, then overlay the vendored 
 Interactive-only module additions, `use`d on every interactive shell start: claude-nu, the two completions claude-nu still ships (claude/nu), zellij's todo.nu, nu-cmd-stack (followed by `cmd-stack init`, which registers its keybindings — a bare `use` binds no keys). Split out from the core set so non-interactive `-c` consumers don't load session tools that have no meaning there. The completions for tools claude-nu has nothing to do with (zellij, fd, chafa, sandbox-exec) moved to the dotfiles repo and arrive via its own `completions.nu` autoload; `claude.nu` and `nu.nu` stayed because the first imports four internals of `sessions.nu` for the live session picker and the second is the only one claude-nu's test suite covers.
 **Code:** [`docker-files/nushell-autoload/modules-repl.nu`](../docker-files/nushell-autoload/modules-repl.nu)
 
-### my-nu-completions.nu
-Custom completions for external tools — defines the `tte` extern with style-name completion.
-**Code:** [`docker-files/nushell-autoload/my-nu-completions.nu`](../docker-files/nushell-autoload/my-nu-completions.nu) → `export extern tte`
-
 ## global-claude.md
-The tool catalog appended to `~/.claude/CLAUDE.md` by `bootstrap.nu` Step 6. A markdown brief that tells the agent what cozy built around it: available tools (shell, editors, git, search, data/languages, formatting, package managers), where Nushell modules live, a Nushell pitfalls cheatsheet, the registered Nushell MCP server and its two usage caveats (the `evaluate` session persists across calls, so edited modules stay stale until re-`use`d; the MCP `nu` skips the login shell, so anything set only in `/etc/sandbox-persistent.sh` is absent — the agent's own identity is not, it rides Claude Code's `env` setting), git rules for the sandbox (chiefly: never `git add -A`/`git add .`, which stage parked notes and another task's edits), sandbox constraints, a note that the code here is agent-written and the agent should keep an eye on it, and a privacy section.
+The tool catalog appended to `~/.claude/CLAUDE.md` by `bootstrap.nu` Step 6. A markdown brief that tells the agent what cozy built around it: available tools (shell, editors, git, search, data/languages, formatting, package managers), where Nushell modules live, a Nushell pitfalls cheatsheet, the registered Nushell MCP server and its two usage caveats (the `evaluate` session persists across calls and re-running `use` does *not* reliably re-read an edited module — tested three ways, all served the stale copy, and a stale `toolkit/container.nu` once recreated the egress proxy from the previous pin while printing success; the fix is a fresh process, not a re-`use`. And the MCP `nu` skips the login shell, so anything set only in `/etc/sandbox-persistent.sh` is absent — the agent's own identity is not, it rides Claude Code's `env` setting), git rules for the sandbox (chiefly: never `git add -A`/`git add .`, which stage parked notes and another task's edits), sandbox constraints, a note that the code here is agent-written and the agent should keep an eye on it, and a privacy section.
 **Code:** [`docker-files/global-claude.md`](../docker-files/global-claude.md)
 
 ## pbcopy

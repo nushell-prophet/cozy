@@ -170,18 +170,39 @@ def ensure-network []: nothing -> nothing {
 # success without looking at its own result is the gap being closed.
 const direct_probe = 'https://1.1.1.1'
 
+# Everything here waits on the same thing: a container VM that is still booting
+# after `run -d` or `start` has returned. Three call sites hand-rolled the same
+# `mut` + `for 1..15` + `sleep 1sec` shape, and each of them also slept once more
+# after the attempt it was never going to retry. `null` from the closure means
+# "not ready yet"; the first non-null answer is the result.
+def poll [attempts: int action: closure]: nothing -> any {
+    for i in 1..$attempts {
+        let r = do $action
+        if $r != null { return $r }
+        if $i != $attempts { sleep 1sec }
+    }
+    null
+}
+
 def assert-caged [name: string]: nothing -> nothing {
     # Retried for the same reason egress-address is: `run -d` and `start` return
     # before the container's VM has finished booting, so the first execs fail
     # with nothing on stdout. An empty stdout is "not ready yet"; curl always
     # prints a status, even for a connection that never happened.
-    mut r = {stdout: '' stderr: '' exit_code: 0}
-    for _ in 1..15 {
-        $r = ^container exec $name curl -sS --noproxy '*' --max-time 10 -o /dev/null -w '%{http_code}' $direct_probe | complete
-        if ($r.stdout | str trim | is-not-empty) { break }
-        sleep 1sec
-    }
-    let code = $r.stdout | str trim
+    # Every attempt came back empty: no status to judge, which the checks below
+    # treat as an unproven cage — the same verdict the old empty-string default
+    # produced.
+    #
+    # Defaulted to a whole record rather than reading `stdout` with
+    # `get --optional`: the error message at the bottom reads `exit_code` and
+    # `stderr` off this same value, and on a `null` those two raised "Data
+    # cannot be accessed with a cell path" — replacing the cage diagnosis with a
+    # nushell internal at exactly the moment the probe never answered.
+    let probe = poll 15 {
+        let r = ^container exec $name curl -sS --noproxy '*' --max-time 10 -o /dev/null -w '%{http_code}' $direct_probe | complete
+        if ($r.stdout | str trim | is-empty) { null } else { $r }
+    } | default {stdout: '' stderr: '' exit_code: 0}
+    let code = $probe.stdout | str trim
     # curl prints 000 and exits non-zero when the connection never happens —
     # that is the pass. Any real status means traffic left unfiltered. Anything
     # else (no curl, garbage) is an unproven cage, which is a failure too: the
@@ -209,7 +230,7 @@ def assert-caged [name: string]: nothing -> nothing {
     if ($code =~ '^\d{3}$') {
         error make {msg: $"($name) reached ($direct_probe) directly \(HTTP ($code)) — the cage is open and traffic bypasses the allowlist. ($caged_network) was almost certainly created without --internal: `container delete ($name)`, `container network delete ($caged_network)`, then re-run `up` to rebuild both.($cleanup)"}
     } else {
-        error make {msg: $"could not probe the cage from ($name): curl gave no status \(exit ($r.exit_code))(if ($r.stderr | is-not-empty) { $', stderr: ' + ($r.stderr | str trim) }).($cleanup)"}
+        error make {msg: $"could not probe the cage from ($name): curl gave no status \(exit ($probe.exit_code))(if ($probe.stderr | is-not-empty) { $', stderr: ' + ($probe.stderr | str trim) }).($cleanup)"}
     }
 }
 
@@ -242,6 +263,15 @@ def reload-policy []: nothing -> nothing {
 }
 
 def ensure-egress [policy: path reload: bool]: nothing -> nothing {
+    # The pin this *loaded copy* of the module carries — not necessarily what is
+    # running. Why print it at all: the failure it makes visible is a stale
+    # module. A REPL that did `use toolkit` before the pin moved recreates the
+    # proxy from the old digest and still prints the usual green summary; the
+    # squid 7.2 swap was nearly recorded as done that way, caught only by an
+    # unrelated `container exec` afterwards. Silent wrong beats loud wrong is
+    # backwards — so the code says out loud which pin it is acting on.
+    print $"  (ansi green)Pin:(ansi reset) ($egress_image)"
+
     let status = container-status $egress_name
     if $status == 'running' {
         if $reload {
@@ -314,26 +344,27 @@ def ensure-egress [policy: path reload: bool]: nothing -> nothing {
 # Retried because the address appears when the container's VM finishes booting,
 # not when `run -d` returns.
 def egress-address []: nothing -> string {
-    mut found = []
-    for _ in 1..15 {
+    let found = poll 15 {
         let r = ^container ls --all --format json | complete
-        if $r.exit_code == 0 {
-            $found = $r.stdout
-                | from json
-                | where configuration.id == $egress_name
-                | get --optional 0.status.networks
-                | default []
-                | where network == $caged_network
-                | get ipv4Address
-                | each { split row '/' | first }
-            if ($found | is-not-empty) { break }
-        }
-        sleep 1sec
+        if $r.exit_code != 0 { return null }
+        let addrs = $r.stdout
+            | from json
+            | where configuration.id == $egress_name
+            | get --optional 0.status.networks
+            | default []
+            | where network == $caged_network
+            | get ipv4Address
+            | each { split row '/' | first }
+        if ($addrs | is-empty) { null } else { $addrs }
     }
-    if ($found | is-empty) {
+    if $found == null {
         error make {msg: $"($egress_name) never got an address on ($caged_network) — check `container logs ($egress_name)` and that it is attached to it"}
     }
-    $found | first
+    let ip = $found | first
+    # Printed here rather than at each call site: all three printed this exact
+    # line right after calling, and none of them varied it.
+    print $"  (ansi green)Exit:(ansi reset) (proxy-url $ip)"
+    $ip
 }
 
 def proxy-url [host: string]: nothing -> string { $"http://($host):($proxy_port)" }
@@ -524,7 +555,6 @@ export def "main up" [
     }
     ensure-egress $policy_dir false
     let ip = egress-address
-    print $"  (ansi green)Exit:(ansi reset) (proxy-url $ip)"
 
     # --no-dns: a host-only network has no resolver, so configuring one buys
     # nothing but a timeout per lookup. Clients reach allowed hosts by handing
@@ -642,7 +672,6 @@ export def "main reload-egress" [
     if $container_state == 'running' { assert-exit-by-name $name }
     ensure-egress $policy_dir true
     let ip = egress-address
-    print $"  (ansi green)Exit:(ansi reset) (proxy-url $ip)"
 
     if $container_state == 'running' {
         # Re-asserted even after an in-place reload, where the address did not
@@ -703,7 +732,6 @@ export def "main restart" [
         print $"  (ansi green)Proxy:(ansi reset) ($egress_name) already running"
     }
     let ip = egress-address
-    print $"  (ansi green)Exit:(ansi reset) (proxy-url $ip)"
 
     if $container_state != 'running' {
         container-cli [start $name]
@@ -814,15 +842,10 @@ def rehearse-egress [image: string policy: path]: nothing -> nothing {
         -NYC
     ]
 
-    mut listening = false
-    for _ in 1..15 {
+    let listening = (poll 15 {
         let r = ^container logs $rehearsal_name | complete
-        if (($r.stdout + $r.stderr) | str contains 'listening port') {
-            $listening = true
-            break
-        }
-        sleep 1sec
-    }
+        if (($r.stdout + $r.stderr) | str contains 'listening port') { true } else { null }
+    } | default false)
     let parse = ^container exec $rehearsal_name $squid_bin -k parse -f $policy_conf | complete
     let logs = ^container logs $rehearsal_name | complete
 

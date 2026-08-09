@@ -67,7 +67,20 @@ nu bootstrap.nu ${1+"$@"}
 if [ ! -e /etc/sandbox-persistent.sh ] && [ ! -e /.dockerenv ]; then
     case "${SHELL:-}" in
         */zsh)  rcfile="$HOME/.zshrc" ;;
-        */bash) rcfile="$HOME/.bash_profile" ;;
+        # Append to whichever file bash will actually read, and never create a
+        # new one: bash reads the first of .bash_profile/.bash_login/.profile it
+        # finds in a login shell, so *creating* an earlier one makes every later
+        # login skip ~/.profile — the conventional home of
+        # `eval "$(brew shellenv)"` on Linux. Writing the block would then
+        # quietly drop brew off PATH, which is a worse bug than the one it
+        # fixes. .bash_login is the same trap one file down: it shadows
+        # ~/.profile, so writing to ~/.profile while it exists is a block that
+        # is never read.
+        */bash)
+            if [ -f "$HOME/.bash_profile" ]; then rcfile="$HOME/.bash_profile"
+            elif [ -f "$HOME/.bash_login" ]; then rcfile="$HOME/.bash_login"
+            else rcfile="$HOME/.profile"
+            fi ;;
         *)      rcfile="" ;;
     esac
 
@@ -75,8 +88,13 @@ if [ ! -e /etc/sandbox-persistent.sh ] && [ ! -e /.dockerenv ]; then
         {
             printf '\n# >>> cozy env >>>\n'
             printf 'export XDG_CONFIG_HOME="$HOME/.config"\n'
+            # The `export PATH` at the top of this script dies with it. Without
+            # this line a pinned nu in ~/.local/bin (ensure-nu.sh's fallback)
+            # stops shadowing brew's the moment the install finishes, so the
+            # shell the user opens next runs the version the install rejected.
+            printf 'export PATH="$HOME/.local/bin:$PATH"\n'
             printf '# <<< cozy env <<<\n'
         } >> "$rcfile"
-        echo "Added XDG_CONFIG_HOME export to $rcfile — restart your terminal or run 'exec $SHELL -l'."
+        echo "Added the cozy env block to $rcfile — restart your terminal or run 'exec $SHELL -l'."
     fi
 fi
