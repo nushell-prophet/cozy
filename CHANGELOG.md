@@ -7,34 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-08-16
+
 ### Added
 
-- `man-db` is now installed in containers, so `git push --help` prints the page instead of failing with "failed to exec 'man'". Covers brew's tools everywhere; on the sbx path apt packages still install without pages, since the base image excludes them at install time.
+- `man-db` is now installed in containers, so `git push --help` prints the page instead of failing with "failed to exec 'man'". Covers brew's tools everywhere; on the sbx path apt packages still install without pages, since the base image excludes them at install time. (eced2a7)
+
+- Nushell tab completions for seven CLIs cozy installs — `delta`, `bat`, `rg`, `fzf`, `lazygit`, `hx`, `vd` — each built against the version actually in the sandbox. `zellij`, `fd`, `chafa` and `sandbox-exec` moved here out of `claude-nu`. Also fixes `hx --help` printing our signature instead of helix's own text. (c8fa17e, 35130f6, 2bda5d0)
+
+- The Debian image ships `ssh-keygen` — `debian:12-slim` carries no ssh client at all, so a git remote over ssh died with "command not found". The sbx path still has the same gap. (2ffb97f)
+
+- `codeberg.org` is allowed by both egress lists, so git over https to a Forgejo host works. (04757d3)
+
+- Vendored `my-claude-skills` — two new skills: `code-archaeology` recovers from git history why a piece of code is the way it is, and `doc-coauthoring` walks a structured doc-writing workflow. (459123f)
 
 ### Changed
 
-- `cozy sandbox-state export` / `import` are now `cozy sandbox-state snapshot` / `restore` (same for the `history`, `projects` and `global-claude` subcommands). Nushell 0.115 rejects `export` as a command name — it is a parser keyword. Snapshot files keep their names, so anything already in `sandbox-state/` still restores.
+- `cozy sandbox-state export` / `import` are now `cozy sandbox-state snapshot` / `restore` (same for the `history`, `projects` and `global-claude` subcommands). Nushell 0.115 rejects `export` as a command name — it is a parser keyword. Snapshot files keep their names, so anything already in `sandbox-state/` still restores. (0e42b8f)
 
-- `git log` and `git show` now print a commit's header as the relative date and the author on one line (`2 days ago  Name <email>`), instead of the three-line `commit`/`Author`/`Date` block. Set as `format.pretty` in the XDG git config, so lazygit's patch view follows — that header is git's own output, and lazygit has no setting for it.
+- Vendored `numd` — `numd run` is now `numd render`, for the same reason: 0.115 made `run` a parser keyword, and keywords cannot be shadowed, so no alias or shim is possible. (81ca2d0)
 
-- The Debian image (plain `docker run` / Apple `container`) now installs apt's recommended packages and keeps man pages: `--no-install-recommends` is gone and the slim base's `path-exclude /usr/share/man/*` is deleted before the first apt, so `git <cmd> --help` has a page to show. A bigger image in exchange; the sbx path is unchanged.
+- `git log` and `git show` now print a commit's header as the relative date and the author on one line (`2 days ago  Name <email>`), instead of the three-line `commit`/`Author`/`Date` block. Set as `format.pretty` in the XDG git config, so lazygit's patch view follows — that header is git's own output, and lazygit has no setting for it. (e45c1bd)
 
-- `nu toolkit/container.nu refresh-egress` moves the proxy pin to upstream's newest maintained image: it resolves the newest `<squid>-<ubuntu>_edge` tag, rehearses it on a throwaway container (must boot, take the policy, pass `-k parse`), then rewrites the digest in `compose.yaml` and `toolkit/container.nu` together. Nothing is written if the rehearsal fails, and the running proxy is never touched — adopting the result is the usual delete-and-`restart`.
+- `git diff` and a bare `delta` now page through `less` by default (`core.pager = delta`), and `git add -p` keeps delta's colors. (992274a)
 
-- The egress proxy moves to squid 7.2 on Ubuntu 26.04 (`7.2-26.04_edge`), from a squid 6.6 build that upstream's `:latest` had not moved in eight months. That image is a rock, so both run paths now address squid as a Pebble service — `--args squid`, the binary `/usr/sbin/squid-gnutls`, and `PEBBLE_VERBOSE=1` so `logs` still shows what the allowlist refused. `firewall/squid.conf` is unchanged and an allowlist edit is still an in-place reload. (ec72370, db1cc25)
+- The Debian image (plain `docker run` / Apple `container`) now installs apt's recommended packages and keeps man pages: `--no-install-recommends` is gone and the slim base's `path-exclude /usr/share/man/*` is deleted before the first apt, so `git <cmd> --help` has a page to show. A bigger image in exchange; the sbx path is unchanged. (eced2a7)
 
-- Docs and `toolkit/container.nu` now say "the cozy container" where they used to say "the agent": cozy is a terminal workspace with an agent inside, not an agent product. The record the `container` commands return renames its `agent` field to `container` accordingly; example names read `my-cozy`.
+- `nu toolkit/container.nu refresh-egress` moves the proxy pin to upstream's newest maintained image: it resolves the newest `<squid>-<ubuntu>_edge` tag, rehearses it on a throwaway container (must boot, take the policy, pass `-k parse`), then rewrites the digest in `compose.yaml` and `toolkit/container.nu` together. Nothing is written if the rehearsal fails, and the running proxy is never touched — adopting the result is the usual delete-and-`restart`. (a84b2ce)
+
+- The egress proxy moves to squid 7.2 on Ubuntu 26.04 (`7.2-26.04_edge`), from a squid 6.6 build that upstream's `:latest` had not moved in eight months. That image is a rock, so both run paths now address squid as a Pebble service — `--args squid`, the binary `/usr/sbin/squid-gnutls`, and `PEBBLE_VERBOSE=1` so `logs` still shows what the allowlist refused. `firewall/squid.conf` is unchanged and an allowlist edit is still an in-place reload. (ec72370)
+
+- Docs and `toolkit/container.nu` now say "the cozy container" where they used to say "the agent": cozy is a terminal workspace with an agent inside, not an agent product. The record the `container` commands return renames its `agent` field to `container` accordingly; example names read `my-cozy`. (88e8de4, 0f40433)
+
+- Vendored `claude-nu` — `export-session` returns the markdown itself and its `--to` flag is gone; `gi open --fork` copies a canvas to the next name in the series, so you can plan in one conversation and implement in a fresh one; a `chat:` marker at the start of your message takes one exchange off the canvas. (0a2b7d0, d71a4ce)
+
+- Vendored `nu-goodies` — `copy-out 3` now takes exactly the 3rd-to-last command instead of the last three, matching what the completion menu labels (a range is spelled `copy-out 3 2 1`); `tarq` gains `--ignore`. (4381e49, 7392076)
+
+- Vendored `nushell-skills` — the style and completions skills now cover Nushell 0.100 → 0.115, including the rule that a command name can never be a parser keyword, and the `open file.md` trap: a bare `open` on a `.md` path returns parsed rows, so `open x.md | save y.md` silently writes the AST instead of copying the file. (d9887b9, 7abf2b0, b00283b, 814b81c)
+
+- Vendored `my-claude-skills` — `land-branch` fast-forwards each chapter onto the trunk as its own commit instead of adding a merge commit. (1f535a8)
+
+- Vendored `dotfiles` — Claude Code's ctrl+g editor file re-quotes Claude's reply as a markdown blockquote, scoped to Claude Code instead of taking over `$EDITOR` machine-wide; helix trims trailing spaces in markdown on save; lazygit moves to `git.diffRenderers`, the key it now reads. (1e46b67, 126bc0d, 21fbdc3)
+
+- The agent's baked-in global memory drops the `todo/`-parking convention — off-topic findings are dropped rather than filed, since every stored note is triage you must do without the task in your head — and gains two pitfalls: `open file.md` returns rows, and a quoted command name may hold only letters, digits, spaces and hyphens. (21fbdc3, 4dca9f4, 6eab3d6)
 
 ### Fixed
 
-- The Apple `container` path no longer pays a 20s timeout on every name lookup — `up` and `restart` empty `/etc/resolv.conf` inside the cozy container. The Debian base image ships `nameserver 1.1.1.1`, which the host-only network black-holes; a plain `git fetch` took 20.7s. Names are resolved by the egress proxy, so nothing is lost; `restart` repairs an existing container.
+- The Apple `container` path no longer pays a 20s timeout on every name lookup — `up` and `restart` empty `/etc/resolv.conf` inside the cozy container. The Debian base image ships `nameserver 1.1.1.1`, which the host-only network black-holes; a plain `git fetch` took 20.7s. Names are resolved by the egress proxy, so nothing is lost; `restart` repairs an existing container. (eefbe58)
 
 - `toolkit/container.nu` reads the proxy's address from the runtime (`container ls`'s `status.networks`) instead of running `hostname -I` inside it, so a minimal proxy image no longer makes `restart` fail with "never got an address" about a proxy that is up and serving. (db1cc25)
 
-- `toolkit/container.nu` refuses `cozy-egress` as a container name (and stops offering it in completion): `restart cozy-egress` used to probe the cage from inside the dual-homed proxy, reach the internet by design, stop the proxy over that "leak" — cutting the running cozy container's exit — and blame the network.
-- `up` now rejects a writable workspace that overlaps the cozy repo in *either* direction (a subdirectory like `cozy/toolkit` used to pass, mounting the cage-building script itself) — and one that overlaps the live firewall policy directory, which would let the agent edit its own allowlist.
+- `toolkit/container.nu` refuses `cozy-egress` as a container name (and stops offering it in completion): `restart cozy-egress` used to probe the cage from inside the dual-homed proxy, reach the internet by design, stop the proxy over that "leak" — cutting the running cozy container's exit — and blame the network. (88e8de4)
 
-- The Apple `container` agent now reaches its proxy by the name `cozy-egress` (pinned in its `/etc/hosts`) instead of a baked IP, so `restart` reconnects the pair after the proxy comes back on a new address — and recreates a proxy that is gone entirely (`--policy` names the policy directory) — instead of demanding the agent be rebuilt. Agents created before this change carry a fixed address and need one `container delete` + `up`.
+- `up` now rejects a writable workspace that overlaps the cozy repo in *either* direction (a subdirectory like `cozy/toolkit` used to pass, mounting the cage-building script itself) — and one that overlaps the live firewall policy directory, which would let the agent edit its own allowlist. (88e8de4)
+
+- The Apple `container` agent now reaches its proxy by the name `cozy-egress` (pinned in its `/etc/hosts`) instead of a baked IP, so `restart` reconnects the pair after the proxy comes back on a new address — and recreates a proxy that is gone entirely (`--policy` names the policy directory) — instead of demanding the agent be rebuilt. Agents created before this change carry a fixed address and need one `container delete` + `up`. (88e8de4)
+
+- `cozy install zellij` no longer dies behind the egress proxy: rustup downloads zellij's pinned toolchain before cargo fetches anything, and it does not read `~/.cargo/config.toml`, so the retry setting is passed on the call itself. (9562732)
+
+- After a host install ends, the pinned nushell in `~/.local/bin` keeps shadowing brew's — the env block now carries `PATH` and appends to whichever login file bash will actually read. (9562732)
+
+- The sbx kit's allowlist was missing `github-cloud.githubusercontent.com`, so an LFS clone stalled under sbx while the same clone succeeded under docker. (9562732)
+
+- Vendored `numd` — `parse-frontmatter <file.md>` works again; since Nushell 0.112 a bare `open` on a `.md` path handed it a table instead of text. (8dc44ac)
 
 ## [0.4.1] - 2026-08-01
 
@@ -579,7 +614,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.4.1...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.4.2...HEAD
+[0.4.2]: https://github.com/nushell-prophet/cozy/compare/0.4.1...0.4.2
 [0.4.1]: https://github.com/nushell-prophet/cozy/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/nushell-prophet/cozy/compare/0.3.9...0.4.0
 [0.3.9]: https://github.com/nushell-prophet/cozy/compare/0.3.8...0.3.9
