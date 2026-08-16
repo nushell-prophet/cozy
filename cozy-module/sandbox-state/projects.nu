@@ -13,12 +13,12 @@ def sandbox-state-path [filename: string]: nothing -> path {
     $dir | path join $filename
 }
 
-# Export Claude Code project sessions to sandbox-state for preservation.
+# Snapshot Claude Code project sessions to sandbox-state for preservation.
 #
 # Copies ~/.claude/projects/ into $env.WORKSPACE_DIR/sandbox-state/projects/.
-# The workspace directory survives sandbox recreation, so exported sessions
-# can be imported into a fresh sandbox.
-export def export [
+# The workspace directory survives sandbox recreation, so snapshotted sessions
+# can be restored into a fresh sandbox.
+export def snapshot [
     path?: path # Output directory (default: $env.WORKSPACE_DIR/sandbox-state/projects)
 ]: nothing -> nothing {
     let src = $claude_projects_dir | path expand
@@ -29,14 +29,14 @@ export def export [
     mkdir $dst
     ^rsync -a --exclude='.DS_Store' $"($src)/" $"($dst)/"
     let count = ls $src | where type == dir | length
-    print $"Exported ($count) project\(s) to ($dst)"
+    print $"Snapshotted ($count) project\(s) to ($dst)"
 }
 
-# Import Claude Code project sessions from sandbox-state.
+# Restore Claude Code project sessions from sandbox-state.
 #
 # Copies sessions from $env.WORKSPACE_DIR/sandbox-state/projects/ into ~/.claude/projects/.
 # Existing sessions with the same UUID are skipped (no overwrite).
-export def import [
+export def restore [
     path?: path # Input directory (default: $env.WORKSPACE_DIR/sandbox-state/projects)
 ]: nothing -> nothing {
     let src = $path | default (sandbox-state-path 'projects')
@@ -48,11 +48,11 @@ export def import [
 
     let project_dirs = ls $src | where type == dir
     if ($project_dirs | is-empty) {
-        print 'No projects to import'
+        print 'No projects to restore'
         return
     }
 
-    mut imported = 0
+    mut restored = 0
     for project in $project_dirs {
         let project_name = $project.name | path basename
         let project_dst = $dst | path join $project_name
@@ -60,7 +60,7 @@ export def import [
 
         # Copy files and dirs, skip existing (--ignore-existing)
         ^rsync -a --ignore-existing --exclude='.DS_Store' $"($project.name)/" $"($project_dst)/"
-        $imported += 1
+        $restored += 1
     }
-    print $"Imported ($imported) project\(s) into ($dst)"
+    print $"Restored ($restored) project\(s) into ($dst)"
 }

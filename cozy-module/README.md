@@ -51,35 +51,35 @@ cozy git-harden ~/workspace -a   # harden every git repo one level under the pat
 
 Merges default Claude settings (effortLevel, cleanupPeriodDays) into sandbox `~/.claude/settings.json`. Existing user values take precedence.
 
-### `cozy sandbox-state export` / `cozy sandbox-state import`
+### `cozy sandbox-state snapshot` / `cozy sandbox-state restore`
 
-Combined export/import of Nushell history, Claude Code project sessions, and the global `~/.claude/CLAUDE.md`.
+Combined snapshot/restore of Nushell history, Claude Code project sessions, and the global `~/.claude/CLAUDE.md`.
 
 ```nushell
-cozy sandbox-state export        # exports history + projects + global-claude
-cozy sandbox-state import        # imports history + projects + global-claude
+cozy sandbox-state snapshot      # snapshots history + projects + global-claude
+cozy sandbox-state restore       # restores history + projects + global-claude
 ```
 
-### `cozy sandbox-state history export` / `import`
+### `cozy sandbox-state history snapshot` / `restore`
 
-Exports Nushell's SQLite history database to a timestamped `.nuon` file, or imports records back. Deduplicates and skips entries already present.
+Snapshots Nushell's SQLite history database to a timestamped `.nuon` file, or restores records back. Deduplicates and skips entries already present.
 
 ```nushell
-cozy sandbox-state history export                    # default: $env.WORKSPACE_DIR/sandbox-state/history-<timestamp>.nuon
-cozy sandbox-state history import                    # from latest export
+cozy sandbox-state history snapshot                  # default: $env.WORKSPACE_DIR/sandbox-state/history-<timestamp>.nuon
+cozy sandbox-state history restore                   # from latest snapshot
 ```
 
 ### `cozy sandbox-state history seed`
 
 Seeds history from the bundled `history-seed.nuon` file.
 
-### `cozy sandbox-state projects export` / `import`
+### `cozy sandbox-state projects snapshot` / `restore`
 
 Copies Claude Code project sessions (`~/.claude/projects/`) to/from `$env.WORKSPACE_DIR/sandbox-state/projects/`. The workspace directory survives sandbox recreation.
 
-### `cozy sandbox-state global-claude export` / `import`
+### `cozy sandbox-state global-claude snapshot` / `restore`
 
-Copies the global `~/.claude/CLAUDE.md` to/from `$env.WORKSPACE_DIR/sandbox-state/`, so the agent's persistent instructions survive sandbox recreation. The combined `cozy sandbox-state export` / `import` runs this alongside history and projects.
+Copies the global `~/.claude/CLAUDE.md` to/from `$env.WORKSPACE_DIR/sandbox-state/`, so the agent's persistent instructions survive sandbox recreation. The combined `cozy sandbox-state snapshot` / `restore` runs this alongside history and projects.
 
 ### `cozy verify`
 

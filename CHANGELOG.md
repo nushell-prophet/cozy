@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `cozy sandbox-state export` / `import` are now `cozy sandbox-state snapshot` / `restore` (same for the `history`, `projects` and `global-claude` subcommands). Nushell 0.115 rejects `export` as a command name — it is a parser keyword. Snapshot files keep their names, so anything already in `sandbox-state/` still restores.
+
 - `git log` and `git show` now print a commit's header as the relative date and the author on one line (`2 days ago  Name <email>`), instead of the three-line `commit`/`Author`/`Date` block. Set as `format.pretty` in the XDG git config, so lazygit's patch view follows — that header is git's own output, and lazygit has no setting for it.
 
 - The Debian image (plain `docker run` / Apple `container`) now installs apt's recommended packages and keeps man pages: `--no-install-recommends` is gone and the slim base's `path-exclude /usr/share/man/*` is deleted before the first apt, so `git <cmd> --help` has a page to show. A bigger image in exchange; the sbx path is unchanged.

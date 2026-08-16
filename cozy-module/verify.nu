@@ -203,7 +203,7 @@ def check-mcp [run: closure]: nothing -> record {
     let r = do $run [claude mcp list]
     # Assert on the nushell row alone. Matching 'Connected' anywhere in the
     # output means any *other* healthy server (a dotfiles-deployed .claude.json,
-    # `sandbox-state import`) supplies the word while nushell itself shows
+    # `sandbox-state restore`) supplies the word while nushell itself shows
     # "✗ Failed to connect" — and the row still passes.
     let row = $r.stdout | lines | where {|l| $l =~ '^nushell:' } | get --optional 0
     if $row == null {

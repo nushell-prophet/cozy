@@ -2,7 +2,7 @@ const history_db = '~/.config/nushell/history.sqlite3'
 # The columns nushell itself surfaces (`history --long`), minus the ids.
 # Why: session_id groups the commands of one shell sitting, and hostname says
 # which machine or sandbox they ran on — provenance that is gone for good once
-# an export drops it. Left out: `id`, assigned by the receiving DB; `idx`, a
+# a snapshot drops it. Left out: `id`, assigned by the receiving DB; `idx`, a
 # row number computed at display time; and `more_info`, a reedline slot for
 # embedders that nushell never writes and never shows.
 const history_columns = "command_line, cwd, start_timestamp, duration_ms, exit_status, session_id, hostname"
@@ -23,22 +23,22 @@ def sandbox-state-path [filename: string]: nothing -> path {
 
 # Seed nushell history with useful commands from the bundled seed file.
 #
-# Initializes the history database if needed, then imports history-seed.nuon
+# Initializes the history database if needed, then restores history-seed.nuon
 # from the cozy-module directory.
 export def seed []: nothing -> nothing {
     if not ($seed_file | path exists) {
         error make {msg: $"seed file not found: ($seed_file)"}
     }
-    import $seed_file
+    restore $seed_file
 }
 
-# Export nushell history to a nuon file.
+# Snapshot nushell history to a nuon file.
 #
 # Reads the sqlite database directly, so it works from any context:
 # interactive shell, `nu -c`, scripts, or the Bash tool.
 # No login shell (`nu -l`) required.
-# Each export gets a timestamped filename; import picks the most recent by name.
-export def export [
+# Each snapshot gets a timestamped filename; restore picks the most recent by name.
+export def snapshot [
     path?: path # Output file (default: $env.WORKSPACE_DIR/sandbox-state/history-<timestamp>.nuon)
 ]: nothing -> nothing {
     let out = $path | default (sandbox-state-path $"history-(date now | format date '%Y%m%d-%H%M%S').nuon")
@@ -48,30 +48,30 @@ export def export [
     }
     let items = open $db | query db $"SELECT ($history_columns) FROM history ORDER BY id"
     if ($items | is-empty) {
-        print 'No history items to export'
+        print 'No history items to snapshot'
         return
     }
     $items | save --force $out
-    print $"Exported ($items | length) history items to ($out)"
+    print $"Snapshotted ($items | length) history items to ($out)"
 }
 
-# Import nushell history from a nuon file.
+# Restore nushell history from a nuon file.
 #
 # Inserts directly into the sqlite database, so it works from any context.
 # The file must have the columns command_line, cwd, start_timestamp,
 # duration_ms and exit_status; session_id and hostname are optional, so older
-# exports and history-seed.nuon still import.
-# Without a path, imports from the most recent history-*.nuon in sandbox-state.
+# snapshots and history-seed.nuon still restore.
+# Without a path, restores from the most recent history-*.nuon in sandbox-state.
 # Deduplicates incoming rows and skips entries already in the DB.
 # New rows are inserted oldest-first so recall stays chronological.
-export def import [
+export def restore [
     path?: path # Input file (default: latest history-*.nuon in $env.WORKSPACE_DIR/sandbox-state/)
 ]: nothing -> nothing {
     let src = if $path != null { $path } else {
         let dir = sandbox-state-dir
         let files = glob ($dir | path join 'history-*.nuon') | sort
         if ($files | is-empty) {
-            error make {msg: $"no history exports found in ($dir)"}
+            error make {msg: $"no history snapshots found in ($dir)"}
         }
         $files | last
     }
@@ -84,7 +84,7 @@ export def import [
     }
     let items = open $src
     if ($items | is-empty) {
-        print 'No history items to import'
+        print 'No history items to restore'
         return
     }
 
@@ -98,7 +98,7 @@ export def import [
     let new_items = $items | where { $in.start_timestamp not-in $existing_ts }
 
     if ($new_items | is-empty) {
-        print $"All ($items | length) entries already in history, nothing to import"
+        print $"All ($items | length) entries already in history, nothing to restore"
         return
     }
 
@@ -129,22 +129,24 @@ export def import [
     | chunks 100
     | each {|batch|
         let placeholders = $batch | each { "(?, ?, ?, ?, ?, ?, ?)" } | str join ', '
-        let params = $batch | each {|row| [
-            $row.command_line
-            $row.cwd
-            $row.start_timestamp
-            ($row.duration_ms | default 0)
-            ($row.exit_status | default 0)
-            # Optional access: exports made before these columns were carried,
-            # and history-seed.nuon, have no such cell — null is the honest
-            # value for "this row never had a session".
-            $row.session_id?
-            $row.hostname?
-        ] } | flatten
+        let params = $batch | each {|row|
+                [
+                    $row.command_line
+                    $row.cwd
+                    $row.start_timestamp
+                    ($row.duration_ms | default 0)
+                    ($row.exit_status | default 0)
+                    # Optional access: snapshots made before these columns were carried,
+                    # and history-seed.nuon, have no such cell — null is the honest
+                    # value for "this row never had a session".
+                    $row.session_id?
+                    $row.hostname?
+                ]
+            } | flatten
         open $db | query db $"INSERT INTO history \(($history_columns)\) VALUES ($placeholders)" --params $params
     } | ignore
 
     let total = open $db | query db "SELECT count(*) AS n FROM history" | get 0.n
     let skipped = ($items | length) - ($new_items | length)
-    print $"Imported ($new_items | length) new entries, ($skipped) duplicates skipped. History: ($total) total"
+    print $"Restored ($new_items | length) new entries, ($skipped) duplicates skipped. History: ($total) total"
 }

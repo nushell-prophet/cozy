@@ -38,11 +38,11 @@ cozy ships a set of upstream modules *vendored* into `~/repos/` — committed in
 | `cozy docs claude` / `cozy docs nushell` | Fetch Claude Code / Nushell reference docs into a local folder for offline use |
 | `cozy nu-demo-instance` | Put a bare throwaway-nushell launch line into the prompt (for demos); `--here` keeps the config in `./nushell/` |
 | `cozy configure claude-settings` | Fill in missing Claude Code defaults (existing values kept) and export `CLAUDE_CODE_EFFORT_LEVEL=max` into the calling shell |
-| `cozy sandbox-state export` / `import` | Snapshot/restore history + Claude sessions + global CLAUDE.md |
-| `cozy sandbox-state history export` / `import` | Just the Nushell history |
+| `cozy sandbox-state snapshot` / `restore` | Snapshot/restore history + Claude sessions + global CLAUDE.md |
+| `cozy sandbox-state history snapshot` / `restore` | Just the Nushell history |
 | `cozy sandbox-state history seed` | Seed the Nushell history with useful commands from the bundled seed file |
-| `cozy sandbox-state projects export` / `import` | Just Claude Code session files |
-| `cozy sandbox-state global-claude export` / `import` | Just the global `~/.claude/CLAUDE.md` |
+| `cozy sandbox-state projects snapshot` / `restore` | Just Claude Code session files |
+| `cozy sandbox-state global-claude snapshot` / `restore` | Just the global `~/.claude/CLAUDE.md` |
 
 The rest of `~/repos/cozy/` holds the shared installer (`cozy-module/install/`, entered via `run-install.sh`) and `docker-files/` (autoload scripts, the appended Claude tool catalog). Only `cozy-module/` and `docker-files/` are copied in — the `Dockerfile`, `sbx-kit/` and the rest of the repo stay on the host.
 
