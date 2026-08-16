@@ -36,12 +36,17 @@ def main [file: path] {
     # repairs the cut without changing a byte of what gets sent.
     let quoted_marker = $MARKER | str replace '#' '>'
 
-    # only the leading `#` changes, so the space Claude Code put after it is kept and an
-    # empty quoted line stays empty: `# text` -> `> text`, `#` -> `>`
+    # only the leading `#` changes, so the space Claude Code put after it is kept: `# text` -> `> text`.
+    # A line that is just `#` was an empty line in the response; a lone `>` marks nothing, so that
+    # one is emptied first and the `>` rule then finds nothing to do.
     $lines
     | take $at
     | skip 1
-    | each { str replace --regex '^#' '>' | str replace --all $MARKER $quoted_marker }
+    | each {
+        str replace --regex '^#\s*$' ''
+        | str replace --regex '^#' '>'
+        | str replace --all $MARKER $quoted_marker
+    }
     # the banner stays a heading: it is the one line where `# ` means what markdown thinks
     | prepend ($lines | first)
     | append ($lines | skip $at)
