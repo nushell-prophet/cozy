@@ -43,6 +43,7 @@ The kit re-clones cozy and re-runs `bootstrap.nu` on every `sbx run`, so picking
 ## Rules
 
 - Do NOT suggest pushing images or tags to Docker Hub or any registry. All images are local-only.
+- **The user's runtime for this image is Apple `container`, not the `docker` CLI.** Hand them `container build -t cozy .` and `container run`, never `docker build` / `docker run` — and `nu toolkit/container.nu up|restart|reload-egress` for the caged path, which is what `compose.yaml` is for on the docker side. The docs keep saying "plain `docker run` and Apple `container`" because the image supports both; the commands you write are for `container`. Note the friction: `/verify-cozy docker` still builds with the docker CLI, so on this machine the built image has to come from `container build` first.
 - Keep command output visible — don't use quiet/silent flags (`-qq`, `-s`, `--quiet`) in scripts. Users should see what's happening during installation and setup.
 
 ## Commit messages
