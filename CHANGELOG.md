@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `git log` and `git show` now print a commit's header as the relative date and the author on one line (`2 days ago  Name <email>`), instead of the three-line `commit`/`Author`/`Date` block. Set as `format.pretty` in the XDG git config, so lazygit's patch view follows — that header is git's own output, and lazygit has no setting for it.
+
 - The Debian image (plain `docker run` / Apple `container`) now installs apt's recommended packages and keeps man pages: `--no-install-recommends` is gone and the slim base's `path-exclude /usr/share/man/*` is deleted before the first apt, so `git <cmd> --help` has a page to show. A bigger image in exchange; the sbx path is unchanged.
 
 - `nu toolkit/container.nu refresh-egress` moves the proxy pin to upstream's newest maintained image: it resolves the newest `<squid>-<ubuntu>_edge` tag, rehearses it on a throwaway container (must boot, take the policy, pass `-k parse`), then rewrites the digest in `compose.yaml` and `toolkit/container.nu` together. Nothing is written if the rehearsal fails, and the running proxy is never touched — adopting the result is the usual delete-and-`restart`.

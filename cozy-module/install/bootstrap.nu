@@ -139,6 +139,12 @@ export def main [
     # and the git-safe-directory.nu autoload (self-heals after sandbox create
     # narrows it). gc.auto=0 also lives in cozy-module/git-harden.nu (repo-local,
     # for host git). Edit one, check the others.
+    # format.pretty puts the relative date first and folds the author onto the
+    # same line. Why here and not in lazygit's config: the header above a patch
+    # is git's own `git show` output, which lazygit passes through untouched —
+    # it has no setting for it. Belongs in this layer, next to core.pager: a
+    # display preference everyone in the sandbox shares, unlike the identity in
+    # ~/.gitconfig. Costs the `Merge:` line on merge commits.
     '[user]
 	name = Agent
 	email = agent@sandbox
@@ -152,6 +158,8 @@ export def main [
 	pager = delta
 [interactive]
 	diffFilter = delta --color-only
+[format]
+	pretty = format:commit %C(auto)%H%d%n%C(bold blue)%ar%C(reset)  %C(green)%an <%ae>%C(reset)%n%n%w(0,4,4)%B
 ' | save -f ($git_xdg | path join 'config')
     # Global ignore, git's XDG-default path. Read directly when core.excludesFile
     # is unset (Dockerfile / host path); under sbx — which sets excludesFile and
