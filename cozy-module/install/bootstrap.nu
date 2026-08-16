@@ -375,8 +375,12 @@ def setup-docker-system [] {
     # from both container bases. Nushell's `into binary` covers viewing a hex
     # dump, but nothing here replaces `xxd -r` (dump back to bytes). Tiny
     # package, in main on both Ubuntu and bookworm — cheaper than the misses.
+    # Why man-db: without a `man` binary `git push --help` dies with "failed to
+    # exec 'man'" instead of printing the page. It reaches brew's pages (git's
+    # included) — apt packages install without theirs, because the slim base
+    # keeps a dpkg `path-exclude /usr/share/man/*`.
     ^sudo apt-get update
-    ^sudo apt-get install -y --no-install-recommends procps file gcc libc6-dev xxd
+    ^sudo apt-get install -y --no-install-recommends procps file gcc libc6-dev xxd man-db
     ^sudo rm -rf /var/lib/apt/lists/*
 
     # Runtime env exports (the sandbox shell sources this file on each login).

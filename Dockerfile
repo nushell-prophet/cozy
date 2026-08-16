@@ -52,13 +52,25 @@ FROM debian:12-slim
 # integrity via the repo's gpg signatures, independent of TLS. Once
 # ca-certificates lands, every later https fetch (brew, bootstrap Step 0)
 # verifies normally. Handles both the deb822 (.sources) and legacy (.list) layouts.
+#
+# Recommends stay on — no `--no-install-recommends`. The recommended set is what
+# a Debian user gets by default and what these packages assume is around; the
+# size it costs buys a workspace that behaves like a normal machine.
+#
+# Dropping the slim base's `path-exclude /usr/share/man/*` first makes every apt
+# package installed from here on keep its man pages — `git <cmd> --help` shells
+# out to `man`, and man-db (bootstrap Step 0) has nothing to show without them.
+# Only that one line goes: /usr/share/locale and /usr/share/doc stay excluded,
+# they are the bulk of what slim strips and nothing here reads them. dpkg applies
+# this to future unpacks only, so packages already in the base image stay pageless.
 RUN set -e; \
     for f in /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources; do \
         [ -f "$f" ] && sed -i 's|http://|https://|g' "$f" || true; \
     done; \
+    sed -i '\|^path-exclude /usr/share/man/\*$|d' /etc/dpkg/dpkg.cfg.d/docker; \
     apt_opts="-o Acquire::https::Verify-Peer=false -o Acquire::https::Verify-Host=false"; \
     apt-get $apt_opts update; \
-    apt-get $apt_opts install -y --no-install-recommends \
+    apt-get $apt_opts install -y \
         sudo ca-certificates curl git build-essential procps file rsync \
         ripgrep jq less openssh-client; \
     rm -rf /var/lib/apt/lists/*

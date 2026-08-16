@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `man-db` is now installed in containers, so `git push --help` prints the page instead of failing with "failed to exec 'man'". Covers brew's tools everywhere; on the sbx path apt packages still install without pages, since the base image excludes them at install time.
+
 ### Changed
+
+- The Debian image (plain `docker run` / Apple `container`) now installs apt's recommended packages and keeps man pages: `--no-install-recommends` is gone and the slim base's `path-exclude /usr/share/man/*` is deleted before the first apt, so `git <cmd> --help` has a page to show. A bigger image in exchange; the sbx path is unchanged.
 
 - `nu toolkit/container.nu refresh-egress` moves the proxy pin to upstream's newest maintained image: it resolves the newest `<squid>-<ubuntu>_edge` tag, rehearses it on a throwaway container (must boot, take the policy, pass `-k parse`), then rewrites the digest in `compose.yaml` and `toolkit/container.nu` together. Nothing is written if the rehearsal fails, and the running proxy is never touched — adopting the result is the usual delete-and-`restart`.
 

@@ -37,7 +37,7 @@ Note: the kit installs cozy from GitHub — the latest commit on the default bra
 
 **Installed everywhere** (container and host alike): [Nushell](#nushell), [Helix](#helix-editor), [Zellij](#zellij), [Lazygit](#lazygit), [Broot](#broot), [FZF](#fzf), git-delta, [VisiData](#visidata), bat, topiary, fd, jj, git-lfs — one `brew install` line. Claude Code lands here too, but from its own official installer, not from brew.
 
-**Containers only** (apt, in the Step 0 branch a host install skips): procps, file, gcc, libc6-dev, xxd
+**Containers only** (apt, in the Step 0 branch a host install skips): procps, file, gcc, libc6-dev, xxd, man-db
 
 **From the base image, not from cozy**: git, curl, Python, Node.js, Go, ripgrep, jq, gh. A host install adds none of these — on a fresh machine, install what you want yourself.
 
