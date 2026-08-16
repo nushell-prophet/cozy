@@ -11,7 +11,7 @@ covers:                # source paths update-design reconciles this file against
   - docker-files/pbcopy
   - docker-files/logo.ans
   - docker-files/workspace-README.md
-reconciled-at: 956273250c82738671f174c620baf4b1e07bc904
+reconciled-at: a74712172f75016cff337f02b2dba9c8baa6fee9
 ---
 
 # cozy autoload & shipped docker-files

@@ -5,14 +5,14 @@ covers:                # source paths update-design reconciles this file against
   - firewall/squid.conf
   - firewall/allowed-domains.txt
   - toolkit/container.nu
-reconciled-at: 956273250c82738671f174c620baf4b1e07bc904
+reconciled-at: a74712172f75016cff337f02b2dba9c8baa6fee9
 ---
 
 # firewall — human-managed egress for the Debian image
 
 **Runtime, not build.** This is the only subsystem that is not reached from a `bootstrap.nu` step: it wraps the finished image from outside. [`../compose.yaml`](../compose.yaml) puts the cozy container on a network with no way out except a squid proxy, and [`../firewall/`](../firewall/) holds the policy that proxy enforces. It applies to the **Debian rootless** run path only (see [`build.md`](build.md)); the `sbx` path gets its own allowlist from `network.allowedDomains` in [`../sbx-kit/spec.yaml`](../sbx-kit/spec.yaml).
 
-That path has two runtimes and therefore two assemblers. Under docker, `compose.yaml` declares the whole thing. Apple `container` has no compose, so [`../toolkit/container.nu`](../toolkit/container.nu) assembles the same three pieces by hand — caged network, dual-homed squid, the cozy container on the caged side only — from the same policy directory and the same digest-pinned image (`toolkit check` guards the two pins against each other; see [`toolkit.md`](toolkit.md)). It also carries a fourth piece compose gets for free: nothing on that network keeps its address across a start, so the cozy container's `*_PROXY` holds the proxy's *name* — the convention compose already uses with `egress` — and `set-egress-hosts` rewrites `/etc/hosts` on every `up` and `restart` to point that name wherever the proxy landed. A host-only network has no DNS, which is why the mapping is written by hand rather than resolved. Everything below holds for both unless it names one.
+That path has two runtimes and therefore two assemblers. Under docker, `compose.yaml` declares the whole thing. Apple `container` has no compose, so [`../toolkit/container.nu`](../toolkit/container.nu) assembles the same three pieces by hand — caged network, dual-homed squid, the cozy container on the caged side only — from the same policy directory and the same digest-pinned image (`toolkit check` guards the two pins against each other; see [`toolkit.md`](toolkit.md)). It also carries two pieces compose gets for free, both of them consequences of a host-only network having no DNS. First, nothing on that network keeps its address across a start, so the cozy container's `*_PROXY` holds the proxy's *name* — the convention compose already uses with `egress` — and `set-egress-hosts` rewrites `/etc/hosts` on every `up` and `restart` to point that name wherever the proxy landed; the mapping is written by hand because there is nothing to resolve it. Second, `--no-dns` only stops the runtime from *writing* a resolver — the debian base image already carries one, unreachable inside the cage and black-holed rather than refused, so every lookup waits out the glibc timeout — and `clear-resolver` empties the file, on every `up` and `restart` so that a container created before it existed is repaired too. Docker has neither gap: it rewrites `/etc/resolv.conf` to its own embedded DNS. Everything below holds for both unless it names one.
 
 ## Why it is not in the image
 

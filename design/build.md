@@ -7,7 +7,7 @@ covers:                # source paths update-design reconciles this file against
   - cozy-module/install/ensure-nu.sh
   - cozy-module/install/.nushell-version
   - cozy-module/install/bootstrap.nu
-reconciled-at: 956273250c82738671f174c620baf4b1e07bc904
+reconciled-at: a74712172f75016cff337f02b2dba9c8baa6fee9
 ---
 
 # build — the boot sequence (the spine)
@@ -26,7 +26,7 @@ Both only put the repo on disk and call `run-install.sh`; everything after that 
 
 ### sbx-kit/spec.yaml — the kit (primary path)
 
-A [`mixin`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#top-level-fields) kit that layers cozy on the standard [`shell`](https://docs.docker.com/ai/sandboxes/agents/shell/) agent — no image build, so this is the path `sbx run` takes. [`environment.variables`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#environment) mirrors the Dockerfile `ENV` block (below); [`commands.install`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#install) is two steps: clone cozy (the one step that can't live in `run-install.sh` — the script doesn't exist in-sandbox until the clone lands) → `run-install.sh`, its output redirected to `~/cozy-install.log` (sbx swallows install-command stdout with no flag to show it, so the log is the only way to watch progress or read back a failure — `sbx exec -it <name> tail -f ~/cozy-install.log` from a second terminal). No [`files/`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#static-files) tree — the repo is cloned in-sandbox, so `cozy_root` lines up via `path self`. [`network.allowedDomains`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#network) is provisional (derived by walking the install path; verify on a real [`sbx run`](https://docs.docker.com/reference/cli/sbx/run/)).
+A [`mixin`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#top-level-fields) kit that layers cozy on the standard [`shell`](https://docs.docker.com/ai/sandboxes/agents/shell/) agent — no image build, so this is the path `sbx run` takes. [`environment.variables`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#environment) mirrors the Dockerfile `ENV` block (below); [`commands.install`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#install) is two steps: clone cozy (the one step that can't live in `run-install.sh` — the script doesn't exist in-sandbox until the clone lands) → `run-install.sh`, its output redirected to `~/cozy-install.log` (sbx swallows install-command stdout with no flag to show it, so the log is the only way to watch progress or read back a failure — `sbx exec -it <name> tail -f ~/cozy-install.log` from a second terminal). No [`files/`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#static-files) tree — the repo is cloned in-sandbox, so `cozy_root` lines up via `path self`. [`network.allowedDomains`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#network) is provisional — it started as a walk of the install path and grows as real use needs a host that walk never reached (`codeberg.org`, for git over https); verify on a real [`sbx run`](https://docs.docker.com/reference/cli/sbx/run/).
 **Code:** [`sbx-kit/spec.yaml`](../sbx-kit/spec.yaml)
 
 ### Dockerfile — the Debian rootless image (secondary, in testing)
