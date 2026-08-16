@@ -10,7 +10,7 @@ covers:                # source paths update-design reconciles this file against
   - cozy-module/install/nushell.nu
   - cozy-module/install/nu-plugin-image.nu
   - cozy-module/install/_clone-or-fail.nu
-reconciled-at: 301b2b2f4d1656d073d34d3ea080c83c10b9053f
+reconciled-at: 956273250c82738671f174c620baf4b1e07bc904
 ---
 
 # cozy install — why these compile from source

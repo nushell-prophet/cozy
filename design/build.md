@@ -7,7 +7,7 @@ covers:                # source paths update-design reconciles this file against
   - cozy-module/install/ensure-nu.sh
   - cozy-module/install/.nushell-version
   - cozy-module/install/bootstrap.nu
-reconciled-at: 301b2b2f4d1656d073d34d3ea080c83c10b9053f
+reconciled-at: 956273250c82738671f174c620baf4b1e07bc904
 ---
 
 # build — the boot sequence (the spine)
@@ -75,7 +75,7 @@ Three actions in `main` between Step 0 and the brew installs; only the first is 
 `brew install nushell fzf lazygit helix zellij broot git-delta visidata bat topiary fd jj git-lfs`, then `brew cleanup --prune=all`. Errors if brew is missing.
 
 ### Step 2 — XDG git config
-Writes `~/.config/git/{config,ignore}`: identity `Agent <agent@sandbox>` (so Step 4 can commit), `safe.directory=*`, `gc.auto=0`, `core.fsync=all` + `core.fsyncMethod=fsync`, and `core.pager = delta` + `interactive.diffFilter = delta --color-only` (git-delta is a Step 1 brew install, so every `git diff`/`git show` and `git add -p` reads through it by default). XDG (not `/etc/gitconfig`) avoids sudo and is overridden by a real user's `~/.gitconfig`, so a personal identity still wins.
+Writes `~/.config/git/{config,ignore}`: identity `Agent <agent@sandbox>` (so Step 4 can commit), `safe.directory=*`, `gc.auto=0`, `core.fsync=all` + `core.fsyncMethod=fsync`, and `core.pager = delta` + `interactive.diffFilter = delta --color-only` (git-delta is a Step 1 brew install, so every `git diff`/`git show` and `git add -p` reads through it by default). Next to the pager, `format.pretty` replaces git's three-line `commit`/`Author`/`Date` header with the relative date and the author on one line — it sits here and not in lazygit's config because that header is git's own `git show` output, which lazygit passes through and has no setting for; it costs the `Merge:` line on merge commits. XDG (not `/etc/gitconfig`) avoids sudo and is overridden by a real user's `~/.gitconfig`, so a personal identity still wins.
 
 ### Step 3 — populate ~/repos/
 `populate-repos` mirrors `cozy-module/` + `docker-files/` to `~/repos/cozy/` (skipped in Docker, where the `COPY` already did it), then fans out every vendored module from `/tmp/vendor` (Docker) or `cozy_root/vendor/` into `~/repos/`. The source is used as-is; an empty source is a corrupt checkout and errors out. See [`modules.md`](modules.md).

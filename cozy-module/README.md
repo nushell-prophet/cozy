@@ -104,6 +104,15 @@ cozy docs nushell     # -> ./nushell-docs/
 
 Prints the cozy ANSI logo banner (the same one bash login shows).
 
+### `cozy nu-demo-instance`
+
+Puts a launch line for a bare, throwaway Nushell into the REPL prompt instead of spawning it — so during a demo the audience sees the actual code, it lands in history, and it can be edited before running. The line points `XDG_CONFIG_HOME` and `XDG_DATA_HOME` at empty temp dirs, scoped with `with-env` so nothing leaks into the calling session. `--here` uses `./nushell/` in the current directory as the config dir instead, creating empty `config.nu`/`env.nu` so they can be edited live.
+
+```nushell
+cozy nu-demo-instance
+cozy nu-demo-instance --here
+```
+
 ### `cozy install ...`
 
 Installer subcommands used during image build or inside a running sandbox: `bootstrap`, `claude`, `topiary`, `nushell`, `polars`, `rust`, `zellij`, `nu-plugin-image`.
