@@ -9,14 +9,17 @@ const region_end_regex = '^<!--\s*numd-gen-end\s*-->$'
 const region_any_regex = '^<!--\s*numd-gen'
 const region_end_marker = '<!-- numd-gen-end -->'
 
+# Not `run` because: since nushell 0.115 `run` is a parser keyword, and keywords cannot be
+# shadowed — `export def run` is rejected at parse time, aliases included, so no shim is possible
+
 # Run Nushell code blocks in a markdown file, output results back to the `.md`, and optionally to terminal
 @example "update readme" {
-    numd run README.md
+    numd render README.md
 }
 @example "preview which blocks would execute, without running them" {
-    numd run --dry-run README.md
+    numd render --dry-run README.md
 }
-export def run [
+export def render [
     file: path # path to a `.md` file containing Nushell code to be executed
     --dry-run # return blocks that would execute (block_index, infostring, code) without executing anything
     --echo # output resulting markdown to stdout instead of saving to file
@@ -28,8 +31,8 @@ export def run [
     --save-intermed-script: path # optional path for keeping intermediate script (useful for debugging purposes). If not set, the temporary intermediate script will be deleted.
     --use-host-config # load host's env, config, and plugin files (default: run with nu -n for reproducibility)
 ]: [nothing -> string nothing -> nothing nothing -> record nothing -> table<block_index: int, infostring: string, code: string>] {
-    # Why: the safety valve lives on `run` itself — an agent about to `numd run` an
-    # arbitrary file discovers the gate in `run --help`, not in a distant command
+    # Why: the safety valve lives on `render` itself — an agent about to `numd render` an
+    # arbitrary file discovers the gate in `render --help`, not in a distant command
     if $dry_run {
         return (
             parse-file $file

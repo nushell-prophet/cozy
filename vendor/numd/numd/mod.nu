@@ -1,5 +1,5 @@
 export use commands.nu [
-    run
+    render
     clear-outputs
     list-fence-options
 ]

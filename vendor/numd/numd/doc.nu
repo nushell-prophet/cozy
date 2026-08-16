@@ -125,16 +125,16 @@ export def render-command [
 
 # Render markdown documentation for a module or a single command from `scope` data
 @example "document one command" {
-    numd doc 'numd run'
+    numd doc 'numd render'
 }
 @example "document every command of a module, headers one level deeper" {
     numd doc numd --header-level 4
 }
 @example "document one command with no generated header, to sit under a hand-written header" {
-    numd doc 'numd run' --no-header
+    numd doc 'numd render' --no-header
 }
 export def main [
-    target: string # a module name (documents all its commands) or a full command name (e.g. 'numd run')
+    target: string # a module name (documents all its commands) or a full command name (e.g. 'numd render')
     --header-level: int = 3 # markdown header level for command headers
     --no-header # omit the generated header line, so the block can sit under a hand-written header (applies to every command when target is a module)
 ]: nothing -> string {
