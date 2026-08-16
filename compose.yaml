@@ -60,7 +60,7 @@ services:
   # on a throwaway container before it goes near the running cage; the whole
   # rehearsal is in todo/20260806-221500-rehearse-squid7-proxy.nu.
   egress:
-    image: ubuntu/squid@sha256:739595239b20999cbddcbd48eb56ec3dfa6df360166fa624fd66201d592dcf89
+    image: ubuntu/squid@sha256:6c919903a7a60f3ddd27735cab4516e2991420d49dfc3247e5228de994172d8b
     networks: [caged, out]
     # The whole policy directory, one mount. Not the two files individually:
     # a bind-mounted *file* pins an inode, so an editor that saves atomically
