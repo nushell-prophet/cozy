@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The Apple `container` path no longer pays a 20s timeout on every name lookup — `up` and `restart` empty `/etc/resolv.conf` inside the cozy container. The Debian base image ships `nameserver 1.1.1.1`, which the host-only network black-holes; a plain `git fetch` took 20.7s. Names are resolved by the egress proxy, so nothing is lost; `restart` repairs an existing container.
+
 - `toolkit/container.nu` reads the proxy's address from the runtime (`container ls`'s `status.networks`) instead of running `hostname -I` inside it, so a minimal proxy image no longer makes `restart` fail with "never got an address" about a proxy that is up and serving. (095b957)
 
 - `toolkit/container.nu` refuses `cozy-egress` as a container name (and stops offering it in completion): `restart cozy-egress` used to probe the cage from inside the dual-homed proxy, reach the internet by design, stop the proxy over that "leak" — cutting the running cozy container's exit — and blame the network.

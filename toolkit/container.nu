@@ -386,6 +386,29 @@ def set-egress-hosts [name: string ip: string]: nothing -> nothing {
     print $"  (ansi green)Hosts:(ansi reset) ($egress_name) -> ($ip), mapped inside ($name)"
 }
 
+# The other half of --no-dns, which the flag cannot deliver on its own: it stops
+# the runtime from *writing* a resolver, but the Debian base image already
+# carries one — debuerreotype (the builder behind the official images) writes
+# `nameserver 1.1.1.1` into every debian:*-slim. On the cage that address is
+# unreachable, and the host-only network's default route black-holes the packets
+# instead of refusing them, so each lookup waits out the glibc default: 5s
+# timeout x 2 attempts x 2 nameservers = 20s. Measured on a live container as a
+# 20.7s `git fetch`, all of it inside git-remote-https, but nothing is spared —
+# apt, brew and any curl to a new host pay the same. Harmless before the cage
+# landed (0d6ddff): on the default network 1.1.1.1 answered.
+#
+# Emptying the file is the fix, not shortening the timeout: with no nameserver
+# line glibc falls back to 127.0.0.1, which refuses instantly. Nothing is lost —
+# names are resolved by the proxy, and ($egress_name) comes from /etc/hosts.
+#
+# Unlike /etc/hosts the runtime does not regenerate this file, so one write lasts
+# the container's life. Re-asserted on every start anyway: that is what repairs a
+# container created before this existed.
+def clear-resolver [name: string]: nothing -> nothing {
+    container-cli [exec --uid 0 $name sh -c $"echo '# cozy: no resolver — ($egress_name) resolves names' > /etc/resolv.conf"]
+    print $"  (ansi green)Resolver:(ansi reset) cleared in ($name) — the cage has none, and the image's 1.1.1.1 costs 20s a lookup"
+}
+
 # Guard for containers created before the exit moved to a name: their env
 # carries a fixed address, which cannot be updated on an existing container, so
 # they cannot follow the proxy. A one-time recreation is the only fix.
@@ -630,6 +653,7 @@ export def "main up" [
     # returns the container can take the root exec the mapping needs.
     assert-caged $name
     set-egress-hosts $name $ip
+    clear-resolver $name
 
     print ""
     print $"  attach:  use toolkit/container.nu; container attach ($name) --workdir ($ws)"
@@ -752,6 +776,7 @@ export def "main restart" [
     # rebuild.
     assert-exit-by-name $name
     set-egress-hosts $name $ip
+    clear-resolver $name
 
     print ""
     print $"  attach:  use toolkit/container.nu; container attach ($name)"
