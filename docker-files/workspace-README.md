@@ -12,7 +12,7 @@ cozy ships a set of upstream modules *vendored* into `~/repos/` — committed in
 | `nu-goodies` | Everyday Nushell helpers (`example`, `copy-out`, …) |
 | `nu-kv` | Key-value store, autoloaded under the `kv` prefix |
 | `nu-cmd-stack` | Command-history stacking |
-| `numd` | Literate Markdown — `numd run <file>` |
+| `numd` | Literate Markdown — `numd render <file>` |
 | `dotnu` | Literate `.nu` — `dotnu embeds-update`, module tooling |
 | `claude-nu` | Toolbox for Claude Code sessions (`claude-nu messages`, …) + tab-completions for the `claude` CLI |
 | `nutest` | Test framework (not autoloaded: `use ~/repos/nutest/nutest`) |

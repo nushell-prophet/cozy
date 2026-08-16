@@ -14,7 +14,7 @@
  ["claude-nu messages --include-responses", "/home/agent/workspace", 1785024006000, 0, 0],
  ["claude-nu sessions --all-projects | claude-nu messages", "/home/agent/workspace", 1785024007000, 0, 0],
  ["claude-nu sessions", "/home/agent/workspace", 1785024008000, 0, 0],
- ["claude-nu export-session --to sessions", "/home/agent/workspace", 1785024009000, 0, 0],
+ ["claude-nu export-session | save session.md", "/home/agent/workspace", 1785024009000, 0, 0],
  ["cozy docs claude", "/home/agent/workspace", 1785024010000, 0, 0],
  ["cozy docs nushell", "/home/agent/workspace", 1785024011000, 0, 0],
  ["zellij attach -c sandbox", "/home/agent/workspace", 1785024012000, 0, 0]]
