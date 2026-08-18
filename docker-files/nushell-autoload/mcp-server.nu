@@ -13,9 +13,8 @@ $env.NU_MCP_OUTPUT_LIMIT = 64kb
 # Self-healing: sandbox create may overwrite ~/.claude.json, this restores the MCP entry.
 # Note: MCP servers are read from ~/.claude.json (user scope), NOT ~/.claude/settings.json.
 # Why $nu.current-exe and not `which nu`: `which` answers about any command of
-# that name, and agent-nu-wrapper.nu — loaded earlier, autoload is alphabetical —
-# defines one, so `which nu | get 0.path` returned that .nu file and the entry
-# told Claude Code to execute a non-executable script. current-exe is the running
+# that name, so a `def nu` or an alias shadows the binary and the entry then tells
+# Claude Code to execute something that is not nu. current-exe is the running
 # binary; no definition can shadow it.
 let config_path = $nu.home-dir | path join .claude.json
 let nu_bin = $nu.current-exe

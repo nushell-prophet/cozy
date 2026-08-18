@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- Output from an agent-launched `nu` renders as NUON instead of the stock 80-column box table, which wrapped identifiers mid-word, dropped columns into a bare `...` and hid nested values behind `[list 3 items]`. Covers `nu` from a Bash call and `nu` launched from nushell (the nushell MCP included); a human shell is untouched, and `--config` / `--no-config-file` / `--mcp` / `-n` opt out. (23a0030, 0fd92b5)
-
 ## [0.4.2] - 2026-08-16
 
 ### Added

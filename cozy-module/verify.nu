@@ -76,8 +76,6 @@ def expected-files []: nothing -> list {
         ...$cozy_autoload
         {owner: dotfiles, path: ($autoload_dir | path join hooks-config.nu)}
         {owner: cozy, path: ($home | path join .claude.json)}
-        # Deliberately outside the autoload dir, so the glob above misses it.
-        {owner: cozy, path: ($autoload_dir | path dirname | path join agent-config.nu)}
     ]
 }
 
@@ -193,34 +191,6 @@ def check-envs [run: closure]: nothing -> list {
         } else {
             fail $"env: ($name)" $"expected ($expected), got ($got)"
         }
-    }
-}
-
-# The file rows above prove agent-config.nu was deployed; these prove it is
-# reached. Both wrappers, because either can rot alone.
-#
-# CLAUDECODE is set explicitly rather than inherited: verify may well run from a
-# session that has it, and a check that passes only because of how it was
-# launched is the failure mode check-envs already documents.
-def check-agent-output [run: closure]: nothing -> list {
-    let probe = 'nu --commands "[[a]; [1]]"'
-    let wrapper = $autoload_dir | path join agent-nu-wrapper.nu
-    [
-        (assert-nuon 'agent output: bash' (do $run [env CLAUDECODE=1 bash -c $probe]))
-        (assert-nuon 'agent output: nested nu' (do $run [env CLAUDECODE=1 nu --config $wrapper --commands $probe]))
-    ]
-}
-
-# Asserting in both directions, so a third, unexpected rendering fails loudly
-# instead of passing as "well, no box characters".
-def assert-nuon [label: string, r: record]: nothing -> record {
-    let out = $r.stdout
-    if ($out =~ '[╭│╰┬┼]') {
-        fail $label 'still a box table — the wrapper did not pass --config'
-    } else if ($out =~ '\[a\];') {
-        ok $label 'nuon'
-    } else {
-        fail $label $"neither nuon nor a table: ($out | str trim | str substring 0..60)"
     }
 }
 
@@ -433,7 +403,6 @@ export def run-checks [run: closure]: nothing -> table {
         ...(check-tools $run)
         (check-autoload-source)
         ...(check-files $run)
-        ...(check-agent-output $run)
         ...(check-dirs $run)
         ...(check-envs $run)
         ...(check-claude-env $run)
