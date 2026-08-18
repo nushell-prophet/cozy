@@ -240,14 +240,14 @@ Nothing is decrypted. Squid refuses the `CONNECT` before TLS begins, so a blocke
 
 #### Apple `container`
 
-Apple `container` has no compose, so `toolkit/container.nu` assembles the same three pieces by hand — `up` builds the cage, `restart` brings it back, `reload-egress` applies an edited allowlist, `refresh-egress` moves the proxy pin to upstream's newest maintained image, `attach` opens a window on it. It needs **macOS 26 or later** — `container network create` does not exist before that, and on macOS 15 there is no way to build the cage at all.
+Apple `container` has no compose, so `toolkit/container.nu` assembles the same three pieces by hand — `up` builds the cage, `restart` brings it back, `reload-egress` applies an edited allowlist, `refresh-egress` moves the proxy pin to upstream's newest maintained image, `attach` opens a window on it — restarting the pair first if it is not running, so after the runtime itself comes back `attach` alone is the whole path. It needs **macOS 26 or later** — `container network create` does not exist before that, and on macOS 15 there is no way to build the cage at all.
 
 ```
 mkdir -p ~/.config/cozy && cp -r firewall ~/.config/cozy/firewall
 container build -t cozy:latest .
 nu toolkit/container.nu up my-cozy ~/path/to/project
 nu toolkit/container.nu up my-cozy ~/project-a ~/shared-libs:ro ~/docs:ro   # several folders
-nu toolkit/container.nu restart my-cozy   # after the `container` runtime itself restarts
+nu toolkit/container.nu restart my-cozy   # after the `container` runtime itself restarts — or just attach
 nu toolkit/container.nu reload-egress my-cozy   # after editing the allowlist
 nu toolkit/container.nu refresh-egress          # move the squid pin to upstream's newest, rehearsed first
 container logs -f cozy-egress   # watch what gets allowed and refused

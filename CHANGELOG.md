@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `nu toolkit/container.nu attach <name>` restarts a stopped container and its egress proxy before opening the window, so after the `container` runtime itself restarts one command brings you back. It used to open a window on a `container exec` that could not enter.
+
 ## [0.4.2] - 2026-08-16
 
 ### Added

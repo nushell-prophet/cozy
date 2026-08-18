@@ -14,7 +14,7 @@
 #
 #   nu toolkit/container.nu up my-cozy ~/path/to/project
 #   nu toolkit/container.nu up my-cozy ~/project-a ~/shared-libs:ro ~/docs:ro
-#   nu toolkit/container.nu restart my-cozy
+#   nu toolkit/container.nu restart my-cozy         # or just attach, which restarts a stopped pair
 #   nu toolkit/container.nu reload-egress my-cozy   # after editing the allowlist
 #   nu toolkit/container.nu refresh-egress          # move the pin to upstream's newest
 #
@@ -798,6 +798,9 @@ export def "main restart" [
 # Unlike `up` and `restart`, this one cannot be run as a script: the window is a
 # background job and a job dies with the nu that spawned it. Run it from an
 # interactive nu instead — `use toolkit/container.nu`, then `container attach`.
+#
+# Restarts the pair first when the container is not running, so this is also the
+# whole launch path after the runtime itself came back.
 export def "main attach" [
     name: string@"nu-complete container names"
     --config-file: path
@@ -805,8 +808,28 @@ export def "main attach" [
     --no-job # don't create background job for the proces
     --zellij-session: string = '' # zellij session name to use instead of the container name
     --workdir: path # start directory inside the container
+    --policy: path # firewall policy directory, read only if the pair has to be restarted and the proxy is gone (default: ~/.config/cozy/firewall)
 ]: nothing -> any {
     # the window's job id — `job kill` it to close the window
+
+    # A stopped container used to get a window regardless: `container exec -it`
+    # cannot enter one, so the window opened on that error and nothing was said
+    # here. Stopped is exactly what a runtime restart (`container system
+    # stop/start`, an upgrade, a reboot) leaves behind, and the command a human
+    # reaches for then is this one — `restart` is the one they have to remember
+    # instead. So bring the pair back rather than open a window on a corpse:
+    # restart starts the proxy, starts the container, re-proves the cage and
+    # re-maps the exit, and the window then lands on something that answers.
+    #
+    # Not offered as a flag: a window on a container that is not running has no
+    # other meaning to ask about.
+    if (container-status $name) != 'running' {
+        # Why the same call twice: an unset flag is null and `--policy: path`
+        # rejects null at parse time, so "the flag was not given" cannot be
+        # forwarded as a value.
+        if $policy == null { main restart $name } else { main restart $name --policy $policy }
+    }
+
     # Why --cwd: `container` has no notion of a workspace, so an exec starts
     # wherever the image left WORKDIR — pass it when the start directory matters.
     let exec_argv = [container exec -it]
