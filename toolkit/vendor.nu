@@ -158,7 +158,7 @@ export def main [
     let all_groups = load-modules
     let groups = if $repo == null { $all_groups } else { $all_groups | where repo == $repo }
     if ($groups | is-empty) {
-        error make {msg: $"repo '($repo)' not found in vendor.yml"}
+        error make --unspanned {msg: $"repo '($repo)' not found in vendor.yml"}
     }
 
     # Wipe scope: the whole vendor/ when refreshing everything, else just the

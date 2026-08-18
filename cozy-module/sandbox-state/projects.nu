@@ -2,7 +2,7 @@ const claude_projects_dir = '~/.claude/projects'
 
 def sandbox-state-dir []: nothing -> path {
     if $env.WORKSPACE_DIR? == null {
-        error make {msg: "WORKSPACE_DIR not set — sandbox-state requires a mounted workspace"}
+        error make --unspanned {msg: "WORKSPACE_DIR not set — sandbox-state requires a mounted workspace"}
     }
     $env.WORKSPACE_DIR | path join sandbox-state
 }
@@ -23,7 +23,7 @@ export def snapshot [
 ]: nothing -> nothing {
     let src = $claude_projects_dir | path expand
     if not ($src | path exists) {
-        error make {msg: $"projects directory not found: ($src)"}
+        error make --unspanned {msg: $"projects directory not found: ($src)"}
     }
     let dst = $path | default (sandbox-state-path 'projects')
     mkdir $dst
@@ -41,7 +41,7 @@ export def restore [
 ]: nothing -> nothing {
     let src = $path | default (sandbox-state-path 'projects')
     if not ($src | path exists) {
-        error make {msg: $"projects directory not found: ($src)"}
+        error make --unspanned {msg: $"projects directory not found: ($src)"}
     }
     let dst = $claude_projects_dir | path expand
     mkdir $dst

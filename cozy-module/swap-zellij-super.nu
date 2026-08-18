@@ -12,7 +12,7 @@
 export def main []: nothing -> nothing {
     let path = "~/.config/zellij/config.kdl" | path expand
     if not ($path | path exists) {
-        error make {msg: $"zellij config not found at ($path)"}
+        error make --unspanned {msg: $"zellij config not found at ($path)"}
     }
     open $path --raw
     | str replace --all '"Super Shift ' '"Alt Shift '

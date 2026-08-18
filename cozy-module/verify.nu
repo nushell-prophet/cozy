@@ -486,7 +486,7 @@ export def report [results: table]: nothing -> table {
 # e.g. `cozy verify | where not pass`.
 export def main []: nothing -> table {
     if not ('/etc/sandbox-persistent.sh' | path exists) {
-        error make {msg: 'not inside a cozy sandbox (no /etc/sandbox-persistent.sh)'}
+        error make --unspanned {msg: 'not inside a cozy sandbox (no /etc/sandbox-persistent.sh)'}
     }
     report (run-checks (local-runner))
 }

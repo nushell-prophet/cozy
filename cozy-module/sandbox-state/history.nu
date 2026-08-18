@@ -10,7 +10,7 @@ const seed_file = path self | path dirname | path join .. history-seed.nuon
 
 def sandbox-state-dir []: nothing -> path {
     if $env.WORKSPACE_DIR? == null {
-        error make {msg: "WORKSPACE_DIR not set — sandbox-state requires a mounted workspace"}
+        error make --unspanned {msg: "WORKSPACE_DIR not set — sandbox-state requires a mounted workspace"}
     }
     $env.WORKSPACE_DIR | path join sandbox-state
 }
@@ -27,7 +27,7 @@ def sandbox-state-path [filename: string]: nothing -> path {
 # from the cozy-module directory.
 export def seed []: nothing -> nothing {
     if not ($seed_file | path exists) {
-        error make {msg: $"seed file not found: ($seed_file)"}
+        error make --unspanned {msg: $"seed file not found: ($seed_file)"}
     }
     restore $seed_file
 }
@@ -44,7 +44,7 @@ export def snapshot [
     let out = $path | default (sandbox-state-path $"history-(date now | format date '%Y%m%d-%H%M%S').nuon")
     let db = $history_db | path expand
     if not ($db | path exists) {
-        error make {msg: $"history database not found: ($db)"}
+        error make --unspanned {msg: $"history database not found: ($db)"}
     }
     let items = open $db | query db $"SELECT ($history_columns) FROM history ORDER BY id"
     if ($items | is-empty) {
@@ -71,16 +71,16 @@ export def restore [
         let dir = sandbox-state-dir
         let files = glob ($dir | path join 'history-*.nuon') | sort
         if ($files | is-empty) {
-            error make {msg: $"no history snapshots found in ($dir)"}
+            error make --unspanned {msg: $"no history snapshots found in ($dir)"}
         }
         $files | last
     }
     if not ($src | path exists) {
-        error make {msg: $"file not found: ($src)"}
+        error make --unspanned {msg: $"file not found: ($src)"}
     }
     let db = $history_db | path expand
     if not ($db | path exists) {
-        error make {msg: $"history database not found: ($db)"}
+        error make --unspanned {msg: $"history database not found: ($db)"}
     }
     let items = open $src
     if ($items | is-empty) {

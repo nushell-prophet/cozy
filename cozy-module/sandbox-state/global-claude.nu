@@ -2,7 +2,7 @@ const global_claude_md = '~/.claude/CLAUDE.md'
 
 def sandbox-state-dir []: nothing -> path {
     if $env.WORKSPACE_DIR? == null {
-        error make {msg: "WORKSPACE_DIR not set — sandbox-state requires a mounted workspace"}
+        error make --unspanned {msg: "WORKSPACE_DIR not set — sandbox-state requires a mounted workspace"}
     }
     $env.WORKSPACE_DIR | path join sandbox-state
 }
@@ -21,7 +21,7 @@ export def snapshot [
 ]: nothing -> nothing {
     let src = $global_claude_md | path expand
     if not ($src | path exists) {
-        error make {msg: $"global CLAUDE.md not found: ($src)"}
+        error make --unspanned {msg: $"global CLAUDE.md not found: ($src)"}
     }
     let out = $path | default (sandbox-state-path $"global-claude-(date now | format date '%Y%m%d-%H%M%S').md")
     open --raw $src | save --force $out
@@ -38,12 +38,12 @@ export def restore [
         let dir = sandbox-state-dir
         let files = glob ($dir | path join 'global-claude-*.md') | sort
         if ($files | is-empty) {
-            error make {msg: $"no global-claude snapshots found in ($dir)"}
+            error make --unspanned {msg: $"no global-claude snapshots found in ($dir)"}
         }
         $files | last
     }
     if not ($src | path exists) {
-        error make {msg: $"file not found: ($src)"}
+        error make --unspanned {msg: $"file not found: ($src)"}
     }
     let dst = $global_claude_md | path expand
     mkdir ($dst | path dirname)

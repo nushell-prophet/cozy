@@ -30,6 +30,13 @@
 # path stays in toolkit/sbxw.nu and knows nothing about any of it; the one thing
 # the two paths genuinely share, opening the WezTerm window, lives in
 # toolkit/wezterm.nu.
+#
+# Why `--unspanned` on some errors and not others: a span prints the raise site
+# plus that source line, which re-shows the message uninterpolated — a debugging
+# anchor when an invariant broke, pure noise when the user just has to act. So a
+# normal situation carrying its own fix (name taken, no workspace, no policy,
+# wrong container) is raised unspanned; an unexpected one (a `container` call
+# failed, the cage is open, upstream changed shape) keeps its span.
 
 use ./wezterm.nu *
 
@@ -129,7 +136,7 @@ def "nu-complete container names" []: nothing -> table<value: string, descriptio
 # container, with a diagnosis blaming the network. Refused by name instead.
 def reject-proxy-name [name: string]: nothing -> nothing {
     if $name == $egress_name {
-        error make {msg: $"($egress_name) is the egress proxy, not a cozy container. It is managed for you: `up` and `restart` start or recreate it, and `reload-egress <container>` applies an edited allowlist to it."}
+        error make --unspanned {msg: $"($egress_name) is the egress proxy, not a cozy container. It is managed for you: `up` and `restart` start or recreate it, and `reload-egress <container>` applies an edited allowlist to it."}
     }
 }
 
@@ -424,10 +431,10 @@ def assert-exit-by-name [name: string]: nothing -> nothing {
         error make {msg: $"could not read HTTPS_PROXY from ($name): ($r.stderr | str trim)"}
     }
     if ($baked | is-empty) {
-        error make {msg: $"($name) has no HTTPS_PROXY — it was not created by `container.nu up`, so it has no exit at all \(a bare `container run` has no cage; `cozy verify`'s egress: rows fail on it by design)."}
+        error make --unspanned {msg: $"($name) has no HTTPS_PROXY — it was not created by `container.nu up`, so it has no exit at all \(a bare `container run` has no cage; `cozy verify`'s egress: rows fail on it by design)."}
     }
     if $baked != (proxy-url $egress_name) {
-        error make {msg: $"($name) was built with the fixed exit ($baked) instead of the name (proxy-url $egress_name) — a baked address cannot be updated, so it cannot follow the proxy. Recreate it once: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>`."}
+        error make --unspanned {msg: $"($name) was built with the fixed exit ($baked) instead of the name (proxy-url $egress_name) — a baked address cannot be updated, so it cannot follow the proxy. Recreate it once: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>`."}
     }
 }
 
@@ -486,7 +493,7 @@ def parse-workspace [entry: string]: nothing -> record<path: path, ro: bool> {
     let ro = $entry | str ends-with ':ro'
     let p = $entry | str replace --regex ':ro$' '' | path expand
     if not ($p | path exists) {
-        error make {msg: $"workspace ($p) does not exist"}
+        error make --unspanned {msg: $"workspace ($p) does not exist"}
     }
     {path: $p ro: $ro}
 }
@@ -511,10 +518,10 @@ def paths-overlap [a: path b: path]: nothing -> bool {
 def reject-writable [ws: record<path: path, ro: bool> policy: path]: nothing -> nothing {
     if $ws.ro { return }
     if (paths-overlap $ws.path $cozy_root) {
-        error make {msg: $"workspace ($ws.path) overlaps the cozy repo — the agent would be able to edit this script and the firewall template, which are read fresh at the next launch. Pick a folder outside it, or mount it read-only as ($ws.path):ro."}
+        error make --unspanned {msg: $"workspace ($ws.path) overlaps the cozy repo — the agent would be able to edit this script and the firewall template, which are read fresh at the next launch. Pick a folder outside it, or mount it read-only as ($ws.path):ro."}
     }
     if (paths-overlap $ws.path $policy) {
-        error make {msg: $"workspace ($ws.path) overlaps the firewall policy ($policy) — the agent would be able to edit its own allowlist, which the proxy re-reads on the next reload. Pick a folder outside it, or mount it read-only as ($ws.path):ro."}
+        error make --unspanned {msg: $"workspace ($ws.path) overlaps the firewall policy ($policy) — the agent would be able to edit its own allowlist, which the proxy re-reads on the next reload. Pick a folder outside it, or mount it read-only as ($ws.path):ro."}
     }
 }
 
@@ -527,7 +534,7 @@ export def main []: nothing -> nothing {
 def resolve-policy [policy: oneof<path, nothing>]: nothing -> path {
     let dir = $policy | default ($nu.home-dir | path join .config cozy firewall) | path expand
     if not ($dir | path exists) {
-        error make {msg: $"no policy at ($dir) — seed it once with `mkdir ~/.config/cozy; cp -r ($cozy_root)/firewall ~/.config/cozy/firewall`. Keeping it outside this repo is what makes the allowlist human-managed."}
+        error make --unspanned {msg: $"no policy at ($dir) — seed it once with `mkdir ~/.config/cozy; cp -r ($cozy_root)/firewall ~/.config/cozy/firewall`. Keeping it outside this repo is what makes the allowlist human-managed."}
     }
     $dir
 }
@@ -544,7 +551,7 @@ export def "main up" [
 ]: nothing -> record {
     reject-proxy-name $name
     if ($workspaces | is-empty) {
-        error make {msg: "no workspace given — `container.nu up <name> <folder> [more:ro ...]`"}
+        error make --unspanned {msg: "no workspace given — `container.nu up <name> <folder> [more:ro ...]`"}
     }
     let ws_list = $workspaces | each {|e| parse-workspace $e }
     # Only the first one can be WORKSPACE_DIR: the variable is single-valued and
@@ -566,7 +573,7 @@ export def "main up" [
     # then aborted here with "a container named X already exists" — an error
     # the user reads as "nothing happened".
     if (container-status $name) != 'absent' {
-        error make {msg: $"a container named ($name) already exists — `nu toolkit/container.nu restart ($name)` brings it back, `nu toolkit/container.nu reload-egress ($name)` applies an edited allowlist to it, or `container stop ($name); container delete ($name)` to rebuild it"}
+        error make --unspanned {msg: $"a container named ($name) already exists — `nu toolkit/container.nu restart ($name)` brings it back, `nu toolkit/container.nu reload-egress ($name)` applies an edited allowlist to it, or `container stop ($name); container delete ($name)` to rebuild it"}
     }
 
     ensure-network
@@ -681,14 +688,14 @@ export def "main reload-egress" [
     let policy_dir = resolve-policy $policy
     let container_state = container-status $name
     if $container_state == 'absent' {
-        error make {msg: $"no container named ($name) — nothing to reload for. A new container reads the current allowlist at startup: `nu toolkit/container.nu up ($name) <folder>`"}
+        error make --unspanned {msg: $"no container named ($name) — nothing to reload for. A new container reads the current allowlist at startup: `nu toolkit/container.nu up ($name) <folder>`"}
     }
 
     # Not ensure-network: recreating a missing network would leave the existing
     # container attached to nothing while this command prints "live" — the same
     # state restart refuses, refused the same way.
     if not (caged-network-exists) {
-        error make {msg: $"($caged_network) is gone — ($name) has no cage, and a reload cannot re-attach it. Rebuild: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>` recreates the network."}
+        error make --unspanned {msg: $"($caged_network) is gone — ($name) has no cage, and a reload cannot re-attach it. Rebuild: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>` recreates the network."}
     }
     # Checked before the reload touches anything: a legacy container (fixed
     # exit) cannot follow a proxy that a recreation may move, and an error
@@ -732,7 +739,7 @@ export def "main restart" [
     reject-proxy-name $name
     let container_state = container-status $name
     if $container_state == 'absent' {
-        error make {msg: $"no container named ($name) — nothing to restart. Create it: `nu toolkit/container.nu up ($name) <folder>`"}
+        error make --unspanned {msg: $"no container named ($name) — nothing to restart. Create it: `nu toolkit/container.nu up ($name) <folder>`"}
     }
 
     # The one rebuild instruction left: the container was attached to the
@@ -740,7 +747,7 @@ export def "main restart" [
     # *recreated* network rather than around it — an unproven cage must not
     # come back quietly.
     if not (caged-network-exists) {
-        error make {msg: $"($caged_network) is gone — ($name) has no cage to come back to. Rebuild both: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>` recreates the network."}
+        error make --unspanned {msg: $"($caged_network) is gone — ($name) has no cage to come back to. Rebuild both: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>` recreates the network."}
     }
     let egress_state = container-status $egress_name
     if $egress_state == 'absent' {
