@@ -798,7 +798,8 @@ export def "main attach" [
     --no-job # don't create background job for the proces
     --zellij-session: string = '' # zellij session name to use instead of the container name
     --workdir: path # start directory inside the container
-]: nothing -> any {   # the window's job id — `job kill` it to close the window
+]: nothing -> any {
+    # the window's job id — `job kill` it to close the window
     # Why --cwd: `container` has no notion of a workspace, so an exec starts
     # wherever the image left WORKDIR — pass it when the start directory matters.
     let exec_argv = [container exec -it]
@@ -867,10 +868,12 @@ def rehearse-egress [image: string policy: path]: nothing -> nothing {
         -NYC
     ]
 
-    let listening = (poll 15 {
-        let r = ^container logs $rehearsal_name | complete
-        if (($r.stdout + $r.stderr) | str contains 'listening port') { true } else { null }
-    } | default false)
+    let listening = (
+        poll 15 {
+            let r = ^container logs $rehearsal_name | complete
+            if (($r.stdout + $r.stderr) | str contains 'listening port') { true } else { null }
+        } | default false
+    )
     let parse = ^container exec $rehearsal_name $squid_bin -k parse -f $policy_conf | complete
     let logs = ^container logs $rehearsal_name | complete
 
