@@ -186,6 +186,9 @@ export def main [
         ^cp $f $autoload_dst
     }
 
+    # One level up, NOT in the autoload dir — see its own header for why.
+    ^cp ($cozy_root | path join 'docker-files' 'agent-config.nu') ($autoload_dst | path dirname)
+
     # Steps 4 & 5 — deploy dotfiles and Claude skills from ~/repos/dotfiles.
     # Spawn nu so toolkit.nu's `use`/cwd-relative paths resolve from the
     # dotfiles repo root. Always pass `--docker` because cozy only vendors
@@ -411,6 +414,15 @@ export LANG="C.UTF-8"
 # Why the $- test: BASH_ENV makes every *non-interactive* bash source this file, and a `bash script.sh` run from an already-open nu session has a tty on stdout with no COZY_MOTD_SHOWN inherited — so [ -t 1 ] alone printed the banner into the output of that script. Interactivity is the real question, and $- answers it; a tty does not.
 # No apostrophe anywhere in this block: it is a single-quoted nushell string, and one would close it early — the parse then fails far below, pointing at innocent lines.
 case $- in *i*) [ -t 1 ] && [ -z "$COZY_MOTD_SHOWN" ] && { export COZY_MOTD_SHOWN=1; [ -f "$HOME/repos/cozy/docker-files/logo.ans" ] && cat "$HOME/repos/cozy/docker-files/logo.ans"; echo "cozy ready — run nu to start"; } ;; esac
+# Why: a bare nu --commands loads no config, so an agent Bash call gets the stock box table. agent-config.nu renders NUON instead - see its header. The human sources this file too and has no CLAUDECODE, so they keep stock nu; command nu is the escape hatch either way.
+# Why per-argument and not `case " $* "`: the flattened form matched -n anywhere in the line, script body included, so `nu -c "head -n 20 f"` silently fell back to the box table. Exact-match, same as autoload/agent-nu-wrapper.nu.
+nu() {
+    if [ -z "${CLAUDECODE-}" ]; then command nu "$@"; return; fi
+    for a in "$@"; do
+        case $a in --config|--no-config-file|--mcp|-n) command nu "$@"; return ;; esac
+    done
+    command nu --config "$HOME/.config/nushell/agent-config.nu" "$@"
+}
 '
     # Wrap with markers so re-runs replace the block in place instead of
     # `save --append`-ing a duplicate copy on every bootstrap invocation.

@@ -12,16 +12,21 @@ $env.NU_MCP_OUTPUT_LIMIT = 64kb
 # Ensure nushell MCP server is registered in Claude Code user config.
 # Self-healing: sandbox create may overwrite ~/.claude.json, this restores the MCP entry.
 # Note: MCP servers are read from ~/.claude.json (user scope), NOT ~/.claude/settings.json.
+# Why $nu.current-exe and not `which nu`: `which` answers about any command of
+# that name, and agent-nu-wrapper.nu — loaded earlier, autoload is alphabetical —
+# defines one, so `which nu | get 0.path` returned that .nu file and the entry
+# told Claude Code to execute a non-executable script. current-exe is the running
+# binary; no definition can shadow it.
 let config_path = $nu.home-dir | path join .claude.json
-let nu_bin = which nu | get 0.path
+let nu_bin = $nu.current-exe
+let entry = {type: stdio command: $nu_bin args: ["--mcp"] env: {}}
 if ($config_path | path exists) {
     let config = open $config_path
-    if ($config | get --optional mcpServers.nushell) == null {
-        $config
-        | upsert mcpServers.nushell {type: stdio command: $nu_bin args: ["--mcp"] env: {}}
-        | save -f $config_path
+    # Compare the command, not just presence. A wrong path already written is
+    # exactly what needs healing, and a presence test never fires for it.
+    if ($config | get --optional mcpServers.nushell.command) != $nu_bin {
+        $config | upsert mcpServers.nushell $entry | save --force $config_path
     }
 } else {
-    {mcpServers: {nushell: {type: stdio command: $nu_bin args: ["--mcp"] env: {}}}}
-    | save -f $config_path
+    {mcpServers: {nushell: $entry}} | save --force $config_path
 }
