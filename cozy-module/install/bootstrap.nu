@@ -395,8 +395,11 @@ def setup-docker-system [] {
     ^sudo rm -rf /var/lib/apt/lists/*
 
     # Runtime env exports (the sandbox shell sources this file on each login).
-    # /etc/sandbox-persistent.sh is agent-writable on the base image — matches
-    # the original Dockerfile's USER-agent `>>` approach, no sudo needed.
+    # Plain `save`, no sudo: the file is agent-owned while bootstrap runs —
+    # `install -o agent` in the Dockerfile, agent-writable on the sbx base.
+    # The image does not keep it that way. Its final layer chowns it to root
+    # beside the sudo revoke, so this step cannot re-run in a built container
+    # and a later patch of the block needs a root exec from the host.
     # The XDG/HELIX/LANG block mirrors the Dockerfile's ENV directives so
     # in-sandbox installs against the base image get the same runtime env
     # cozy:v1 has baked in (XDG_DATA_HOME is what dotfiles' env.nu reads —
