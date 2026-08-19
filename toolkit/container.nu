@@ -540,7 +540,7 @@ def resolve-policy [policy: oneof<path, nothing>]: nothing -> path {
 }
 
 # Start a cozy container behind a human-managed egress allowlist.
-export def "main up" [
+def "main up" [
     name: string # name for the cozy container
     ...workspaces: string # host folders to mount, each at its own absolute path; the first is WORKSPACE_DIR and the default start dir. Append `:ro` for read-only
     --image: string = 'cozy:latest' # image built by `container build -t cozy:latest .`
@@ -680,7 +680,7 @@ export def "main up" [
 # container's name, and it is needed for one thing only: if the reload had to
 # recreate the proxy on a new address, that container's hosts mapping is
 # rewritten here to follow it.
-export def "main reload-egress" [
+def "main reload-egress" [
     name: string@"nu-complete container names" # the cozy container whose exit mapping is refreshed
     --policy: path # firewall policy directory (default: ~/.config/cozy/firewall)
 ]: nothing -> record {
@@ -732,7 +732,7 @@ export def "main reload-egress" [
 # containers existing *stopped rather than absent*: a plain `up` aborts on
 # "already exists". restart starts what exists — recreating the proxy if it is
 # gone — and re-maps the container's exit to wherever the proxy came up.
-export def "main restart" [
+def "main restart" [
     name: string@"nu-complete container names" # the cozy container to bring back
     --policy: path # firewall policy directory, read only if the proxy is gone and must be recreated (default: ~/.config/cozy/firewall)
 ]: nothing -> record {
@@ -801,7 +801,7 @@ export def "main restart" [
 #
 # Restarts the pair first when the container is not running, so this is also the
 # whole launch path after the runtime itself came back.
-export def "main attach" [
+def "main attach" [
     name: string@"nu-complete container names"
     --config-file: path
     --background: string@"nu-complete wezterm background" = "000000" # hex without '#'
@@ -839,10 +839,6 @@ export def "main attach" [
     attach-window $exec_argv ($zellij_session | default --empty $name) --config-file $config_file --background $background --no-job=$no_job
 }
 
-# `main <sub>` is the name the script path dispatches on (`nu toolkit/container.nu
-# up …`), but a module imports it as `container main up` — nushell collapses only
-# bare `main` into the module name. These aliases drop that `main` for module
-# users, so the same four commands read the same way both ways. attach is not
 # Upstream's newest image in the maintained tag family. Errors rather than
 # returning nothing, because a refresh that quietly found nothing to do looks
 # exactly like one that could not reach the registry.
@@ -947,7 +943,7 @@ def write-egress-pin [digest: string]: nothing -> nothing {
 # human is present. That last part is the point: the move to squid 7.2 failed to
 # start at all, and meeting that here is a different thing from meeting it when
 # the cage is needed.
-export def "main refresh-egress" [
+def "main refresh-egress" [
     --policy: path # firewall policy directory used for the rehearsal (default: ~/.config/cozy/firewall)
 ]: nothing -> record {
     let policy_dir = resolve-policy $policy
@@ -973,9 +969,33 @@ export def "main refresh-egress" [
     {tag: $newest.name digest: $newest.digest changed: true}
 }
 
-# merely nicer for it: it has to be called from an imported module.
+# `main <sub>` is the name the script path dispatches on (`nu toolkit/container.nu
+# up …`), but a module import leaves that `main` in the middle
+# (`container main up`) — nushell collapses only the bare `main` into a module
+# name. These aliases are what a module user calls, so both forms read the same.
+#
+# The defs above are deliberately not exported, and that is the half that was
+# missing: exporting both put every command in the list twice, once as itself
+# and once as its alias. Script mode is unaffected — dispatch finds `main <sub>`
+# in the file's own scope whether it is exported or not (checked on nu 0.115),
+# and `help toolkit container up` still prints the real command's flags through
+# the alias expansion. Same shape as toolkit/check.nu, whose subcommands were
+# never exported.
+#
+# Each alias repeats its command's first doc line because an alias shows its own
+# comment as its description; with none, the list reads "Alias for `main up`".
+
+# Start a cozy container behind a human-managed egress allowlist.
 export alias up = main up
+
+# Bring the pair back after the runtime itself restarted, or after a day off.
 export alias restart = main restart
+
+# Apply an edited allowlist to a container that is already up.
 export alias reload-egress = main reload-egress
+
+# Move the proxy pin forward: upstream's newest, rehearsed, then written to both files.
 export alias refresh-egress = main refresh-egress
+
+# Open the cozy container in a WezTerm window, restarting the pair if it is down.
 export alias attach = main attach

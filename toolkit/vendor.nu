@@ -82,7 +82,7 @@ const ignore_repos = [
 ]
 
 # Check for nushell-prophet repos not yet in vendor.yml
-export def "main check" [--add (-a)] {
+def "main check" [--add (-a)] {
     let known = load-modules
         | where github starts-with 'nushell-prophet/'
         | get github
@@ -115,9 +115,12 @@ export def "main check" [--add (-a)] {
     }
 }
 
-# Drops the `main` a module import would otherwise leave in the middle
-# (`toolkit vendor main check`), which is how design/toolkit.md already spells
-# it. Script mode is unaffected: `nu toolkit/vendor.nu check`.
+# Check for nushell-prophet repos not yet in vendor.yml.
+#
+# Why an alias: a module import would otherwise leave the `main` in the middle
+# (`toolkit vendor main check`), and design/toolkit.md already spells it without.
+# The def is not exported, or the command would show up under both names; script
+# mode is unaffected (`nu toolkit/vendor.nu check`). Same as toolkit/container.nu.
 export alias check = main check
 
 # Commit the freshly vendored files with a standard message. Pathspec-scoped
