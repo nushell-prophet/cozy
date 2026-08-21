@@ -63,6 +63,12 @@ The one thing never to write is `| table` — it forces the box back.
   Also fatal: `` ` `` `"` `(` `)` `[` `]` `|` `#`, unbalanced `{`.
   English wants the apostrophe, so rephrase: `X's Y` → `the Y of X`, contractions spelled out.
   Never embed a code fragment or literal in a name either (`def "a record {a: 1} round-trips"`) — it happens to parse, but it repeats the body and reads as syntax where a reader expects a sentence.
+- **A module that names a command after a builtin breaks the modules it imports, not itself.**
+  `export def update` is legal and the shadowing module runs fine, but every module it `use`s is parsed with that name already bound.
+  So an imported body holding `$rows | update file { cwd-relative }` resolves `update` to the custom command and reads the closure as its string argument, failing with `Parse mismatch: expected non-block value: string` or `expected string, found closure` — pointing at the *imported* file, naming nothing about `update`, and leaving you bisecting a file you did not change.
+  Verified: wholesale and named-list imports behave the same, and a `_`-prefixed internal module is not exempt.
+  Fix: `alias core-update = update` at the top of the module that uses the builtin, then call `core-update` there.
+  Or move the shared code into a module that shadows nothing, which is what to do when several builtins are involved.
 - `|` is the only operator that continues a line by itself.
   Any other binary operator (`++`, `+`, `and`, `or`, …) breaks the parse when the expression spans lines: leading (`let a = [x y]` ⏎ `    ++ [z]`) → ``Command `++` not found``, trailing (`[x y] ++` ⏎ `[z]`) → `Incomplete math expression`.
   Wrap the whole expression in `( … )` — inside parens both positions work — or rewrite it as a pipeline (`| append …`).
