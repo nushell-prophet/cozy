@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Vendored `claude-nu` — `tool-calls 'regex'` searches what the agent actually ran, not only what was said, and `sessions`, `messages` and `tool-calls` take `--since`/`--until` (a duration means ago: `--since 1wk`). `claude-nu example` pastes one of the module's own pipelines into the command line. (1f1d934)
+
+- Vendored `my-claude-skills` — two new skills: `decision-provenance` reconstructs the circumstances a design decision was made in, from git history plus session transcripts, and `instruction-conflicts` audits everything loaded into the context for rules that pull in opposite directions. (c00d8d6)
+
 ### Changed
+
+- Vendored `claude-nu` — `commits` and `code-authorship` are gone; they moved upstream to cozy-playground. (1f1d934)
+
+- Zellij 0.45 keeps the 0.44 look: `pane_frame_style "full"` brings back the box around every pane (0.45 defaults to a title row, which cost panes rows and left the focus colors nothing to paint) and `stacked_pane_list false` keeps the old stack rendering. The compact-bar F1 tooltip is gone — under 0.45 a mouse scroll switches mode, and the tooltip key also makes the hint box pop up on every mode change. (5f9b9ce)
+
+- Nushell's `$ans.last` cache is on, capped at 10mb — the last REPL result can be reused without re-running the command. It is off by default. (153a403)
 
 - `nu toolkit/container.nu attach <name>` restarts a stopped container and its egress proxy before opening the window, so after the `container` runtime itself restarts one command brings you back. It used to open a window on a `container exec` that could not enter.
 
