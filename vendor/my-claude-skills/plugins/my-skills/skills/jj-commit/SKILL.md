@@ -20,16 +20,19 @@ Gather context first:
 
 ## Task
 
-Commit only files created, edited, or deleted in this session. Skip pre-existing changes in `jj status`.
+Commit only files created, edited, or deleted in this session.
+Skip pre-existing changes in `jj status`.
 
-Group unrelated changes into separate commits. For unrelated changes within a single file, use the jj-split-file-for-commit skill on that file.
+Group unrelated changes into separate commits.
+For unrelated changes within a single file, use the jj-split-file-for-commit skill on that file.
 
 Commit pattern — always use:
 ```bash
 jj commit <files> -m 'message' && jj metaedit @- --update-author
 ```
 
-Never use interactive commands (`jj split`, `jj squash -i`). Always specify `-m` flag.
+Never use interactive commands (`jj split`, `jj squash -i`).
+Always specify `-m` flag.
 
 Use conventional commits format: feat | fix | change | remove | refactor | docs | test | chore
 Breaking changes: add '!' after type (e.g., `feat!: change API format`)

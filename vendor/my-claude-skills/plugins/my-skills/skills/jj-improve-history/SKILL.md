@@ -13,7 +13,8 @@ allowed-tools: Bash(jj:*), Read, Edit
 
 ## Arguments
 
-- `base-revision` (optional): Base revision to compare against (default: main). Referred to as `<base>` below.
+- `base-revision` (optional): Base revision to compare against (default: main).
+  Referred to as `<base>` below.
 
 ## Context
 

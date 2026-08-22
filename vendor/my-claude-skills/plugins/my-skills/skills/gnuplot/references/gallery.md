@@ -1,9 +1,8 @@
 # gnuplot ASCII gallery
 
 Every chart below was rendered with gnuplot 6.0's `dumb` terminal from a Nushell table.
-All snippets follow the skill's mechanism: write the table to a headerless TSV temp file, then
-feed a plain-string gnuplot script to `gnuplot | complete | get stdout`. Color is available
-(`set terminal dumb ... ansi256`, `lc rgb '…'`) but is omitted here so the output is copy-clean.
+All snippets follow the skill's mechanism: write the table to a headerless TSV temp file, then feed a plain-string gnuplot script to `gnuplot | complete | get stdout`.
+Color is available (`set terminal dumb ... ansi256`, `lc rgb '…'`) but is omitted here so the output is copy-clean.
 
 ## Shared datasets
 
@@ -41,7 +40,8 @@ plot '/tmp/d.dat' u 1:2 w linespoints notitle" | gnuplot | complete | get stdout
 
 ## 2. Multiple series (categorical x, legend outside)
 
-`using 0:N` puts the row index on x; `xtic(1)` labels it from column 1. `''` reuses the file.
+`using 0:N` puts the row index on x; `xtic(1)` labels it from column 1.
+`''` reuses the file.
 
 ```nushell
 "set terminal dumb size 58,12
@@ -435,7 +435,7 @@ plot '/tmp/sq.dat' u 1:2 w linespoints notitle" | gnuplot | complete | get stdou
 
 ## What does NOT work in the dumb terminal
 
-- **Heatmaps / `with image`** — the dumb terminal cannot draw a pixel grid. `set view map` +
-  `with image` produces an empty frame with an orphan colorbox. For a 2D field, fall back to a
-  PNG terminal, or print the matrix as a Nushell table.
+- **Heatmaps / `with image`** — the dumb terminal cannot draw a pixel grid.
+  `set view map` + `with image` produces an empty frame with an orphan colorbox.
+  For a 2D field, fall back to a PNG terminal, or print the matrix as a Nushell table.
 - **True color fidelity** — `ansi256` gives 256 colors, but the shape is still character cells.

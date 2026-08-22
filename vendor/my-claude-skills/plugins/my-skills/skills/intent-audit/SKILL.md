@@ -13,14 +13,14 @@ version: 0.1.0
 
 # Intent Audit
 
-Verify that the user's stated reasoning, decisions, constraints,
-and rejected alternatives have been captured in the session's artifacts:
+Verify that the user's stated reasoning, decisions, constraints, and rejected alternatives have been captured in the session's artifacts:
 commit messages, inline comments, and documentation.
 
 ## Core Principle
 
 The user's words are the primary source of truth.
-Code shows WHAT. The user explained WHY.
+Code shows WHAT.
+The user explained WHY.
 If the WHY is not recorded next to the WHAT, knowledge is lost.
 
 ## Audit Process
@@ -32,14 +32,12 @@ Scan the current conversation for user messages that contain:
 - **Decisions**: "let's do X", "use Y instead of Z"
 - **Reasoning**: "because", "since", "the reason is", "this way we"
 - **Constraints**: "must", "can't", "don't", "never", "always"
-- **Rejected alternatives**: "not X because", "I tried Y but",
-  "don't use Z", "the problem with W is"
+- **Rejected alternatives**: "not X because", "I tried Y but", "don't use Z", "the problem with W is"
 - **Preferences**: "I prefer", "I want", "it should"
-- **Domain knowledge**: facts, references, explanations of how
-  things work that informed the implementation
+- **Domain knowledge**: facts, references, explanations of how things work that informed the implementation
 
-Extract each as a discrete intent item. Quote the user closely —
-do not paraphrase into something more "polished".
+Extract each as a discrete intent item.
+Quote the user closely — do not paraphrase into something more "polished".
 
 ### Step 2: Gather Artifacts
 
@@ -50,11 +48,9 @@ git log --since="<session_start>" --format="%H %s%n%b" --no-merges
 git diff <before_session>..HEAD
 ```
 
-Also scan changed files for inline comments added or modified
-during this session.
+Also scan changed files for inline comments added or modified during this session.
 
-If the session produced documentation files (ADR, CHANGELOG,
-README updates), include those too.
+If the session produced documentation files (ADR, CHANGELOG, README updates), include those too.
 
 ### Step 3: Cross-Reference
 
@@ -67,8 +63,7 @@ For each intent item from Step 1, check whether it appears in:
 Mark each intent item as:
 
 - **Captured** — reasoning is recorded, traceable to the user's words
-- **Partial** — the decision is visible but the reasoning is missing
-  (e.g., code does X but nowhere says why not Y)
+- **Partial** — the decision is visible but the reasoning is missing (e.g., code does X but nowhere says why not Y)
 - **Lost** — no trace in any artifact
 
 ### Step 4: Report
@@ -77,8 +72,7 @@ Present findings as a list grouped by status.
 For each lost or partial item:
 
 - Quote the user's original statement
-- Identify where it should be captured
-  (which commit, which file, which line)
+- Identify where it should be captured (which commit, which file, which line)
 - Propose the specific text to add
 
 Format:
@@ -106,8 +100,7 @@ Format:
 After presenting the report, ask the user which items to fix.
 Then apply fixes:
 
-- For missing commit message context: `git commit --amend`
-  or `git notes add` if amending would disrupt history
+- For missing commit message context: `git commit --amend` or `git notes add` if amending would disrupt history
 - For missing inline comments: add them directly
 - For missing documentation: create or update the relevant file
 
@@ -115,33 +108,26 @@ Do not auto-fix without user confirmation.
 
 ## What Counts as "Captured"
 
-A decision is captured if a future reader (human or LLM)
-who has never seen this conversation can understand:
+A decision is captured if a future reader (human or LLM) who has never seen this conversation can understand:
 
 1. What was decided
 2. Why it was decided this way
 3. What alternatives were considered and rejected
 
-All three must be present. If only (1) is there, mark as Partial.
+All three must be present.
+If only (1) is there, mark as Partial.
 
 ## What Does NOT Count
 
 - Git diff showing the code change — this is WHAT, not WHY
 - A commit subject line like "implement parser" — too vague
-- A comment that restates the code: `# split the string` above
-  a split operation — this is noise, not intent
+- A comment that restates the code: `# split the string` above a split operation — this is noise, not intent
 
 ## Edge Cases
 
-- If the user gave reasoning verbally but it's obvious from
-  the code (e.g., using a well-known pattern), mark as Partial
-  with a note — "obvious to experts, but explicit comment
-  would help future LLM sessions"
-- If the session had no commits (exploration/discussion only),
-  report that no artifacts exist to audit and suggest
-  creating a summary document
-- If the user's reasoning contradicts what was implemented,
-  flag this as a discrepancy, not a missing intent
+- If the user gave reasoning verbally but it's obvious from the code (e.g., using a well-known pattern), mark as Partial with a note — "obvious to experts, but explicit comment would help future LLM sessions"
+- If the session had no commits (exploration/discussion only), report that no artifacts exist to audit and suggest creating a summary document
+- If the user's reasoning contradicts what was implemented, flag this as a discrepancy, not a missing intent
 
 ## Scope Control
 

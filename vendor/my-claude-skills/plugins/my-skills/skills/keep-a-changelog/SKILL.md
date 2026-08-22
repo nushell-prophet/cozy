@@ -17,7 +17,8 @@ Manage `CHANGELOG.md` files following the [Keep a Changelog 1.1.0](https://keepa
 
 ## Format Overview
 
-The file is named `CHANGELOG.md` at the project root. Structure:
+The file is named `CHANGELOG.md` at the project root.
+Structure:
 
 1. **Title**: `# Changelog` with introductory blurb referencing Keep a Changelog and SemVer
 2. **Unreleased section**: `## [Unreleased]` — always present at top, collects pending changes
@@ -37,7 +38,8 @@ For the complete format specification and templates, consult **`references/forma
 
 ### Initialize a Changelog
 
-Create `CHANGELOG.md` at the project root. Include:
+Create `CHANGELOG.md` at the project root.
+Include:
 
 - `# Changelog` heading
 - Introductory paragraph referencing Keep a Changelog and Semantic Versioning
@@ -45,7 +47,8 @@ Create `CHANGELOG.md` at the project root. Include:
 - If the project already has releases, add version sections for existing tags
 - Comparison link references at the bottom
 
-Detect the repository's remote URL and tagging convention (e.g., `v1.0.0` vs `1.0.0`) from git to generate correct comparison links. If no git remote exists, use placeholder URLs and note them.
+Detect the repository's remote URL and tagging convention (e.g., `v1.0.0` vs `1.0.0`) from git to generate correct comparison links.
+If no git remote exists, use placeholder URLs and note them.
 
 ### Add an Entry
 
@@ -55,7 +58,9 @@ Add entries under `## [Unreleased]` in the appropriate category subsection.
 2. Determine the correct category (Added, Changed, Deprecated, Removed, Fixed, Security)
 3. Create the category heading under `[Unreleased]` if it doesn't exist yet — maintain standard category order
 4. Append the entry as a markdown list item: `- Description of change (commit_hash)`
-5. Every entry MUST include the short git commit hash (7 chars) that introduced the functionality, appended in parentheses. If multiple commits contributed, list all: `(abc1234, def5678)`. Use `git log` to find the right commit.
+5. Every entry MUST include the short git commit hash (7 chars) that introduced the functionality, appended in parentheses.
+   If multiple commits contributed, list all: `(abc1234, def5678)`.
+   Use `git log` to find the right commit.
 6. Keep entries concise and human-readable — start with a capital letter, no trailing period
 
 When the user doesn't specify a category, infer it from context:
@@ -88,7 +93,8 @@ Move `[Unreleased]` entries into a new version section.
 
 ### Validate a Changelog
 
-Check `CHANGELOG.md` for format compliance. Report issues:
+Check `CHANGELOG.md` for format compliance.
+Report issues:
 
 - Missing or incorrect `# Changelog` heading
 - Missing `## [Unreleased]` section
@@ -101,15 +107,18 @@ Check `CHANGELOG.md` for format compliance. Report issues:
 - Empty change categories (should be omitted if empty)
 - Entries not starting with `- `
 
-Report findings as a checklist with pass/fail indicators. Offer to fix any issues found.
+Report findings as a checklist with pass/fail indicators.
+Offer to fix any issues found.
 
 ## Writing Style — Don't Dump Git Logs
 
-A changelog is for **humans**, not machines. Every entry must be written from the user's perspective, describing what changed for them — not what happened in the code.
+A changelog is for **humans**, not machines.
+Every entry must be written from the user's perspective, describing what changed for them — not what happened in the code.
 
 ### Rewrite, don't copy
 
-When deriving entries from git history, **never** paste commit messages verbatim. Rewrite them:
+When deriving entries from git history, **never** paste commit messages verbatim.
+Rewrite them:
 
 - **BAD**: `fix: correct Rule 5 (Big X smushing) string literals in smush-char` (commit message)
 - **GOOD**: `Incorrect horizontal smushing with Big X (Rule 5)` (user-visible bug)
@@ -143,7 +152,8 @@ If several commits contribute to one feature, write **one** entry:
 
 ### Initial releases have no Fixed/Changed
 
-The first release (`0.0.1`, `1.0.0`, etc.) is all new — nothing was "fixed" or "changed" from the user's perspective. Use only `### Added`.
+The first release (`0.0.1`, `1.0.0`, etc.) is all new — nothing was "fixed" or "changed" from the user's perspective.
+Use only `### Added`.
 
 ## Key Rules
 

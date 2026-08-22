@@ -11,9 +11,8 @@ version: 0.1.0
 
 # Elegance-First Problem Framing
 
-Before solving the problem, work through these four checkpoints and output each one
-visibly under its own header. A checkpoint can be a single sentence — the discipline
-is structure before solution, not structure instead of solution.
+Before solving the problem, work through these four checkpoints and output each one visibly under its own header.
+A checkpoint can be a single sentence — the discipline is structure before solution, not structure instead of solution.
 
 ## 1. Structural Analysis
 
@@ -22,14 +21,16 @@ Identify explicitly:
 - **What stays fixed** (invariants that must hold)
 - **Where the problem actually starts and ends** — often not where the user described
 
-If the user's description doesn't answer these, stop and ask. Don't assume and proceed.
+If the user's description doesn't answer these, stop and ask.
+Don't assume and proceed.
 
 ## 2. Framing Check
 
 Before optimizing, verify the framing is correct:
-- Does the solution require separate handling of edge cases? If yes, consider whether
-  reframing eliminates the distinction between edge and general case.
-- Is the request to optimize *within* a bad framing? Name it before proceeding.
+- Does the solution require separate handling of edge cases?
+  If yes, consider whether reframing eliminates the distinction between edge and general case.
+- Is the request to optimize *within* a bad framing?
+  Name it before proceeding.
 - Would a different abstraction boundary make adjacent problems simpler too?
 
 If you reframe the problem, say so explicitly — never reframe silently.
@@ -57,7 +58,8 @@ Return to step 1 if during implementation you encounter:
 - A conflict with stated invariants
 - Ambiguity about scope
 
-Do not resolve these silently. Surface the issue and re-run the relevant checkpoints.
+Do not resolve these silently.
+Surface the issue and re-run the relevant checkpoints.
 
 ## Example
 
@@ -71,14 +73,13 @@ User asks: "Write a function that normalizes different date formats to ISO 8601.
 → Question: should the function handle timezone-aware inputs, or assume naive dates?
 
 **2. Framing Check**
-The natural approach is a chain of format-specific parsers tried in order. But that makes
-every new format a new branch. Reframing: treat it as "parse any unambiguous date
-representation" using a single flexible parser, and reject genuinely ambiguous inputs
-(like 01/02/03) rather than guessing.
+The natural approach is a chain of format-specific parsers tried in order.
+But that makes every new format a new branch.
+Reframing: treat it as "parse any unambiguous date representation" using a single flexible parser, and reject genuinely ambiguous inputs (like 01/02/03) rather than guessing.
 
 **3. Solution Selection**
-Single parser with explicit ambiguity rejection > format-specific chain. Collapses the
-per-format branches and makes adding new formats zero-cost.
+Single parser with explicit ambiguity rejection > format-specific chain.
+Collapses the per-format branches and makes adding new formats zero-cost.
 
 **4. Implementation**
 [proceeds after user confirms the timezone question]

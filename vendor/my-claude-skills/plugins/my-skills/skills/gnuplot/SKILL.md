@@ -11,14 +11,17 @@ version: 0.1.0
 
 # Plot Nushell tables with gnuplot (ASCII)
 
-Turn a Nushell table into a text chart drawn in the terminal. Output is gnuplot's `dumb`
-terminal — characters, no image file. Good for eyeballing data and iterating in the loop.
+Turn a Nushell table into a text chart drawn in the terminal.
+Output is gnuplot's `dumb` terminal — characters, no image file.
+Good for eyeballing data and iterating in the loop.
 
-Requires `gnuplot` on PATH (`gnuplot --version`). If missing, install it (`brew install gnuplot`).
+Requires `gnuplot` on PATH (`gnuplot --version`).
+If missing, install it (`brew install gnuplot`).
 
 ## The mechanism
 
-Four steps. **Always go through a temp data file** — do not inline data with `'-'`/`e`.
+Four steps.
+**Always go through a temp data file** — do not inline data with `'-'`/`e`.
 
 1. Get the data into a Nushell table with numeric y-column(s).
 2. Write it as headerless TSV to a temp file:
@@ -36,20 +39,16 @@ plot '/tmp/plot.dat' using 1:2 with linespoints title 'y'
 " | gnuplot | complete | get stdout
 ```
 
-**Why a temp file, not inline `'-'` data:** the data block stays out of the script string, so
-there is nothing to escape, and the same file can be referenced multiple times for multi-series
-plots. Inline data forces `$"..."` interpolation (which then needs `\(` `\)` escaping for
-`xtic(1)` etc.) and forces you to repeat the whole data block once per plotted series.
+**Why a temp file, not inline `'-'` data:** the data block stays out of the script string, so there is nothing to escape, and the same file can be referenced multiple times for multi-series plots.
+Inline data forces `$"..."` interpolation (which then needs `\(` `\)` escaping for `xtic(1)` etc.) and forces you to repeat the whole data block once per plotted series.
 
 ## Recipes
 
-A worked gallery of 17+ chart types with real rendered output — bars (clustered/stacked),
-histogram, impulses, steps, filled curves, error bars, candlesticks, smoothing, log axes,
-time series, multiplot, functions, and nu-pipeline→chart examples — is in
-[references/gallery.md](references/gallery.md). The essentials:
+A worked gallery of 17+ chart types with real rendered output — bars (clustered/stacked), histogram, impulses, steps, filled curves, error bars, candlesticks, smoothing, log axes, time series, multiplot, functions, and nu-pipeline→chart examples — is in [references/gallery.md](references/gallery.md).
+The essentials:
 
-All read `/tmp/plot.dat` written as in step 2. Column numbers in `using` are **1-based**;
-`using 0:N` uses the row index (pseudo-column 0) as x — used for categorical x-axes.
+All read `/tmp/plot.dat` written as in step 2.
+Column numbers in `using` are **1-based**; `using 0:N` uses the row index (pseudo-column 0) as x — used for categorical x-axes.
 
 ### Line / linespoints
 ```nushell
@@ -59,7 +58,8 @@ plot '/tmp/plot.dat' using 1:2 with lines title 'y'
 ```
 
 ### Multiple series (shared x, columns 2 and 3)
-`''` reuses the previously named file. `set key outside` keeps the legend off the plot.
+`''` reuses the previously named file.
+`set key outside` keeps the legend off the plot.
 ```nushell
 "set terminal dumb size 72,18
 set key outside
@@ -97,12 +97,12 @@ plot '/tmp/plot.dat' using (bin($1)):(1.0) smooth freq with boxes notitle
 
 ## Gotchas
 
-| Problem | Fix |
-|---|---|
-| Header row plotted as a data point | `to tsv --noheaders` (not plain `to tsv`) |
-| `(` / `)` errors in the script | Don't use `$"..."` interpolation — keep the script a plain `"..."` string so `xtic(1)`, `bin($1)` pass through literally |
-| Categorical x labels (months, names) | `using 2:xtic(1)` (bars) or `using 0:2:xtic(1)` (lines) — column 1 supplies tic labels |
-| `$1`, `$2` (gnuplot column refs) | Pass through literally in a plain `"..."` string — Nushell only interpolates in `$"..."`. Keep the script plain and write `$1` as-is |
-| Nulls / non-numeric y values | Filter in Nushell first (`where ($it.y | describe) == int`, or `compact`) before writing the file |
-| Plot too wide/narrow for terminal | Tune `set terminal dumb size W,H` (W ≈ 70–100, H ≈ 18–30) |
-| Legend overlapping the curve | `set key outside` or `set key off` |
+- **Header row plotted as a data point** — write the file with `to tsv --noheaders`, not plain `to tsv`.
+- **`(` / `)` errors in the script** — don't use `$"..."` interpolation.
+  Keep the script a plain `"..."` string, so `xtic(1)` and `bin($1)` pass through literally.
+- **Categorical x labels (months, names)** — `using 2:xtic(1)` for bars, `using 0:2:xtic(1)` for lines; column 1 supplies the tic labels.
+- **`$1`, `$2` (gnuplot column refs)** — they pass through literally in a plain `"..."` string, because Nushell only interpolates in `$"..."`.
+  Keep the script plain and write `$1` as-is.
+- **Nulls / non-numeric y values** — filter in Nushell first (`where ($it.y | describe) == int`, or `compact`) before writing the file.
+- **Plot too wide or narrow for the terminal** — tune `set terminal dumb size W,H` (W ≈ 70–100, H ≈ 18–30).
+- **Legend overlapping the curve** — `set key outside`, or `set key off`.
