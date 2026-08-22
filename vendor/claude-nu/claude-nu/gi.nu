@@ -205,6 +205,21 @@ def cwd-relative []: path -> path {
     }
 }
 
+# Copy one file, byte for byte. Every copy gi makes goes through here.
+# Not `cp`, because: nushell's builtin (0.115.0) mixes concurrent copies up —
+# two `cp` calls running in different threads write each other's bytes, so a
+# destination ends up the right length holding another file's content, and
+# nothing errors. Measured: 46 of 205 copies corrupted under `par-each`, 0 with
+# this, 0 with an external `cp`. That is what made `tests/test_gi.nu` fail a
+# different test on nearly every run — nutest runs tests in parallel, so several
+# `gi enable` seedings copy at once. It is not only a test problem: `gi open`
+# seeds and then launches `claude` against those very files.
+# --force because `gi enable --force` refreshes seeds that are already there;
+# the other two callers write a path they have just shown to be free.
+def copy-file [src: path, dst: path]: nothing -> nothing {
+    open --raw $src | save --raw --force $dst
+}
+
 # The canvas name minted when the user names none. A def and not a const: the
 # timestamp has to be read when the command runs, not when the module parses.
 def gi-default-doc []: nothing -> string {
@@ -256,7 +271,7 @@ export def gi-fork-canvas [src: path]: nothing -> path {
     gi-frontmatter-split $src | ignore
     let dir = $src | path dirname
     let dst = $dir | path join (gi-fork-name ($src | path basename) (ls $dir | get name | path basename))
-    cp $src $dst
+    copy-file $src $dst
     $dst
 }
 
@@ -295,7 +310,7 @@ def gi-seed [paths: record, --force, --no-gitignore]: nothing -> nothing {
     for seed in (gi-refresh-seeds $paths | insert overwrite $force) {
         if $seed.overwrite or not ($seed.dst | path exists) {
             mkdir ($seed.dst | path dirname)
-            cp $seed.src $seed.dst
+            copy-file $seed.src $seed.dst
         }
     }
     if not $no_gitignore {
@@ -356,6 +371,22 @@ def gi-stale [paths: record]: nothing -> list {
     gi-refresh-seeds $paths
     | where {|s| ($s.dst | path exists) and (open --raw $s.dst) != (open --raw $s.src) }
     | get dst
+}
+
+# The drift note, printed by every verb the user reaches gi through: `enable`,
+# `import`, and each `gi open` launch. Why all three and not just status, which
+# already carries the list: copy-if-absent pins a repo to whatever the module
+# held at its first seed, nobody polls status, and a repo can then run months of
+# canvas sessions on a style the module has since rewritten — this change is how
+# the seed of a rewritten rule reaches a repo that was seeded before it.
+# A note, never an error: the seeded copy still works, and the difference may be
+# the user's own edit to it, which --force would discard.
+def gi-stale-note [paths: record]: nothing -> nothing {
+    let stale = gi-stale $paths
+    if ($stale | is-not-empty) {
+        print $"note: ($stale | length) seeded file\(s\) differ from the module — `gi enable --force` refreshes them:"
+        for f in $stale { print $"  ($f | cwd-relative)" }
+    }
 }
 
 # The UUID of the session this command runs inside — what `gi import` falls back
@@ -518,13 +549,11 @@ export def "gi enable" [
     })
     print $"start a canvas:  claude-nu gi open [<doc>]"
     print $"...or from a session's dialogue:  claude-nu gi import [<session>]"
-    let status = gi-status --root $root
     # Surface drift at the moment the user is already touching gi — status
-    # carries the same list, but nobody polls it.
-    if not $force and ($status.stale | is-not-empty) {
-        print $"note: ($status.stale | length) seeded file\(s\) differ from the module — `gi enable --force` refreshes them."
-    }
-    $status
+    # carries the same list, but nobody polls it. --force just refreshed them,
+    # so there is nothing left to report.
+    if not $force { gi-stale-note $paths }
+    gi-status --root $root
 }
 
 # Why a verb of its own and not a flag on `gi enable` (which is what this
@@ -606,6 +635,7 @@ export def "gi import" [
     if not ($paths.style_dst | path exists) {
         print $"the gi skills are not in this repo yet:  claude-nu gi enable"
     }
+    gi-stale-note $paths
     print $"open a bound session on it:  claude-nu gi open ($paths_doc.rel)"
     if $session == null {
         # The log can never hold the turn that ran the import (Claude Code writes
@@ -772,7 +802,12 @@ def gi-launch [
     # cannot fail on anything the user typed; every check that can (the flags
     # above, the fork source below) either runs before it or before its own
     # write, so no failure leaves a canvas behind.
-    gi-seed (gi-paths $root)
+    let paths = gi-paths $root
+    gi-seed $paths
+    # Copy-if-absent leaves an already-seeded file alone, so seeding is exactly
+    # what cannot fix drift — say so here, where the session about to start is
+    # the one that will run on the older text.
+    gi-stale-note $paths
     let doc = $doc | default (gi-default-doc)
     # The copy is made here and not in `gi open` so everything below — the
     # session plan, the stamp, GI_CANVAS, --name — sees only the file being
@@ -785,7 +820,7 @@ def gi-launch [
     # with the id gi mints, and there must be a file to stamp.
     if not ($doc_abs | path exists) {
         mkdir ($doc_abs | path dirname)
-        cp $GI_HEADER_SRC $doc_abs
+        copy-file $GI_HEADER_SRC $doc_abs
     }
     # One canvas, one session, for life — and the canvas says which case this
     # is, so the caller does not. A `session:` in its frontmatter is one to
