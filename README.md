@@ -191,12 +191,12 @@ A Nushell toolbox for working with Claude Code sessions. Main commands:
 
 - `claude-nu projects` — list projects under `~/.claude/projects`, most recent first
 - `claude-nu messages 'regex'` — search user messages; scope is whatever is piped in (`claude-nu sessions --all-projects | claude-nu messages 'regex'` widens to every project), and with no input it reads the whole current project
+- `claude-nu tool-calls 'regex'` — the same search over what the agent actually ran, not what was said; `messages`, `tool-calls` and `sessions` all take `--since`/`--until` (a duration means ago: `--since 1wk`)
 - `claude-nu sessions` — parse session files into structured summaries, with selectable columns (`--columns`/`--all-columns`: file ops, tool stats, agents, etc.); this is where session selection lives (`--last`, `--session`, `--all-projects`)
 - `claude-nu export-session` — export session dialogue as markdown; it returns the text, so saving is the shell's job (`| save session.md`)
 - `claude-nu project-move` — retarget Claude's stored state after a project directory moves
 - `claude-nu gi` — status of the git-intent protocol in the current repo; `gi enable` seeds it (Canvas style and skills), `gi import` turns a session's dialogue into a canvas, `gi open <doc>` launches a session bound to that canvas, and `gi open --fork <doc>` copies the canvas to the next name in its series (`plan.md` → `plan_1.md`) and opens the copy in a fresh session
-- `claude-nu commits` — per-commit Claude-authorship table for a git repo; `--by-month` rolls up Claude's share of commits each month
-- `claude-nu code-authorship` — Claude's share of the lines living in the tree now (via `git blame`)
+- `claude-nu example` — pick one of the module's own example pipelines and paste it into the command line, ready to edit and run
 
 The environment also includes Claude Code skills for building Nushell completions, writing opinionated Nushell code, practicing literate programming with numd and dotnu, and inspecting or rewriting the Nushell user REPL command history.
 
