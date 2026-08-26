@@ -1,5 +1,6 @@
 use rust.nu
 use _clone-or-fail.nu
+use _install-binary.nu
 
 export def main [] { help nushell }
 
@@ -62,7 +63,7 @@ export def install [
 
     let bin = $repo_dir | path join target release nu
     let dest = $cargo_bin | path join nu
-    cp $bin $dest
+    _install-binary $bin $dest
 
     if $cargo_bin not-in $env.PATH {
         $env.PATH = ($env.PATH | prepend $cargo_bin)
@@ -70,4 +71,7 @@ export def install [
 
     let version = ^($dest) --version | str trim
     print $"  (ansi green)nushell(ansi reset): ($version) installed to ($dest)"
+    # Why: the shell you ran this from keeps executing the old binary until it
+    # restarts, so the version above won't match what `version` reports here.
+    print "  Restart nushell to use it."
 }

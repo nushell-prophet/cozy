@@ -1,5 +1,6 @@
 use rust.nu
 use _clone-or-fail.nu
+use _install-binary.nu
 
 const repo_url = "https://github.com/fmotalleb/nu_plugin_image.git"
 
@@ -45,7 +46,7 @@ export def install []: nothing -> nothing {
 
     let bin = $repo_dir | path join target release nu_plugin_image
     let dest = $cargo_bin | path join nu_plugin_image
-    cp $bin $dest
+    _install-binary $bin $dest
 
     if $cargo_bin not-in $env.PATH {
         $env.PATH = ($env.PATH | prepend $cargo_bin)

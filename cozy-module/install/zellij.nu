@@ -1,5 +1,6 @@
 use rust.nu
 use _clone-or-fail.nu
+use _install-binary.nu
 
 export def main [] { help zellij }
 
@@ -58,7 +59,7 @@ export def install [
 
     let bin = $repo_dir | path join target release zellij
     let dest = $cargo_bin | path join zellij
-    cp $bin $dest
+    _install-binary $bin $dest
 
     # Ensure ~/.cargo/bin is in PATH
     if $cargo_bin not-in $env.PATH {
