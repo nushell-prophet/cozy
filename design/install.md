@@ -10,7 +10,8 @@ covers:                # source paths update-design reconciles this file against
   - cozy-module/install/nushell.nu
   - cozy-module/install/nu-plugin-image.nu
   - cozy-module/install/_clone-or-fail.nu
-reconciled-at: 956273250c82738671f174c620baf4b1e07bc904
+  - cozy-module/install/_install-binary.nu
+reconciled-at: 874e4a409b8c7877a9c05a0db8f6acbefd07b1ef
 ---
 
 # cozy install — why these compile from source
@@ -19,7 +20,7 @@ The per-tool builders behind `cozy install <tool>`. `bootstrap.nu` invokes only 
 
 What each builder *does* is in its own doc comment and code (wired in [`../cozy-module/install/mod.nu`](../cozy-module/install/mod.nu)). This file records only why each one compiles from source rather than taking a packaged binary.
 
-Shared by every Rust-based builder: installs Rust on demand, and holds memory down for the small sandbox VM — `zellij`, `nushell` and `nu-plugin-image` build with `-j 1` + `profile.release.lto=false`, `polars` with `-j 1`. Re-running skips the clone but rebuilds: only the already-built check in `polars` short-circuits. Clones go through `_clone-or-fail`, which sets `GIT_TERMINAL_PROMPT=0` so a 404 fails fast instead of hanging on git's credential prompt.
+Shared by every Rust-based builder: installs Rust on demand, and holds memory down for the small sandbox VM — `zellij`, `nushell` and `nu-plugin-image` build with `-j 1` + `profile.release.lto=false`, `polars` with `-j 1`. Re-running skips the clone but rebuilds: only the already-built check in `polars` short-circuits. Clones go through `_clone-or-fail`, which sets `GIT_TERMINAL_PROMPT=0` so a 404 fails fast instead of hanging on git's credential prompt. The built binary is put in place by `_install-binary`, never a plain `cp`: writing into a file the kernel is executing fails with `ETXTBSY`, which `cozy install nushell` hits every time it is run from the very nushell it replaces — and nushell's `cp` only prints that error to stderr, so the install used to report success over an unchanged binary. It copies beside the destination first (the build dir may sit on another filesystem, where a bare rename fails) and then `mv --force`s over the name, so a running process keeps its old inode and a failed replacement raises.
 
 - **claude** — official install script; skipped when `claude` is already on PATH (e.g. inside [`sbx run claude`](https://docs.docker.com/ai/sandboxes/agents/claude-code/), whose base image ships it).
 - **rust** — via rustup. Writes `~/.cargo/config.toml` (retries, long timeout, sparse registry) to survive the flaky sandbox proxy, and raises `RUSTUP_MAX_RETRIES` for the fetcher that config does not cover: rustup never reads `~/.cargo/config.toml`, and a pinned toolchain (zellij's `rust-toolchain.toml`) is downloaded by rustup *before* cargo fetches a crate, so the first download died on the proxy with rustup's default of 3 tries. Exported with `--env` so it reaches the caller — the failing download happens in the calling builder's process, not in this one.
