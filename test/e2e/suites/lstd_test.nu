@@ -1,5 +1,5 @@
 # E2E for lstd (vendor/dotfiles/zellij/todo-nu/todo.nu:4-23).
-# Target #2 in todo/20260528-172203-zellij-interactive.md.
+# Target #2.
 #
 # lstd lists active todo/*.md (hiding completed/rejected) into an fzf picker with
 # a bat preview, binds ctrl-e to `zellij edit {}` on the highlighted file, and on

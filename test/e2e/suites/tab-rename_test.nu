@@ -1,7 +1,7 @@
 # E2E for the PWD env_change tab-rename + ·N dedup hook
 # (vendor/dotfiles/nushell/autoload/hooks-config.nu, lines ~19-48).
-# Target #5 in todo/20260528-172203-zellij-interactive.md — the cleanest Layer 2
-# target (no TUI): spawn a nu pane, cd, assert the tab name via query-tab-names.
+# Target #5, and the cleanest Layer 2 target (no TUI): spawn a nu pane, cd,
+# assert the tab name via query-tab-names.
 #
 # Uses nutest description-tag attributes (`# [test]`) not `@test`: the vendored
 # nutest predates nu 0.113's `attr`-command requirement, so `@test` fails to

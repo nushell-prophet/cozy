@@ -1,5 +1,5 @@
 # E2E for create-todo / todo-hx (vendor/dotfiles/zellij/todo-nu/todo.nu:25-63).
-# Target #1 in todo/20260528-172203-zellij-interactive.md.
+# Target #1.
 #
 # create-todo writes todo/<ts>.md with frontmatter, opens it in helix at line 7,
 # and AFTER helix exits removes the file if it is byte-identical to the template

@@ -57,8 +57,8 @@ services:
   # This image is a rock: its entrypoint is `pebble enter`, and squid is a Pebble
   # *service* whose command line lives in a layer file. Hence `--args squid`
   # below — see the command and environment keys. Validate any future candidate
-  # on a throwaway container before it goes near the running cage; the whole
-  # rehearsal is in todo/20260806-221500-rehearse-squid7-proxy.nu.
+  # on a throwaway container before it goes near the running cage --
+  # `nu toolkit/container.nu refresh-egress` is the rehearsal that does it.
   egress:
     image: ubuntu/squid@sha256:6c919903a7a60f3ddd27735cab4516e2991420d49dfc3247e5228de994172d8b
     networks: [caged, out]

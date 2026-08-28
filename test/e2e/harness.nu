@@ -1,6 +1,6 @@
 # Playwright-for-terminals: drive real zellij panes to e2e-test cozy's
-# interactive (Layer 2) command flows. See ../../todo/20260528-172203-zellij-interactive.md
-# for the full design rationale (#4508 PTY-client constraint, Layer 1/2 split).
+# interactive (Layer 2) command flows. See README.md next to this file for the
+# full design rationale (#4508 PTY-client constraint, Layer 1/2 split).
 #
 # Every verb takes a `ctx` record { session, job } returned by `start`, so the
 # whole harness drives ONE dedicated, uniquely-named test session and never

@@ -65,8 +65,8 @@ const egress_name = 'cozy-egress'
 # This image is a rock — entrypoint `pebble enter`, squid supervised as a Pebble
 # service — which is why the run arguments below carry `--args squid` and the
 # binary named further down is not `squid`. Validate any future candidate on a
-# throwaway container before it goes near the running cage; the rehearsal that
-# proved this one is todo/20260806-221500-rehearse-squid7-proxy.nu.
+# throwaway container before it goes near the running cage; `refresh-egress`
+# below is that rehearsal, and it proved this one.
 const egress_image = 'ubuntu/squid@sha256:6c919903a7a60f3ddd27735cab4516e2991420d49dfc3247e5228de994172d8b'
 const proxy_port = 3128
 # The config path inside the proxy, shared by the run arguments and the reload.
@@ -938,7 +938,7 @@ def newest-egress-tag []: nothing -> record {
         | where digest != null
         | sort-by last_updated --reverse
     if ($candidates | is-empty) {
-        error make {msg: $"no tag in ($egress_repo) matched ($egress_tag_pattern) with a digest. Upstream's tag naming has changed, so the search itself has to be re-read before its answer can be trusted — `dotnu embeds-update todo/20260806-212701-egress-image-versions.nu` prints the current list."}
+        error make {msg: $"no tag in ($egress_repo) matched ($egress_tag_pattern) with a digest. Upstream's tag naming has changed, so the search itself has to be re-read before its answer can be trusted — `http get https://hub.docker.com/v2/repositories/($egress_repo)/tags?page_size=100&ordering=last_updated | get results.name` prints the current list."}
     }
     $candidates | first
 }

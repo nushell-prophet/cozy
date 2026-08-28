@@ -6,9 +6,9 @@ live render (helix auto-delete, fzf pickers, the PWD tab-rename hook).
 
 This is test infrastructure: not vendored, not shipped in the image.
 
-Full design rationale (the #4508 constraint, the verified zellij 0.44.3 surface,
-the prioritized target list) lives in
-`../../todo/20260528-172203-zellij-interactive.md`. Read it before extending.
+The full design rationale is below: the #4508 constraint, the zellij 0.44.3
+surface it was verified against, and the prioritized target list. Read it before
+extending.
 
 ## Run
 
