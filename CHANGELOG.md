@@ -17,13 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Vendored `my-claude-skills` — two new skills: `decision-provenance` reconstructs the circumstances a design decision was made in, from git history plus session transcripts, and `instruction-conflicts` audits everything loaded into the context for rules that pull in opposite directions. (c00d8d6)
 
-- `nu toolkit/container.nu up --ssh-agent` forwards your host's ssh-agent into the Apple `container` path, so the container can sign with your keys without ever holding them. Inside the cage this is for signing, not for `git@github.com:` — ssh still cannot cross the HTTP proxy.
+- `nu toolkit/container.nu up --ssh-agent` forwards your host's ssh-agent into the Apple `container` path, so the container can sign with your keys without ever holding them. Inside the cage this is for signing, not for `git@github.com:` — ssh still cannot cross the HTTP proxy. (b2151aa)
 
 ### Fixed
 
 - Zellij 0.45 no longer kills the keys when it syncs you into scroll mode: `shift+PageUp`/`PageDown` keep scrolling, and the `Super` window-manager keys work in every mode, not just normal and locked. (0da85e4)
 
-- `nu toolkit/vendor.nu` (no repo named) re-vendored everything and then died with a type error before its `vendor: refresh all modules` commit, leaving the refresh uncommitted. Naming one repo was unaffected.
+- `nu toolkit/vendor.nu` (no repo named) re-vendored everything and then died with a type error before its `vendor: refresh all modules` commit, leaving the refresh uncommitted. Naming one repo was unaffected. (9575671)
 
 - `cozy install nushell` (and `zellij`, `nu-plugin-image`) now really replaces the binary when you run it from the program you are upgrading. The copy used to fail with "Text file busy" and the installer still printed a green success line, so the old version stayed. It renames the new binary into place instead — restart nushell to pick it up. (18e986c)
 
@@ -41,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Nushell's `$ans.last` cache is on, capped at 10mb — the last REPL result can be reused without re-running the command. It is off by default. (153a403)
 
-- `nu toolkit/container.nu attach <name>` restarts a stopped container and its egress proxy before opening the window, so after the `container` runtime itself restarts one command brings you back. It used to open a window on a `container exec` that could not enter.
+- `nu toolkit/container.nu attach <name>` restarts a stopped container and its egress proxy before opening the window, so after the `container` runtime itself restarts one command brings you back. It used to open a window on a `container exec` that could not enter. (e6d2ede)
 
 ## [0.4.2] - 2026-08-16
 

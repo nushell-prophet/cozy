@@ -103,7 +103,7 @@ Each entry should answer: "would this matter to someone deciding whether to adop
   `toolkit/vendor.nu` also projects it into `cozy-module/vendored-repos.nuon` — the manifest that ships into the sandbox, read by `cozy sync-repos` and `cozy-module/verify.nu`.
   `toolkit check` guards the manifest against `vendor.yml`; never hardcode the list
 - `cozy` command surface: `cozy-module/mod.nu` exports
-- Egress policy for the Debian image: `firewall/allowed-domains.txt` (what may be reached) and `firewall/squid.conf` (how it's enforced), wired up by `compose.yaml` for docker and by `toolkit/container.nu` for Apple `container` (macOS 26+; same policy directory, same pinned squid, addressed by IP because a host-only network has no DNS).
+- Egress policy for the Debian image: `firewall/allowed-domains.txt` (what may be reached) and `firewall/squid.conf` (how it's enforced), wired up by `compose.yaml` for docker and by `toolkit/container.nu` for Apple `container` (macOS 26+; same policy directory, same pinned squid, addressed by the name `cozy-egress` pinned in `/etc/hosts` because a host-only network has no DNS).
   The repo copy is a template; the live one is `~/.config/cozy/firewall/`.
   Not the image — the Dockerfile deliberately carries no proxy address, so it stays runnable standalone.
   `sbx-kit/spec.yaml`'s `network.allowedDomains` is the same policy for the sbx path and the two lists are not guarded against drift
