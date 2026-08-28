@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Vendored `my-claude-skills` — two new skills: `decision-provenance` reconstructs the circumstances a design decision was made in, from git history plus session transcripts, and `instruction-conflicts` audits everything loaded into the context for rules that pull in opposite directions. (c00d8d6)
 
+- `nu toolkit/container.nu up --ssh-agent` forwards your host's ssh-agent into the Apple `container` path, so the container can sign with your keys without ever holding them. Inside the cage this is for signing, not for `git@github.com:` — ssh still cannot cross the HTTP proxy.
+
 ### Fixed
 
 - `cozy install nushell` (and `zellij`, `nu-plugin-image`) now really replaces the binary when you run it from the program you are upgrading. The copy used to fail with "Text file busy" and the installer still printed a green success line, so the old version stayed. It renames the new binary into place instead — restart nushell to pick it up. (18e986c)

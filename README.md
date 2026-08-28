@@ -247,6 +247,7 @@ mkdir -p ~/.config/cozy && cp -r firewall ~/.config/cozy/firewall
 container build -t cozy:latest .
 nu toolkit/container.nu up my-cozy ~/path/to/project
 nu toolkit/container.nu up my-cozy ~/project-a ~/shared-libs:ro ~/docs:ro   # several folders
+nu toolkit/container.nu up my-cozy ~/path/to/project --ssh-agent   # forward the host's ssh-agent
 nu toolkit/container.nu restart my-cozy   # after the `container` runtime itself restarts — or just attach
 nu toolkit/container.nu reload-egress my-cozy   # after editing the allowlist
 nu toolkit/container.nu refresh-egress          # move the squid pin to upstream's newest, rehearsed first
@@ -259,6 +260,18 @@ container attach my-cozy --workdir ~/path/to/project
 `attach` opens the WezTerm window as a background job, and a nushell job dies with the nu that spawned it — so `nu toolkit/container.nu attach …` would exit before the window is up and no window would appear. Load the module in your REPL instead (the same holds for `toolkit/sbxw.nu` on the sbx path). `--no-job` runs wezterm in the foreground of the current shell, which does work from a script, but blocks it until the window closes.
 
 Several folders can be mounted, spelled the way `sbx run` spells it: each appears inside at its own absolute host path, and `:ro` makes one read-only. The first path is the primary workspace — it is what `WORKSPACE_DIR` points at and where you start. A folder containing this repo is refused unless it is `:ro`, for the reason above: the script and the firewall template are read fresh at the next launch, so an agent that can write them writes its own cage.
+
+`--ssh-agent` forwards your host's ssh-agent into the container, so it can sign with your keys without ever holding them. While it runs, anything inside can sign with them — prefer a key dedicated to this over your personal one. It can only be set at creation, so turning it on for an existing container means recreating it. Inside the cage it buys **signing, not networking**: ssh still cannot cross the proxy.
+
+Signing then needs three lines. Git defaults to gpg, which is not installed, so `git commit -S` first fails with `gpg failed to sign the data`:
+
+```nu
+git config --global gpg.format ssh
+git config --global user.signingkey $"key::(^ssh-add -L | lines | first)"
+git config --global commit.gpgsign true
+```
+
+`ssh-add -L` prints the *public* key out of the agent, and `key::` tells git the value is a key rather than a path — so no key file has to exist inside the container, which is the point. Paste the line yourself if the agent holds several.
 
 The container's VM gets 8 GB of RAM and 6 CPUs, not the 1 GB and 4 CPUs `container` defaults to — `--memory` and `--cpus` change both. Keep `--cpus` at or below your machine's core count. One Claude Code process holds around 300 MB, so at 1 GB two of them leave no room for the page cache and the kernel spends most of its time evicting their code pages and reading them straight back in. That shows up as a container pinning several cores with nothing running in it.
 
@@ -278,7 +291,7 @@ The allowlist bounds *which hosts* anything inside the container — the agent i
 
 `cozy verify` is a smoke test, not a tamper detector. Its own source lives in the container at a path the agent owns.
 
-Some things break for reasons the allowlist cannot fix. `ssh` cannot travel through an HTTP proxy at all, so `git@github.com:` remotes fail — with an error that blames your credentials. Node's built-in `fetch` ignores the proxy environment, so scripts and HTTP-based MCP servers fail with a DNS error even for an allowlisted host; Claude Code itself is unaffected, it wires its own proxy agent. Claude Code's `WebFetch` now refuses anything off-list, while `WebSearch` keeps working since it goes through the API.
+Some things break for reasons the allowlist cannot fix. `ssh` cannot travel through an HTTP proxy at all, so `git@github.com:` remotes fail — with an error that blames your credentials. `--ssh-agent` carries the agent in, not a route out, so it signs commits and does not fix remotes. Node's built-in `fetch` ignores the proxy environment, so scripts and HTTP-based MCP servers fail with a DNS error even for an allowlisted host; Claude Code itself is unaffected, it wires its own proxy agent. Claude Code's `WebFetch` now refuses anything off-list, while `WebSearch` keeps working since it goes through the API.
 
 **Apple `container` on Apple Silicon:** the first `container build` can fail with `Rosetta is not installed`. The builder VM defaults to `[build] rosetta = true`, so it wants Rosetta even for a native `arm64` build. Fix it without installing Rosetta — put `rosetta = false` under `[build]` in `~/.config/container/config.toml`, then `container builder stop && container builder start`. An `arm64` build never runs x86, so Rosetta stays unused either way.
 

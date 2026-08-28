@@ -14,6 +14,7 @@
 #
 #   nu toolkit/container.nu up my-cozy ~/path/to/project
 #   nu toolkit/container.nu up my-cozy ~/project-a ~/shared-libs:ro ~/docs:ro
+#   nu toolkit/container.nu up my-cozy ~/path/to/project --ssh-agent  # sign with the host's keys
 #   nu toolkit/container.nu restart my-cozy         # or just attach, which restarts a stopped pair
 #   nu toolkit/container.nu reload-egress my-cozy   # after editing the allowlist
 #   nu toolkit/container.nu refresh-egress          # move the pin to upstream's newest
@@ -487,6 +488,80 @@ def host-git-identity []: nothing -> list<string> {
     }
 }
 
+# `--ssh` is a boolean flag on `container run` and `container create`: the
+# runtime mounts the host's agent socket into the container and sets the guest's
+# own SSH_AUTH_SOCK to /var/host-services/ssh-auth.sock. So there is deliberately
+# no `-e SSH_AUTH_SOCK` alongside it — the guest path belongs to the runtime, and
+# a hand-written one would only fight it. Read off apple/container rather than
+# guessed: `sshAuthSocketGuestPath` in Sources/Services/RuntimeLinux/Server/
+# RuntimeService.swift, and the flag itself in Sources/Services/
+# ContainerAPIService/Client/Flags.swift.
+#
+# Nothing is needed in `restart` or `attach`: `ssh: true` is stored in the
+# container's configuration, and `container start` re-reads the *host's* current
+# SSH_AUTH_SOCK on every start. That is the whole advantage over mounting the
+# socket by hand — the mount follows an agent that moved across a logout instead
+# of pointing at a dead path.
+#
+# What this does NOT buy inside the cage: git over ssh. squid allows CONNECT to
+# 443 only, and ssh cannot speak to an HTTP proxy at all, so a `git@github.com:`
+# remote fails here whatever the agent holds — README's "Egress firewall" already
+# says so, and the error it produces blames your credentials instead. What the
+# forwarded agent does buy is signing, which needs no network: with `git config
+# gpg.format ssh` the host's key signs commits made inside the container without
+# the key ever entering it.
+def ssh-agent-args [enabled: bool]: nothing -> list<string> {
+    if not $enabled { return [] }
+
+    # Upstream only *logs a warning* when SSH_AUTH_SOCK is missing, then starts
+    # the container with no socket at all: an explicitly requested forward that
+    # silently did not happen, discovered much later inside the container. Refused
+    # here instead, where the cause is still in hand.
+    let sock = $env.SSH_AUTH_SOCK? | default ''
+    if ($sock | is-empty) {
+        error make --unspanned {msg: "--ssh-agent needs SSH_AUTH_SOCK and this shell has none. On macOS adding a key starts the system agent: `ssh-add --apple-use-keychain ~/.ssh/id_ed25519`."}
+    }
+    if not ($sock | path exists) {
+        error make --unspanned {msg: $"SSH_AUTH_SOCK names ($sock), which does not exist — the agent it points at is gone. Open a fresh login shell, or start one with `ssh-add --apple-use-keychain ~/.ssh/id_ed25519`."}
+    }
+
+    # `ssh-add -l` exit 1 is "the agent answers but holds no keys" — a warning,
+    # not an error: what gets mounted is a live socket, so a key added on the
+    # host afterwards is usable inside immediately, with no recreation. Exit 2 is
+    # "nothing answers at that socket", which is the same broken state as the
+    # missing path above and is refused the same way.
+    let r = ^ssh-add -l | complete
+    if $r.exit_code == 2 {
+        error make --unspanned {msg: $"SSH_AUTH_SOCK is ($sock) but no agent answers there: ($r.stderr | str trim)"}
+    }
+    if $r.exit_code == 1 {
+        print $"  (ansi yellow)Agent:(ansi reset) the host agent currently holds no keys — `ssh-add --apple-use-keychain ~/.ssh/id_ed25519` adds one, and it works inside without a restart"
+    } else {
+        # The count and nothing else. Fingerprints are not secret, but no part of
+        # this job needs one printed, and key material must never pass through
+        # this script at all.
+        let n = $r.stdout | lines | where {|l| $l | is-not-empty } | length
+        # Spelled out rather than `key\(s)`: the escape works in `$"..."`, but a
+        # parenthesis inside an interpolated string is this codebase's most
+        # repeated mistake and is not worth risking for a plural.
+        let word = if $n == 1 { 'key' } else { 'keys' }
+        print $"  (ansi yellow)Agent:(ansi reset) forwarding the host ssh-agent, ($n) ($word) — anything inside the container can sign with them while it runs, though it can never read them. Prefer a key dedicated to this over your personal one."
+    }
+    [--ssh]
+}
+
+# The builder checks what it built — the same rule as assert-caged. A forward
+# that did not land must not read as success, and the socket is one `exec` away.
+# Exit 1 counts as reachable: an agent holding no keys still proves the socket
+# arrived, which is all this asserts.
+def assert-agent-reachable [name: string]: nothing -> nothing {
+    let r = ^container exec $name ssh-add -l | complete
+    if $r.exit_code not-in [0 1] {
+        error make --unspanned {msg: $"($name) started, but `ssh-add -l` inside it cannot reach the forwarded agent, exit ($r.exit_code): ($r.stderr | str trim). Recreate it without --ssh-agent, or check that the host agent is still alive."}
+    }
+    print $"  (ansi green)Agent:(ansi reset) ($name) reaches the forwarded agent at /var/host-services/ssh-auth.sock"
+}
+
 # `path[:ro]` — the spelling `sbx run` uses for extra workspaces, kept identical
 # so the two run paths take the same arguments.
 def parse-workspace [entry: string]: nothing -> record<path: path, ro: bool> {
@@ -548,6 +623,7 @@ def "main up" [
     --workdir: path # start directory inside the container (default: the primary workspace)
     --memory: string = '8g' # RAM for the container VM (Apple `container` defaults to 1g)
     --cpus: int = 6 # CPUs for the container VM (Apple `container` defaults to 4)
+    --ssh-agent # forward the host's ssh-agent socket, so the container can sign with your keys without holding them. Inside the cage this is for signing only — ssh cannot cross the HTTP proxy, so `git@github.com:` remotes still fail
 ]: nothing -> record {
     reject-proxy-name $name
     if ($workspaces | is-empty) {
@@ -575,6 +651,12 @@ def "main up" [
     if (container-status $name) != 'absent' {
         error make --unspanned {msg: $"a container named ($name) already exists — `nu toolkit/container.nu restart ($name)` brings it back, `nu toolkit/container.nu reload-egress ($name)` applies an edited allowlist to it, or `container stop ($name); container delete ($name)` to rebuild it"}
     }
+
+    # Before ensure-network, deliberately: this reads only the host and can only
+    # say no, and everything below it creates something. The same lesson the
+    # already-exists check above carries — a refusal that lands after a network
+    # and a proxy were built reads as "nothing happened" and leaves both behind.
+    let ssh_args = ssh-agent-args $ssh_agent
 
     ensure-network
     # --policy picks the directory only when the proxy is (re)created — a
@@ -647,6 +729,7 @@ def "main up" [
         -e
         'NO_PROXY=localhost,127.0.0.1,::1'
         ...$git_identity
+        ...$ssh_args
         ...$mounts
         -w
         ($workdir | default $ws | path expand)
@@ -661,13 +744,14 @@ def "main up" [
     assert-caged $name
     set-egress-hosts $name $ip
     clear-resolver $name
+    if $ssh_agent { assert-agent-reachable $name }
 
     print ""
     print $"  attach:  use toolkit/container.nu; container attach ($name) --workdir ($ws)"
     print $"  check:   container exec ($name) nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'"
     print $"  refused: container logs -f ($egress_name)"
 
-    summary $name running $ip | merge {workspaces: $ws_list}
+    summary $name running $ip | merge {workspaces: $ws_list, ssh_agent: $ssh_agent}
 }
 
 # Apply an edited allowlist to a container that is already up.
