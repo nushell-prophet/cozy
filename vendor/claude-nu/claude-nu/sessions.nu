@@ -31,6 +31,7 @@ const SESSION_COLUMNS = [
     [cwd false]
     [git_branch false]
     [effort false]
+    [models false]
     [bash_commands false]
     [bash_count false]
     [skill_invocations false]
@@ -79,7 +80,7 @@ export def projects []: nothing -> table {
             }
         if $cwd == null { return null }
         {
-            name: ($cwd | path split | last 2 | path join)
+            name: ($cwd | project-display-name)
             path: $dir.name
             count: ($files | length)
             modified: $dir.modified
@@ -249,14 +250,15 @@ export def messages [
         # `| get project` would work on a wide search and fail on a narrow one.
         | each { insert session $session_uuid }
         | insert project ($session_file | project-dir-name)
+        | insert project_name ($records | pick-first $.cwd | project-display-name)
     }
     | flatten
 }
 
 # Extract the tool calls of Claude Code session files — what an agent did, as
 # `messages` is what was said. One row per tool_use block: {tool, input,
-# timestamp, session, project}, with `input` kept as the raw record so a caller
-# drills into it (`where tool == Bash | get input.command`).
+# timestamp, session, project, project_name}, with `input` kept as the raw
+# record so a caller drills into it (`where tool == Bash | get input.command`).
 # Scoping and searching work exactly as in `messages`: no input reads every
 # top-level session of the current project, piped session rows narrow it, the
 # regex argument gets the same rg pre-filter over the raw JSONL, and `--no-rg`
@@ -311,9 +313,11 @@ export def tool-calls [
         # Why the pre-screen: tool calls live only on assistant records, which
         # are a minority of the lines — the rest never reach the JSON parser.
         # The `where type?` below still runs, so this only narrows.
-        $session_file
-        | read-session-records --contains '"type":"assistant"'
-        | where type? == "assistant"
+        let records = $session_file
+            | read-session-records --contains '"type":"assistant"'
+            | where type? == "assistant"
+
+        $records
         | each {|record|
             $record
             | extract-tool-calls
@@ -329,6 +333,7 @@ export def tool-calls [
         | if $regex == null { } else { where {|call| ($call.input | to nuon) =~ $regex } }
         | insert session ($session_file | session-id-from-path)
         | insert project ($session_file | project-dir-name)
+        | insert project_name ($records | pick-first $.cwd | project-display-name)
     }
     | flatten
 }
@@ -402,6 +407,10 @@ def parse-session-columns [selected: list<string>]: path -> record {
         $assistant_records | extract-effort
     } else { "" }
 
+    let models = if ("models" in $selected) {
+        $assistant_records | extract-models
+    } else { [] }
+
     let tool_stats = if (do $need [
         bash_commands bash_count skill_invocations tool_errors ask_user_count
         plan_mode_used tool_counts
@@ -443,6 +452,7 @@ def parse-session-columns [selected: list<string>]: path -> record {
         cwd: $meta.cwd?
         git_branch: $meta.git_branch?
         effort: $effort
+        models: $models
         bash_commands: $tool_stats.bash_commands?
         bash_count: $tool_stats.bash_count?
         skill_invocations: $tool_stats.skill_invocations?
