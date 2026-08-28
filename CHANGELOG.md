@@ -11,17 +11,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Vendored `claude-nu` — `tool-calls 'regex'` searches what the agent actually ran, not only what was said, and `sessions`, `messages` and `tool-calls` take `--since`/`--until` (a duration means ago: `--since 1wk`). `claude-nu example` pastes one of the module's own pipelines into the command line. (1f1d934)
 
+- Vendored `claude-nu` — `sessions` gains a `models` column, so a mid-session `/model` switch is visible; `messages` and `tool-calls` rows gain `project_name`, the readable counterpart to the encoded `project`. (7bfbcf1)
+
+- Vendored `my-claude-skills` — new skill `manpage-quality` (write docs to the standard of an OpenBSD manual page), and `land-branch` now detects a trunk that already holds part of the branch instead of staging a reversal of it. (563c794)
+
 - Vendored `my-claude-skills` — two new skills: `decision-provenance` reconstructs the circumstances a design decision was made in, from git history plus session transcripts, and `instruction-conflicts` audits everything loaded into the context for rules that pull in opposite directions. (c00d8d6)
 
 - `nu toolkit/container.nu up --ssh-agent` forwards your host's ssh-agent into the Apple `container` path, so the container can sign with your keys without ever holding them. Inside the cage this is for signing, not for `git@github.com:` — ssh still cannot cross the HTTP proxy.
 
 ### Fixed
 
+- Zellij 0.45 no longer kills the keys when it syncs you into scroll mode: `shift+PageUp`/`PageDown` keep scrolling, and the `Super` window-manager keys work in every mode, not just normal and locked. (0da85e4)
+
 - `nu toolkit/vendor.nu` (no repo named) re-vendored everything and then died with a type error before its `vendor: refresh all modules` commit, leaving the refresh uncommitted. Naming one repo was unaffected.
 
 - `cozy install nushell` (and `zellij`, `nu-plugin-image`) now really replaces the binary when you run it from the program you are upgrading. The copy used to fail with "Text file busy" and the installer still printed a green success line, so the old version stayed. It renames the new binary into place instead — restart nushell to pick it up. (18e986c)
 
 ### Changed
+
+- Claude Code starts in the Concise output style — every response is read under load, so the default verbosity was the wrong starting point. (01de69b)
+
+- Vendored `my-claude-skills` — every personal skill is renamed with a `40-` prefix, so typing `40` in Claude Code's slash menu reaches all of them at once. (563c794)
+
+- `cmd+alt+l` opens plain lazygit again — no `:reload-all` is sent to helix when it exits. (0da85e4)
 
 - Vendored `claude-nu` — `commits` and `code-authorship` are gone; they moved upstream to cozy-playground. (1f1d934)
 
