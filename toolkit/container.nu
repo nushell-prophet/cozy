@@ -100,10 +100,22 @@ const rehearsal_name = 'cozy-egress-rehearsal'
 # as the failing command and its stderr. Apple `container` is young and this
 # script is written against its documentation, not against a machine — the first
 # run is where the flags get proven, and a silent empty result would hide that.
-def container-cli [args: list<string>]: nothing -> string {
-    let r = ^container ...$args | complete
+#
+# Arguments arrive in groups — a flag and its value per inner list — and are
+# flattened here. Not one flat list, because topiary explodes a multi-line list
+# to one token per line: that turned the two `run` invocations into 30-line
+# ladders where a flag sat nowhere near its value. A list of single-line lists
+# survives the formatter, so a call site reads like the command it runs.
+#
+# `list<list<string>>` is also what keeps every bareword a string. Nushell types
+# a list literal against the parameter, and under `list<any>` (or behind `++`)
+# the `infinity` that `sleep` wants becomes the float `inf` and fails the type
+# check. The nesting is what carries that hint down to each group.
+def container-cli [args: list<list<string>>]: nothing -> string {
+    let argv = $args | flatten
+    let r = ^container ...$argv | complete
     if $r.exit_code != 0 {
-        error make {msg: $"`container ($args | str join ' ')` failed:\n($r.stderr | str trim)"}
+        error make {msg: $"`container ($argv | str join ' ')` failed:\n($r.stderr | str trim)"}
     }
     $r.stdout
 }
@@ -112,7 +124,7 @@ def container-cli [args: list<string>]: nothing -> string {
 # state under status.state — `status` is a record (state, networks,
 # startedDate), not a string.
 def container-status [name: string]: nothing -> string {
-    let rows = container-cli [ls --all --format json] | from json | where configuration.id == $name
+    let rows = container-cli [[ls --all --format json]] | from json | where configuration.id == $name
     if ($rows | is-empty) { 'absent' } else { $rows | first | get status.state }
 }
 
@@ -147,7 +159,7 @@ def reject-proxy-name [name: string]: nothing -> nothing {
 # is undocumented (see egress-address), so compare whitespace-separated tokens —
 # that needs no column layout and no key names.
 def caged-network-exists []: nothing -> bool {
-    let names = container-cli [network list] | split row --regex '\s+'
+    let names = container-cli [[network list]] | split row --regex '\s+'
     $caged_network in $names
 }
 
@@ -165,7 +177,7 @@ def ensure-network []: nothing -> nothing {
         print $"  (ansi green)Network:(ansi reset) ($caged_network) already up — cage probed after the container starts"
         return
     }
-    container-cli [network create --internal --subnet $caged_subnet $caged_network]
+    container-cli [[network create --internal --subnet $caged_subnet $caged_network]]
     print $"  (ansi green)Network:(ansi reset) created ($caged_network) ($caged_subnet), host-only"
 }
 
@@ -207,7 +219,7 @@ def assert-caged [name: string]: nothing -> nothing {
     # cannot be accessed with a cell path" — replacing the cage diagnosis with a
     # nushell internal at exactly the moment the probe never answered.
     let probe = poll 15 {
-        let r = ^container exec $name curl -sS --noproxy '*' --max-time 10 -o /dev/null -w '%{http_code}' $direct_probe | complete
+        let r = ^container exec $name curl --silent --show-error --noproxy '*' --max-time 10 --output /dev/null --write-out '%{http_code}' $direct_probe | complete
         if ($r.stdout | str trim | is-empty) { null } else { $r }
     } | default {stdout: '' stderr: '' exit_code: 0}
     let code = $probe.stdout | str trim
@@ -265,8 +277,8 @@ def assert-caged [name: string]: nothing -> nothing {
 # mount is fixed at creation, so only a recreated proxy can change which host
 # folder it reads. Hence the message names the mount, not the host path.
 def reload-policy []: nothing -> nothing {
-    container-cli [exec $egress_name $squid_bin -k parse -f $policy_conf]
-    container-cli [exec $egress_name $squid_bin -k reconfigure -f $policy_conf]
+    container-cli [[exec $egress_name] [$squid_bin -k parse -f $policy_conf]]
+    container-cli [[exec $egress_name] [$squid_bin -k reconfigure -f $policy_conf]]
     print $"  (ansi green)Proxy:(ansi reset) ($egress_name) re-read its policy mount in place — same address, no restart"
 }
 
@@ -296,7 +308,7 @@ def ensure-egress [policy: path reload: bool]: nothing -> nothing {
     # declared and an existing container may carry older ones. This path can
     # move the address; callers re-map the cozy container's hosts line
     # afterwards (set-egress-hosts).
-    if $status != 'absent' { container-cli [delete $egress_name] }
+    if $status != 'absent' { container-cli [[delete $egress_name]] }
 
     # Dual-homed: `default` is the only way out, the caged network is the only
     # way in. Repeating --network is what Apple's maintainers point to for this;
@@ -315,24 +327,14 @@ def ensure-egress [policy: path reload: bool]: nothing -> nothing {
     # without PEBBLE_VERBOSE `container logs` carries Pebble's lines and nothing
     # from squid, which silences the refusal log the allowlist is managed by.
     container-cli [
-        run
-        -d
-        --name
-        $egress_name
-        --network
-        default
-        --network
-        $caged_network
-        -e
-        PEBBLE_VERBOSE=1
-        -v
-        $"($policy):/etc/squid/policy:ro"
-        $egress_image
-        --args
-        squid
-        -f
-        $policy_conf
-        -NYC
+        [run --detach]
+        [--name $egress_name]
+        [--network default]
+        [--network $caged_network]
+        [--env PEBBLE_VERBOSE=1]
+        [--volume $"($policy):/etc/squid/policy:ro"]
+        [$egress_image]
+        [--args squid -f $policy_conf -NYC]
     ]
     print $"  (ansi green)Proxy:(ansi reset) started ($egress_name) with ($policy)"
 }
@@ -390,7 +392,10 @@ def proxy-url [host: string]: nothing -> string { $"http://($host):($proxy_port)
 # `container start` leaves the name unresolvable (loud: "could not resolve host
 # cozy-egress") until `restart` runs.
 def set-egress-hosts [name: string ip: string]: nothing -> nothing {
-    container-cli [exec --uid 0 $name sh -c $"sed -i '/ ($egress_name)$/d' /etc/hosts; echo '($ip) ($egress_name)' >> /etc/hosts"]
+    container-cli [
+        [exec --uid 0 $name]
+        [sh -c $"sed --in-place '/ ($egress_name)$/d' /etc/hosts; echo '($ip) ($egress_name)' >> /etc/hosts"]
+    ]
     print $"  (ansi green)Hosts:(ansi reset) ($egress_name) -> ($ip), mapped inside ($name)"
 }
 
@@ -413,7 +418,10 @@ def set-egress-hosts [name: string ip: string]: nothing -> nothing {
 # the container's life. Re-asserted on every start anyway: that is what repairs a
 # container created before this existed.
 def clear-resolver [name: string]: nothing -> nothing {
-    container-cli [exec --uid 0 $name sh -c $"echo '# cozy: no resolver — ($egress_name) resolves names' > /etc/resolv.conf"]
+    container-cli [
+        [exec --uid 0 $name]
+        [sh -c $"echo '# cozy: no resolver — ($egress_name) resolves names' > /etc/resolv.conf"]
+    ]
     print $"  (ansi green)Resolver:(ansi reset) cleared in ($name) — the cage has none, and the image's 1.1.1.1 costs 20s a lookup"
 }
 
@@ -477,11 +485,11 @@ def host-git-identity []: nothing -> list<string> {
     # side. Half an identity is worse than none: the other half falls through to
     # the placeholder and commits land as `Someone <agent@sandbox>`, a name that
     # never existed. Reported here too, because here we can say what is missing.
-    if ($id | all {|v| $v | is-not-empty }) {
+    if ($id | all { is-not-empty }) {
         print $"  (ansi green)You:(ansi reset) ($id.0) <($id.1)> — the agent still commits as Claude"
-        [-e $"COZY_GIT_USER_NAME=($id.0)" -e $"COZY_GIT_USER_EMAIL=($id.1)"]
+        [--env $"COZY_GIT_USER_NAME=($id.0)" --env $"COZY_GIT_USER_EMAIL=($id.1)"]
     } else {
-        if ($id | any {|v| $v | is-not-empty }) {
+        if ($id | any { is-not-empty }) {
             print $"  (ansi yellow)You:(ansi reset) host `git config --global` has only one of user.name/user.email — forwarding neither"
         }
         []
@@ -540,7 +548,7 @@ def ssh-agent-args [enabled: bool]: nothing -> list<string> {
         # The count and nothing else. Fingerprints are not secret, but no part of
         # this job needs one printed, and key material must never pass through
         # this script at all.
-        let n = $r.stdout | lines | where {|l| $l | is-not-empty } | length
+        let n = $r.stdout | lines | where $it != '' | length
         # Spelled out rather than `key\(s)`: the escape works in `$"..."`, but a
         # parenthesis inside an interpolated string is this codebase's most
         # repeated mistake and is not worth risking for a plural.
@@ -618,7 +626,7 @@ def resolve-policy [policy: oneof<path, nothing>]: nothing -> path {
 def "main up" [
     name: string # name for the cozy container
     ...workspaces: string # host folders to mount, each at its own absolute path; the first is WORKSPACE_DIR and the default start dir. Append `:ro` for read-only
-    --image: string = 'cozy:latest' # image built by `container build -t cozy:latest .`
+    --image: string = 'cozy:latest' # image built by `container build --tag cozy:latest .`
     --policy: path # firewall policy directory (default: ~/.config/cozy/firewall)
     --workdir: path # start directory inside the container (default: the primary workspace)
     --memory: string = '8g' # RAM for the container VM (Apple `container` defaults to 1g)
@@ -698,44 +706,32 @@ def "main up" [
     # Every folder is mounted at its own host path — the cozy convention, and the
     # one that keeps a path copied from the host valid inside the container.
     #
-    # Spread into the one list literal rather than concatenating lists with `++`:
-    # nushell parses a list literal against the parameter's `list<string>` type,
-    # so `infinity` stays the string `sleep` wants. Behind `++` that hint is lost
-    # and it becomes the float `inf`, which then fails the type check.
-    let mounts = $ws_list | each {|w| [-v $"($w.path):($w.path)(if $w.ro { ':ro' } else { '' })"] } | flatten
+    # The three computed lists go in as groups of their own rather than spread
+    # with `...`: container-cli takes list<list<string>>, so a list<string>
+    # variable already is one group, and an empty one flattens away to nothing.
+    # Never concatenate them with `++` — that loses the type hint the literal
+    # carries, and the `infinity` at the bottom becomes the float `inf`, which
+    # `sleep` then refuses.
+    let mounts = $ws_list | each {|w| [--volume $"($w.path):($w.path)(if $w.ro { ':ro' } else { '' })"] } | flatten
     let git_identity = host-git-identity
     container-cli [
-        run
-        -d
-        --name
-        $name
-        --network
-        $caged_network
-        --no-dns
-        --memory
-        $memory
-        --cpus
-        ($cpus | into string)
-        -e
-        $"WORKSPACE_DIR=($ws)"
-        -e
-        $"HTTP_PROXY=(proxy-url $egress_name)"
-        -e
-        $"HTTPS_PROXY=(proxy-url $egress_name)"
-        -e
-        $"http_proxy=(proxy-url $egress_name)"
-        -e
-        $"https_proxy=(proxy-url $egress_name)"
-        -e
-        'NO_PROXY=localhost,127.0.0.1,::1'
-        ...$git_identity
-        ...$ssh_args
-        ...$mounts
-        -w
-        ($workdir | default $ws | path expand)
-        $image
-        sleep
-        infinity
+        [run --detach]
+        [--name $name]
+        [--network $caged_network]
+        [--no-dns]
+        [--memory $memory]
+        [--cpus ($cpus | into string)]
+        [--env $"WORKSPACE_DIR=($ws)"]
+        [--env $"HTTP_PROXY=(proxy-url $egress_name)"]
+        [--env $"HTTPS_PROXY=(proxy-url $egress_name)"]
+        [--env $"http_proxy=(proxy-url $egress_name)"]
+        [--env $"https_proxy=(proxy-url $egress_name)"]
+        [--env 'NO_PROXY=localhost,127.0.0.1,::1']
+        $git_identity
+        $ssh_args
+        $mounts
+        [--workdir ($workdir | default $ws | path expand)]
+        [$image sleep infinity]
     ]
     let mounted = $ws_list | each {|w| $"($w.path)(if $w.ro { ' (ro)' } else { '' })" } | str join ', '
     print $"  (ansi green)Container:(ansi reset) ($name) on ($caged_network), workspace ($mounted)"
@@ -748,10 +744,10 @@ def "main up" [
 
     print ""
     print $"  attach:  use toolkit/container.nu; container attach ($name) --workdir ($ws)"
-    print $"  check:   container exec ($name) nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'"
-    print $"  refused: container logs -f ($egress_name)"
+    print $"  check:   container exec ($name) nu --commands 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'"
+    print $"  refused: container logs --follow ($egress_name)"
 
-    summary $name running $ip | merge {workspaces: $ws_list, ssh_agent: $ssh_agent}
+    summary $name running $ip | merge {workspaces: $ws_list ssh_agent: $ssh_agent}
 }
 
 # Apply an edited allowlist to a container that is already up.
@@ -841,7 +837,7 @@ def "main restart" [
         # it is mapped below like any other.
         ensure-egress (resolve-policy $policy) false
     } else if $egress_state != 'running' {
-        container-cli [start $egress_name]
+        container-cli [[start $egress_name]]
         print $"  (ansi green)Proxy:(ansi reset) started ($egress_name)"
     } else {
         print $"  (ansi green)Proxy:(ansi reset) ($egress_name) already running"
@@ -849,7 +845,7 @@ def "main restart" [
     let ip = egress-address
 
     if $container_state != 'running' {
-        container-cli [start $name]
+        container-cli [[start $name]]
         print $"  (ansi green)Container:(ansi reset) started ($name)"
     } else {
         print $"  (ansi green)Container:(ansi reset) ($name) already running"
@@ -871,7 +867,7 @@ def "main restart" [
 
     print ""
     print $"  attach:  use toolkit/container.nu; container attach ($name)"
-    print $"  refused: container logs -f ($egress_name)"
+    print $"  refused: container logs --follow ($egress_name)"
 
     summary $name running $ip
 }
@@ -916,7 +912,7 @@ def "main attach" [
 
     # Why --cwd: `container` has no notion of a workspace, so an exec starts
     # wherever the image left WORKDIR — pass it when the start directory matters.
-    let exec_argv = [container exec -it]
+    let exec_argv = [container exec --interactive --tty]
         | append (if ($workdir | is-not-empty) { [--cwd $workdir] } else { [] })
         | append $name
 
@@ -962,20 +958,12 @@ def rehearse-egress [image: string policy: path]: nothing -> nothing {
     ^container delete $rehearsal_name | complete | ignore
 
     container-cli [
-        run
-        -d
-        --name
-        $rehearsal_name
-        -e
-        PEBBLE_VERBOSE=1
-        -v
-        $"($policy):/etc/squid/policy:ro"
-        $image
-        --args
-        squid
-        -f
-        $policy_conf
-        -NYC
+        [run --detach]
+        [--name $rehearsal_name]
+        [--env PEBBLE_VERBOSE=1]
+        [--volume $"($policy):/etc/squid/policy:ro"]
+        [$image]
+        [--args squid -f $policy_conf -NYC]
     ]
 
     let listening = (

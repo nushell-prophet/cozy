@@ -152,8 +152,8 @@ def "main manifest" []: nothing -> record {
     let want = open $vendor_yml | get repo | append cozy | sort
     let have = open $manifest | get name | sort
     if $want != $have {
-        let missing = $want | where {|r| $r not-in $have }
-        let extra = $have | where {|r| $r not-in $want }
+        let missing = $want | where $it not-in $have
+        let extra = $have | where $it not-in $want
         error make {msg: $"vendored-repos.nuon is stale — run `nu toolkit/vendor.nu`. missing: ($missing | str join ', '); extra: ($extra | str join ', ')"}
     }
     {check: manifest, repos: ($have | length), ok: true}
@@ -179,7 +179,7 @@ def "main egress-image" []: nothing -> record {
 }
 
 # Run every check; errors (non-zero exit) if any drift is found.
-export def main [] {
+export def main []: nothing -> nothing {
     main manifest | print
     main egress-image | print
     print (main env)

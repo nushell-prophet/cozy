@@ -11,7 +11,7 @@ const prefixes = [ai/sandboxes reference/cli/sbx]
 # top-level guide and lists sandboxes once). Parsing it means new sandbox / sbx
 # pages appear automatically -- no hardcoded list to keep in sync.
 def discover-pages []: nothing -> list<string> {
-    let index = do { ^curl -sfL $"($base_url)/llms-full.txt" } | complete
+    let index = ^curl --silent --fail --location $"($base_url)/llms-full.txt" | complete
     if $index.exit_code != 0 {
         error make {msg: $"failed to fetch llms-full.txt \(curl exit ($index.exit_code)\)"}
     }
@@ -19,8 +19,9 @@ def discover-pages []: nothing -> list<string> {
     | lines
     | parse --regex '^Markdown:\s+(?<url>\S+\.md)\s*$'
     | get url
-    | where {|u| $u | str starts-with $"($base_url)/" }
-    | each {|u| $u | str replace $"($base_url)/" '' | str replace --regex '\.md$' '' }
+    | where $it starts-with $"($base_url)/"
+    | str replace $"($base_url)/" ''
+    | str replace --regex '\.md$' ''
     | where {|p| $prefixes | any {|pre| $p | str starts-with $pre } }
     | uniq
     | sort
@@ -28,7 +29,7 @@ def discover-pages []: nothing -> list<string> {
 
 # Sync Docker sandbox docs to local markdown.
 # Run from the cozy/ directory.
-export def main [] {
+export def main []: nothing -> record {
     let dir = pwd | path join docs.docker.com
     init $dir
 
@@ -43,9 +44,9 @@ export def main [] {
             # Why: curl + complete gives a per-page exit code, so one dead page
             # becomes a {status: failed} row instead of aborting the par-each.
             # Not http get because: it would need a try/catch to build the same row.
-            let result = do { ^curl -sfL $url } | complete
+            let result = ^curl --silent --fail --location $url | complete
             if $result.exit_code == 0 {
-                $result.stdout | save -f $file
+                $result.stdout | save --force $file
                 {page: $page status: ok}
             } else {
                 {page: $page status: failed}
@@ -64,7 +65,7 @@ export def main [] {
     }
 }
 
-def init [dir: path] {
+def init [dir: path]: nothing -> nothing {
     if not ($dir | path exists) {
         mkdir $dir
         ^git init $dir o+e>| ignore
@@ -80,19 +81,19 @@ def init [dir: path] {
     let entry = "/docs.docker.com"
     let content = open $gitignore
     if $entry not-in $content {
-        $"\n($entry)\n" | save -a $gitignore
+        $"\n($entry)\n" | save --append $gitignore
         print $"Added ($entry) to .gitignore"
     }
 }
 
-def commit [dir: path] {
-    ^git -C $dir add -A
+def commit [dir: path]: nothing -> nothing {
+    ^git -C $dir add --all
     let status = ^git -C $dir status --porcelain
     if ($status | str trim | is-empty) {
         print "No changes to commit"
     } else {
         let date = date now | format date "%Y-%m-%d"
-        ^git -C $dir commit -m $"docs: sync sandbox documentation ($date)"
+        ^git -C $dir commit --message $"docs: sync sandbox documentation ($date)"
         print "Committed"
     }
 }

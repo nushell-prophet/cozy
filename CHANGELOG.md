@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `nu toolkit/vendor.nu` (no repo named) re-vendored everything and then died with a type error before its `vendor: refresh all modules` commit, leaving the refresh uncommitted. Naming one repo was unaffected.
+
 - `cozy install nushell` (and `zellij`, `nu-plugin-image`) now really replaces the binary when you run it from the program you are upgrading. The copy used to fail with "Text file busy" and the installer still printed a green success line, so the old version stayed. It renames the new binary into place instead — restart nushell to pick it up. (18e986c)
 
 ### Changed
