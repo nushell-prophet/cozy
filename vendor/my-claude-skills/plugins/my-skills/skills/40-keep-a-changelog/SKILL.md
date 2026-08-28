@@ -1,5 +1,5 @@
 ---
-name: keep-a-changelog
+name: 40-keep-a-changelog
 description: >
   This skill should be used when the user asks to "create a changelog",
   "add a changelog entry", "update the changelog", "release a new version",

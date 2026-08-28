@@ -1,10 +1,10 @@
 ---
-name: jj-split-file-for-commit
+name: 40-jj-split-file-for-commit
 description: >
   Split unrelated changes within a single file into separate jj (Jujutsu)
   commits. Use only when the user explicitly asks — git is the default
   workflow. Trigger on "split this file into commits with jj",
-  "/jj-split-file-for-commit <file>". Argument: the file to split.
+  "/40-jj-split-file-for-commit <file>". Argument: the file to split.
 version: 0.1.0
 allowed-tools: Bash(jj status:*), Bash(jj diff:*), Bash(jj restore:*), Bash(jj commit:*), Bash(jj describe:*), Bash(jj log:*), Read, Edit
 ---

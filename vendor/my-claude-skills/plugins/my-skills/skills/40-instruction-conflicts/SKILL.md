@@ -1,5 +1,5 @@
 ---
-name: instruction-conflicts
+name: 40-instruction-conflicts
 description: >
   Audit everything loaded into the context — global and project CLAUDE.md,
   .claude/rules/, output styles, skills, agents, settings and hooks — for rules
@@ -58,7 +58,7 @@ It is also the one that regenerates: fixing both copies leaves two copies, which
 **3. Precedence collision.**
 Both rules are stated as absolutes, they come from different sources, and neither carries an exception clause naming the other.
 A real one, verified in this repo: a session-level harness instruction says "Do not call the AgentTool unless the user requested it", while `decision-provenance/SKILL.md:101` and `code-archaeology/SKILL.md:109` both instruct the agent to run the work in subagents.
-Splitting prompt: `/decision-provenance why is this flag here`.
+Splitting prompt: `/40-decision-provenance why is this flag here`.
 Neither text mentions the other, so the agent picks — and which way it picks is invisible to the user, who sees either a slow single-threaded run or a violated instruction, and has no reason to connect either to a skill file.
 
 **4. Stale pointer.**

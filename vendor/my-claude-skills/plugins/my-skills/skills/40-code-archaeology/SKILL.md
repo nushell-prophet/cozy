@@ -1,5 +1,5 @@
 ---
-name: code-archaeology
+name: 40-code-archaeology
 description: >
   Recover from git history why a piece of code is the way it is — what was tried
   and dropped, what changed together with it, and the reasoning the author wrote

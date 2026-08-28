@@ -1,5 +1,5 @@
 ---
-name: elegance-first
+name: 40-elegance-first
 description: >
   Structured problem-framing discipline before solving non-trivial problems.
   Activate ONLY when the user explicitly requests it — phrases like "frame this",

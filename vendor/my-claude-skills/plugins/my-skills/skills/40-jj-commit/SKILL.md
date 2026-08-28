@@ -1,9 +1,9 @@
 ---
-name: jj-commit
+name: 40-jj-commit
 description: >
   Create a jj (Jujutsu) commit. Use only when the user explicitly asks for a
   jj commit — git is the default workflow. Trigger on "jj commit",
-  "commit with jj", "/jj-commit".
+  "commit with jj", "/40-jj-commit".
 version: 0.1.0
 allowed-tools: Bash(jj status:*), Bash(jj commit:*), Bash(jj diff:*), Bash(jj describe:*), Bash(jj squash:*), Bash(jj new:*), Bash(jj log:*), Bash(jj file list:*), Bash(jj file track:*), Bash(jj file untrack:*), Bash(jj metaedit:*)
 ---

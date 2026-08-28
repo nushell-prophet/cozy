@@ -1,5 +1,5 @@
 ---
-name: decision-provenance
+name: 40-decision-provenance
 description: >
   Reconstruct the circumstances a design decision was actually made in — what
   question was on the table, what the answer covered, and what got written down

@@ -1,5 +1,5 @@
 ---
-name: intent-audit
+name: 40-intent-audit
 description: >
   Audit whether user intent has been preserved in code artifacts.
   Use this skill when the user asks to check, audit, or verify that their

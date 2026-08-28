@@ -1,5 +1,5 @@
 ---
-name: spec-extract
+name: 40-spec-extract
 description: >
   Extract a minimal, revision-ready specification from an existing codebase. Use this skill whenever
   the user wants to understand what their project does without reading all the code, needs a spec

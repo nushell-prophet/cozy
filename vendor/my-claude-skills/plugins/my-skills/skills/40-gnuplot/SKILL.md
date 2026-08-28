@@ -1,5 +1,5 @@
 ---
-name: gnuplot
+name: 40-gnuplot
 description: >
   Render a Nushell table as an ASCII chart in the terminal using gnuplot's dumb terminal.
   Use when the user asks to "plot", "chart", "graph", or "visualize" tabular data they have in

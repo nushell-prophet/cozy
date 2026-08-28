@@ -1,5 +1,5 @@
 ---
-name: todo-verify
+name: 40-todo-verify
 description: >
   Re-verify the notes in a repo's todo/ folder — the user's own, and the ones
   agents wrote when he asked — by reproducing each problem against the current

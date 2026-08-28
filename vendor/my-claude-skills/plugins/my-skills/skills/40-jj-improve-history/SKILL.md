@@ -1,9 +1,9 @@
 ---
-name: jj-improve-history
+name: 40-jj-improve-history
 description: >
   Improve jj (Jujutsu) commit messages while preserving original authorship.
   Use only when the user explicitly asks — git is the default workflow.
-  Trigger on "improve jj history", "rewrite jj messages", "/jj-improve-history".
+  Trigger on "improve jj history", "rewrite jj messages", "/40-jj-improve-history".
   Optional argument: base revision to compare against (default: main).
 version: 0.1.0
 allowed-tools: Bash(jj:*), Read, Edit
