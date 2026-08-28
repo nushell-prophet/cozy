@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-08-28
+
 ### Added
 
 - Vendored `claude-nu` — `tool-calls 'regex'` searches what the agent actually ran, not only what was said, and `sessions`, `messages` and `tool-calls` take `--since`/`--until` (a duration means ago: `--since 1wk`).
@@ -20,17 +22,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - `nu toolkit/container.nu up --ssh-agent` forwards your host's ssh-agent into the Apple `container` path, so the container can sign with your keys without ever holding them.
   Inside the cage this is for signing, not for `git@github.com:` — ssh still cannot cross the HTTP proxy. (b2151aa)
-
-### Fixed
-
-- Zellij 0.45 no longer kills the keys when it syncs you into scroll mode: `shift+PageUp`/`PageDown` keep scrolling, and the `Super` window-manager keys work in every mode, not just normal and locked. (0da85e4)
-
-- `nu toolkit/vendor.nu` (no repo named) re-vendored everything and then died with a type error before its `vendor: refresh all modules` commit, leaving the refresh uncommitted.
-  Naming one repo was unaffected. (9575671)
-
-- `cozy install nushell` (and `zellij`, `nu-plugin-image`) now really replaces the binary when you run it from the program you are upgrading.
-  The copy used to fail with "Text file busy" and the installer still printed a green success line, so the old version stayed.
-  It renames the new binary into place instead — restart nushell to pick it up. (18e986c)
 
 ### Changed
 
@@ -50,6 +41,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - `nu toolkit/container.nu attach <name>` restarts a stopped container and its egress proxy before opening the window, so after the `container` runtime itself restarts one command brings you back.
   It used to open a window on a `container exec` that could not enter. (e6d2ede)
+
+- Vendored `dotfiles/helix` — pressing `o` or Enter inside a markdown list now lands at the content column instead of column 0; helix ships no markdown indent query at all.
+  The trade-off: typing `- ` there makes a nested item, where it used to make a sibling. (10faa30)
+
+- The agent's deployed rules now say: never work on `main` or `master`, one reviewable step per turn, commit bodies in English in every repo, and "run it, then say it" before claiming anything about behaviour. (1272895)
+
+- The agent's baked-in catalog gains a pitfall: a module that names a command after a nushell builtin breaks the modules it *imports*, not itself — the parse error points at a file you did not change. (4d108ce)
+
+- cozy's own error messages drop the source-line frame when the message is already the whole answer (a container name taken, no workspace given, no snapshot found), so the recovery advice is not pushed off screen.
+  Unexpected failures keep their span as a debugging anchor. (d4a1dbb)
+
+- Vendored `dotfiles/zellij` — `create-todo` writes just the dated note; it no longer drops a `todo/CLAUDE.md` template into every project. (76da08f)
+
+### Fixed
+
+- Zellij 0.45 no longer kills the keys when it syncs you into scroll mode: `shift+PageUp`/`PageDown` keep scrolling, and the `Super` window-manager keys work in every mode, not just normal and locked. (0da85e4)
+
+- `nu toolkit/vendor.nu` (no repo named) re-vendored everything and then died with a type error before its `vendor: refresh all modules` commit, leaving the refresh uncommitted.
+  Naming one repo was unaffected. (9575671)
+
+- `cozy install nushell` (and `zellij`, `nu-plugin-image`) now really replaces the binary when you run it from the program you are upgrading.
+  The copy used to fail with "Text file busy" and the installer still printed a green success line, so the old version stayed.
+  It renames the new binary into place instead — restart nushell to pick it up. (18e986c)
+
+- Vendored `dotnu` — module-file globbing works on Windows again: `path join` yields backslashes there and `glob` reads a backslash as an escape, so the glob matched nothing. (b8ed7c9)
 
 ## [0.4.2] - 2026-08-16
 
@@ -744,7 +760,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.4.2...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.4.3...HEAD
+[0.4.3]: https://github.com/nushell-prophet/cozy/compare/0.4.2...0.4.3
 [0.4.2]: https://github.com/nushell-prophet/cozy/compare/0.4.1...0.4.2
 [0.4.1]: https://github.com/nushell-prophet/cozy/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/nushell-prophet/cozy/compare/0.3.9...0.4.0
