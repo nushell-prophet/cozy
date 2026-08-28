@@ -22,7 +22,8 @@ If any prerequisite fails, stop and tell the user what needs to happen first.
 
 ### 1. Determine version number
 
-Ask the user if they don't specify one. Suggest based on changes:
+Ask the user if they don't specify one.
+Suggest based on changes:
 
 - Breaking changes → major bump
 - New features → minor bump
@@ -30,18 +31,21 @@ Ask the user if they don't specify one. Suggest based on changes:
 
 ### 2. Audit git log for missed changes
 
-Run `git log --oneline <previous-tag>..HEAD` to see all commits since the last release. Cross-reference each commit against the `[Unreleased]` entries in `CHANGELOG.md`.
+Run `git log --oneline <previous-tag>..HEAD` to see all commits since the last release.
+Cross-reference each commit against the `[Unreleased]` entries in `CHANGELOG.md`.
 
 Look for:
 - Commits with user-facing changes that have no corresponding changelog entry
 - Changelog entries whose commit hashes don't appear in the log (stale or wrong hash)
 - Multiple commits that should be merged into a single changelog entry
 
-If you find missed changes, draft new entries and show them to the user before adding. Not every commit needs a changelog entry — skip internal refactors, CI tweaks, and implementation details that don't affect the user.
+If you find missed changes, draft new entries and show them to the user before adding.
+Not every commit needs a changelog entry — skip internal refactors, CI tweaks, and implementation details that don't affect the user.
 
 ### 3. Review and finalize Unreleased entries
 
-Read `CHANGELOG.md`. The writing policy lives in `cozy/CLAUDE.md` ("Changelog" section) — entries target potential new users evaluating cozy, with the KEEP/DROP filters and the "one line per entry, two at most" norm (also stated in the CHANGELOG header).
+Read `CHANGELOG.md`.
+The writing policy lives in `cozy/CLAUDE.md` ("Changelog" section) — entries target potential new users evaluating cozy, with the KEEP/DROP filters and the "one line per entry, two at most" norm (also stated in the CHANGELOG header).
 
 Before cutting the release, every `[Unreleased]` entry should clear these release-time checks:
 
@@ -56,9 +60,11 @@ Before cutting the release, every `[Unreleased]` entry should clear these releas
 - Sub-details of new commands — state purpose + the one key flag, not every fallback / auto-close / pane-direction behavior
 - Restating what the previous version did to motivate the current one — link the version inline if the reader needs it
 
-Past released sections are frozen. Do not rewrite them while tidying — only the new entries are in scope.
+Past released sections are frozen.
+Do not rewrite them while tidying — only the new entries are in scope.
 
-If entries need cleanup, fix them before proceeding. Show the user what you changed.
+If entries need cleanup, fix them before proceeding.
+Show the user what you changed.
 
 ### 4. Update CHANGELOG.md
 
@@ -89,9 +95,12 @@ Body includes a brief summary of what's in this release (2–4 lines, not the fu
 git tag X.Y.Z
 ```
 
-No `v` prefix. Lightweight tag (no `-a`), matching existing convention.
+No `v` prefix.
+Lightweight tag (no `-a`), matching existing convention.
 
-Treat the release commit as final once tagged. If the user asks to tweak the changelog after this point, ask whether to **amend + retag** (clean history, safe while the tag is unpushed) or **add a follow-up commit** (preserves the tag but leaves it pointing at the pre-tweak version). Default to follow-up commit if they don't have a preference.
+Treat the release commit as final once tagged.
+If the user asks to tweak the changelog after this point, ask whether to **amend + retag** (clean history, safe while the tag is unpushed) or **add a follow-up commit** (preserves the tag but leaves it pointing at the pre-tweak version).
+Default to follow-up commit if they don't have a preference.
 
 ### 7. Report
 
@@ -100,4 +109,5 @@ After completing, tell the user:
 - The new version number and date
 - Summary of what was released
 - Remind them to push: `git push && git push --tags` — pushing is what makes the release live, since the sbx kit clones cozy from GitHub on every `sbx run`
-- Only if they use the plain-`docker` path: rebuild the image (`docker build -t cozy:<version> .`). It is not used by `sbx`
+- Only if they use the plain-`docker` path: rebuild the image (`docker build -t cozy:<version> .`).
+  It is not used by `sbx`

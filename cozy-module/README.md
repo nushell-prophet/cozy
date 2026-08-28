@@ -1,6 +1,7 @@
 # cozy-module
 
-Runtime toolkit for [cozy](https://github.com/nushell-prophet/cozy) sandboxes. Loaded as the `cozy` overlay inside the container.
+Runtime toolkit for [cozy](https://github.com/nushell-prophet/cozy) sandboxes.
+Loaded as the `cozy` overlay inside the container.
 
 Maintains running sandboxes without rebuilding — updates modules, syncs repos, and persists shell history.
 
@@ -8,7 +9,9 @@ Maintains running sandboxes without rebuilding — updates modules, syncs repos,
 
 ### `cozy sync-repos`
 
-Turns the vendored `~/repos/` snapshots into full git clones of upstream on the first run, then keeps already-cloned repos current — non-destructively. These are yours to develop in and PR upstream from, so a re-run never touches local work: it fetches always, and fast-forwards a repo only when its tree is clean and the branch hasn't diverged. Dev-linked repos (see `cozy dev-link`) are skipped.
+Turns the vendored `~/repos/` snapshots into full git clones of upstream on the first run, then keeps already-cloned repos current — non-destructively.
+These are yours to develop in and PR upstream from, so a re-run never touches local work: it fetches always, and fast-forwards a repo only when its tree is clean and the branch hasn't diverged.
+Dev-linked repos (see `cozy dev-link`) are skipped.
 
 ```nushell
 cozy sync-repos
@@ -16,7 +19,9 @@ cozy sync-repos
 
 ### `cozy mount init`
 
-Idempotent initialization of multi-repo workspaces. Discovers git subdirectories, registers them as git submodules, generates `.gitmodules` and `.gitignore`. Safe to re-run after adding new directories.
+Idempotent initialization of multi-repo workspaces.
+Discovers git subdirectories, registers them as git submodules, generates `.gitmodules` and `.gitignore`.
+Safe to re-run after adding new directories.
 
 ```nushell
 cozy mount init
@@ -24,7 +29,8 @@ cozy mount init
 
 ### `cozy dev-link`
 
-Replaces vendored `~/repos/` copies with symlinks to the mounted workspace. Enables edit-and-test without rebuild.
+Replaces vendored `~/repos/` copies with symlinks to the mounted workspace.
+Enables edit-and-test without rebuild.
 
 ```nushell
 cozy dev-link
@@ -32,7 +38,9 @@ cozy dev-link
 
 ### `cozy swap-zellij-super`
 
-Rewrites `~/.config/zellij/config.kdl` in place to remove the Super modifier (Super+Shift→Alt+Shift, Super+Alt→Ctrl+Alt, Super→Alt). Intended for Windows hosts, where Win+key is reserved by the OS and the default Super-based bindings collide. Idempotent.
+Rewrites `~/.config/zellij/config.kdl` in place to remove the Super modifier (Super+Shift→Alt+Shift, Super+Alt→Ctrl+Alt, Super→Alt).
+Intended for Windows hosts, where Win+key is reserved by the OS and the default Super-based bindings collide.
+Idempotent.
 
 ```nushell
 cozy swap-zellij-super
@@ -40,7 +48,8 @@ cozy swap-zellij-super
 
 ### `cozy git-harden`
 
-Sets `gc.auto=0` and `receive.autoGc=false` in a repo's own `.git/config` so both the host and the sandbox git honor them, regardless of which side runs an operation. Mitigates pack/index corruption from VirtioFS torn writes when both sides hit `.git` on the shared mount at once.
+Sets `gc.auto=0` and `receive.autoGc=false` in a repo's own `.git/config` so both the host and the sandbox git honor them, regardless of which side runs an operation.
+Mitigates pack/index corruption from VirtioFS torn writes when both sides hit `.git` on the shared mount at once.
 
 ```nushell
 cozy git-harden                  # harden the repo in the current dir
@@ -49,7 +58,8 @@ cozy git-harden ~/workspace -a   # harden every git repo one level under the pat
 
 ### `cozy configure claude-settings`
 
-Merges default Claude settings (effortLevel, cleanupPeriodDays) into sandbox `~/.claude/settings.json`. Existing user values take precedence.
+Merges default Claude settings (effortLevel, cleanupPeriodDays) into sandbox `~/.claude/settings.json`.
+Existing user values take precedence.
 
 ### `cozy sandbox-state snapshot` / `cozy sandbox-state restore`
 
@@ -62,7 +72,8 @@ cozy sandbox-state restore       # restores history + projects + global-claude
 
 ### `cozy sandbox-state history snapshot` / `restore`
 
-Snapshots Nushell's SQLite history database to a timestamped `.nuon` file, or restores records back. Deduplicates and skips entries already present.
+Snapshots Nushell's SQLite history database to a timestamped `.nuon` file, or restores records back.
+Deduplicates and skips entries already present.
 
 ```nushell
 cozy sandbox-state history snapshot                  # default: $env.WORKSPACE_DIR/sandbox-state/history-<timestamp>.nuon
@@ -75,15 +86,18 @@ Seeds history from the bundled `history-seed.nuon` file.
 
 ### `cozy sandbox-state projects snapshot` / `restore`
 
-Copies Claude Code project sessions (`~/.claude/projects/`) to/from `$env.WORKSPACE_DIR/sandbox-state/projects/`. The workspace directory survives sandbox recreation.
+Copies Claude Code project sessions (`~/.claude/projects/`) to/from `$env.WORKSPACE_DIR/sandbox-state/projects/`.
+The workspace directory survives sandbox recreation.
 
 ### `cozy sandbox-state global-claude snapshot` / `restore`
 
-Copies the global `~/.claude/CLAUDE.md` to/from `$env.WORKSPACE_DIR/sandbox-state/`, so the agent's persistent instructions survive sandbox recreation. The combined `cozy sandbox-state snapshot` / `restore` runs this alongside history and projects.
+Copies the global `~/.claude/CLAUDE.md` to/from `$env.WORKSPACE_DIR/sandbox-state/`, so the agent's persistent instructions survive sandbox recreation.
+The combined `cozy sandbox-state snapshot` / `restore` runs this alongside history and projects.
 
 ### `cozy verify`
 
-Runs the post-build checks against the sandbox you are inside: tools launch, expected files/dirs/env vars exist, the nushell MCP, pbcopy, topiary, and git-XDG wiring is in place, and — the only checks that touch the network — that `api.anthropic.com` is not intercepted and that an egress allowlist is in force. Every expected value is derived from repo sources (`vendored-repos.nuon`, the autoload glob, `bootstrap.nu`), so the checklist can't drift from the build.
+Runs the post-build checks against the sandbox you are inside: tools launch, expected files/dirs/env vars exist, the nushell MCP, pbcopy, topiary, and git-XDG wiring is in place, and — the only checks that touch the network — that `api.anthropic.com` is not intercepted and that an egress allowlist is in force.
+Every expected value is derived from repo sources (`vendored-repos.nuon`, the autoload glob, `bootstrap.nu`), so the checklist can't drift from the build.
 
 ```nushell
 cozy verify
@@ -93,7 +107,10 @@ The `cozy` module is autoloaded only in an interactive nushell session, so run t
 
 ### `cozy docs claude` / `cozy docs nushell`
 
-Fetches reference docs into a local folder for offline / in-sandbox use. `claude` downloads the Claude Code doc pages listed in the sitemap (in parallel); `nushell` makes a shallow sparse checkout of the Nushell docs (book, cookbook, blog) and re-runs as a `git pull`. Both fetch with curl — `http get` doesn't work through the sandbox proxy — and return a structured summary. Output dirs (`claude-code-docs/`, `nushell-docs/`, overridable with `--output-dir`) are generated content; refetch anytime.
+Fetches reference docs into a local folder for offline / in-sandbox use.
+`claude` downloads the Claude Code doc pages listed in the sitemap (in parallel); `nushell` makes a shallow sparse checkout of the Nushell docs (book, cookbook, blog) and re-runs as a `git pull`.
+Both fetch with curl — `http get` doesn't work through the sandbox proxy — and return a structured summary.
+Output dirs (`claude-code-docs/`, `nushell-docs/`, overridable with `--output-dir`) are generated content; refetch anytime.
 
 ```nushell
 cozy docs claude      # -> ./claude-code-docs/
@@ -106,7 +123,9 @@ Prints the cozy ANSI logo banner (the same one bash login shows).
 
 ### `cozy nu-demo-instance`
 
-Puts a launch line for a bare, throwaway Nushell into the REPL prompt instead of spawning it — so during a demo the audience sees the actual code, it lands in history, and it can be edited before running. The line points `XDG_CONFIG_HOME` and `XDG_DATA_HOME` at empty temp dirs, scoped with `with-env` so nothing leaks into the calling session. `--here` uses `./nushell/` in the current directory as the config dir instead, creating empty `config.nu`/`env.nu` so they can be edited live.
+Puts a launch line for a bare, throwaway Nushell into the REPL prompt instead of spawning it — so during a demo the audience sees the actual code, it lands in history, and it can be edited before running.
+The line points `XDG_CONFIG_HOME` and `XDG_DATA_HOME` at empty temp dirs, scoped with `with-env` so nothing leaks into the calling session.
+`--here` uses `./nushell/` in the current directory as the config dir instead, creating empty `config.nu`/`env.nu` so they can be edited live.
 
 ```nushell
 cozy nu-demo-instance
@@ -117,7 +136,8 @@ cozy nu-demo-instance --here
 
 Installer subcommands used during image build or inside a running sandbox: `bootstrap`, `claude`, `topiary`, `nushell`, `polars`, `rust`, `zellij`, `nu-plugin-image`.
 
-`bootstrap` is the single entry point that sets up the sandbox (or host) end-to-end — brew tools, XDG git config, vendored modules, dotfiles, Claude skills, broot, topiary, and Claude Code with the nushell MCP. Every install path reaches it through the shared `install/run-install.sh`.
+`bootstrap` is the single entry point that sets up the sandbox (or host) end-to-end — brew tools, XDG git config, vendored modules, dotfiles, Claude skills, broot, topiary, and Claude Code with the nushell MCP.
+Every install path reaches it through the shared `install/run-install.sh`.
 
 ## License
 

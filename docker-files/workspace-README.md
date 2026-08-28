@@ -1,10 +1,16 @@
 # You're inside a cozy sandbox
 
-This file describes the environment **cozy** built around you — where things live and which config files it touched. It is not about the project mounted in this workspace. For cozy itself (build, install, full feature tour) see `~/repos/cozy/README.md`.
+This file describes the environment **cozy** built around you — where things live and which config files it touched.
+It is not about the project mounted in this workspace.
+For cozy itself (build, install, full feature tour) see `~/repos/cozy/README.md`.
 
 ## `~/repos/` — vendored modules
 
-cozy ships a set of upstream modules *vendored* into `~/repos/` — committed in `cozy/vendor/` and copied in at build time, not fetched from the network. They are flat snapshots (no `.git`), so edit them in place freely. To pull upstream updates later, run `cozy sync-repos` — the first run converts each snapshot to a git clone and resets it to the remote tip, so commit or copy out local edits first. Later runs fetch and fast-forward only when the tree is clean, and skip anything you have dev-linked. Load a Nushell module with `use ~/repos/<repo>/<module>`.
+cozy ships a set of upstream modules *vendored* into `~/repos/` — committed in `cozy/vendor/` and copied in at build time, not fetched from the network.
+They are flat snapshots (no `.git`), so edit them in place freely.
+To pull upstream updates later, run `cozy sync-repos` — the first run converts each snapshot to a git clone and resets it to the remote tip, so commit or copy out local edits first.
+Later runs fetch and fast-forward only when the tree is clean, and skip anything you have dev-linked.
+Load a Nushell module with `use ~/repos/<repo>/<module>`.
 
 | Repo | What it gives you |
 |---|---|
@@ -23,7 +29,8 @@ cozy ships a set of upstream modules *vendored* into `~/repos/` — committed in
 
 ## The `cozy` module
 
-`~/repos/cozy/` is the project that built this environment. Its module (`cozy-module/`) is autoloaded, so `cozy` is a command:
+`~/repos/cozy/` is the project that built this environment.
+Its module (`cozy-module/`) is autoloaded, so `cozy` is a command:
 
 | Command | Does |
 |---|---|
@@ -44,16 +51,20 @@ cozy ships a set of upstream modules *vendored* into `~/repos/` — committed in
 | `cozy sandbox-state projects snapshot` / `restore` | Just Claude Code session files |
 | `cozy sandbox-state global-claude snapshot` / `restore` | Just the global `~/.claude/CLAUDE.md` |
 
-The rest of `~/repos/cozy/` holds the shared installer (`cozy-module/install/`, entered via `run-install.sh`) and `docker-files/` (autoload scripts, the appended Claude tool catalog). Only `cozy-module/` and `docker-files/` are copied in — the `Dockerfile`, `sbx-kit/` and the rest of the repo stay on the host.
+The rest of `~/repos/cozy/` holds the shared installer (`cozy-module/install/`, entered via `run-install.sh`) and `docker-files/` (autoload scripts, the appended Claude tool catalog).
+Only `cozy-module/` and `docker-files/` are copied in — the `Dockerfile`, `sbx-kit/` and the rest of the repo stay on the host.
 
 ## Config files cozy modified
 
-Most come from `~/repos/dotfiles/`; a few Nushell autoload scripts come from cozy's own `docker-files/` (noted below). Edit them freely.
+Most come from `~/repos/dotfiles/`; a few Nushell autoload scripts come from cozy's own `docker-files/` (noted below).
+Edit them freely.
 
 **Nushell** — `~/.config/nushell/`
 
 - `config.nu`, `env.nu` — opinionated shell settings (from dotfiles)
-- `autoload/*.nu` — loaded when nu starts an **interactive** session (a one-shot `nu -c '…'` skips them). From cozy's `docker-files/`: `git-global-ignore.nu`, `git-identity.nu`, `git-safe-directory.nu`, `mcp-server.nu`, `modules-core.nu`, `modules-repl.nu`. From dotfiles: `br.nu`, `completions.nu`, `hooks-config.nu`, `zzz_ignore_vars.nu`
+- `autoload/*.nu` — loaded when nu starts an **interactive** session (a one-shot `nu -c '…'` skips them).
+  From cozy's `docker-files/`: `git-global-ignore.nu`, `git-identity.nu`, `git-safe-directory.nu`, `mcp-server.nu`, `modules-core.nu`, `modules-repl.nu`.
+  From dotfiles: `br.nu`, `completions.nu`, `hooks-config.nu`, `zzz_ignore_vars.nu`
 - `completions/*.nu` — custom tab-completions for `bat`, `chafa`, `delta`, `fd`, `fzf`, `hx`, `lazygit`, `rg`, `sandbox-exec`, `vd`, `zellij` (from dotfiles; loaded by `autoload/completions.nu`)
 
 **Other tools** — under `~/.config/`

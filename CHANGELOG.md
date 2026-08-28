@@ -1,15 +1,16 @@
 # Changelog
 
-All notable user-facing changes are documented in this file. Entries are brief — one line per entry, two at most.
+All notable user-facing changes are documented in this file.
+Entries are brief — one line per entry, two at most.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
 ### Added
 
-- Vendored `claude-nu` — `tool-calls 'regex'` searches what the agent actually ran, not only what was said, and `sessions`, `messages` and `tool-calls` take `--since`/`--until` (a duration means ago: `--since 1wk`). `claude-nu example` pastes one of the module's own pipelines into the command line. (1f1d934)
+- Vendored `claude-nu` — `tool-calls 'regex'` searches what the agent actually ran, not only what was said, and `sessions`, `messages` and `tool-calls` take `--since`/`--until` (a duration means ago: `--since 1wk`).
+  `claude-nu example` pastes one of the module's own pipelines into the command line. (1f1d934)
 
 - Vendored `claude-nu` — `sessions` gains a `models` column, so a mid-session `/model` switch is visible; `messages` and `tool-calls` rows gain `project_name`, the readable counterpart to the encoded `project`. (7bfbcf1)
 
@@ -17,15 +18,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Vendored `my-claude-skills` — two new skills: `decision-provenance` reconstructs the circumstances a design decision was made in, from git history plus session transcripts, and `instruction-conflicts` audits everything loaded into the context for rules that pull in opposite directions. (c00d8d6)
 
-- `nu toolkit/container.nu up --ssh-agent` forwards your host's ssh-agent into the Apple `container` path, so the container can sign with your keys without ever holding them. Inside the cage this is for signing, not for `git@github.com:` — ssh still cannot cross the HTTP proxy. (b2151aa)
+- `nu toolkit/container.nu up --ssh-agent` forwards your host's ssh-agent into the Apple `container` path, so the container can sign with your keys without ever holding them.
+  Inside the cage this is for signing, not for `git@github.com:` — ssh still cannot cross the HTTP proxy. (b2151aa)
 
 ### Fixed
 
 - Zellij 0.45 no longer kills the keys when it syncs you into scroll mode: `shift+PageUp`/`PageDown` keep scrolling, and the `Super` window-manager keys work in every mode, not just normal and locked. (0da85e4)
 
-- `nu toolkit/vendor.nu` (no repo named) re-vendored everything and then died with a type error before its `vendor: refresh all modules` commit, leaving the refresh uncommitted. Naming one repo was unaffected. (9575671)
+- `nu toolkit/vendor.nu` (no repo named) re-vendored everything and then died with a type error before its `vendor: refresh all modules` commit, leaving the refresh uncommitted.
+  Naming one repo was unaffected. (9575671)
 
-- `cozy install nushell` (and `zellij`, `nu-plugin-image`) now really replaces the binary when you run it from the program you are upgrading. The copy used to fail with "Text file busy" and the installer still printed a green success line, so the old version stayed. It renames the new binary into place instead — restart nushell to pick it up. (18e986c)
+- `cozy install nushell` (and `zellij`, `nu-plugin-image`) now really replaces the binary when you run it from the program you are upgrading.
+  The copy used to fail with "Text file busy" and the installer still printed a green success line, so the old version stayed.
+  It renames the new binary into place instead — restart nushell to pick it up. (18e986c)
 
 ### Changed
 
@@ -37,21 +42,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Vendored `claude-nu` — `commits` and `code-authorship` are gone; they moved upstream to cozy-playground. (1f1d934)
 
-- Zellij 0.45 keeps the 0.44 look: `pane_frame_style "full"` brings back the box around every pane (0.45 defaults to a title row, which cost panes rows and left the focus colors nothing to paint) and `stacked_pane_list false` keeps the old stack rendering. The compact-bar F1 tooltip is gone — under 0.45 a mouse scroll switches mode, and the tooltip key also makes the hint box pop up on every mode change. (5f9b9ce)
+- Zellij 0.45 keeps the 0.44 look: `pane_frame_style "full"` brings back the box around every pane (0.45 defaults to a title row, which cost panes rows and left the focus colors nothing to paint) and `stacked_pane_list false` keeps the old stack rendering.
+  The compact-bar F1 tooltip is gone — under 0.45 a mouse scroll switches mode, and the tooltip key also makes the hint box pop up on every mode change. (5f9b9ce)
 
-- Nushell's `$ans.last` cache is on, capped at 10mb — the last REPL result can be reused without re-running the command. It is off by default. (153a403)
+- Nushell's `$ans.last` cache is on, capped at 10mb — the last REPL result can be reused without re-running the command.
+  It is off by default. (153a403)
 
-- `nu toolkit/container.nu attach <name>` restarts a stopped container and its egress proxy before opening the window, so after the `container` runtime itself restarts one command brings you back. It used to open a window on a `container exec` that could not enter. (e6d2ede)
+- `nu toolkit/container.nu attach <name>` restarts a stopped container and its egress proxy before opening the window, so after the `container` runtime itself restarts one command brings you back.
+  It used to open a window on a `container exec` that could not enter. (e6d2ede)
 
 ## [0.4.2] - 2026-08-16
 
 ### Added
 
-- `man-db` is now installed in containers, so `git push --help` prints the page instead of failing with "failed to exec 'man'". Covers brew's tools everywhere; on the sbx path apt packages still install without pages, since the base image excludes them at install time. (eced2a7)
+- `man-db` is now installed in containers, so `git push --help` prints the page instead of failing with "failed to exec 'man'".
+  Covers brew's tools everywhere; on the sbx path apt packages still install without pages, since the base image excludes them at install time. (eced2a7)
 
-- Nushell tab completions for seven CLIs cozy installs — `delta`, `bat`, `rg`, `fzf`, `lazygit`, `hx`, `vd` — each built against the version actually in the sandbox. `zellij`, `fd`, `chafa` and `sandbox-exec` moved here out of `claude-nu`. Also fixes `hx --help` printing our signature instead of helix's own text. (c8fa17e, 35130f6, 2bda5d0)
+- Nushell tab completions for seven CLIs cozy installs — `delta`, `bat`, `rg`, `fzf`, `lazygit`, `hx`, `vd` — each built against the version actually in the sandbox.
+  `zellij`, `fd`, `chafa` and `sandbox-exec` moved here out of `claude-nu`.
+  Also fixes `hx --help` printing our signature instead of helix's own text. (c8fa17e, 35130f6, 2bda5d0)
 
-- The Debian image ships `ssh-keygen` — `debian:12-slim` carries no ssh client at all, so a git remote over ssh died with "command not found". The sbx path still has the same gap. (2ffb97f)
+- The Debian image ships `ssh-keygen` — `debian:12-slim` carries no ssh client at all, so a git remote over ssh died with "command not found".
+  The sbx path still has the same gap. (2ffb97f)
 
 - `codeberg.org` is allowed by both egress lists, so git over https to a Forgejo host works. (04757d3)
 
@@ -59,21 +71,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `cozy sandbox-state export` / `import` are now `cozy sandbox-state snapshot` / `restore` (same for the `history`, `projects` and `global-claude` subcommands). Nushell 0.115 rejects `export` as a command name — it is a parser keyword. Snapshot files keep their names, so anything already in `sandbox-state/` still restores. (0e42b8f)
+- `cozy sandbox-state export` / `import` are now `cozy sandbox-state snapshot` / `restore` (same for the `history`, `projects` and `global-claude` subcommands).
+  Nushell 0.115 rejects `export` as a command name — it is a parser keyword.
+  Snapshot files keep their names, so anything already in `sandbox-state/` still restores. (0e42b8f)
 
 - Vendored `numd` — `numd run` is now `numd render`, for the same reason: 0.115 made `run` a parser keyword, and keywords cannot be shadowed, so no alias or shim is possible. (81ca2d0)
 
-- `git log` and `git show` now print a commit's header as the relative date and the author on one line (`2 days ago  Name <email>`), instead of the three-line `commit`/`Author`/`Date` block. Set as `format.pretty` in the XDG git config, so lazygit's patch view follows — that header is git's own output, and lazygit has no setting for it. (e45c1bd)
+- `git log` and `git show` now print a commit's header as the relative date and the author on one line (`2 days ago  Name <email>`), instead of the three-line `commit`/`Author`/`Date` block.
+  Set as `format.pretty` in the XDG git config, so lazygit's patch view follows — that header is git's own output, and lazygit has no setting for it. (e45c1bd)
 
 - `git diff` and a bare `delta` now page through `less` by default (`core.pager = delta`), and `git add -p` keeps delta's colors. (992274a)
 
-- The Debian image (plain `docker run` / Apple `container`) now installs apt's recommended packages and keeps man pages: `--no-install-recommends` is gone and the slim base's `path-exclude /usr/share/man/*` is deleted before the first apt, so `git <cmd> --help` has a page to show. A bigger image in exchange; the sbx path is unchanged. (eced2a7)
+- The Debian image (plain `docker run` / Apple `container`) now installs apt's recommended packages and keeps man pages: `--no-install-recommends` is gone and the slim base's `path-exclude /usr/share/man/*` is deleted before the first apt, so `git <cmd> --help` has a page to show.
+  A bigger image in exchange; the sbx path is unchanged. (eced2a7)
 
-- `nu toolkit/container.nu refresh-egress` moves the proxy pin to upstream's newest maintained image: it resolves the newest `<squid>-<ubuntu>_edge` tag, rehearses it on a throwaway container (must boot, take the policy, pass `-k parse`), then rewrites the digest in `compose.yaml` and `toolkit/container.nu` together. Nothing is written if the rehearsal fails, and the running proxy is never touched — adopting the result is the usual delete-and-`restart`. (a84b2ce)
+- `nu toolkit/container.nu refresh-egress` moves the proxy pin to upstream's newest maintained image: it resolves the newest `<squid>-<ubuntu>_edge` tag, rehearses it on a throwaway container (must boot, take the policy, pass `-k parse`), then rewrites the digest in `compose.yaml` and `toolkit/container.nu` together.
+  Nothing is written if the rehearsal fails, and the running proxy is never touched — adopting the result is the usual delete-and-`restart`. (a84b2ce)
 
-- The egress proxy moves to squid 7.2 on Ubuntu 26.04 (`7.2-26.04_edge`), from a squid 6.6 build that upstream's `:latest` had not moved in eight months. That image is a rock, so both run paths now address squid as a Pebble service — `--args squid`, the binary `/usr/sbin/squid-gnutls`, and `PEBBLE_VERBOSE=1` so `logs` still shows what the allowlist refused. `firewall/squid.conf` is unchanged and an allowlist edit is still an in-place reload. (ec72370)
+- The egress proxy moves to squid 7.2 on Ubuntu 26.04 (`7.2-26.04_edge`), from a squid 6.6 build that upstream's `:latest` had not moved in eight months.
+  That image is a rock, so both run paths now address squid as a Pebble service — `--args squid`, the binary `/usr/sbin/squid-gnutls`, and `PEBBLE_VERBOSE=1` so `logs` still shows what the allowlist refused.
+  `firewall/squid.conf` is unchanged and an allowlist edit is still an in-place reload. (ec72370)
 
-- Docs and `toolkit/container.nu` now say "the cozy container" where they used to say "the agent": cozy is a terminal workspace with an agent inside, not an agent product. The record the `container` commands return renames its `agent` field to `container` accordingly; example names read `my-cozy`. (88e8de4, 0f40433)
+- Docs and `toolkit/container.nu` now say "the cozy container" where they used to say "the agent": cozy is a terminal workspace with an agent inside, not an agent product.
+  The record the `container` commands return renames its `agent` field to `container` accordingly; example names read `my-cozy`. (88e8de4, 0f40433)
 
 - Vendored `claude-nu` — `export-session` returns the markdown itself and its `--to` flag is gone; `gi open --fork` copies a canvas to the next name in the series, so you can plan in one conversation and implement in a fresh one; a `chat:` marker at the start of your message takes one exchange off the canvas. (0a2b7d0, d71a4ce)
 
@@ -89,7 +109,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- The Apple `container` path no longer pays a 20s timeout on every name lookup — `up` and `restart` empty `/etc/resolv.conf` inside the cozy container. The Debian base image ships `nameserver 1.1.1.1`, which the host-only network black-holes; a plain `git fetch` took 20.7s. Names are resolved by the egress proxy, so nothing is lost; `restart` repairs an existing container. (eefbe58)
+- The Apple `container` path no longer pays a 20s timeout on every name lookup — `up` and `restart` empty `/etc/resolv.conf` inside the cozy container.
+  The Debian base image ships `nameserver 1.1.1.1`, which the host-only network black-holes; a plain `git fetch` took 20.7s.
+  Names are resolved by the egress proxy, so nothing is lost; `restart` repairs an existing container. (eefbe58)
 
 - `toolkit/container.nu` reads the proxy's address from the runtime (`container ls`'s `status.networks`) instead of running `hostname -I` inside it, so a minimal proxy image no longer makes `restart` fail with "never got an address" about a proxy that is up and serving. (db1cc25)
 
@@ -97,7 +119,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `up` now rejects a writable workspace that overlaps the cozy repo in *either* direction (a subdirectory like `cozy/toolkit` used to pass, mounting the cage-building script itself) — and one that overlaps the live firewall policy directory, which would let the agent edit its own allowlist. (88e8de4)
 
-- The Apple `container` agent now reaches its proxy by the name `cozy-egress` (pinned in its `/etc/hosts`) instead of a baked IP, so `restart` reconnects the pair after the proxy comes back on a new address — and recreates a proxy that is gone entirely (`--policy` names the policy directory) — instead of demanding the agent be rebuilt. Agents created before this change carry a fixed address and need one `container delete` + `up`. (88e8de4)
+- The Apple `container` agent now reaches its proxy by the name `cozy-egress` (pinned in its `/etc/hosts`) instead of a baked IP, so `restart` reconnects the pair after the proxy comes back on a new address — and recreates a proxy that is gone entirely (`--policy` names the policy directory) — instead of demanding the agent be rebuilt.
+  Agents created before this change carry a fixed address and need one `container delete` + `up`. (88e8de4)
 
 - `cozy install zellij` no longer dies behind the egress proxy: rustup downloads zellij's pinned toolchain before cargo fetches anything, and it does not read `~/.cargo/config.toml`, so the retry setting is passed on the call itself. (9562732)
 
@@ -111,63 +134,104 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `nu toolkit/container.nu up <name> <folder> [more:ro ...]` gives the Apple `container` path the same egress allowlist compose provides for docker: the agent on a host-only network with no route out, the pinned squid dual-homed onto it. Needs macOS 26+; a plain `container run` still has no cage and fails `cozy verify`'s `egress:` rows.
+- `nu toolkit/container.nu up <name> <folder> [more:ro ...]` gives the Apple `container` path the same egress allowlist compose provides for docker: the agent on a host-only network with no route out, the pinned squid dual-homed onto it.
+  Needs macOS 26+; a plain `container run` still has no cage and fails `cozy verify`'s `egress:` rows.
   Takes several folders like `sbx run` does — each mounted at its own host path, `:ro` for read-only, the first one being `WORKSPACE_DIR` and the start directory.
   Gives the VM 8 GB and 6 CPUs (`--memory`, `--cpus` to change): at `container`'s 1 GB default two agents thrash the page cache and burn cores in the kernel without ever being OOM-killed.
   Proves the cage before reporting success: it probes from inside the started agent that nothing answers with the proxy bypassed, and stops the container if anything does — a network name alone says nothing about `--internal`. (0d6ddff, 6d89316)
-- `nu toolkit/container.nu attach <name>` opens the WezTerm window against an Apple `container`; `--workdir` sets the start directory, which `container` has no workspace notion to supply. Call it from an interactive nu (`use toolkit/container.nu; container attach <name>`) — the window is a background job and a job dies with the nu that spawned it, so a one-shot script would leave no window; it now says so instead of opening nothing. `toolkit/sbxw.nu` stays the sbx one. (08debbb, 1d5af18)
-- `nu toolkit/container.nu restart <name>` brings the agent and its proxy back after the `container` runtime restarts — the state `up` cannot recover from. It re-proves the cage and refuses quietly-broken results: an agent whose baked exit address no longer matches the proxy is named as needing a rebuild. (7c73c20)
-- `nu toolkit/container.nu reload-egress <name>` applies an edited allowlist to a container that is already up — the agent's name is all it takes, since an existing container's mounts cannot change. A *running* proxy is reconfigured in place (`squid -k parse`, then `-k reconfigure`, so a list that does not parse leaves the old one in force) rather than recreated, which is what keeps the exit address the agent was built with from moving — Apple `container` has no static-IP flag. Only a stopped proxy is recreated, and when the address does move you are told to recreate the agent. (35e9ce5, 071331b)
-- `use ./toolkit` reaches the container commands too: `toolkit container up|restart|reload-egress|attach` and `toolkit sbxw`, spelled without the `main` a module import otherwise leaves in the middle (`toolkit vendor check` works for the same reason now). Script mode is unchanged. (887abe9)
+- `nu toolkit/container.nu attach <name>` opens the WezTerm window against an Apple `container`; `--workdir` sets the start directory, which `container` has no workspace notion to supply.
+  Call it from an interactive nu (`use toolkit/container.nu; container attach <name>`) — the window is a background job and a job dies with the nu that spawned it, so a one-shot script would leave no window; it now says so instead of opening nothing.
+  `toolkit/sbxw.nu` stays the sbx one. (08debbb, 1d5af18)
+- `nu toolkit/container.nu restart <name>` brings the agent and its proxy back after the `container` runtime restarts — the state `up` cannot recover from.
+  It re-proves the cage and refuses quietly-broken results: an agent whose baked exit address no longer matches the proxy is named as needing a rebuild. (7c73c20)
+- `nu toolkit/container.nu reload-egress <name>` applies an edited allowlist to a container that is already up — the agent's name is all it takes, since an existing container's mounts cannot change.
+  A *running* proxy is reconfigured in place (`squid -k parse`, then `-k reconfigure`, so a list that does not parse leaves the old one in force) rather than recreated, which is what keeps the exit address the agent was built with from moving — Apple `container` has no static-IP flag.
+  Only a stopped proxy is recreated, and when the address does move you are told to recreate the agent. (35e9ce5, 071331b)
+- `use ./toolkit` reaches the container commands too: `toolkit container up|restart|reload-egress|attach` and `toolkit sbxw`, spelled without the `main` a module import otherwise leaves in the middle (`toolkit vendor check` works for the same reason now).
+  Script mode is unchanged. (887abe9)
 - The `container` commands return a record — agent, state, exit URL, proxy, network — instead of only printing, so the result can be piped and survives the nushell MCP, which does not capture stdout. (887abe9)
-- `nu toolkit/container.nu up` forwards your host `git config --global user.name`/`user.email` into the container, so your own commits there are yours instead of the `Agent <agent@sandbox>` placeholder. The agent still commits as Claude — its `GIT_AUTHOR_*` env overrides config. Nothing is stored: the identity is read on the host at run time. No-ops when you have no global identity; `sbx` has no forwarding yet. (ac28907, 195946b)
+- `nu toolkit/container.nu up` forwards your host `git config --global user.name`/`user.email` into the container, so your own commits there are yours instead of the `Agent <agent@sandbox>` placeholder.
+  The agent still commits as Claude — its `GIT_AUTHOR_*` env overrides config.
+  Nothing is stored: the identity is read on the host at run time.
+  No-ops when you have no global identity; `sbx` has no forwarding yet. (ac28907, 195946b)
 
 ### Changed
 
-- The nushell MCP now returns up to 64kb of output instead of 10kb. Over its cap nu-mcp returns *no* output at all, only a `$history.N` pointer, so every long result cost the agent a second round trip — and across the user's sessions more than half of those were abandoned and the command re-run some other way. (bfc803d)
-- Vendored `claude-nu` — `gi enable --from-session` is now its own verb, `gi import`, and takes any session (a positional names one; none means the live session). New `claude-nu project-move` retargets Claude's stored state after a project directory moves. Canvas markers gain `??` (a question) and `%%` (a remark) beside `!!`, with marker length saying who acts. (1754f44, ecb1918)
+- The nushell MCP now returns up to 64kb of output instead of 10kb.
+  Over its cap nu-mcp returns *no* output at all, only a `$history.N` pointer, so every long result cost the agent a second round trip — and across the user's sessions more than half of those were abandoned and the command re-run some other way. (bfc803d)
+- Vendored `claude-nu` — `gi enable --from-session` is now its own verb, `gi import`, and takes any session (a positional names one; none means the live session).
+  New `claude-nu project-move` retargets Claude's stored state after a project directory moves.
+  Canvas markers gain `??` (a question) and `%%` (a remark) beside `!!`, with marker length saying who acts. (1754f44, ecb1918)
 - Vendored `nushell-skills` — the `nushell-style` skill gains a regex reference (`=~` and the `--regex` flags are fancy-regex, so lookaround and backreferences work), pipeline layout matching what `topiary format --language nu` produces, and a rule that a quoted multi-word command name may hold only letters, digits, spaces and hyphens — an apostrophe in a nutest test name fails *every* test in that file. (8c66264, 43fb8be, 01b298a)
 - Vendored `nu-goodies` — `in-vd` converts datetime and filesize cells before handing them to VisiData, so vd's `@` and `#` parse them (`--no-convert` skips it); `ls-git-modified-date` keeps files whose only commits are bulk ones instead of dropping them. (971cf8d)
 - Vendored `my-claude-skills` — two new skills: `land-branch` squashes a finished branch onto the trunk as one commit and archives the original history in a tag, and `todo-verify` reproduces each parked `todo/` note against the current tree, archiving only the ones proven fixed. (1542144)
-- Vendored `dotfiles` — the `nushell-reviewer` agent now reports scope only: what the change added that nobody asked for, and what was asked for and left out. Bug hunting is out, and not for politeness — hunting for problems produces unrequested features. (a605e52)
+- Vendored `dotfiles` — the `nushell-reviewer` agent now reports scope only: what the change added that nobody asked for, and what was asked for and left out.
+  Bug hunting is out, and not for politeness — hunting for problems produces unrequested features. (a605e52)
 - Vendored `dotfiles` — WezTerm quick-select now picks up `~/…` and relative paths, not just absolute ones, and strips a trailing quote or backtick. (94c59c2)
 
 ### Fixed
 
-- Debian image: `less` is installed, so paging works. Debian slim ships no pager, and git, git-delta and nu-goodies' `L` all expect one — on the sbx path the Ubuntu template supplied it, so the gap was Debian-only. (b9658a6)
+- Debian image: `less` is installed, so paging works.
+  Debian slim ships no pager, and git, git-delta and nu-goodies' `L` all expect one — on the sbx path the Ubuntu template supplied it, so the gap was Debian-only. (b9658a6)
 - `nu toolkit/container.nu up` and `reload-egress` run without `--policy` again: the flag's type rejected being unset, so every invocation that did not name a policy died with "can't convert nothing to string". (77e4327)
-- `cozy verify` can now fail where it used to pass. A missing binary reported a row instead of aborting the whole run; the `env:` rows scrub each key before reading it back, so they test the sandbox's wiring rather than what your own shell already exported; the MCP row reads the `nushell:` line instead of any line in `claude mcp list`; the autoload glob failing empty is an error, not a shorter suite; and the `bootstrap.nu` parse check can actually report a diagnostic. (c8f720c, cc62b3b, 6ea3b82, e6bc75c, 1e52e10)
-- The squid pin is a digest only — `ubuntu/squid:latest@sha256:…` read as "tracks latest" while being frozen forever (2026-07-24, squid 6.13). `toolkit check` now guards the two copies of it, in `compose.yaml` and `toolkit/container.nu`, against drifting apart or being swapped for a floating tag. (6a24e94)
+- `cozy verify` can now fail where it used to pass.
+  A missing binary reported a row instead of aborting the whole run; the `env:` rows scrub each key before reading it back, so they test the sandbox's wiring rather than what your own shell already exported; the MCP row reads the `nushell:` line instead of any line in `claude mcp list`; the autoload glob failing empty is an error, not a shorter suite; and the `bootstrap.nu` parse check can actually report a diagnostic. (c8f720c, cc62b3b, 6ea3b82, e6bc75c, 1e52e10)
+- The squid pin is a digest only — `ubuntu/squid:latest@sha256:…` read as "tracks latest" while being frozen forever (2026-07-24, squid 6.13).
+  `toolkit check` now guards the two copies of it, in `compose.yaml` and `toolkit/container.nu`, against drifting apart or being swapped for a floating tag. (6a24e94)
 - The install no longer re-downloads Claude Code on a base image that already ships it (`sbx run claude`), and its "is claude on PATH" assert works again: `which claude` was returning the install module's own command instead of the binary, so both branches were dead — the same bug that also kept topiary's brew branch from ever running. (605dc77, 69123d5)
 - `toolkit sbxw`'s name completer lists stopped Apple containers too, not only running ones. (4b2b946)
-- Debian image: the image no longer sets `HOME`. An `ENV HOME` is image-wide, not per-user, so `docker exec -u root … bash -l` read the agent's own `~/.profile` and `~/.bashrc` as root — the same hole the env-file ownership fix closed, reached without `BASH_ENV`. Both the builder and the runtime take `HOME` from the passwd entry instead. (b538ec8)
-- `docker compose up` fails loudly when the firewall policy is missing. Docker used to invent `~/.config/cozy/firewall` as an empty root-owned directory, squid crash-looped behind `restart: unless-stopped`, and the agent came up anyway — a healthy-looking container with no network and no explanation. (3a183cf)
-- Both egress allowlists now carry the hosts cozy's own commands need. `cozy install rust|nushell|zellij|polars|nu-plugin-image` died on crates.io after a successful clone, and `cozy docs claude` could not reach the docs site. The sbx kit also named the wrong GitHub host for Homebrew bottles (`objects`, not `pkg-containers`) and was missing the release host `ensure-nu.sh` falls back to. (85961ba, 56f5a87)
-- Egress firewall: a refused request no longer leaks a DNS query. The proxy resolved the hostname before deciding, so `http://<data>.attacker.example/` got logged as blocked *after* the lookup had left — a working exfiltration channel out of an allowlist that promises blocked requests never leave. (a78cf10)
-- Debian image: `/etc/sandbox-persistent.sh` is now root-owned. `BASH_ENV` and the profile.d drop-in are image-wide, not per-user, so `docker exec -u root … bash` sourced a file the unprivileged agent could rewrite — undoing the point of revoking its sudo. (cd96390)
-- A blocked download now fails the install instead of passing it. Both `curl … | bash` sites (Homebrew and the Claude Code installer) reported success on an empty download, so a proxy 403 surfaced two steps later as "neither nu nor brew available — install Homebrew first", blaming you for a network failure. (ccb8f36)
-- Re-running the installer no longer dies at Step 9. `claude mcp add` exits 1 when the nushell MCP entry already exists and has no `--force`, which aborted the run before the `~/.cozy-installed` stamp was written — and a host install without that stamp then refuses to touch cozy's own deployed files. (efc23b3)
-- The agent's commits are attributed to Claude again, everywhere it works. `GIT_AUTHOR_*`, `GIT_COMMITTER_*` and `JJ_CONFIG` moved from the shell env block to Claude Code's own `env` setting (`~/.claude/settings.json`, bootstrap step 9), so they belong to the agent process and every child inherits them — the Bash tool, the nushell MCP, subagents. As a shell export they had it backwards on both ends: your own shells in the container committed as Claude, while the MCP `nu`, which is no shell's child, committed as you. `cozy verify` gains `claude env:` rows. (744a0e8, cd53e0d)
-- `cozy verify` reads the environment through a plain `bash -c` instead of `bash -lc`, the strictest of the three bash flavours and the one the agent's Bash tool runs. The `env:` rows now fail on any image that does not carry the machine env there — which is how a whole class of "green but broken" went unnoticed. Unconfirmed on `sbx`; if they fail there, its base image needs the same wiring. (402efc6, 338b636)
-- `compose.yaml` now sets `WORKSPACE_DIR`, which only `sbx` had been injecting. Without it every `cozy sandbox-state` and `cozy dev-link` call on the plain-docker path died with "WORKSPACE_DIR not set". Set it yourself (`-e WORKSPACE_DIR=<mounted path>`) when running the image outside compose. (1ebb03e)
+- Debian image: the image no longer sets `HOME`.
+  An `ENV HOME` is image-wide, not per-user, so `docker exec -u root … bash -l` read the agent's own `~/.profile` and `~/.bashrc` as root — the same hole the env-file ownership fix closed, reached without `BASH_ENV`.
+  Both the builder and the runtime take `HOME` from the passwd entry instead. (b538ec8)
+- `docker compose up` fails loudly when the firewall policy is missing.
+  Docker used to invent `~/.config/cozy/firewall` as an empty root-owned directory, squid crash-looped behind `restart: unless-stopped`, and the agent came up anyway — a healthy-looking container with no network and no explanation. (3a183cf)
+- Both egress allowlists now carry the hosts cozy's own commands need.
+  `cozy install rust|nushell|zellij|polars|nu-plugin-image` died on crates.io after a successful clone, and `cozy docs claude` could not reach the docs site.
+  The sbx kit also named the wrong GitHub host for Homebrew bottles (`objects`, not `pkg-containers`) and was missing the release host `ensure-nu.sh` falls back to. (85961ba, 56f5a87)
+- Egress firewall: a refused request no longer leaks a DNS query.
+  The proxy resolved the hostname before deciding, so `http://<data>.attacker.example/` got logged as blocked *after* the lookup had left — a working exfiltration channel out of an allowlist that promises blocked requests never leave. (a78cf10)
+- Debian image: `/etc/sandbox-persistent.sh` is now root-owned.
+  `BASH_ENV` and the profile.d drop-in are image-wide, not per-user, so `docker exec -u root … bash` sourced a file the unprivileged agent could rewrite — undoing the point of revoking its sudo. (cd96390)
+- A blocked download now fails the install instead of passing it.
+  Both `curl … | bash` sites (Homebrew and the Claude Code installer) reported success on an empty download, so a proxy 403 surfaced two steps later as "neither nu nor brew available — install Homebrew first", blaming you for a network failure. (ccb8f36)
+- Re-running the installer no longer dies at Step 9.
+  `claude mcp add` exits 1 when the nushell MCP entry already exists and has no `--force`, which aborted the run before the `~/.cozy-installed` stamp was written — and a host install without that stamp then refuses to touch cozy's own deployed files. (efc23b3)
+- The agent's commits are attributed to Claude again, everywhere it works.
+  `GIT_AUTHOR_*`, `GIT_COMMITTER_*` and `JJ_CONFIG` moved from the shell env block to Claude Code's own `env` setting (`~/.claude/settings.json`, bootstrap step 9), so they belong to the agent process and every child inherits them — the Bash tool, the nushell MCP, subagents.
+  As a shell export they had it backwards on both ends: your own shells in the container committed as Claude, while the MCP `nu`, which is no shell's child, committed as you.
+  `cozy verify` gains `claude env:` rows. (744a0e8, cd53e0d)
+- `cozy verify` reads the environment through a plain `bash -c` instead of `bash -lc`, the strictest of the three bash flavours and the one the agent's Bash tool runs.
+  The `env:` rows now fail on any image that does not carry the machine env there — which is how a whole class of "green but broken" went unnoticed.
+  Unconfirmed on `sbx`; if they fail there, its base image needs the same wiring. (402efc6, 338b636)
+- `compose.yaml` now sets `WORKSPACE_DIR`, which only `sbx` had been injecting.
+  Without it every `cozy sandbox-state` and `cozy dev-link` call on the plain-docker path died with "WORKSPACE_DIR not set".
+  Set it yourself (`-e WORKSPACE_DIR=<mounted path>`) when running the image outside compose. (1ebb03e)
 
 ## [0.4.0] - 2026-07-26
 
 ### Added
 
-- Egress firewall for the Debian image: `docker compose up -d` runs the agent on a gateway-less network whose only exit is a proxy that allows the domains in `firewall/allowed-domains.txt` and refuses the rest. The agent can't reach the list or the proxy config; you edit the file and `docker compose restart egress`. No CA, no TLS interception — blocked requests never leave the container. (6790339)
-- `cozy verify` now checks that `api.anthropic.com` is tunneled rather than intercepted, and that an egress allowlist is actually in force (59 checks, up from 56). A bare `docker run` fails the two `egress:` checks. (51aa646, 6790339)
-- `cozy docs claude` / `cozy docs nushell` — fetch Claude Code and Nushell reference docs into a local folder from inside a sandbox (curl-based, works through the sandbox proxy). Moved out of claude-nu's toolkit. (05ac91d)
+- Egress firewall for the Debian image: `docker compose up -d` runs the agent on a gateway-less network whose only exit is a proxy that allows the domains in `firewall/allowed-domains.txt` and refuses the rest.
+  The agent can't reach the list or the proxy config; you edit the file and `docker compose restart egress`.
+  No CA, no TLS interception — blocked requests never leave the container. (6790339)
+- `cozy verify` now checks that `api.anthropic.com` is tunneled rather than intercepted, and that an egress allowlist is actually in force (59 checks, up from 56).
+  A bare `docker run` fails the two `egress:` checks. (51aa646, 6790339)
+- `cozy docs claude` / `cozy docs nushell` — fetch Claude Code and Nushell reference docs into a local folder from inside a sandbox (curl-based, works through the sandbox proxy).
+  Moved out of claude-nu's toolkit. (05ac91d)
 - Vendored `claude-nu` — `gi enable <doc> --from-session` seeds the canvas from the current Claude session's dialogue (`--tools` keeps tool-call placeholders). (b3cb3cc)
 - New `nushell-reviewer` agent — reviews `.nu` code and plans against project rules and Nushell failure modes, reporting problems without editing. (2db704a)
-- `xxd` is now installed in containers — agents kept reaching for it on binary files and neither base image ships it. For viewing only, `open --raw file | into binary` is still the nicer hex dump. (b89aae1)
+- `xxd` is now installed in containers — agents kept reaching for it on binary files and neither base image ships it.
+  For viewing only, `open --raw file | into binary` is still the nicer hex dump. (b89aae1)
 - WezTerm `CTRL-SHIFT-f` opens search prefilled from the selection; Enter closes it in copy mode on the match, ready for a `CTRL-v` block selection. (062b22d)
 
 ### Changed
 
-- Vendored `claude-nu` — session search now carries its scope left of the pipe: `messages 'x'` for this project, `sessions --all-projects | messages 'x'` for every project. The `claude-nu -f` umbrella and `save-markdown` are gone (`export-session --to <dir>` replaces the latter). (7b3c4af)
-- Vendored `claude-nu` — `gi` gained real subcommands: `gi enable` seeds a repo, `gi open` starts a session bound to one canvas, bare `gi` is the status. `gi status` is gone and `$env.GI_HOOK_DOC` is now `$env.GI_CANVAS`. (7b3c4af)
-- `cozy sandbox-state history export`/`import` now carry `session_id` and `hostname`, so restored history still says which sitting and which sandbox each command came from. Older 5-column exports still import. (e8b8a47)
+- Vendored `claude-nu` — session search now carries its scope left of the pipe: `messages 'x'` for this project, `sessions --all-projects | messages 'x'` for every project.
+  The `claude-nu -f` umbrella and `save-markdown` are gone (`export-session --to <dir>` replaces the latter). (7b3c4af)
+- Vendored `claude-nu` — `gi` gained real subcommands: `gi enable` seeds a repo, `gi open` starts a session bound to one canvas, bare `gi` is the status.
+  `gi status` is gone and `$env.GI_HOOK_DOC` is now `$env.GI_CANVAS`. (7b3c4af)
+- `cozy sandbox-state history export`/`import` now carry `session_id` and `hostname`, so restored history still says which sitting and which sandbox each command came from.
+  Older 5-column exports still import. (e8b8a47)
 - Vendored `nu-goodies` — `ansi-to-png` defaults to the font and palette WezTerm actually uses, plus `--colorscheme`, `--recolor` and `--width`, so a captured terminal image matches what you saw. (04b54bc)
 - Vendored `dotfiles` — new `cozy-focus` zellij theme (active pane frame bold green, inactive near-black), and mouse hover highlighting is off. (7156788)
 - Vendored `dotfiles` — helix `+ p` aligns markdown tables with `nu-hx align-table` instead of pandoc: no external binary, and only the padding inside cells changes. (a2bda0f)
@@ -220,7 +284,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Debian image (in testing): the Dockerfile now builds on `debian:12-slim` with build-time-only sudo, giving plain `docker run` / Apple `container` a rootless runtime (no standing privilege). Same toolset, passes `cozy verify` (56/56). `sbx` stays the standard path. (e1e15d0, af40861, fea5111)
+- Debian image (in testing): the Dockerfile now builds on `debian:12-slim` with build-time-only sudo, giving plain `docker run` / Apple `container` a rootless runtime (no standing privilege).
+  Same toolset, passes `cozy verify` (56/56).
+  `sbx` stays the standard path. (e1e15d0, af40861, fea5111)
 - `sbx run` install output is now captured to `~/cozy-install.log`, so you can watch the otherwise-silent multi-minute build live (`sbx exec -it <name> tail -f ~/cozy-install.log`) or read failures back after. (c347751)
 
 ### Changed
@@ -230,7 +296,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Vendored `nu-goodies` — new `tarq` packs paths into a timestamped `.tar.gz` backup; `--no-timestamp` names it exactly `base.tar.gz`. (f3a732d)
 - Vendored `claude-nu` — the git-intent hook command renamed `gi-hook` → `gi`, and `gi enable` no longer installs the Stop hook unless you pass `--hook` (it still seeds the Canvas style, skills, and working doc). (3501be3)
 - The nushell "failed last time" hint no longer writes an `#exit_<code>` tag into your history rows — it's derived live at hint time, so history stays unmutated. (07ec9fc)
-- The WezTerm-into-sandbox launcher (`sbx-w` in 0.3.6) is renamed `sbxw` and works again — invoke it as `nu toolkit/sbxw.nu <name>`. The 0.3.6 rename had left its command defined under the wrong name, so it did nothing. (47df770, 5feb63b)
+- The WezTerm-into-sandbox launcher (`sbx-w` in 0.3.6) is renamed `sbxw` and works again — invoke it as `nu toolkit/sbxw.nu <name>`.
+  The 0.3.6 rename had left its command defined under the wrong name, so it did nothing. (47df770, 5feb63b)
 - Shipped agent guidance gains a Nushell pitfalls cheatsheet (paren-escaping in `$'...'`, Bash-tool `!` mangling, `o+e>|` writing a file under bash) in the sandbox global `CLAUDE.md`. (1a52c66)
 
 ### Removed
@@ -241,7 +308,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `cozy sync-repos` re-runs are now non-destructive, so the `~/repos/` clones are yours to develop in and PR upstream from — it fetches always and fast-forwards only when the tree is clean and undiverged, never `clean -fd`/`reset --hard`/branch-switching your work. The `-f`/`--force` flag is gone (it only existed to force those destructive ops). (236020c)
+- `cozy sync-repos` re-runs are now non-destructive, so the `~/repos/` clones are yours to develop in and PR upstream from — it fetches always and fast-forwards only when the tree is clean and undiverged, never `clean -fd`/`reset --hard`/branch-switching your work.
+  The `-f`/`--force` flag is gone (it only existed to force those destructive ops). (236020c)
 - `wezterm-cozy` is renamed `sbx-w` and moved to `toolkit/sbx-w.nu`; its sandbox-name completion now parses `sbx ls --json` instead of scraping the table output. (aaeec70, a50cbd4, 51e4c73)
 - Vendored `numd` 0.5.0 — new `numd doc` renders command documentation into markdown regions from scope data. (82902bb)
 - Vendored `nu-goodies` — new `mv-update-links` (move a file and update references to it) and `cargo-updates` (check crates.io for newer versions of installed binaries); `replace-in-all-files` now shows changed lines as a before/after table. (e611fa1)
@@ -261,7 +329,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Vendored `dotfiles` — the two fzf history bindings merge into one Ctrl+F picker: enter replaces the line, alt-enter inserts at cursor, alt-c limits the view to current-directory history. History-derived abbreviations (`cs`, `gs`, `gl`, …) replace aliases so the expanded command lands in history; cozy's `lg` alias moved there too. (0e756ac, 0c55d51)
+- Vendored `dotfiles` — the two fzf history bindings merge into one Ctrl+F picker: enter replaces the line, alt-enter inserts at cursor, alt-c limits the view to current-directory history.
+  History-derived abbreviations (`cs`, `gs`, `gl`, …) replace aliases so the expanded command lands in history; cozy's `lg` alias moved there too. (0e756ac, 0c55d51)
 - Vendored `dotfiles` — helix `+` keybindings now pass the selection via stdin through a new nu-hx module, so text containing `#` or an apostrophe no longer breaks them. (17f03a5)
 
 ### Fixed
@@ -288,7 +357,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- All install paths (sbx kit, Dockerfile, host) now run one shared boot-tail script, so their command sequences can't drift apart; `./host-install.sh` is removed — run `cozy-module/install/run-install.sh` instead. The Homebrew it auto-installs on Linux now lands on PATH (`brew shellenv`) — previously the install succeeded but the very next command couldn't find brew. (45cb593)
+- All install paths (sbx kit, Dockerfile, host) now run one shared boot-tail script, so their command sequences can't drift apart; `./host-install.sh` is removed — run `cozy-module/install/run-install.sh` instead.
+  The Homebrew it auto-installs on Linux now lands on PATH (`brew shellenv`) — previously the install succeeded but the very next command couldn't find brew. (45cb593)
 - The Dockerfile is now marked legacy and unmaintained — with `docker sandbox` deprecated, the `sbx-kit/` in-sandbox build is the supported path. (4a7aa11)
 - Vendored `numd` — new `numd run --dry-run` lists the blocks a file would execute without running them; unknown fence options now error instead of warn-and-run, and short-form fence options are removed. (4e7234b)
 - Vendored `dotnu` — new `extract-module-command` pulls a command plus its full dependency cascade into one self-contained script, and `expand-code` generates code from `#**` directives; `embed-add` now folds in the capture config and requires sqlite history. (e297aa7, e8948dc)
@@ -297,7 +367,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Inside an `sbx` sandbox `.DS_Store`/`Thumbs.db`/`desktop.ini` stopped being ignored — `sbx` sets `core.excludesFile` on every create, which shadows cozy's XDG ignore. A new autoload re-heals it on shell start by mirroring cozy's patterns into whatever excludesFile resolves to. (05fd413)
+- Inside an `sbx` sandbox `.DS_Store`/`Thumbs.db`/`desktop.ini` stopped being ignored — `sbx` sets `core.excludesFile` on every create, which shadows cozy's XDG ignore.
+  A new autoload re-heals it on shell start by mirroring cozy's patterns into whatever excludesFile resolves to. (05fd413)
 - The pbcopy shim now installs on every Linux host, not only in the docker step — on a plain Linux host every copy keybinding (helix, lazygit, broot, nushell, zellij, visidata) died with command-not-found. (3050e08)
 - The no-flag install from the README no longer dies on a stock macOS shell — `run-install.sh` guarded empty args against bash 3.2 under `set -u`. (6d0a0f6)
 - Bootstrap now fails fast on a Linux host without gcc instead of hitting a `sudo apt-get` prompt at step 8; the gcc/libc6-dev prerequisite is documented. (a56a4ab, 3ff3a56)
@@ -324,11 +395,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Nushell modules load in a non-interactive `nu -c` via `nu --config ~/.config/nushell/autoload/modules-core.nu -c …` (runs even in `-c`, unlike autoload). Helix's `shell` uses it, so its `:pipe`/snippet commands can call `kv`, `cozy`, `nu-goodies`, etc. (d99607c)
+- Nushell modules load in a non-interactive `nu -c` via `nu --config ~/.config/nushell/autoload/modules-core.nu -c …` (runs even in `-c`, unlike autoload).
+  Helix's `shell` uses it, so its `:pipe`/snippet commands can call `kv`, `cozy`, `nu-goodies`, etc. (d99607c)
 
 ### Changed
 
-- `sbx` is now the only documented run path; the deprecated `docker sandbox` command is dropped from completions and docs. Run with `sbx run shell --kit sbx-kit/` (in-sandbox build) — a local `docker build` image can't be fed to `sbx`. (8251c9f, 028d088)
+- `sbx` is now the only documented run path; the deprecated `docker sandbox` command is dropped from completions and docs.
+  Run with `sbx run shell --kit sbx-kit/` (in-sandbox build) — a local `docker build` image can't be fed to `sbx`. (8251c9f, 028d088)
 - `cozy verify` returns the check table as a value instead of only printing it, so the nushell MCP, tests, and `cozy verify | where not pass` get structured data. (b8731de)
 - Vendored `claude-nu` — new `claude-nu -f` regex search over project messages (`--all-projects`, `--no-rg`); session columns collapse to one `--columns` string; `ask` one-shot Claude wrapper split out. (ce11989)
 - Vendored `dotfiles` — helix `s`/`S` copy repo-relative vs absolute file paths, `+ b` inserts nushell output as a table column; new `hx-nu` launcher loads cozy's nu modules; lazygit copies agent-ready file pointers. (610da85, c7c8c81)
@@ -342,15 +415,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `cozy verify` — run post-build checks against the sandbox you're in (binaries, vendored repos, autoload, env, MCP, topiary, git config). The same checks back `nu toolkit/test.nu test` from the host, deriving every expected value from the repo so they can't drift. (763d780)
-- `zellij install --low-resource-compilation` builds zellij from source in a memory-tight VM by dropping optimization (opt-level=0, more codegen units) — trades runtime speed for a build that fits. Default build unchanged. (591d352, c789ae7)
+- `cozy verify` — run post-build checks against the sandbox you're in (binaries, vendored repos, autoload, env, MCP, topiary, git config).
+  The same checks back `nu toolkit/test.nu test` from the host, deriving every expected value from the repo so they can't drift. (763d780)
+- `zellij install --low-resource-compilation` builds zellij from source in a memory-tight VM by dropping optimization (opt-level=0, more codegen units) — trades runtime speed for a build that fits.
+  Default build unchanged. (591d352, c789ae7)
 - cozy now ships every `my-claude-skills` plugin, adding the `git-intent`, `git-intent-squash-archive`, and `gnuplot` skills to the sandbox. (5cc439b, 5747d3a)
 
 ### Changed
 
-- Host installer no longer fetches modules from GitHub or rsyncs from sibling repos — it uses the committed `vendor/` snapshot as-is and fails fast if it's missing. Refreshing `vendor/` is `toolkit/vendor.nu`'s job before a build. (14b2941)
-- `sbx` kit directory renamed `kit/` → `sbx-kit/`; the name now says which tool it's for. Invoke with `sbx run shell --kit cozy/sbx-kit/`. (8b3c9bf)
-- Host installer renamed `bootstrap.sh` → `host-install.sh`. The name now says its role (host-only wrapper) and no longer collides with the core `bootstrap.nu`; `ensure-nu.sh` and `bootstrap.nu` are unchanged. (c0f2a74)
+- Host installer no longer fetches modules from GitHub or rsyncs from sibling repos — it uses the committed `vendor/` snapshot as-is and fails fast if it's missing.
+  Refreshing `vendor/` is `toolkit/vendor.nu`'s job before a build. (14b2941)
+- `sbx` kit directory renamed `kit/` → `sbx-kit/`; the name now says which tool it's for.
+  Invoke with `sbx run shell --kit cozy/sbx-kit/`. (8b3c9bf)
+- Host installer renamed `bootstrap.sh` → `host-install.sh`.
+  The name now says its role (host-only wrapper) and no longer collides with the core `bootstrap.nu`; `ensure-nu.sh` and `bootstrap.nu` are unchanged. (c0f2a74)
 - Claude Code's "Show last response in external editor" is now on by default in built sandboxes (`externalEditorContext` in `~/.claude.json`). (d745e0d)
 - visidata config now comes from the dotfiles repo (single source of truth) instead of a cozy-owned `.visidatarc`; the bundled config adds `zy` to copy a cell to both the internal and system clipboard. (77b372a, ba7f5e5, 6479476)
 - Default Helix theme switched to `ayu_evolve`. (6e87c69)
@@ -391,13 +469,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `bootstrap.sh` auto-installs Homebrew on Linux when sudo is passwordless. On macOS or other prompting hosts it prints the `NONINTERACTIVE=1` install one-liner alongside the brew.sh link. (c9fe9cf, 5e6b6b1)
+- `bootstrap.sh` auto-installs Homebrew on Linux when sudo is passwordless.
+  On macOS or other prompting hosts it prints the `NONINTERACTIVE=1` install one-liner alongside the brew.sh link. (c9fe9cf, 5e6b6b1)
 - Bash login prints a one-line hint to launch nushell — the `shell` agent drops into bash by default, but everything cozy ships is nu-first. (1f86c86)
 
 ### Changed
 
-- Replaced `cozy platform` / `cozy platform apply` with a single narrow command `cozy swap-zellij-super` — rewrites Super→Alt in `~/.config/zellij/config.kdl` for Windows hosts. The old auto-detect was unreliable on Windows and a no-op elsewhere. (b88e29e)
-- `sbx` CLI kit (`kit/spec.yaml`) clones cozy in-sandbox instead of bundling sources via `files/`. README gains an `### sbx kit` subsection under `Install elsewhere`. (9958cdf, d0347a6)
+- Replaced `cozy platform` / `cozy platform apply` with a single narrow command `cozy swap-zellij-super` — rewrites Super→Alt in `~/.config/zellij/config.kdl` for Windows hosts.
+  The old auto-detect was unreliable on Windows and a no-op elsewhere. (b88e29e)
+- `sbx` CLI kit (`kit/spec.yaml`) clones cozy in-sandbox instead of bundling sources via `files/`.
+  README gains an `### sbx kit` subsection under `Install elsewhere`. (9958cdf, d0347a6)
 
 ### Removed
 
@@ -412,20 +493,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Renamed `sandbox-toolkit/` → `cozy-module/` — aligns the folder name with how it's loaded inside the sandbox (`overlay use ~/repos/cozy/cozy-module/ as cozy --prefix`). Custom scripts importing from the old path need updating. (674684d, b7636c8)
+- Renamed `sandbox-toolkit/` → `cozy-module/` — aligns the folder name with how it's loaded inside the sandbox (`overlay use ~/repos/cozy/cozy-module/ as cozy --prefix`).
+  Custom scripts importing from the old path need updating. (674684d, b7636c8)
 - Vendored `nu-goodies` — adds `fzf-preview` (pipe paths through fzf with bat preview, jumps to `file:line[:col]`) and `in-pane` (open a zellij pane running `nu --execute <command>`). (6395628)
 - Vendored `nu-multiproof` — upstream refactor refresh: `--path` → `--repo` across commands; `tree-hashes` fixes for concurrent runs and bare `<manifest>.sig` detection. (86398d3)
 - Vendored `dotfiles/wezterm` — QuickSelect `file:line` regex excludes `╭─[` so nushell error headers no longer match with the box-drawing prefix. (81e25dc)
 
 ### Fixed
 
-- Bootstrap `claude install` no longer skips the real install during docker build. The `which claude` guard from e67ed1d matched the `claude install` module command itself (added by `use claude.nu`), making the subsequent `^claude mcp add` fail with `Command 'claude' not found`. Now filters to `type == external`. (a51a5c7)
+- Bootstrap `claude install` no longer skips the real install during docker build.
+  The `which claude` guard from e67ed1d matched the `claude install` module command itself (added by `use claude.nu`), making the subsequent `^claude mcp add` fail with `Command 'claude' not found`.
+  Now filters to `type == external`. (a51a5c7)
 
 ## [0.2.2] - 2026-05-14
 
 ### Added
 
-- `dotfiles/toolkit push-to-machine --delete-orphans` — removes machine files whose repo source has been deleted upstream. Opt-in; bootstrap does not pass it. (24e1ce7)
+- `dotfiles/toolkit push-to-machine --delete-orphans` — removes machine files whose repo source has been deleted upstream.
+  Opt-in; bootstrap does not pass it. (24e1ce7)
 
 ### Changed
 
@@ -445,8 +530,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `bootstrap.sh` / `bootstrap.nu` `--force` flag. Host installs refuse to clobber existing user configs on first run — fail-fast guard checks `XDG_CONFIG_HOME/{nushell,helix,zellij,lazygit,broot,jj,git}`, `~/.claude/`, `~/.visidatarc`, `~/repos/`. Re-runs skip the guard via a `~/.cozy-installed` stamp. (b459662)
-- Third install path: a Docker sandbox kit (`kit/spec.yaml`, `kind: mixin`) layered on the standard `shell` agent. Eliminates `docker build` for users who only want the cozy environment on top of stock `shell`.
+- `bootstrap.sh` / `bootstrap.nu` `--force` flag.
+  Host installs refuse to clobber existing user configs on first run — fail-fast guard checks `XDG_CONFIG_HOME/{nushell,helix,zellij,lazygit,broot,jj,git}`, `~/.claude/`, `~/.visidatarc`, `~/repos/`.
+  Re-runs skip the guard via a `~/.cozy-installed` stamp. (b459662)
+- Third install path: a Docker sandbox kit (`kit/spec.yaml`, `kind: mixin`) layered on the standard `shell` agent.
+  Eliminates `docker build` for users who only want the cozy environment on top of stock `shell`.
 
 ### Fixed
 
@@ -456,14 +544,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `cozy install bootstrap` — single end-to-end installer (brew tools, vendored modules under `~/repos/`, dotfiles, Claude skills, broot, topiary, Claude Code + nushell MCP). `--local` re-vendors from sibling repos for development. (0c69ad8)
-- `cozy/bootstrap.sh` — host entry that ensures brew + nu, then execs `bootstrap.nu`. Docker and host paths share `bootstrap.nu`. (0d095e4)
-- `ensure-nu.sh` + `.nushell-version` — version-pin fallback for nushell (pre-1.0, syntax drifts between releases). Tries latest brew nushell, smoke-tests it, falls back to the tested version (currently `0.112.2`) into `~/.local/bin/nu` on parse failure.
+- `cozy install bootstrap` — single end-to-end installer (brew tools, vendored modules under `~/repos/`, dotfiles, Claude skills, broot, topiary, Claude Code + nushell MCP).
+  `--local` re-vendors from sibling repos for development. (0c69ad8)
+- `cozy/bootstrap.sh` — host entry that ensures brew + nu, then execs `bootstrap.nu`.
+  Docker and host paths share `bootstrap.nu`. (0d095e4)
+- `ensure-nu.sh` + `.nushell-version` — version-pin fallback for nushell (pre-1.0, syntax drifts between releases).
+  Tries latest brew nushell, smoke-tests it, falls back to the tested version (currently `0.112.2`) into `~/.local/bin/nu` on parse failure.
 - `vendor.nu` honors `$env.GH_TOKEN` / `$env.GITHUB_TOKEN` — GitHub API limit jumps from 60 to 5000 req/hr when set. (f624b24)
 
 ### Changed
 
-- Dockerfile collapsed from ~95 install lines to a single `RUN nu …/bootstrap.nu`. Host and Docker share one install path. (52d0c50)
+- Dockerfile collapsed from ~95 install lines to a single `RUN nu …/bootstrap.nu`.
+  Host and Docker share one install path. (52d0c50)
 - `--local` flag now means "force refresh from sibling repos"; host install consumes the committed `cozy/vendor/` as-is by default. (d60fb7e)
 - Vendored `dotfiles/claude` — `editorMode=normal`, `verbose=true`, `cleanupPeriodDays=36500` baked into `~/.claude/settings.json`. (00c63b7, 86e43d0)
 - Vendored `claude-nu` — `claude-export` gains `--tools` and `--include-thinking` flags. (7e8e4e7)
@@ -473,7 +565,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `vendor.nu` uses `curl -fsSL` — HTTP errors fail at the network step with the real status code instead of feeding HTML into `tar xz`. (f624b24)
-- Runtime git settings (`safe.directory '*'`, `gc.auto=0`, `core.fsync=all`, `.DS_Store` / `Thumbs.db` ignore) moved from `/etc/gitconfig` to `~/.config/git/` (XDG). Brew git's sysconfdir is `/home/linuxbrew/.linuxbrew/etc`, so `--system` writes never reached the runtime brew git. (288a2c9)
+- Runtime git settings (`safe.directory '*'`, `gc.auto=0`, `core.fsync=all`, `.DS_Store` / `Thumbs.db` ignore) moved from `/etc/gitconfig` to `~/.config/git/` (XDG).
+  Brew git's sysconfdir is `/home/linuxbrew/.linuxbrew/etc`, so `--system` writes never reached the runtime brew git. (288a2c9)
 - Cold-start after `bash bootstrap.sh` no longer crashes `nu` on "Cannot find column XDG_DATA_HOME": `env.nu` defaults `XDG_DATA_HOME` from `$HOME` when unset. (4e546fc)
 - `cozy install bootstrap` on macOS resolves `nu` via `which nu` for `claude mcp add` — previously hardcoded `/home/linuxbrew/.linuxbrew/bin/nu`, breaking Apple Silicon brew. (da7f93b)
 - `topiary install` on macOS branches on OS and points users at `xcode-select --install` instead of running `sudo apt-get install`. (47946af)
@@ -546,7 +639,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Consolidated `cozy-docker-sandbox-toolkit` into `cozy/sandbox-toolkit/` — toolkit is no longer a separate repo. One `git pull` for both toolkit and vendored module updates. (f5e842c)
+- Consolidated `cozy-docker-sandbox-toolkit` into `cozy/sandbox-toolkit/` — toolkit is no longer a separate repo.
+  One `git pull` for both toolkit and vendored module updates. (f5e842c)
 
 ### Removed
 

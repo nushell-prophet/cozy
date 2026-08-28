@@ -11,56 +11,35 @@ description: >
 
 # verify-cozy
 
-Runs cozy's own check suite (`cozy-module/verify.nu`) against a target. `verify.nu`
-takes a transport closure, so the check logic is identical everywhere — the only
-thing that changes per target is how the commands are carried. Name the target as
-the argument; with no argument the target is `docker`.
+Runs cozy's own check suite (`cozy-module/verify.nu`) against a target.
+`verify.nu` takes a transport closure, so the check logic is identical everywhere — the only thing that changes per target is how the commands are carried.
+Name the target as the argument; with no argument the target is `docker`.
 
-The repo, autoload and env checks derive their expected values from sources that
-ship into the build — `vendored-repos.nuon` (repos), the
-`docker-files/nushell-autoload/` glob (autoload scripts), and the export block in
-`bootstrap.nu` (env vars) — so those three can't drift from the build. The binary
-list is the exception: `verify.nu`'s `const tools` is hand-kept, because the
-binaries are spread across the base image and `bootstrap.nu`'s `brew install` with
-no machine-readable source of truth. Add a brew tool, add it there too.
+The repo, autoload and env checks derive their expected values from sources that ship into the build — `vendored-repos.nuon` (repos), the `docker-files/nushell-autoload/` glob (autoload scripts), and the export block in `bootstrap.nu` (env vars) — so those three can't drift from the build.
+The binary list is the exception: `verify.nu`'s `const tools` is hand-kept, because the binaries are spread across the base image and `bootstrap.nu`'s `brew install` with no machine-readable source of truth.
+Add a brew tool, add it there too.
 
-The checks cover: that each expected binary *launches* (not merely resolves on
-PATH), vendored repos, autoload scripts, runtime env, MCP wiring, pbcopy, the
-appended CLAUDE.md tool catalog, that `bootstrap.nu` parses on the shipped nu,
-topiary's grammar, the global-ignore patterns, XDG git config, and the two
-network rows — that `api.anthropic.com` is tunneled rather than intercepted
-(`tls:`), and that an egress allowlist is in force (`egress:`).
+The checks cover: that each expected binary *launches* (not merely resolves on PATH), vendored repos, autoload scripts, runtime env, MCP wiring, pbcopy, the appended CLAUDE.md tool catalog, that `bootstrap.nu` parses on the shipped nu, topiary's grammar, the global-ignore patterns, XDG git config, and the two network rows — that `api.anthropic.com` is tunneled rather than intercepted (`tls:`), and that an egress allowlist is in force (`egress:`).
 
-`cozy` is a Nushell overlay (loaded by the `modules-core.nu` autoload), not a PATH
-binary. Autoloads fire in an interactive shell and the MCP `evaluate` tool but
-**not** under `nu -c`, so there load the overlay yourself:
-`nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'`.
+`cozy` is a Nushell overlay (loaded by the `modules-core.nu` autoload), not a PATH binary.
+Autoloads fire in an interactive shell and the MCP `evaluate` tool but **not** under `nu -c`, so there load the overlay yourself: `nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'`.
 
-The env checks read a bare `bash -c` with each expected key stripped from the
-child's environment first (`env -u`), so they report what the sandbox itself
-supplies, however verify was launched. On a base image that bakes no `ENV` those
-keys live only in `/etc/sandbox-persistent.sh`, and a non-interactive non-login
-shell reads neither `/etc/profile` nor `/etc/bash.bashrc` — so something must
-carry them there, or the rows false-fail. `BASH_ENV` is what carries them — set
-in the `Dockerfile` for the Debian image, and supplied by the sbx base itself
-(confirmed on a live sandbox 2026-07).
+The env checks read a bare `bash -c` with each expected key stripped from the child's environment first (`env -u`), so they report what the sandbox itself supplies, however verify was launched.
+On a base image that bakes no `ENV` those keys live only in `/etc/sandbox-persistent.sh`, and a non-interactive non-login shell reads neither `/etc/profile` nor `/etc/bash.bashrc` — so something must carry them there, or the rows false-fail.
+`BASH_ENV` is what carries them — set in the `Dockerfile` for the Debian image, and supplied by the sbx base itself (confirmed on a live sandbox 2026-07).
 
-The `claude env:` rows are separate and read a file, not an env: the agent's
-identity (`GIT_AUTHOR_*`, `GIT_COMMITTER_*`, `JJ_CONFIG`) lives in the `env`
-field of `~/.claude/settings.json`, so it belongs to the Claude Code process and
-not to any shell. Nothing in verify runs inside Claude Code, so the effective
-value is out of reach — the rows assert the file, which is where the failure that
-actually happened would show.
+The `claude env:` rows are separate and read a file, not an env: the agent's identity (`GIT_AUTHOR_*`, `GIT_COMMITTER_*`, `JJ_CONFIG`) lives in the `env` field of `~/.claude/settings.json`, so it belongs to the Claude Code process and not to any shell.
+Nothing in verify runs inside Claude Code, so the effective value is out of reach — the rows assert the file, which is where the failure that actually happened would show.
 
-Read the printed table; any `pass: false` row names what to fix and, for files,
-the owning repo. To add or change a check, edit `cozy-module/verify.nu`.
+Read the printed table; any `pass: false` row names what to fix and, for files, the owning repo.
+To add or change a check, edit `cozy-module/verify.nu`.
 
 ## Targets
 
 ### `docker` (default) — build locally, verify in a throwaway container
 
-No push, no sbx. Exercises the shared boot tail (`run-install.sh` → `ensure-nu.sh`
-→ `bootstrap.nu`) that every install path runs.
+No push, no sbx.
+Exercises the shared boot tail (`run-install.sh` → `ensure-nu.sh` → `bootstrap.nu`) that every install path runs.
 
 ```sh
 docker build -t cozy:verify .            # add --no-cache to force a clean build
@@ -68,55 +47,42 @@ docker run --rm cozy:verify \
   nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'
 ```
 
-- Layer cache: editing `cozy-module/` re-runs only the bootstrap layer (~30–60s);
-  editing base deps re-runs brew (minutes).
-- Build egress: the sandbox VM blocks `:80`, allows `:443`. The Dockerfile already
-  uses https apt sources, so builds work in restricted networks.
-- **The two `egress:` rows fail on this target, by design.** A bare `docker run`
-  has no allowlist in front of it — the cage comes from `compose.yaml`, not the
-  image. Expect 2 failures here and read the other 59; to see all 61 pass, bring
-  the container up with `docker compose up -d` and verify through
-  `docker compose exec cozy`.
-- **Boundary:** this validates the shared install logic, NOT sbx-specific wiring
-  (the kit spec, sbx's git-config rewrites, the microVM). It is a fast pre-check —
-  do a final `sbx run` smoke test before relying on a change.
-- A missing external command (e.g. `gh` on a lean image) is reported as a
-  `pass: false` row, not an abort — the transport turns command-not-found into
-  exit 127.
+- Layer cache: editing `cozy-module/` re-runs only the bootstrap layer (~30–60s); editing base deps re-runs brew (minutes).
+- Build egress: the sandbox VM blocks `:80`, allows `:443`.
+  The Dockerfile already uses https apt sources, so builds work in restricted networks.
+- **The two `egress:` rows fail on this target, by design.**
+  A bare `docker run` has no allowlist in front of it — the cage comes from `compose.yaml`, not the image.
+  Expect 2 failures here and read the other 59; to see all 61 pass, bring the container up with `docker compose up -d` and verify through `docker compose exec cozy`.
+- **Boundary:** this validates the shared install logic, NOT sbx-specific wiring (the kit spec, sbx's git-config rewrites, the microVM).
+  It is a fast pre-check — do a final `sbx run` smoke test before relying on a change.
+- A missing external command (e.g. `gh` on a lean image) is reported as a `pass: false` row, not an abort — the transport turns command-not-found into exit 127.
 
 ### `<sandbox-name>` — verify a running sbx sandbox
 
-Run `cozy verify` inside the sandbox — any launch path works: the nushell MCP
-`evaluate` tool, an interactive shell, or `nu -c` from Bash (load the overlay
-yourself under `nu -c`, per above). One MCP-only gotcha: an `evaluate` session
-caches the module it loaded at startup, so if you edit `verify.nu` mid-session,
-re-run via `nu -c` (fresh parse), not the stale overlay.
+Run `cozy verify` inside the sandbox — any launch path works: the nushell MCP `evaluate` tool, an interactive shell, or `nu -c` from Bash (load the overlay yourself under `nu -c`, per above).
+One MCP-only gotcha: an `evaluate` session caches the module it loaded at startup, so if you edit `verify.nu` mid-session, re-run via `nu -c` (fresh parse), not the stale overlay.
 
 ### `host` — a host checkout
 
-The machine cozy was installed on. `verify` can't reach some host-only paths;
-pair it with the host-only checklist below.
+The machine cozy was installed on.
+`verify` can't reach some host-only paths; pair it with the host-only checklist below.
 
 ## Caveat — `CLAUDE.md catalog` (sandbox target)
 
-This one row can fail on a healthy build. The catalog is appended to
-`~/.claude/CLAUDE.md` by bootstrap step 6, but that same file is also user state:
-`cozy sandbox-state restore` overwrites it whole from a snapshot. If the snapshot
-has no catalog, restore wipes the build's catalog and the check fails — not a build
-defect. Worse, it can't self-heal: `snapshot` captures the clobbered
-(catalog-less) file, so once lost the catalog stays lost across the
-snapshot/restore loop. Before treating this row as a real failure, check whether
-`cozy sandbox-state restore` ran in this sandbox. (Underlying fix — give the
-catalog a marker block so `snapshot` strips it and the build keeps owning it — is
-unbuilt as of 2026-07.)
+This one row can fail on a healthy build.
+The catalog is appended to `~/.claude/CLAUDE.md` by bootstrap step 6, but that same file is also user state: `cozy sandbox-state restore` overwrites it whole from a snapshot.
+If the snapshot has no catalog, restore wipes the build's catalog and the check fails — not a build defect.
+Worse, it can't self-heal: `snapshot` captures the clobbered (catalog-less) file, so once lost the catalog stays lost across the snapshot/restore loop.
+Before treating this row as a real failure, check whether `cozy sandbox-state restore` ran in this sandbox.
+(Underlying fix — give the catalog a marker block so `snapshot` strips it and the build keeps owning it — is unbuilt as of 2026-07.)
 
 ## Manual checks (not automated)
 
 A few things `verify` deliberately leaves out:
 
-- **Idempotency of setup-docker-system.** Re-running `bootstrap.nu` mutates the
-  target, so it stays out of the smoke test. To check by hand, confirm the marker
-  block stays single after a re-run:
+- **Idempotency of setup-docker-system.**
+  Re-running `bootstrap.nu` mutates the target, so it stays out of the smoke test.
+  To check by hand, confirm the marker block stays single after a re-run:
   ```nu
   ^grep -c '# >>> cozy env >>>' /etc/sandbox-persistent.sh   # expect 1
   ^nu ~/repos/cozy/cozy-module/install/bootstrap.nu
@@ -125,29 +91,20 @@ A few things `verify` deliberately leaves out:
 
 ## Host-only checklist (a human runs these)
 
-The host and rebuild paths `verify` can't reach. Where a step produces a sandbox
-or container, run `verify-cozy` on the result instead of re-checking by hand —
-only the host-specific nuances below need eyes:
+The host and rebuild paths `verify` can't reach.
+Where a step produces a sandbox or container, run `verify-cozy` on the result instead of re-checking by hand — only the host-specific nuances below need eyes:
 
-- [ ] Cold `docker build --no-cache -t cozy:v<N> .` succeeds, then the built
-      container passes `verify-cozy docker` (or a sandbox from that image passes).
-- [ ] Drop a module from `toolkit/vendor.yml`, rebuild, recreate — `cozy verify`
-      reports the dropped module absent from `~/repos/`.
-- [ ] On macOS: `cozy-module/install/run-install.sh` from a clean state succeeds
-      and `cozy verify` passes. Then confirm `claude mcp list` resolves a brew `nu`
-      path (`/opt/homebrew/bin/nu` on Apple Silicon, `/home/linuxbrew/...` on
-      Intel) — host-specific, not covered by `verify`.
-- [ ] Pre-existing host `~/.gitconfig` (the user's real identity) survives — XDG
-      `~/.config/git/config` only fills unset keys.
-- [ ] `hx`, `lazygit`, `zellij` open into their TUIs on a real TTY and quit
-      cleanly; `cmd+t`, `cmd+n`, `cmd+shift+g` respond as documented in
-      `vendor/dotfiles/zellij/config.kdl`.
+- [ ] Cold `docker build --no-cache -t cozy:v<N> .` succeeds, then the built container passes `verify-cozy docker` (or a sandbox from that image passes).
+- [ ] Drop a module from `toolkit/vendor.yml`, rebuild, recreate — `cozy verify` reports the dropped module absent from `~/repos/`.
+- [ ] On macOS: `cozy-module/install/run-install.sh` from a clean state succeeds and `cozy verify` passes.
+      Then confirm `claude mcp list` resolves a brew `nu` path (`/opt/homebrew/bin/nu` on Apple Silicon, `/home/linuxbrew/...` on Intel) — host-specific, not covered by `verify`.
+- [ ] Pre-existing host `~/.gitconfig` (the user's real identity) survives — XDG `~/.config/git/config` only fills unset keys.
+- [ ] `hx`, `lazygit`, `zellij` open into their TUIs on a real TTY and quit cleanly; `cmd+t`, `cmd+n`, `cmd+shift+g` respond as documented in `vendor/dotfiles/zellij/config.kdl`.
 
 ## When to escalate
 
-If many checks fail at once, suspect `bootstrap.nu` didn't complete. Re-run it to
-surface the first error — don't patch bootstrap.nu from inside a sandbox; the
-source of truth is the host cozy repo:
+If many checks fail at once, suspect `bootstrap.nu` didn't complete.
+Re-run it to surface the first error — don't patch bootstrap.nu from inside a sandbox; the source of truth is the host cozy repo:
 
 ```nu
 ^nu ~/repos/cozy/cozy-module/install/bootstrap.nu

@@ -9,31 +9,51 @@ reconciled-at: 956273250c82738671f174c620baf4b1e07bc904
 
 # Vendored Nushell modules — why and how they load
 
-The Nushell modules fanned out under `~/repos/` by `bootstrap.nu` Step 3. This file is pointers only: why each is vendored and how it loads. What each command does lives in the module's own repo and in [`../README.md`](../README.md)'s "Nushell modules loaded by default" section — not duplicated here.
+The Nushell modules fanned out under `~/repos/` by `bootstrap.nu` Step 3.
+This file is pointers only: why each is vendored and how it loads.
+What each command does lives in the module's own repo and in [`../README.md`](../README.md)'s "Nushell modules loaded by default" section — not duplicated here.
 
-[`../toolkit/vendor.yml`](../toolkit/vendor.yml) is the source of truth for *which* modules are vendored and which subdir of each repo is copied. The autoloaded ones are imported by [`../docker-files/nushell-autoload/modules-core.nu`](../docker-files/nushell-autoload/modules-core.nu) and `modules-repl.nu`, split by whether they're safe in a non-interactive `nu -c` (see below).
+[`../toolkit/vendor.yml`](../toolkit/vendor.yml) is the source of truth for *which* modules are vendored and which subdir of each repo is copied.
+The autoloaded ones are imported by [`../docker-files/nushell-autoload/modules-core.nu`](../docker-files/nushell-autoload/modules-core.nu) and `modules-repl.nu`, split by whether they're safe in a non-interactive `nu -c` (see below).
 
-> Per-module specs are expected to move *into the modules themselves* over time and reconcile back here. The modules are separate repos for distribution and historical reasons, but cozy is their main customer now — their development follows cozy's needs.
+> Per-module specs are expected to move *into the modules themselves* over time and reconcile back here.
+> The modules are separate repos for distribution and historical reasons, but cozy is their main customer now — their development follows cozy's needs.
 
 ## Autoloaded (no manual `use`)
 
-Two files carry these. `modules-core.nu` holds the set that must work everywhere — it loads from autoload *and* from non-interactive `nu --config ~/.config/nushell/autoload/modules-core.nu -c` (Helix's `shell`, agent `nu -c`); see [`autoload.md`](autoload.md). `modules-repl.nu` holds session tools loaded only in interactive shells.
+Two files carry these.
+`modules-core.nu` holds the set that must work everywhere — it loads from autoload *and* from non-interactive `nu --config ~/.config/nushell/autoload/modules-core.nu -c` (Helix's `shell`, agent `nu -c`); see [`autoload.md`](autoload.md).
+`modules-repl.nu` holds session tools loaded only in interactive shells.
 
 **Core (`modules-core.nu`):**
 
-- **nu-goodies** — everyday data-wrangling and history helpers. Loaded as an overlay, no prefix. Repo `nushell-prophet/nu-goodies`.
-- **nu-kv** — key-value store; backing path follows `$env.WORKSPACE_DIR` (sandbox-state) when mounted, else `~/.local/share/nu-kv`. Prefix `kv`. Repo `nushell-prophet/nu-kv`.
-- **dotnu** — literate programming for `.nu` files. Prefix `dotnu`. Repo `nushell-prophet/dotnu`.
-- **numd** — literate programming for `.md` files. Prefix `numd`. Repo `nushell-prophet/numd`.
+- **nu-goodies** — everyday data-wrangling and history helpers.
+  Loaded as an overlay, no prefix.
+  Repo `nushell-prophet/nu-goodies`.
+- **nu-kv** — key-value store; backing path follows `$env.WORKSPACE_DIR` (sandbox-state) when mounted, else `~/.local/share/nu-kv`.
+  Prefix `kv`.
+  Repo `nushell-prophet/nu-kv`.
+- **dotnu** — literate programming for `.nu` files.
+  Prefix `dotnu`.
+  Repo `nushell-prophet/dotnu`.
+- **numd** — literate programming for `.md` files.
+  Prefix `numd`.
+  Repo `nushell-prophet/numd`.
 
 **Interactive-only (`modules-repl.nu`):**
 
-- **claude-nu** — toolbox for Claude Code sessions. `claude-nu` namespace. Repo `nushell-prophet/claude-nu`.
-- **nu-cmd-stack** — command-history stacking. Prefix `cmd-stack`. The autoload runs `cmd-stack init` right after the `use` — that's what registers the keybindings (ctrl+s push, ctrl+alt+j/k scroll); a bare `use` binds no keys. Repo `nushell-prophet/nu-cmd-stack`.
+- **claude-nu** — toolbox for Claude Code sessions.
+  `claude-nu` namespace.
+  Repo `nushell-prophet/claude-nu`.
+- **nu-cmd-stack** — command-history stacking.
+  Prefix `cmd-stack`.
+  The autoload runs `cmd-stack init` right after the `use` — that's what registers the keybindings (ctrl+s push, ctrl+alt+j/k scroll); a bare `use` binds no keys.
+  Repo `nushell-prophet/nu-cmd-stack`.
 
 ## Vendored but not autoloaded (need a manual `use`)
 
-- **nutest** — Nushell test framework. Third-party, MIT, `vyadh/nutest`.
+- **nutest** — Nushell test framework.
+  Third-party, MIT, `vyadh/nutest`.
 
 ## Vendored, not command modules
 
