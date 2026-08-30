@@ -1,6 +1,7 @@
 export use history.nu
 export use projects.nu
 export use global-claude.nu
+export use file-history.nu
 
 # Snapshot nushell history, Claude Code project sessions, and global CLAUDE.md to sandbox-state.
 export def snapshot []: nothing -> nothing {

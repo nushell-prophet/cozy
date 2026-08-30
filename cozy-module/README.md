@@ -94,6 +94,27 @@ The workspace directory survives sandbox recreation.
 Copies the global `~/.claude/CLAUDE.md` to/from `$env.WORKSPACE_DIR/sandbox-state/`, so the agent's persistent instructions survive sandbox recreation.
 The combined `cozy sandbox-state snapshot` / `restore` runs this alongside history and projects.
 
+### `cozy sandbox-state file-history snapshot`
+
+Commits any file into `$env.WORKSPACE_DIR/sandbox-state/file-history/`, a git repo, so its versions survive sandbox recreation and can be diffed against each other.
+The path inside the repo is the file's own absolute path with the leading `/` dropped — `/Users/user/.config/helix/config.toml` lands at `Users/user/.config/helix/config.toml`.
+
+```nushell
+cozy sandbox-state file-history snapshot ~/.config/helix/config.toml   # add or update one file
+cozy sandbox-state file-history snapshot                              # refresh every file already tracked
+cozy fhs ~/.config/helix/config.toml ~/.config/nushell/env.nu         # same thing, short, several at once
+cozy fhs ...(glob ~/.claude/*.md)                                     # a glob has to be spread
+```
+
+Several paths at once are checked before anything is committed, so a typo in the last argument leaves the earlier ones uncommitted, and the error names every path that was not found.
+A bare `*.md` arrives as that literal string — nushell expands globs only for external commands — hence the `...(glob ...)` spread.
+
+`cozy fhs` is an alias for the same command, and completion shows it with the full name spelled out.
+
+The repo is its own registry: a file added once is picked up by every later bare `snapshot`.
+Unchanged bytes produce no commit, so re-running costs nothing.
+Read the history with `git -C ($env.WORKSPACE_DIR | path join sandbox-state file-history) log --patch`.
+
 ### `cozy verify`
 
 Runs the post-build checks against the sandbox you are inside: tools launch, expected files/dirs/env vars exist, the nushell MCP, pbcopy, topiary, and git-XDG wiring is in place, and — the only checks that touch the network — that `api.anthropic.com` is not intercepted and that an egress allowlist is in force.
