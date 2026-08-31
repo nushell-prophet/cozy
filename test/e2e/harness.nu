@@ -65,8 +65,15 @@ export def run-cmd [
 
 # Spawn a `nu` pane and wait until its prompt has rendered (so input lands in
 # the REPL, not a half-initialised shell). Returns the pane id.
+#
+# Why --no-history: this is a real REPL, so every command a test types would land
+# in the user's own ~/.config/nushell/history.sqlite3 — carrying the test's
+# throwaway `mktemp` cwd with it, which then surfaced as directory suggestions in
+# their history-based completion menu. No test recalls history (each one types its
+# command fresh), so disabling it costs the suite nothing.
+# The flag is quoted: bare `--no-history` would be parsed as a flag OF `run-cmd`.
 export def run-nu [ctx: record, --cwd: string]: nothing -> string {
-    let pane = if $cwd != null { run-cmd $ctx nu --cwd $cwd } else { run-cmd $ctx nu }
+    let pane = if $cwd != null { run-cmd $ctx nu "--no-history" --cwd $cwd } else { run-cmd $ctx nu "--no-history" }
     # nu's default prompt ends with a '>' on the prompt line; wait for it.
     wait-text $ctx '>' --pane $pane | ignore
     $pane

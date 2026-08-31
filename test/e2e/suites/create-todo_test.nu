@@ -45,7 +45,8 @@ def launch-create-todo [it] {
 
 def wait-helix-gone [it] {
     # helix has exited and create-todo's post-quit check has run once we're back to nu
-    wait-pane-command $it.ctx $it.pane '(^|/)nu$' | ignore
+    # (pane_command carries the shell's args, so the nu pane reads 'nu --no-history')
+    wait-pane-command $it.ctx $it.pane '(^|/)nu( |$)' | ignore
     # small settle for the rm/rmdir filesystem ops in create-todo's tail
     sleep 400ms
 }
