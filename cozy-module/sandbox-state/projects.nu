@@ -18,6 +18,7 @@ def sandbox-state-path [filename: string]: nothing -> path {
 # Copies ~/.claude/projects/ into $env.WORKSPACE_DIR/sandbox-state/projects/.
 # The workspace directory survives sandbox recreation, so snapshotted sessions
 # can be restored into a fresh sandbox.
+@category cozy-sandbox-state
 export def snapshot [
     path?: path # Output directory (default: $env.WORKSPACE_DIR/sandbox-state/projects)
 ]: nothing -> nothing {
@@ -36,6 +37,7 @@ export def snapshot [
 #
 # Copies sessions from $env.WORKSPACE_DIR/sandbox-state/projects/ into ~/.claude/projects/.
 # Existing sessions with the same UUID are skipped (no overwrite).
+@category cozy-sandbox-state
 export def restore [
     path?: path # Input directory (default: $env.WORKSPACE_DIR/sandbox-state/projects)
 ]: nothing -> nothing {

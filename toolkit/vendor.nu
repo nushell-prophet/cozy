@@ -153,6 +153,7 @@ def commit-vendor [groups: list<any> repo: oneof<string, nothing>]: nothing -> n
     print $"  (ansi green)Committed:(ansi reset) ($subject)"
 }
 
+@category cozy-toolkit
 export def main [
     repo?: string@"nu-complete vendor repos" # vendor only this repo from vendor.yml; omit to refresh all
     --local (-l)

@@ -398,6 +398,7 @@ def check-egress-cage [run: closure]: nothing -> list {
 }
 
 # Run every check with the given transport; one row per check.
+@category cozy-verify
 export def run-checks [run: closure]: nothing -> table {
     [
         ...(check-tools $run)
@@ -425,6 +426,7 @@ export def run-checks [run: closure]: nothing -> table {
 # to abort the whole run — no table at all, and `check-tools`' 'launch failed'
 # branch was unreachable for exactly the case it was written for. 127 is the
 # shell's own code for command-not-found, so callers need no special case.
+@category cozy-verify
 export def local-runner []: nothing -> closure {
     {|argv|
         let cmd = $argv | first
@@ -439,6 +441,7 @@ export def local-runner []: nothing -> closure {
 # the return value, not stdout, so `cozy verify` surfaced `[]` while the table
 # went nowhere a caller could reach. Humans still see the full table via the
 # returned value's auto-view; only the summary line needs an explicit print.
+@category cozy-verify
 export def report [results: table]: nothing -> table {
     let failed = $results | where not pass
     if ($failed | is-not-empty) {
@@ -453,6 +456,7 @@ export def report [results: table]: nothing -> table {
 # `cozy verify` — run the post-build checks against the sandbox we are inside.
 # Returns the results table (and prints a summary) so callers can act on it,
 # e.g. `cozy verify | where not pass`.
+@category cozy-verify
 export def main []: nothing -> table {
     if not ('/etc/sandbox-persistent.sh' | path exists) {
         error make --unspanned {msg: 'not inside a cozy sandbox (no /etc/sandbox-persistent.sh)'}

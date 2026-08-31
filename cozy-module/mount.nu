@@ -13,6 +13,7 @@ def non-git-subdirs []: nothing -> list<string> {
 # Idempotent git init for multi-repo workspaces.
 # Registers git subdirs as submodules, ignores non-git subdirs.
 # Safe to re-run after adding new dirs.
+@category cozy
 export def init []: nothing -> nothing {
     # sandbox mounts have different ownership — trust all dirs
     # safe.directory='*' is asserted in three places: here, bootstrap.nu's XDG

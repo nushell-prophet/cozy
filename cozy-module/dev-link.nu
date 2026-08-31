@@ -3,6 +3,7 @@
 # immediately visible to autoloaded modules.
 #
 # Run once after sandbox creation. Safe to re-run (idempotent).
+@category cozy
 export def main [
     --workspace (-w): path # workspace path (default: $env.WORKSPACE_DIR)
 ]: nothing -> table {

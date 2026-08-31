@@ -179,6 +179,7 @@ def "main egress-image" []: nothing -> record {
 }
 
 # Run every check; errors (non-zero exit) if any drift is found.
+@category cozy-toolkit
 export def main []: nothing -> nothing {
     main manifest | print
     main egress-image | print

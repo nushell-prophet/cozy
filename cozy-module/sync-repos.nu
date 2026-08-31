@@ -20,6 +20,7 @@ def remote-head-branch []: nothing -> string {
 # PR upstream from, so a re-run never discards local work: no clean, no reset,
 # no branch switch. First run converts a throwaway snapshot; later runs only
 # fetch and fast-forward when it is safe.
+@category cozy
 export def main [] {
     open $manifest
     | each {|row|

@@ -25,6 +25,7 @@ def sandbox-state-path [filename: string]: nothing -> path {
 #
 # Initializes the history database if needed, then restores history-seed.nuon
 # from the cozy-module directory.
+@category cozy-sandbox-state
 export def seed []: nothing -> nothing {
     if not ($seed_file | path exists) {
         error make --unspanned {msg: $"seed file not found: ($seed_file)"}
@@ -38,6 +39,7 @@ export def seed []: nothing -> nothing {
 # interactive shell, `nu -c`, scripts, or the Bash tool.
 # No login shell (`nu -l`) required.
 # Each snapshot gets a timestamped filename; restore picks the most recent by name.
+@category cozy-sandbox-state
 export def snapshot [
     path?: path # Output file (default: $env.WORKSPACE_DIR/sandbox-state/history-<timestamp>.nuon)
 ]: nothing -> nothing {
@@ -64,6 +66,7 @@ export def snapshot [
 # Without a path, restores from the most recent history-*.nuon in sandbox-state.
 # Deduplicates incoming rows and skips entries already in the DB.
 # New rows are inserted oldest-first so recall stays chronological.
+@category cozy-sandbox-state
 export def restore [
     path?: path # Input file (default: latest history-*.nuon in $env.WORKSPACE_DIR/sandbox-state/)
 ]: nothing -> nothing {

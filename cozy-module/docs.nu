@@ -14,6 +14,7 @@ const NUSHELL_DOCS_FOLDERS = ['blog' 'book' 'cookbook']
 export def main [] { }
 
 # Download Claude Code documentation pages listed in the sitemap, in parallel.
+@category cozy-docs
 @example "Fetch Claude Code docs" { cozy docs claude }
 export def claude [
     --output-dir: path = $CLAUDE_DOCS_DIR # Where to write the .md pages
@@ -54,6 +55,7 @@ export def claude [
 
 # Fetch Nushell docs (book, cookbook, blog) via a shallow sparse checkout.
 # Re-run to update: pulls the existing checkout, or clones it fresh.
+@category cozy-docs
 @example "Fetch/update Nushell docs" { cozy docs nushell }
 export def nushell [
     --output-dir: path = $NUSHELL_DOCS_DIR # Where to place the sparse checkout

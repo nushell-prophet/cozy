@@ -16,6 +16,7 @@ def git-config-get [repo: path key: string]: nothing -> any {
     if $r.exit_code == 0 { $r.stdout | str trim } else { null }
 }
 
+@category cozy
 export def main [
     path: path = '.' # target repo, or parent for --all
     --all (-a) # harden every git repo in immediate subdirs of path

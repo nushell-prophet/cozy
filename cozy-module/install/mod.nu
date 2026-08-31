@@ -6,27 +6,32 @@
 export use bootstrap.nu
 
 # Install claude code using official installer script
+@category cozy-install
 export def claude [] {
     use claude.nu [ install ]; install
 }
 
 # Install Rust via rustup
+@category cozy-install
 export def rust [] {
     use rust.nu [ install ]; install
 }
 
 # Install nu_plugin_polars and register it with Nushell
+@category cozy-install
 export def polars [] {
     use polars.nu [ install ]; install
 }
 
 # Install topiary formatter with nushell support
+@category cozy-install
 export def topiary [] {
     use topiary.nu [ install ]; install
 }
 
 # Build zellij from source without web session sharing.
 # Pass --low-resource-compilation if the build is OOM-killed in a small VM.
+@category cozy-install
 export def zellij [
     --low-resource-compilation # Split codegen into smaller units to lower peak RAM (avoids OOM in small VMs)
 ] {
@@ -34,6 +39,7 @@ export def zellij [
 }
 
 # Build nushell from source (latest release or --dev for main)
+@category cozy-install
 export def nushell [
     --dev # Build from main branch instead of latest release
     --no-mcp # Build without MCP support
@@ -42,6 +48,7 @@ export def nushell [
 }
 
 # Build nu_plugin_image (to png / from png) and register it
+@category cozy-install
 export def nu-plugin-image [] {
     use nu-plugin-image.nu [ install ]; install
 }

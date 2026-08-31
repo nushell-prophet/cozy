@@ -29,6 +29,7 @@ def discover-pages []: nothing -> list<string> {
 
 # Sync Docker sandbox docs to local markdown.
 # Run from the cozy/ directory.
+@category cozy-toolkit
 export def main []: nothing -> record {
     let dir = pwd | path join docs.docker.com
     init $dir

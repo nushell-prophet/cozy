@@ -56,6 +56,7 @@ const agent_env = {
     JJ_CONFIG: "$HOME/.config/jj/jj-config-claude-ai.toml"
 }
 
+@category cozy-install
 export def main [
     --force # skip the host-install safety check that refuses to clobber existing user configs
 ] {

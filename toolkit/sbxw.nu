@@ -15,6 +15,7 @@ def "nu-complete sandbox names" []: nothing -> table<value: string, description:
     | each {|x| {value: $x.name description: $"($x.status) ($x.workspaces | str join ' ')"} }
 }
 
+@category cozy-toolkit
 export def main [
     sandbox_name: string@"nu-complete sandbox names"
     --config-file: path

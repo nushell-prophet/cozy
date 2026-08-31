@@ -16,6 +16,7 @@ def sandbox-state-path [filename: string]: nothing -> path {
 # Snapshot ~/.claude/CLAUDE.md to a timestamped file in sandbox-state.
 #
 # Each snapshot gets its own filename; restore picks the most recent by name.
+@category cozy-sandbox-state
 export def snapshot [
     path?: path # Output file (default: $env.WORKSPACE_DIR/sandbox-state/global-claude-<timestamp>.md)
 ]: nothing -> nothing {
@@ -31,6 +32,7 @@ export def snapshot [
 # Restore ~/.claude/CLAUDE.md from sandbox-state, overwriting the current file.
 #
 # Without a path, restores from the most recent global-claude-*.md in sandbox-state.
+@category cozy-sandbox-state
 export def restore [
     path?: path # Input file (default: latest global-claude-*.md in $env.WORKSPACE_DIR/sandbox-state/)
 ]: nothing -> nothing {

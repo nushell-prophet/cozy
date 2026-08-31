@@ -9,6 +9,7 @@
 # Replacements are ordered longest-first to avoid partial matches.
 # The leading quote anchors replacements to bind strings only.
 # Idempotent — running twice is a no-op.
+@category cozy
 export def main []: nothing -> nothing {
     let path = "~/.config/zellij/config.kdl" | path expand
     if not ($path | path exists) {

@@ -10,6 +10,7 @@
 # With --here the config home is the current directory: nu reads
 # ./nushell/{env.nu,config.nu} (XDG layout), and both files are created
 # empty if missing, so they are present upon start and can be edited live.
+@category cozy
 export def main [
     --here # use ./nushell/ in the current directory as the config dir
 ]: nothing -> nothing {

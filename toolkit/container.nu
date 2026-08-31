@@ -608,6 +608,7 @@ def reject-writable [ws: record<path: path, ro: bool> policy: path]: nothing -> 
     }
 }
 
+@category cozy-toolkit
 export def main []: nothing -> nothing {
     print "usage: nu toolkit/container.nu <up|restart|reload-egress|refresh-egress|attach> ... — `--help` on each"
 }

@@ -66,6 +66,7 @@ def commit-file [repo: path, src: path]: nothing -> bool {
 #
 # A bare `*.md` arrives as that literal string, since nushell expands globs only
 # for external commands — spread the matches instead: `snapshot ...(glob *.md)`.
+@category cozy-sandbox-state
 export def snapshot [
     ...paths: path # Files to snapshot (default: every file already tracked)
 ]: nothing -> nothing {
