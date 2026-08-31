@@ -67,7 +67,10 @@ The one thing never to write is `| table` — it forces the box back.
   `export def update` is legal and the shadowing module runs fine, but every module it `use`s is parsed with that name already bound.
   So an imported body holding `$rows | update file { cwd-relative }` resolves `update` to the custom command and reads the closure as its string argument, failing with `Parse mismatch: expected non-block value: string` or `expected string, found closure` — pointing at the *imported* file, naming nothing about `update`, and leaving you bisecting a file you did not change.
   Verified: wholesale and named-list imports behave the same, and a `_`-prefixed internal module is not exempt.
-  Fix: `alias core-update = update` at the top of the module that uses the builtin, then call `core-update` there.
+  Fix: the `%` sigil at the call site — `$rows | %update file { cwd-relative }`.
+  `%name` reaches the builtin whatever is shadowing it, needs no declaration, and works for multiword names (`%str contains`) — verified on 0.115.1 for an imported helper, a same-file shadow and a `def --env` body.
+  It reaches **builtins only** and has to be written where the call is, so a third-party module that spells the name bare still breaks; the answer there is to not take the builtin's name.
+  `std/assert` uses `alias "core length" = length` instead and that works too, but those lines are from 2023 and predate the sigil — do not copy them.
   Or move the shared code into a module that shadows nothing, which is what to do when several builtins are involved.
 - `|` is the only operator that continues a line by itself.
   Any other binary operator (`++`, `+`, `and`, `or`, …) breaks the parse when the expression spans lines: leading (`let a = [x y]` ⏎ `    ++ [z]`) → ``Command `++` not found``, trailing (`[x y] ++` ⏎ `[z]`) → `Incomplete math expression`.
