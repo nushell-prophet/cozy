@@ -40,7 +40,7 @@ Autoload scripts in `~/.config/nushell/autoload/` load the modules above (except
 The nushell MCP `evaluate` tool runs such a session, so the modules are ready there too.
 A one-shot `nu -c '…'` (e.g. run from Bash) is not interactive and skips autoloads, so `cozy`, `nu-goodies`, `kv` and the rest are absent — you'll get `command not found`.
 The MCP `evaluate` tool is good for interactive exploration (autoloads fire, structured output) — but read its caveats under *Nushell MCP Server* below before relying on it.
-If you use `nu -c`, load the modules with `--config`: `nu --config ~/.config/nushell/autoload/modules-core.nu -c '…'` — `--config` runs even in `-c` mode (unlike autoload), so the full core module set (`cozy`, `nu-goodies`, `kv`, `dotnu`, `numd`) is available.
+If you use `nu -c`, load the modules with `--config`: `nu --config ~/.config/nushell/autoload/modules-core.nu --commands '…'` — `--config` runs even in `-c` mode (unlike autoload), so the full core module set (`cozy`, `nu-goodies`, `kv`, `dotnu`, `numd`) is available.
 
 **End every nu pipeline you are going to read with `| to nuon --pretty`.** A one-shot `nu` loads no config, so it renders with stock defaults — an 80-column box table built for a terminal, not for a reader.
 Read as text it loses data and never says so: identifiers wrap mid-word, a whole column collapses into a bare `...`, a nested value becomes `[list 3 items]`.
@@ -50,9 +50,13 @@ The one thing never to write is `| table` — it forces the box back.
 
 ### Pitfalls cheatsheet
 
-- `\(` is an escape **only** in `$"..."`.
-  In `$'...'` backslash is literal and `(` still interpolates — parens can't be escaped there.
-  Literal parens + interpolation → `$"..."`.
+- **Never put a remark in parentheses inside `$"..."`.** `print $"rows (was 635 before): ($n)"` tries to run `was` as a command.
+  This is the most repeated Nushell error across past sessions, and it is always the same shape: an explanation in words, in brackets, inside a `print $"…"`.
+  Move the note out of the string.
+  If it must stay, escape both parens — `\(was 635 before\)` — but that escape works **only** in `$"..."`; in `$'...'` backslash is literal and `(` still interpolates, so parens cannot be escaped there at all.
+- **`else` has to sit on the same line as the closing brace**: `} else {`, `} else if $x { … }`.
+  A line that *starts* with `else` gives ``Command `else` not found``.
+  The bodies may span as many lines as you want — only the position of `else` matters.
 - The Bash tool rewrites `!` → `\!`, breaking `!=`/`!~` in `nu -c '…'`.
   Use a quoted heredoc (`<< 'EOF'`) or a temp file.
 - In Bash, `o+e>| cmd` is not a pipe — `>|` writes a file named `cmd`.
@@ -89,8 +93,22 @@ The one thing never to write is `| table` — it forces the box back.
   (`hide 'from md'` disables the conversion for the session.)
 - To check a `.nu` file, don't run `nu --ide-check` raw — it floods stdout with type hints and its `span` is raw byte offsets (useless to act on).
   Use `dotnu diagnose file.nu`: real diagnostics only, each resolved to a line number, the source line, and the flagged text.
-  It's autoloaded (from Bash: `nu --config ~/.config/nushell/autoload/modules-core.nu -c 'dotnu diagnose file.nu'`); `view source dotnu diagnose` shows what it does.
+  It's autoloaded (from Bash: `nu --config ~/.config/nushell/autoload/modules-core.nu --commands 'dotnu diagnose file.nu'`); `view source dotnu diagnose` shows what it does.
   When you finish writing or editing a `.nu` file, run it before considering the file done.
+- **In `where`, parentheses turn a column name into a command.** `where (a == 1 and b == 2)` fails with ``Command `a` not found``.
+  Without the parens the same line works: `where a == 1 and b == 2`.
+  For anything more complex use a closure: `where {|r| $r.a == 1 and $r.b > 2 }`.
+- **`range` was removed — the command is `slice`** (`$list | slice 1..2`).
+  Same class of stale name: `version` → `version check`; `std` is a module, so `use std` first (and `std/testing` is gone — the test runner is `nutest`).
+  When a command "should exist" but is not found, check the version instead of working around it.
+- **After `use foo.nu` every command carries the file stem as a prefix, and `main` takes the module's own name.** `use toolkit.nu` gives you `toolkit` (which is `main`) and `toolkit main test` (which is `main test`) — not `toolkit test`, and never a bare `main test`. `use toolkit.nu *` imports them unprefixed.
+  To simply run it, use the script form: `nu toolkit.nu test`.
+  When unsure, look instead of guessing: `scope commands | where name =~ toolkit | get name`.
+- **`path self` runs only at parse time, so its result has to land in a `const`.** Called inside a `def` body it fails with `x this command can only run during parse-time`, and the help line — "try assigning this command's output to a const variable" — is the actual fix, not a hint.
+  Put it at the top of the file: `const SCRIPT_DIR = path self | path dirname`.
+  It also takes a path argument resolved against the script's own directory, which is how a script points at a neighbour without a hardcoded absolute path: `const SIBLING = path self ../CLAUDE.md`.
+  Both forms work in a `const`, neither works in a command body.
+  It needs a real file too, so `nu --commands 'path self'` fails — test it in a script, not with `-c`.
 
 ## Nushell MCP Server
 
