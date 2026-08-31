@@ -167,7 +167,11 @@ export def main [
     let all_groups = load-modules
     let groups = if $repo == null { $all_groups } else { $all_groups | where repo == $repo }
     if ($groups | is-empty) {
-        error make --unspanned {msg: $"repo '($repo)' not found in vendor.yml"}
+        error make {
+            msg: $"repo '($repo)' not found in vendor.yml"
+            label: {text: "not a vendored repo", span: (metadata $repo).span}
+            help: $"vendored repos: ($all_groups | get repo | str join ', '). Omit the argument to refresh all of them."
+        }
     }
 
     # Wipe scope: the whole vendor/ when refreshing everything, else just the

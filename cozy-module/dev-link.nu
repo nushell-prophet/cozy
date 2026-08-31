@@ -9,10 +9,16 @@ export def main [
 ]: nothing -> table {
     let ws = $workspace | default $env.WORKSPACE_DIR?
     if $ws == null {
-        error make --unspanned {msg: "workspace path not given and WORKSPACE_DIR not set — pass --workspace"}
+        error make --unspanned {
+            msg: "workspace path not given and WORKSPACE_DIR not set"
+            help: "pass --workspace"
+        }
     }
     if not ($ws | path exists) {
-        error make --unspanned {msg: $"workspace path ($ws) does not exist — pass --workspace or check WORKSPACE_DIR"}
+        error make --unspanned {
+            msg: $"workspace path ($ws) does not exist"
+            help: "pass --workspace, or check WORKSPACE_DIR"
+        }
     }
 
     let repos_dir = $nu.home-dir | path join repos

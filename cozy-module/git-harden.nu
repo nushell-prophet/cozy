@@ -28,7 +28,11 @@ export def main [
         | where {|p| ($p | path join .git | path exists) }
     } else {
         if not (($path | path join .git | path exists)) {
-            error make --unspanned {msg: $"not a git repo: ($path)"}
+            error make {
+                msg: $"not a git repo: ($path)"
+                label: {text: "no .git directory here", span: (metadata $path).span}
+                help: "pass the repo itself, or --all to harden every git repo in this path's immediate subdirs"
+            }
         }
         [$path]
     }

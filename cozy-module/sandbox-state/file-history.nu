@@ -85,7 +85,11 @@ export def snapshot [
         let missing = $expanded | where { not ($in | path exists) }
         if ($missing | is-not-empty) {
             let names = $missing | each {|p| $"  ($p)" } | str join (char newline)
-            error make --unspanned {msg: $"file not found:(char newline)($names)"}
+            error make {
+                msg: $"file not found:(char newline)($names)"
+                label: {text: "checked these paths", span: (metadata $paths).span}
+                help: 'a bare `*.md` arrives as that literal string — spread the matches instead: `snapshot ...(glob *.md)`'
+            }
         }
         $expanded
     }

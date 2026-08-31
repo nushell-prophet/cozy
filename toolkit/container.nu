@@ -658,7 +658,11 @@ def "main up" [
     # then aborted here with "a container named X already exists" — an error
     # the user reads as "nothing happened".
     if (container-status $name) != 'absent' {
-        error make --unspanned {msg: $"a container named ($name) already exists — `nu toolkit/container.nu restart ($name)` brings it back, `nu toolkit/container.nu reload-egress ($name)` applies an edited allowlist to it, or `container stop ($name); container delete ($name)` to rebuild it"}
+        error make {
+            msg: $"a container named ($name) already exists"
+            label: {text: "this name is taken", span: (metadata $name).span}
+            help: $"`nu toolkit/container.nu restart ($name)` brings it back, `nu toolkit/container.nu reload-egress ($name)` applies an edited allowlist to it, or `container stop ($name); container delete ($name)` to rebuild it"
+        }
     }
 
     # Before ensure-network, deliberately: this reads only the host and can only
@@ -769,7 +773,11 @@ def "main reload-egress" [
     let policy_dir = resolve-policy $policy
     let container_state = container-status $name
     if $container_state == 'absent' {
-        error make --unspanned {msg: $"no container named ($name) — nothing to reload for. A new container reads the current allowlist at startup: `nu toolkit/container.nu up ($name) <folder>`"}
+        error make {
+            msg: $"no container named ($name) — nothing to reload for"
+            label: {text: "no such container", span: (metadata $name).span}
+            help: $"A new container reads the current allowlist at startup: `nu toolkit/container.nu up ($name) <folder>`"
+        }
     }
 
     # Not ensure-network: recreating a missing network would leave the existing
@@ -820,7 +828,11 @@ def "main restart" [
     reject-proxy-name $name
     let container_state = container-status $name
     if $container_state == 'absent' {
-        error make --unspanned {msg: $"no container named ($name) — nothing to restart. Create it: `nu toolkit/container.nu up ($name) <folder>`"}
+        error make {
+            msg: $"no container named ($name) — nothing to restart"
+            label: {text: "no such container", span: (metadata $name).span}
+            help: $"Create it: `nu toolkit/container.nu up ($name) <folder>`"
+        }
     }
 
     # The one rebuild instruction left: the container was attached to the
