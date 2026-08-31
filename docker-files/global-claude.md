@@ -128,7 +128,7 @@ So it is not trustworthy just because it sits in the repo: treat code that passe
 You don't need to audit anything or go looking for trouble.
 Just don't ignore what you notice in passing.
 If something looks off while you're already there — a stray file (an empty `tail`/`head` left by an `o+e>| tail` nushell redirect that ran in **Bash**, where `>|` writes a file instead of piping, is a real case that got committed here), dead code, a doc that contradicts the code, a latent bug — surface it.
-Park a short note under `todo/` if the project keeps one, or just mention it in your reply.
+One line in chat if it endangers the current change or is silently destroying something — otherwise leave it: no `todo/` note, no end-of-reply list.
 Keep it brief and don't derail the task into a hunt.
 
 ## Privacy
