@@ -87,7 +87,7 @@ The one thing never to write is `| table` — it forces the box back.
   Don't flag `else { }` as a bug: it's an intentional identity branch.
   A **missing** else branch is the opposite — it effectively passes nothing (`"abc" | if false { "x" } | describe` → `nothing`).
 - `open x.md` gives structured data, not text.
-  Since 0.112 `open` runs `from md` on a `.md` path and returns a table of `element`/`content` rows.
+  `open` runs `from md` on a `.md` path and returns a table of `element`/`content` rows.
   String commands then fail loudly (`Input type not supported.` from `lines`, `str replace`), but `open x.md | save y.md` fails **silently** — it writes the parsed AST as a markdown table instead of copying the file.
   Any time you want the text, `open --raw x.md`; it's a byte stream, so `lines`, `str replace` and `save` all behave.
   (`hide 'from md'` disables the conversion for the session.)
@@ -98,9 +98,9 @@ The one thing never to write is `| table` — it forces the box back.
 - **In `where`, parentheses turn a column name into a command.** `where (a == 1 and b == 2)` fails with ``Command `a` not found``.
   Without the parens the same line works: `where a == 1 and b == 2`.
   For anything more complex use a closure: `where {|r| $r.a == 1 and $r.b > 2 }`.
-- **`range` was removed — the command is `slice`** (`$list | slice 1..2`).
-  Same class of stale name: `version` → `version check`; `std` is a module, so `use std` first (and `std/testing` is gone — the test runner is `nutest`).
-  When a command "should exist" but is not found, check the version instead of working around it.
+- **Stale names.** `$nu.temp-path` → `$nu.temp-dir`, `$nu.home-path` → `$nu.home-dir`, `$nu.scope` → the `scope` commands; `range` → `slice`; `std` is a module (`use std` first), and `std/testing` is an empty stub — the test runner is `nutest`.
+  A wrong `$nu` field fails at runtime, not parse time, and `dotnu diagnose` calls the file clean — so the check above misses it.
+  `$nu | columns` prints the current set.
 - **After `use foo.nu` every command carries the file stem as a prefix, and `main` takes the module's own name.** `use toolkit.nu` gives you `toolkit` (which is `main`) and `toolkit main test` (which is `main test`) — not `toolkit test`, and never a bare `main test`. `use toolkit.nu *` imports them unprefixed.
   To simply run it, use the script form: `nu toolkit.nu test`.
   When unsure, look instead of guessing: `scope commands | where name =~ toolkit | get name`.
