@@ -1,6 +1,6 @@
 {
-  "skill_name": "code-archaeology",
-  "note": "Ground truth for each eval was verified against the real repos in the cozy workspace before the prompts were written. These evals assume that workspace. Rewritten twice. Iteration 1 scored 29/30 in both arms; the rewrite for iteration 2 scored 36/36 and was worse, because it was drafted from watching the winning arm and so only checked behaviours already present. It let an answer containing a false claim on the central question score full marks. The lesson, and the shape of this set: assertions must be able to fail, and the ones that separate arms check whether a specific fact was found and whether anything asserted as found is contradicted by the repo — not whether the answer has the right headings.",
+  "skill_name": "40-why-is-this",
+  "note": "Ground truth for each eval was verified against the real repos and transcripts in the cozy workspace before the prompts were written. These evals assume that workspace. Evals 0-2 were inherited from 40-code-archaeology, which this skill absorbed together with 40-decision-provenance; they were rewritten twice there and are carried over unchanged. Iteration 1 scored 29/30 in both arms; the rewrite for iteration 2 scored 36/36 and was worse, because it was drafted from watching the winning arm and so only checked behaviours already present. It let an answer containing a false claim on the central question score full marks. The lesson, and the shape of this set: assertions must be able to fail, and the ones that separate arms check whether a specific fact was found and whether anything asserted as found is contradicted by the repo — not whether the answer has the right headings. Eval 3 is the one the merge exists for. Evals 0-2 are answerable from git alone; eval 3 is not, and git alone gives a confidently wrong answer there, because the commit body argues the point in the agent's own voice while the user is the one who raised it. An arm that never opens ~/.claude/projects should fail it.",
   "evals": [
     {
       "id": 0,
@@ -52,6 +52,25 @@
         "Accounts for all three recent package-adding commits, including b89aae1 (the Step 0 apt list), not only the two that touched the Dockerfile",
         "Contains no claim presented as found in the history that the repos contradict",
         "Any claim that the history records nothing on some point names the search that establishes it"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "comment-in-the-agents-voice",
+      "cwd": "/Users/user/git/ai-sandbox-dev-container/dotnu",
+      "prompt": "в toolkit.nu висит комментарий `# Not $nu.is-interactive because: it reports REPL-ness, not human-ness`. звучит как агент сам себе объяснил, почему не взял очевидную вещь. я это просил или он сам решил?",
+      "expected_output": "The user raised it himself — situation 'asked for', not an agent deciding alone. git alone points the other way: the comment's birth commit is c544362 (2026-07-09, dotnu), whose body argues the case entirely in the agent's own voice (\"Do NOT use `$nu.is-interactive`: it reports REPL-ness, not human-ness\") and never mentions the user proposing it. The transcript settles it: on 2026-07-09 04:17, project slug -Users-user-git-ai-sandbox-dev-container, the user wrote \"research, if we can add automatic check like $nu.is-interactive to pick when not to show the table output, or maybe just flip defaults, so the --json become default\". The comment is the agent's answer to that research request — the mechanism was found inverted and rejected. The commit lands an hour later in the same session. The user's message also points at todo/20260709-040954-toolkit-test-output-unfriendly.md, the todo-to-session hand-off the skill describes. The right answer closes the matter rather than re-opening it.",
+      "assertions": [
+        "Opens by answering the question asked — the user raised $nu.is-interactive himself — before presenting the evidence",
+        "Quotes the user's own words from the transcript rather than paraphrasing them: research, if we can add automatic check like $nu.is-interactive",
+        "Names the session date 2026-07-09 or the transcript as the source of that quote, not the commit",
+        "Names commit c544362 as where the comment entered the tree",
+        "Does not conclude that an agent decided this alone, and does not present the commit body's argument as the agent's own initiative",
+        "States that the commit body alone reads as an agent justifying its own pick, and that this is why git by itself is not enough here",
+        "Reports that the proposal was researched and rejected on its merits, so the decision stands and the matter is closed",
+        "Contains no claim presented as found that the repo or the transcript contradicts",
+        "Any claim that nothing is recorded on some point names the search that establishes it, including that the transcripts were searched"
       ],
       "files": []
     }

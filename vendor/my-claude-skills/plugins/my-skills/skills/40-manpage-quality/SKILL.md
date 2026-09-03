@@ -191,6 +191,19 @@ Documentation is a set of claims about behaviour, so the user's verification rul
 Coverage is part of the bar: every option in the interface appears in the document, or the document is not finished.
 Say which options you could not exercise.
 
+## The reader test
+
+Verification above checks the document against the program.
+It cannot check the document against a reader, because you are not one any more — you have just written the page, so every gap in it is filled in your head and it reads complete to you.
+
+So hand it to `cold-reader`: give it the document and the five to ten questions a reader would actually arrive with.
+Draw those from *The unasked branch* — the ones that start with "what happens if", not the ones the page is organised around.
+It answers from the page alone and reports what it could not answer, what it had to assume, and what the page uses without introducing.
+
+Every "the document does not say" is a missing sentence.
+Write it and run the test again.
+Its empty lists are a result too: they say the page held.
+
 ## Output
 
 Hand back the document, then a short report in this shape:

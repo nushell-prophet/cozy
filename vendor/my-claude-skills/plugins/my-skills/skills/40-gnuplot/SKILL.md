@@ -6,6 +6,9 @@ description: >
   a Nushell pipeline or variable, or asks for a line chart, scatter plot, bar chart, or histogram
   of nu data shown as text in the terminal (no image file). Trigger on "plot this table",
   "show a chart of", "graph these numbers", "ascii chart", "gnuplot".
+  Not for a rendered chart — an image file, an HTML page, an artifact, or a plotting
+  library's output. That is `dataviz`; this skill only draws with characters into the
+  terminal the user is already looking at.
 version: 0.1.0
 ---
 

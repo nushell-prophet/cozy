@@ -9,6 +9,9 @@ description: >
   "clean up todo", or asks whether notes marked FIXED / DONE / completed
   are actually closed. Also use before planning work off a stale backlog.
 version: 0.1.0
+context: fork
+agent: general-purpose
+background: false
 ---
 
 # Todo Verify

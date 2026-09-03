@@ -5,8 +5,10 @@ description: >
   "add a changelog entry", "update the changelog", "release a new version",
   "cut a release", "validate the changelog", "init changelog",
   "add to unreleased", "prepare release notes", "bump version",
-  mentions "CHANGELOG.md", "keep a changelog", "what changed",
+  mentions "CHANGELOG.md" or "keep a changelog",
   or works on release management involving a changelog file.
+  Not for a bare "what changed" — that asks about a diff or a history, not
+  about a changelog file.
   Provides the Keep a Changelog 1.1.0 format and operations.
 version: 0.1.0
 ---

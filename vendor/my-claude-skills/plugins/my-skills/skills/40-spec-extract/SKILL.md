@@ -9,6 +9,9 @@ description: >
   Also trigger when the user mentions extracting contracts, interfaces, or feature maps from code.
   Works best on projects up to ~5K LOC but handles larger ones by focusing on public interfaces.
 version: 0.1.0
+context: fork
+agent: general-purpose
+background: false
 ---
 
 # Spec Extract
@@ -211,7 +214,8 @@ Capture it.
 
 ## After generating the spec
 
-Present it to the user for review.
+This skill runs in its own context, so you cannot put these questions to the user yourself.
+Return them with the spec, as a numbered list the caller can hand over unchanged.
 Ask specifically:
 1. Does every feature listed here actually exist?
    (catches hallucinated features)
