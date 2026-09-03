@@ -230,7 +230,8 @@ Main commands:
 - `claude-nu projects` — list projects under `~/.claude/projects`, most recent first
 - `claude-nu messages 'regex'` — search user messages; scope is whatever is piped in (`claude-nu sessions --all-projects | claude-nu messages 'regex'` widens to every project), and with no input it reads the whole current project
 - `claude-nu tool-calls 'regex'` — the same search over what the agent actually ran, not what was said; `messages`, `tool-calls` and `sessions` all take `--since`/`--until` (a duration means ago: `--since 1wk`)
-- `claude-nu sessions` — parse session files into structured summaries, with selectable columns (`--columns`/`--all-columns`: file ops, tool stats, agents, etc.); this is where session selection lives (`--last`, `--session`, `--all-projects`)
+- `claude-nu slash-commands` — one row per slash command you invoked, scoped and windowed like `messages`; `| histogram command` ranks them (built-ins are skipped unless `--all`)
+- `claude-nu sessions` — parse session files into structured summaries, with selectable columns (`--columns`/`--all-columns`: file ops, tool stats, agents, etc.); this is where session selection lives (`--last`, `--session` by UUID or `/rename` name, `--all-projects`)
 - `claude-nu export-session` — export session dialogue as markdown; it returns the text, so saving is the shell's job (`| save session.md`)
 - `claude-nu project-move` — retarget Claude's stored state after a project directory moves
 - `claude-nu gi` — status of the git-intent protocol in the current repo; `gi enable` seeds it (Canvas style and skills), `gi import` turns a session's dialogue into a canvas, `gi open <doc>` launches a session bound to that canvas, and `gi open --fork <doc>` copies the canvas to the next name in its series (`plan.md` → `plan_1.md`) and opens the copy in a fresh session
