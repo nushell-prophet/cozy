@@ -2,6 +2,7 @@
 
 # update-public-git.nu - Update public repository with patches from private repo
 
+@category development
 export def main [
     private_repo: string # Path to private repository
     public_repo: string # Path to public repository
@@ -14,11 +15,19 @@ export def main [
 
     # Validate inputs
     if not ($private_repo | path exists) {
-        error make {msg: $"Private repo path does not exist: ($private_repo)"}
+        error make {
+            msg: 'private repo path does not exist'
+            label: {text: 'no such directory', span: (metadata $private_repo).span}
+            help: 'pass the path of an existing local clone'
+        }
     }
 
     if not ($public_repo | path exists) {
-        error make {msg: $"Public repo path does not exist: ($public_repo)"}
+        error make {
+            msg: 'public repo path does not exist'
+            label: {text: 'no such directory', span: (metadata $public_repo).span}
+            help: 'pass the path of an existing local clone'
+        }
     }
 
     let patch_dir = "temp-patches"
@@ -44,7 +53,11 @@ export def main [
 
     # Check if we're in a git repo
     if not (".git" | path exists) {
-        error make {msg: $"Not a git repository: ($private_repo)"}
+        error make {
+            msg: 'private repo is not a git repository'
+            label: {text: 'no .git directory here', span: (metadata $private_repo).span}
+            help: 'run `git init` there, or point at the repository root'
+        }
     }
 
     # Show what commits will be included
@@ -84,13 +97,20 @@ export def main [
 
     # Check if we're in a git repo
     if not (".git" | path exists) {
-        error make {msg: $"Not a git repository: ($public_repo)"}
+        error make {
+            msg: 'public repo is not a git repository'
+            label: {text: 'no .git directory here', span: (metadata $public_repo).span}
+            help: 'run `git init` there, or point at the repository root'
+        }
     }
 
     # Check if repo is clean
     let status = (git status --porcelain | lines)
     if not ($status | is-empty) {
-        error make {msg: "Public repo has uncommitted changes. Please commit or stash them first."}
+        error make {
+            msg: 'public repo has uncommitted changes'
+            help: 'commit or stash them, then run this again'
+        }
     }
 
     print $"\n🔧 Applying patches to public repo..."
