@@ -319,6 +319,18 @@ container attach my-cozy --workdir ~/path/to/project
 Load the module in your REPL instead (the same holds for `toolkit/sbxw.nu` on the sbx path).
 `--no-job` runs wezterm in the foreground of the current shell, which does work from a script, but blocks it until the window closes.
 
+##### Without nushell on the host
+
+`toolkit/container.zsh` is `up` and `restart` only, in zsh, for a host that has no nushell installed — same flags, same cage, same refusals.
+It needs `jq` beside `container`, because the runtime's `ls` schema is JSON and zsh cannot read it.
+The other three commands stay nushell-only, and `toolkit/container.nu` remains the primary path: when the two disagree, it is right.
+
+```
+./toolkit/container.zsh up my-cozy ~/path/to/project
+./toolkit/container.zsh up my-cozy ~/project-a ~/shared-libs:ro ~/docs:ro --ssh-agent
+./toolkit/container.zsh restart my-cozy
+```
+
 Several folders can be mounted, spelled the way `sbx run` spells it: each appears inside at its own absolute host path, and `:ro` makes one read-only.
 The first path is the primary workspace — what `WORKSPACE_DIR` points at, and where you start.
 A folder containing this repo is refused unless it is `:ro`, for the reason above.

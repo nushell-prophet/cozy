@@ -12,6 +12,7 @@ const bootstrap = ($cozy_root | path join cozy-module install bootstrap.nu)
 const kit_spec = ($cozy_root | path join sbx-kit spec.yaml)
 const compose = ($cozy_root | path join compose.yaml)
 const container_nu = ($cozy_root | path join toolkit container.nu)
+const container_zsh = ($cozy_root | path join toolkit container.zsh)
 
 # Env vars that MUST agree across the three injection points: the Dockerfile
 # ENV block, sbx-kit/spec.yaml's environment.variables, and the export block
@@ -159,23 +160,35 @@ def "main manifest" []: nothing -> record {
     {check: manifest, repos: ($have | length), ok: true}
 }
 
-# The egress proxy is pinned by digest in two places — compose.yaml for the
-# docker path, toolkit/container.nu for the Apple `container` one. Both cage
-# the agent behind the same proxy holding the same policy, so the two literals
+# The egress proxy is pinned by digest in three places — compose.yaml for the
+# docker path, toolkit/container.nu for the Apple `container` one, and
+# toolkit/container.zsh for the same path on a host with no nushell. All three
+# cage the agent behind the same proxy holding the same policy, so the literals
 # must agree, and nothing but this check makes them. The digest itself is also
 # asserted: replacing it with a floating tag silently un-pins the one container
-# that has internet, which no comparison of the two copies would catch.
+# that has internet, which no comparison of the copies would catch.
 def "main egress-image" []: nothing -> record {
-    let compose_ref = open $compose | get services.egress.image
-    let m = open --raw $container_nu | parse --regex "(?m)^const egress_image = '(?<v>[^']+)'"
-    let up_ref = if ($m | is-empty) { '(missing)' } else { $m.v.0 }
-    if $compose_ref != $up_ref {
-        error make {msg: $"egress image drift: compose.yaml has ($compose_ref), toolkit/container.nu has ($up_ref)"}
+    let refs = [
+        {source: 'compose.yaml' ref: (open $compose | get services.egress.image)}
+        {source: 'toolkit/container.nu' ref: (pinned-ref $container_nu "(?m)^const egress_image = '(?<v>[^']+)'")}
+        {source: 'toolkit/container.zsh' ref: (pinned-ref $container_zsh "(?m)^typeset -r EGRESS_IMAGE='(?<v>[^']+)'")}
+    ]
+    if ($refs | get ref | uniq | length) != 1 {
+        error make {msg: $"egress image drift: ($refs | each {|r| $'($r.source) has ($r.ref)'} | str join '; ')"}
     }
-    if not ($compose_ref | str contains '@sha256:') {
-        error make {msg: $"egress image ($compose_ref) is not pinned by digest — the proxy that holds the policy must not float"}
+    let ref = $refs | first | get ref
+    if not ($ref | str contains '@sha256:') {
+        error make {msg: $"egress image ($ref) is not pinned by digest — the proxy that holds the policy must not float"}
     }
-    {check: 'egress-image', ref: $compose_ref, ok: true}
+    {check: 'egress-image', ref: $ref, sources: ($refs | length), ok: true}
+}
+
+# A pin that cannot be found reads as '(missing)' rather than erroring here, so
+# the drift message below names which file lost its literal instead of dying on
+# a cell path.
+def pinned-ref [file: path pattern: string]: nothing -> string {
+    let m = open --raw $file | parse --regex $pattern
+    if ($m | is-empty) { '(missing)' } else { $m.v.0 }
 }
 
 # Run every check; errors (non-zero exit) if any drift is found.
