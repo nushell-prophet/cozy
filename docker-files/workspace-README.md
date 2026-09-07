@@ -41,6 +41,7 @@ Its module (`cozy-module/`) is autoloaded, so `cozy` is a command:
 | `cozy mount init` | Register the current directory's git subdirs as submodules (`git init`s and commits if needed) |
 | `cozy swap-zellij-super` | Rewrite Zellij's Super-key bindings (→ Alt/Ctrl) for Windows hosts |
 | `cozy git-harden` | Apply safer git defaults |
+| `cozy use-host-ssh-agent` | Show or switch (`--enable` / `--disable`) whether this shell reaches the forwarded host ssh-agent; off by default |
 | `cozy verify` | Run the post-build check suite against this environment |
 | `cozy docs claude` / `cozy docs nushell` | Fetch Claude Code / Nushell reference docs into a local folder for offline use |
 | `cozy nu-demo-instance` | Put a bare throwaway-nushell launch line into the prompt (for demos); `--here` keeps the config in `./nushell/` |

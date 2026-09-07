@@ -31,7 +31,7 @@ sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
 
 A second run path is **in testing**: the `Dockerfile` builds a `debian:12-slim` image for plain `docker run` and Apple `container`.
 Its point is a rootless runtime — the `agent` has passwordless sudo only during the build, revoked in the final layer — which suits working with valuable data.
-It runs the same `bootstrap.nu` and passes `cozy verify` (all 61 checks) when launched via `compose.yaml`; a bare `docker run` fails the two `egress:` checks because it has no allowlist in front of it.
+It runs the same `bootstrap.nu` and passes `cozy verify` (all 62 checks) when launched via `compose.yaml`; a bare `docker run` fails the two `egress:` checks because it has no allowlist in front of it.
 This is a separate path, not fed to `sbx` (see the registry note above); `sbx` stays primary.
 Verify a build of it with `verify-cozy docker`.
 

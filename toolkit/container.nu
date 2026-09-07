@@ -553,7 +553,7 @@ def ssh-agent-args [enabled: bool]: nothing -> list<string> {
         # parenthesis inside an interpolated string is this codebase's most
         # repeated mistake and is not worth risking for a plural.
         let word = if $n == 1 { 'key' } else { 'keys' }
-        print $"  (ansi yellow)Agent:(ansi reset) forwarding the host ssh-agent, ($n) ($word) — anything inside the container can sign with them while it runs, though it can never read them. Prefer a key dedicated to this over your personal one."
+        print $"  (ansi yellow)Agent:(ansi reset) forwarding the host ssh-agent, ($n) ($word) — a shell inside can sign with them after `cozy use-host-ssh-agent --enable`, though it can never read them. Prefer a key dedicated to this over your personal one."
     }
     [--ssh]
 }
@@ -565,7 +565,7 @@ def ssh-agent-args [enabled: bool]: nothing -> list<string> {
 def assert-agent-reachable [name: string]: nothing -> nothing {
     let r = ^container exec $name ssh-add -l | complete
     if $r.exit_code not-in [0 1] {
-        error make --unspanned {msg: $"($name) started, but `ssh-add -l` inside it cannot reach the forwarded agent, exit ($r.exit_code): ($r.stderr | str trim). Recreate it without --ssh-agent, or check that the host agent is still alive."}
+        error make --unspanned {msg: $"($name) started, but `ssh-add -l` inside it cannot reach the forwarded agent, exit ($r.exit_code): ($r.stderr | str trim). Recreate it without --ssh-agent, or check that the host agent is still alive. If the container's terminal is frozen too, `killall ssh-agent` here wakes it — parallel agent clients inside hang on live connections and the terminal can freeze with them; launchd restarts the agent on its next use."}
     }
     print $"  (ansi green)Agent:(ansi reset) ($name) reaches the forwarded agent at /var/host-services/ssh-auth.sock"
 }

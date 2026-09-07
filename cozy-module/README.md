@@ -46,6 +46,18 @@ Idempotent.
 cozy swap-zellij-super
 ```
 
+### `cozy use-host-ssh-agent`
+
+Shows whether this shell can reach the host ssh-agent that `container.nu up --ssh-agent` forwards, and switches it.
+Off in every new shell by default: parallel clients of the forwarded socket lose their answers and hang, and the container's terminal can freeze with them.
+Enable it in the pane that signs, for as long as it signs.
+
+```nushell
+cozy use-host-ssh-agent            # status
+cozy use-host-ssh-agent --enable   # this shell and its children may sign with the host's keys
+cozy use-host-ssh-agent --disable  # back to the default
+```
+
 ### `cozy git-harden`
 
 Sets `gc.auto=0` and `receive.autoGc=false` in a repo's own `.git/config` so both the host and the sandbox git honor them, regardless of which side runs an operation.
