@@ -1,5 +1,6 @@
 const global_claude_md = '~/.claude/CLAUDE.md'
 
+# The sandbox-state directory inside the mounted workspace; errors when no workspace is mounted.
 def sandbox-state-dir []: nothing -> path {
     if $env.WORKSPACE_DIR? == null {
         error make --unspanned {msg: "WORKSPACE_DIR not set — sandbox-state requires a mounted workspace"}
@@ -7,6 +8,7 @@ def sandbox-state-dir []: nothing -> path {
     $env.WORKSPACE_DIR | path join sandbox-state
 }
 
+# Path of a file under sandbox-state, creating the directory when missing.
 def sandbox-state-path [filename: string]: nothing -> path {
     let dir = sandbox-state-dir
     mkdir $dir

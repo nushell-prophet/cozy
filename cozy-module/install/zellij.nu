@@ -2,6 +2,7 @@ use rust.nu
 use _clone-or-fail.nu
 use _install-binary.nu
 
+# Show the help of this module; `install` runs the zellij build.
 export def main [] { help zellij }
 
 # Build zellij from source without web session sharing.

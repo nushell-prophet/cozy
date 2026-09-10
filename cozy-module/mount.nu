@@ -1,12 +1,14 @@
+# Immediate subdirectories that are git repos.
 def git-subdirs []: nothing -> list<string> {
     ls | where type == dir
-    | where { $in.name | path join .git | path exists }
+    | where ($it.name | path join .git | path exists)
     | get name
 }
 
+# Immediate subdirectories that are not git repos.
 def non-git-subdirs []: nothing -> list<string> {
     ls | where type == dir
-    | where { $in.name | path join .git | path exists | not $in }
+    | where not ($it.name | path join .git | path exists)
     | get name
 }
 
@@ -36,10 +38,10 @@ export def init []: nothing -> nothing {
     let existing = if $fresh { [] } else {
         ^git submodule status
         | lines
-        | each { $in | str trim | split row ' ' | get 1 }
+        | each { str trim | split row ' ' | get 1 }
     }
 
-    let new_repos = $repos | where { $in not-in $existing }
+    let new_repos = $repos | where $it not-in $existing
 
     if ($new_repos | is-empty) and (not $fresh) {
         print 'Workspace up to date'
@@ -54,7 +56,7 @@ export def init []: nothing -> nothing {
 	url = ./($name)'
     }
     | str join (char nl)
-    | save -f .gitmodules
+    | save --force .gitmodules
 
     # register new submodules
     $new_repos | each {|name|
@@ -67,7 +69,7 @@ export def init []: nothing -> nothing {
     # .gitignore
     [.DS_Store ...(non-git-subdirs)]
     | str join (char nl)
-    | save -f .gitignore
+    | save --force .gitignore
 
     ^git add .gitmodules .gitignore
     glob *.md | each { ^git add $in }

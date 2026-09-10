@@ -11,6 +11,7 @@ const NUSHELL_DOCS_DIR = 'nushell-docs'
 const NUSHELL_DOCS_REPO = 'https://github.com/nushell/nushell.github.io.git'
 const NUSHELL_DOCS_FOLDERS = ['blog' 'book' 'cookbook']
 
+# Fetch reference docs into local folders for offline, in-sandbox use; see the subcommands.
 export def main [] { }
 
 # Download Claude Code documentation pages listed in the sitemap, in parallel.
@@ -19,7 +20,7 @@ export def main [] { }
 export def claude [
     --output-dir: path = $CLAUDE_DOCS_DIR # Where to write the .md pages
 ]: nothing -> record {
-    let sitemap = do { ^curl -sfL https://code.claude.com/docs/sitemap.xml } | complete
+    let sitemap = ^curl -sfL https://code.claude.com/docs/sitemap.xml | complete
     if $sitemap.exit_code != 0 {
         error make {msg: $"failed to fetch sitemap.xml \(curl exit ($sitemap.exit_code)\)"}
     }
@@ -33,17 +34,19 @@ export def claude [
 
     mkdir $output_dir
 
-    let results = $urls | par-each --threads 4 {|url|
-        let filename = $url | path split | skip 4 | str join '_'
-        let dest = [$output_dir $filename] | path join
-        let r = do { ^curl -sfL $url } | complete
-        if $r.exit_code == 0 {
-            $r.stdout | save -f $dest
-            {url: $url status: ok}
-        } else {
-            {url: $url status: failed}
+    let results = $urls
+        | par-each --threads 4 {|url|
+            let filename = $url | path split | skip 4 | str join '_'
+            let dest = [$output_dir $filename] | path join
+            let r = ^curl -sfL $url | complete
+            if $r.exit_code == 0 {
+                $r.stdout | save --force $dest
+                {url: $url status: ok}
+            } else {
+                {url: $url status: failed}
+            }
         }
-    } | sort-by url
+        | sort-by url
 
     let failed = $results | where status == failed | get url
     {
@@ -67,8 +70,7 @@ export def nushell [
         ^git -C $output_dir sparse-checkout set --no-cone ...($NUSHELL_DOCS_FOLDERS | each { $'/($in)/*' })
     }
 
-    let folders = $NUSHELL_DOCS_FOLDERS | each {|f|
-        {folder: $f size: (du ($output_dir | path join $f) | get apparent | first)}
-    }
+    let folders = $NUSHELL_DOCS_FOLDERS
+        | each {|f| {folder: $f size: (du ($output_dir | path join $f) | get apparent | first)} }
     {dir: $output_dir folders: $folders}
 }

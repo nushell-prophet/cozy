@@ -1,5 +1,6 @@
 const claude_projects_dir = '~/.claude/projects'
 
+# The sandbox-state directory inside the mounted workspace; errors when no workspace is mounted.
 def sandbox-state-dir []: nothing -> path {
     if $env.WORKSPACE_DIR? == null {
         error make --unspanned {msg: "WORKSPACE_DIR not set — sandbox-state requires a mounted workspace"}
@@ -7,6 +8,7 @@ def sandbox-state-dir []: nothing -> path {
     $env.WORKSPACE_DIR | path join sandbox-state
 }
 
+# Path of a file under sandbox-state, creating the directory when missing.
 def sandbox-state-path [filename: string]: nothing -> path {
     let dir = sandbox-state-dir
     mkdir $dir
@@ -54,7 +56,6 @@ export def restore [
         return
     }
 
-    mut restored = 0
     for project in $project_dirs {
         let project_name = $project.name | path basename
         let project_dst = $dst | path join $project_name
@@ -62,7 +63,6 @@ export def restore [
 
         # Copy files and dirs, skip existing (--ignore-existing)
         ^rsync -a --ignore-existing --exclude='.DS_Store' $"($project.name)/" $"($project_dst)/"
-        $restored += 1
     }
-    print $"Restored ($restored) project\(s) into ($dst)"
+    print $"Restored ($project_dirs | length) project\(s) into ($dst)"
 }

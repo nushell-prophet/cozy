@@ -1,3 +1,4 @@
+# Show the help of this module; `install` runs the nu_plugin_polars build.
 export def main [] { help polars }
 
 # Install nu_plugin_polars and register it with Nushell.

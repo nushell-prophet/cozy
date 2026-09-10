@@ -17,8 +17,8 @@ export def main []: nothing -> nothing {
     }
     open $path --raw
     | str replace --all '"Super Shift ' '"Alt Shift '
-    | str replace --all '"Super Alt '   '"Ctrl Alt '
-    | str replace --all '"Super '       '"Alt '
+    | str replace --all '"Super Alt ' '"Ctrl Alt '
+    | str replace --all '"Super ' '"Alt '
     | save --force $path
     print $"patched ($path)"
 }

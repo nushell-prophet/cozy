@@ -2,6 +2,7 @@ use rust.nu
 use _clone-or-fail.nu
 use _install-binary.nu
 
+# Show the help of this module; `install` runs the nushell build.
 export def main [] { help nushell }
 
 # Build nushell from source.
@@ -41,7 +42,10 @@ export def install [
         ^git fetch --tags
         # Why: upstream has legacy tags like 0_5_0 and v0.96.0; version sort ranks
         # '_' above '.', so 0_5_0 would win. Keep only dot-separated version tags.
-        let tag = ^git tag -l --sort='-v:refname' | lines | where $it =~ '^\d+(\.\d+)+$' | first
+        let tag = ^git tag -l --sort='-v:refname'
+            | lines
+            | where $it =~ '^\d+(\.\d+)+$'
+            | first
         ^git checkout $tag
         $tag
     }
@@ -51,7 +55,7 @@ export def install [
     if $no_mcp {
         let defaults = open Cargo.toml | get features.default
         if "mcp" in $defaults {
-            let features = $defaults | where {|x| $x != "mcp" } | str join ","
+            let features = $defaults | where $it != "mcp" | str join ","
             ^cargo build --release -j 1 --config 'profile.release.lto=false' --no-default-features --features $features
         } else {
             print $"  (ansi yellow)Warning(ansi reset): 'mcp' not in default features — building with all defaults"
@@ -69,7 +73,7 @@ export def install [
         $env.PATH = ($env.PATH | prepend $cargo_bin)
     }
 
-    let version = ^($dest) --version | str trim
+    let version = ^$dest --version | str trim
     print $"  (ansi green)nushell(ansi reset): ($version) installed to ($dest)"
     # Why: the shell you ran this from keeps executing the old binary until it
     # restarts, so the version above won't match what `version` reports here.

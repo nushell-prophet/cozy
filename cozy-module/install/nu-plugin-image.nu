@@ -4,6 +4,7 @@ use _install-binary.nu
 
 const repo_url = "https://github.com/fmotalleb/nu_plugin_image.git"
 
+# Show the help of this module; `install` runs the nu_plugin_image build.
 export def main [] { help nu-plugin-image }
 
 # Build nu_plugin_image from source and register it with Nushell.

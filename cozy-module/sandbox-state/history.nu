@@ -8,6 +8,7 @@ const history_db = '~/.config/nushell/history.sqlite3'
 const history_columns = "command_line, cwd, start_timestamp, duration_ms, exit_status, session_id, hostname"
 const seed_file = path self | path dirname | path join .. history-seed.nuon
 
+# The sandbox-state directory inside the mounted workspace; errors when no workspace is mounted.
 def sandbox-state-dir []: nothing -> path {
     if $env.WORKSPACE_DIR? == null {
         error make --unspanned {msg: "WORKSPACE_DIR not set — sandbox-state requires a mounted workspace"}
@@ -15,6 +16,7 @@ def sandbox-state-dir []: nothing -> path {
     $env.WORKSPACE_DIR | path join sandbox-state
 }
 
+# Path of a file under sandbox-state, creating the directory when missing.
 def sandbox-state-path [filename: string]: nothing -> path {
     let dir = sandbox-state-dir
     mkdir $dir
@@ -98,7 +100,7 @@ export def restore [
     let existing_ts = open $db
         | query db "SELECT start_timestamp FROM history"
         | get start_timestamp
-    let new_items = $items | where { $in.start_timestamp not-in $existing_ts }
+    let new_items = $items | where start_timestamp not-in $existing_ts
 
     if ($new_items | is-empty) {
         print $"All ($items | length) entries already in history, nothing to restore"
@@ -132,7 +134,8 @@ export def restore [
     | chunks 100
     | each {|batch|
         let placeholders = $batch | each { "(?, ?, ?, ?, ?, ?, ?)" } | str join ', '
-        let params = $batch | each {|row|
+        let params = $batch
+            | each {|row|
                 [
                     $row.command_line
                     $row.cwd
@@ -145,9 +148,11 @@ export def restore [
                     $row.session_id?
                     $row.hostname?
                 ]
-            } | flatten
+            }
+            | flatten
         open $db | query db $"INSERT INTO history \(($history_columns)\) VALUES ($placeholders)" --params $params
-    } | ignore
+    }
+    | ignore
 
     let total = open $db | query db "SELECT count(*) AS n FROM history" | get 0.n
     let skipped = ($items | length) - ($new_items | length)

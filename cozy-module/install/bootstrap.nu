@@ -56,10 +56,12 @@ const agent_env = {
     JJ_CONFIG: "$HOME/.config/jj/jj-config-claude-ai.toml"
 }
 
+# Set up the sandbox or host end-to-end: brew tools, git config, ~/repos, dotfiles, Claude Code.
+# Safe to re-run; the header of this file explains the modes and each step.
 @category cozy-install
 export def main [
     --force # skip the host-install safety check that refuses to clobber existing user configs
-] {
+]: nothing -> nothing {
     # Why: recent Homebrew prompts "Do you want to proceed?" on `brew install`
     # when it would also upgrade outdated deps; with no TTY brew hangs forever.
     # Set here so the host-install path (no Dockerfile/kit ENV) is covered too.
@@ -104,7 +106,7 @@ export def main [
         let local_bin = $nu.home-dir | path join '.local' 'bin'
         let shim = $local_bin | path join 'pbcopy'
         let existing = which pbcopy | get --optional path.0
-        if ($existing == null) or ($existing == $shim) {
+        if $existing in [null $shim] {
             mkdir $local_bin
             ^install -m 755 ($cozy_root | path join 'docker-files' 'pbcopy') $shim
         }
@@ -161,13 +163,13 @@ export def main [
 	diffFilter = delta --color-only
 [format]
 	pretty = format:commit %C(auto)%H%d%n%C(bold blue)%ar%C(reset)  %C(green)%an <%ae>%C(reset)%n%n%w(0,4,4)%B
-' | save -f ($git_xdg | path join 'config')
+' | save --force ($git_xdg | path join 'config')
     # Global ignore, git's XDG-default path. Read directly when core.excludesFile
     # is unset (Dockerfile / host path); under sbx — which sets excludesFile and
     # shadows this default — git-global-ignore.nu mirrors these lines into the
     # active excludesFile on shell start, and verify.nu's check-git-ignore derives
     # its patterns from this file. Single source: edit here, the others follow.
-    ".DS_Store\nThumbs.db\ndesktop.ini\n" | save -f ($git_xdg | path join 'ignore')
+    ".DS_Store\nThumbs.db\ndesktop.ini\n" | save --force ($git_xdg | path join 'ignore')
 
     # Step 3 — populate ~/repos/ with vendored modules
     populate-repos
@@ -181,7 +183,7 @@ export def main [
     # the current run is stale (e.g. an entry removed upstream). Without
     # this, re-runs accumulated removed-upstream autoload files indefinitely.
     let autoload_dst = $nu.home-dir | path join '.config' 'nushell' 'autoload'
-    if ($autoload_dst | path exists) { rm -rf $autoload_dst }
+    if ($autoload_dst | path exists) { rm --recursive --force $autoload_dst }
     mkdir $autoload_dst
     for f in (glob ($cozy_root | path join 'docker-files' 'nushell-autoload' '*.nu')) {
         ^cp $f $autoload_dst
@@ -261,7 +263,7 @@ export def main [
     # file `claude mcp add --scope user` just wrote.
     let claude_json = $nu.home-dir | path join '.claude.json'
     let existing = if ($claude_json | path exists) { open $claude_json } else { {} }
-    $existing | upsert externalEditorContext true | save -f $claude_json
+    $existing | upsert externalEditorContext true | save --force $claude_json
 
     # Give Claude Code its own identity (see $agent_env above). Merged into the
     # `env` field rather than written over the file: Step 4 already deployed the
@@ -273,13 +275,13 @@ export def main [
         | reduce --fold {} {|it acc| $acc | merge $it }
     let current = if ($settings | path exists) { open $settings } else { {} }
     mkdir ($settings | path dirname)
-    $current | upsert env (($current.env? | default {}) | merge $expanded) | save -f $settings
+    $current | upsert env (($current.env? | default {}) | merge $expanded) | save --force $settings
 
     # Stamp: tells check-no-clobber on re-runs that cozy owns these dirs
     # now, so its guard doesn't trip on cozy's own deployed files. Written
     # last so a partial failure leaves no stamp — user has to pass --force
     # to recover, which is a reasonable speed bump.
-    '' | save -f ($nu.home-dir | path join '.cozy-installed')
+    '' | save --force ($nu.home-dir | path join '.cozy-installed')
 
     # If setup-docker-system just appended env exports to /etc/sandbox-persistent.sh
     # but the user's interactive shell predates this run, those exports won't be
@@ -305,7 +307,7 @@ export def main [
 # Conservative by design: checks dirs (not individual files in
 # paths-docker.csv) so the user is asked even when their custom files
 # wouldn't actually conflict. --force is the escape hatch.
-def check-no-clobber [] {
+def check-no-clobber []: nothing -> nothing {
     let stamp = $nu.home-dir | path join '.cozy-installed'
     if ($stamp | path exists) { return }
 
@@ -321,7 +323,8 @@ def check-no-clobber [] {
         ($nu.home-dir | path join '.claude')
         ($nu.home-dir | path join 'repos')
     ]
-    let existing = $candidates | where {|p|
+    let existing = $candidates
+        | where {|p|
             ($p | path exists) and (
                 ($p | path type) != 'dir' or (ls --all $p | is-not-empty)
             )
@@ -340,7 +343,7 @@ def check-no-clobber [] {
 # Sudo is kept only for genuinely root-owned paths: apt itself and the apt
 # sources files under /etc/apt/. Agent has passwordless sudo at build time,
 # same assumption already made by topiary.nu and rust.nu.
-def setup-docker-system [] {
+def setup-docker-system []: nothing -> nothing {
     # Wipe only the colliding artifacts in ~/.config/nushell — `nu`
     # auto-creates default config.nu/env.nu on first launch, and on a
     # re-run those defaults can collide with the dotfiles deploy in step 4
@@ -365,11 +368,9 @@ def setup-docker-system [] {
     # cozy:v1 re-run) without a proxy. Idempotent — re-applies on every
     # bootstrap so a base-image refresh can't strand us back on plain http.
     # Covers both deb822 (.sources, Ubuntu 24.04+) and one-line (.list, legacy).
-    let apt_sources_files = (
-        ['/etc/apt/sources.list']
+    let apt_sources_files = ['/etc/apt/sources.list']
         | append (ls /etc/apt/sources.list.d/ | get name)
-        | where {|p| $p | path exists }
-    )
+        | where ($it | path exists)
     for f in $apt_sources_files {
         let content = open --raw $f
         let updated = $content | str replace --all --regex 'http://(ports|archive|security)\.ubuntu\.com' 'https://$1.ubuntu.com'
@@ -440,7 +441,7 @@ case $- in *i*) [ -t 1 ] && [ -z "$COZY_MOTD_SHOWN" ] && { export COZY_MOTD_SHOW
 # committed cozy_root/vendor/. Both are the vendored snapshot, used as-is —
 # the installer never fetches. Refreshing the snapshot is toolkit/vendor.nu's
 # job (run before a build). An empty source means a corrupt checkout: fail fast.
-def populate-repos [] {
+def populate-repos []: nothing -> nothing {
     let repos_dir = $nu.home-dir | path join 'repos'
     mkdir $repos_dir
 
@@ -454,7 +455,7 @@ def populate-repos [] {
         mkdir $cozy_dst
         for sub in [cozy-module docker-files] {
             let dst = $cozy_dst | path join $sub
-            if ($dst | path exists) { rm -rf $dst }
+            if ($dst | path exists) { rm --recursive --force $dst }
             ^cp -r ($cozy_root | path join $sub) $dst
         }
     }
@@ -468,7 +469,7 @@ def populate-repos [] {
     }
     for entry in (glob ($vendor_src | path join '*')) {
         let dst = $repos_dir | path join ($entry | path basename)
-        if ($dst | path exists) { rm -rf $dst }
+        if ($dst | path exists) { rm --recursive --force $dst }
         ^cp -r $entry $repos_dir
     }
 }

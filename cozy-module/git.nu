@@ -14,7 +14,7 @@ const hook = path self hooks/commit-msg
 # and git's line is streamed to the terminal, not captured; this captures it so callers and tests
 # can read it. It serves the commands that must fail on a failed git call; `git-config-get` keeps
 # its own `complete` because null is its answer there.
-def git-in [dir: path, args: list<string>]: nothing -> string {
+def git-in [dir: path args: list<string>]: nothing -> string {
     let res = ^git -C $dir ...$args | complete
     if $res.exit_code != 0 {
         error make --unspanned {msg: ($res.stderr | str trim)}
@@ -49,7 +49,7 @@ export def install-change-id-hook [
         ^chmod +x $dest
         'installed'
     }
-    {repo: ($common | path dirname), hook: $dest, status: $status}
+    {repo: ($common | path dirname) hook: $dest status: $status}
 }
 
 # Compose a link to a file as of the commit that last touched it:
@@ -77,7 +77,7 @@ export def link [
     if ($log | is-empty) {
         error make {
             msg: $"($path) is not tracked by git"
-            label: {text: "no commit touches this file", span: (metadata $file).span}
+            label: {text: "no commit touches this file" span: (metadata $file).span}
             help: "add and commit it first: a link names committed content"
         }
     }
@@ -87,7 +87,7 @@ export def link [
     if (git-in $dir [status --porcelain -- $abs] | is-not-empty) {
         error make {
             msg: $"($path) has uncommitted changes"
-            label: {text: "dirty in the worktree", span: (metadata $file).span}
+            label: {text: "dirty in the worktree" span: (metadata $file).span}
             help: "commit it first: a link names committed content"
         }
     }
@@ -103,7 +103,7 @@ export def link [
         _ => {
             error make {
                 msg: $"commit ($log.0) carries ($ids | length) Change-Id trailers"
-                label: {text: "last touched by an ambiguous commit", span: (metadata $file).span}
+                label: {text: "last touched by an ambiguous commit" span: (metadata $file).span}
                 help: "write the link with the sha by hand"
             }
         }
@@ -122,7 +122,7 @@ export def resolve [
     if ($parts | is-empty) {
         error make {
             msg: $"not a link: ($link)"
-            label: {text: "no <repo>@<rev>:<path> shape", span: (metadata $link).span}
+            label: {text: "no <repo>@<rev>:<path> shape" span: (metadata $link).span}
             help: "expected <repo>@<change-id or sha>:<path in repo>"
         }
     }
@@ -133,20 +133,26 @@ export def resolve [
             0 => {
                 error make {
                     msg: $"no commit in ($p.repo) carries Change-Id ($p.rev)"
-                    label: {text: "unknown change-id", span: (metadata $link).span}
+                    label: {text: "unknown change-id" span: (metadata $link).span}
                 }
             }
             1 => $hits.0
             _ => {
                 error make {
                     msg: $"Change-Id ($p.rev) names ($hits | length) commits in ($p.repo)"
-                    label: {text: "ambiguous change-id", span: (metadata $link).span}
+                    label: {text: "ambiguous change-id" span: (metadata $link).span}
                     help: $"pick one by sha: ($hits | str join ', ')"
                 }
             }
         }
     } else { $p.rev }
     git-in $p.repo [show $"($sha):($p.path)"]
+}
+
+# A repo-local git config value, or null when the key is unset.
+def git-config-get [repo: path key: string]: nothing -> any {
+    let r = ^git -C $repo config --get $key | complete
+    if $r.exit_code == 0 { $r.stdout | str trim } else { null }
 }
 
 # Harden a git repo against concurrent-access corruption on a shared mount.
@@ -161,12 +167,6 @@ export def resolve [
 # with the host's git binary and reads the host's ~/.config/git/ — not the
 # sandbox's. Repo-local config lives on the shared mount, so both sides
 # honor it regardless of which git ran the operation.
-
-def git-config-get [repo: path key: string]: nothing -> any {
-    let r = do { git -C $repo config --get $key } | complete
-    if $r.exit_code == 0 { $r.stdout | str trim } else { null }
-}
-
 @category cozy
 export def harden [
     path: path = '.' # target repo, or parent for --all
@@ -176,12 +176,12 @@ export def harden [
         ls $path
         | where type in [dir symlink]
         | get name
-        | where {|p| ($p | path join .git | path exists) }
+        | where ($it | path join .git | path exists)
     } else {
-        if not (($path | path join .git | path exists)) {
+        if not ($path | path join .git | path exists) {
             error make {
                 msg: $"not a git repo: ($path)"
-                label: {text: "no .git directory here", span: (metadata $path).span}
+                label: {text: "no .git directory here" span: (metadata $path).span}
                 help: "pass the repo itself, or --all to harden every git repo in this path's immediate subdirs"
             }
         }

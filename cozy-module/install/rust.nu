@@ -1,3 +1,4 @@
+# Show the help of this module; `install` runs the rustup install.
 export def main [] { help rust }
 
 # Install Rust via rustup.
@@ -29,7 +30,7 @@ export def --env install []: nothing -> nothing {
         } | save $cargo_config
     }
 
-    if not (which rustc | is-empty) {
+    if (which rustc | is-not-empty) {
         print $"  (ansi green)rust(ansi reset): already installed"
         return
     }
@@ -51,7 +52,7 @@ export def --env install []: nothing -> nothing {
     let content = open --raw $config
     let bad_line = 'source $"($nu.home-path)/.cargo/env.nu"'
     if $bad_line in $content {
-        $content | str replace $"($bad_line)\n" '' | save -f $config
+        $content | str replace $"($bad_line)\n" '' | save --force $config
         print $"  (ansi yellow)rust(ansi reset): removed erroneous line from config.nu"
     }
 

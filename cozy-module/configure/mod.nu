@@ -2,7 +2,7 @@
 # Existing user values take precedence — defaults only fill in what's missing.
 # Safe to re-run: no-op when all defaults are already present.
 @category cozy
-export def --env claude-settings [] {
+export def --env claude-settings []: nothing -> nothing {
     let settings_path = $nu.home-dir | path join .claude settings.json
     let defaults = {effortLevel: high cleanupPeriodDays: 999}
 
@@ -10,11 +10,11 @@ export def --env claude-settings [] {
         let current = open $settings_path
         let merged = $defaults | merge $current
         if $merged != $current {
-            $merged | save -f $settings_path
+            $merged | save --force $settings_path
         }
     } else {
         mkdir ($settings_path | path dirname)
-        $defaults | save -f $settings_path
+        $defaults | save --force $settings_path
     }
 
     # "max" effort only works via env var, not settings.json

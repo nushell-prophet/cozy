@@ -7,12 +7,13 @@ const manifest = path self | path dirname | path join vendored-repos.nuon
 
 const base = $nu.home-dir | path join repos
 
+# The branch origin's HEAD points at, read from `git remote show`.
 def remote-head-branch []: nothing -> string {
     ^git remote show origin
     | lines
-    | where { $in =~ 'HEAD branch:' }
+    | where $it =~ 'HEAD branch:'
     | first
-    | str replace -r '.*HEAD branch:\s*' ''
+    | str replace --regex '.*HEAD branch:\s*' ''
 }
 
 # Turn vendored snapshots into full git clones, then keep already-cloned repos
@@ -21,7 +22,7 @@ def remote-head-branch []: nothing -> string {
 # no branch switch. First run converts a throwaway snapshot; later runs only
 # fetch and fast-forward when it is safe.
 @category cozy
-export def main [] {
+export def main []: nothing -> nothing {
     open $manifest
     | each {|row|
         let name = $row.name

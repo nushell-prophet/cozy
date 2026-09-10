@@ -1,5 +1,6 @@
 use _clone-or-fail.nu
 
+# Show the help of this module; `install` runs the topiary install.
 export def main [] { help topiary }
 
 # Install topiary formatter with nushell support.
@@ -12,12 +13,12 @@ export def main [] { help topiary }
 # Safe to re-run — skips the brew install and the grammar build when already done.
 export def install []: nothing -> nothing {
     # 1. Install topiary binary
-    # Why `-a` + the external filter: bootstrap.nu does `use topiary.nu`, and
+    # Why `--all` + the external filter: bootstrap.nu does `use topiary.nu`, and
     # this module's `main` makes `topiary` a custom command in that scope, so
     # plain `which topiary` was never empty — this branch always reported
     # "already installed", brew or no brew. Masked so far only because Step 1's
     # brew list already installs topiary.
-    if (which -a topiary | where type == external | is-empty) {
+    if (which --all topiary | where type == external | is-empty) {
         print "  Installing topiary via brew..."
         ^brew install topiary
     } else {
@@ -48,7 +49,7 @@ export def install []: nothing -> nothing {
         open --raw $lang_src
         | str replace --regex '(grammar\.source\.git\s*=\s*\{[^}]*\},)' '$1
       indent = "    "'
-        | save -f $lang_ncl
+        | save --force $lang_ncl
         print $"  (ansi cyan)languages.ncl(ansi reset): copied with indent override"
     }
 
@@ -58,7 +59,7 @@ export def install []: nothing -> nothing {
     if ($scm_link | path type) == "symlink" {
         print $"  (ansi green)queries/nu.scm(ansi reset): symlink exists"
     } else {
-        rm -f $scm_link
+        rm --force $scm_link
         ^ln -s $scm_target $scm_link
         print $"  (ansi cyan)queries/nu.scm(ansi reset): symlinked"
     }
@@ -90,12 +91,12 @@ export def install []: nothing -> nothing {
             }
         }
         print "  Building tree-sitter-nu grammar..."
-        let tmp = mktemp -d
+        let tmp = mktemp --directory
         _clone-or-fail https://github.com/nushell/tree-sitter-nu.git $tmp ...[--depth 1]
         ^gcc -shared -fPIC -o ($tmp | path join parser.so) ($tmp | path join src parser.c) ($tmp | path join src scanner.c) $"-I($tmp | path join src)"
         mkdir $cache_dir
         mv ($tmp | path join parser.so) $so_path
-        rm -rf $tmp
+        rm --recursive --force $tmp
         print $"  (ansi cyan)grammar(ansi reset): built and cached"
     }
 

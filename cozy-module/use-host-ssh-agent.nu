@@ -1,3 +1,7 @@
+# The runtime's fixed guest path — the same constant `container.nu` documents
+# next to its `--ssh` flag.
+const SOCK = "/var/host-services/ssh-auth.sock"
+
 # Show or switch whether this shell can reach the host ssh-agent that
 # `container.nu up --ssh-agent` forwards into the guest.
 #
@@ -11,13 +15,8 @@
 # hang, and the container's terminal can freeze with them
 # (https://github.com/apple/container/issues/2247). Keep it on only in the pane that signs, and
 # only while it signs.
-
-# The runtime's fixed guest path — the same constant `container.nu` documents
-# next to its `--ssh` flag.
-const SOCK = "/var/host-services/ssh-auth.sock"
-
 export def --env main [
-    --enable  # let this shell and its children reach the forwarded agent
+    --enable # let this shell and its children reach the forwarded agent
     --disable # hide the agent again (the default state of every new shell)
 ]: nothing -> nothing {
     if $enable and $disable {

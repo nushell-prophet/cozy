@@ -43,7 +43,7 @@ export def main [
             if $already {
                 {name: $name status: ok}
             } else {
-                rm -rf $repo_path
+                rm --recursive --force $repo_path
                 ^ln -s $target $repo_path
                 {name: $name status: linked}
             }

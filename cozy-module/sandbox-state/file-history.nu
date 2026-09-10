@@ -17,6 +17,7 @@
 
 const repo_name = 'file-history'
 
+# The sandbox-state directory inside the mounted workspace; errors when no workspace is mounted.
 def sandbox-state-dir []: nothing -> path {
     if $env.WORKSPACE_DIR? == null {
         error make --unspanned {msg: "WORKSPACE_DIR not set — sandbox-state requires a mounted workspace"}
@@ -24,6 +25,7 @@ def sandbox-state-dir []: nothing -> path {
     $env.WORKSPACE_DIR | path join sandbox-state
 }
 
+# Path of a file under sandbox-state, creating the directory when missing.
 def sandbox-state-path [filename: string]: nothing -> path {
     let dir = sandbox-state-dir
     mkdir $dir
@@ -40,7 +42,7 @@ def file-history-repo []: nothing -> path {
 }
 
 # Returns whether a commit was made.
-def commit-file [repo: path, src: path]: nothing -> bool {
+def commit-file [repo: path src: path]: nothing -> bool {
     let rel = $src | str replace --regex '^/+' ''
     let dst = $repo | path join $rel
     # Why --raw: a plain `open` on a .md path runs `from md` and would save the
@@ -74,20 +76,22 @@ export def snapshot [
 
     let sources = if ($paths | is-empty) {
         # core.quotePath=false keeps non-ASCII paths readable instead of \nnn-escaped.
-        git -C $repo -c core.quotePath=false ls-files | lines | each {|it| $"/($it)" }
+        ^git -C $repo -c core.quotePath=false ls-files
+        | lines
+        | each { $"/($in)" }
     } else {
         # Why every path is checked before anything is committed: a typo in the
         # last of five arguments should not leave the first four committed.
         # Not raising inside the `each` because: an error thrown in a closure
         # comes back wrapped in `eval_block_with_input`, which buries the
         # message. Collecting first also names every bad path, not just one.
-        let expanded = $paths | each {|p| $p | path expand }
-        let missing = $expanded | where { not ($in | path exists) }
+        let expanded = $paths | path expand
+        let missing = $expanded | where not ($it | path exists)
         if ($missing | is-not-empty) {
-            let names = $missing | each {|p| $"  ($p)" } | str join (char newline)
+            let names = $missing | each { $"  ($in)" } | str join (char newline)
             error make {
                 msg: $"file not found:(char newline)($names)"
-                label: {text: "checked these paths", span: (metadata $paths).span}
+                label: {text: "checked these paths" span: (metadata $paths).span}
                 help: 'a bare `*.md` arrives as that literal string — spread the matches instead: `snapshot ...(glob *.md)`'
             }
         }

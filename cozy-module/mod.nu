@@ -1,3 +1,5 @@
+# Commands for the cozy sandbox: repos, docs, mounts, sandbox state, installers, git, verify.
+# Each subcommand has its own help: `help cozy <subcommand>`.
 export def main [] { }
 
 export use sync-repos.nu
