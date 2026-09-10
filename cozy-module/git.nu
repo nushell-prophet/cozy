@@ -9,6 +9,19 @@
 # both sides, and not every repo on the machine lives in the monorepo.
 const hook = path self hooks/commit-msg
 
+# Run git in a directory and return its stdout, or fail with git's own stderr as the message.
+# Why not a bare `^git …` at each call: that raises too, but its message is Nushell's generic one
+# and git's line is streamed to the terminal, not captured; this captures it so callers and tests
+# can read it. It serves the commands that must fail on a failed git call; `git-config-get` keeps
+# its own `complete` because null is its answer there.
+def git-in [dir: path, args: list<string>]: nothing -> string {
+    let res = ^git -C $dir ...$args | complete
+    if $res.exit_code != 0 {
+        error make --unspanned {msg: ($res.stderr | str trim)}
+    }
+    $res.stdout
+}
+
 # Why the common git dir and not `core.hooksPath`: the hook lands where every worktree of the
 # repository shares it, and the setting that could point at a tracked directory lives in
 # `.git/config`, which is not tracked either — so both cost one manual step per clone, and this one
@@ -17,7 +30,7 @@ const hook = path self hooks/commit-msg
 export def install-change-id-hook [
     path: path = '.' # the repo, or any directory inside it
 ]: nothing -> record {
-    let common = ^git -C $path rev-parse --path-format=absolute --git-common-dir | str trim
+    let common = git-in $path [rev-parse --path-format=absolute --git-common-dir] | str trim
     let dest = $common | path join hooks commit-msg
     # Why refuse and not overwrite: in an arbitrary repo a commit-msg hook may already belong to
     # something else (husky, a project's own script), and a silent cp would destroy it.
@@ -37,6 +50,103 @@ export def install-change-id-hook [
         'installed'
     }
     {repo: ($common | path dirname), hook: $dest, status: $status}
+}
+
+# Compose a link to a file as of the commit that last touched it:
+# `<repo>@<change-id>:<path in repo>` — git's own `<rev>:<path>`, with the repo in front so a
+# reference written in another repo says where to run git and what to show. The full value is
+# printed; a hand-written reference may cut the rev to a prefix.
+@category cozy
+export def link [
+    file: path # a committed file inside a git repo
+]: nothing -> string {
+    let abs = $file | path expand
+    let dir = $abs | path dirname
+    let loc = git-in $dir [rev-parse --path-format=absolute --git-common-dir --show-prefix] | lines
+    # Why the common dir's parent and not the worktree: a worktree is disposable, the repository is
+    # not, and `log --all` there sees every worktree's branches.
+    let repo = $loc.0 | path dirname
+    let path = $loc.1 + ($abs | path basename)
+
+    # Why the last commit that touched the file and not HEAD: `git show <rev>:<path>` then returns
+    # exactly the content the writer saw, the link does not rot when unrelated files move, and that
+    # commit's body says why the file is the way it is.
+    let log = git-in $dir [log -1 '--format=%H%n%(trailers:key=Change-Id,valueonly)' -- $abs]
+        | lines
+        | compact --empty
+    if ($log | is-empty) {
+        error make {
+            msg: $"($path) is not tracked by git"
+            label: {text: "no commit touches this file", span: (metadata $file).span}
+            help: "add and commit it first: a link names committed content"
+        }
+    }
+    # Why refuse an uncommitted file: the link would name content no reader can reproduce.
+    # Why after the log and not before: an untracked file is dirty too (`??` in porcelain), and the
+    # first check to run names the cause — so tracked-ness is asked first, dirtiness second.
+    if (git-in $dir [status --porcelain -- $abs] | is-not-empty) {
+        error make {
+            msg: $"($path) has uncommitted changes"
+            label: {text: "dirty in the worktree", span: (metadata $file).span}
+            help: "commit it first: a link names committed content"
+        }
+    }
+    let ids = $log | skip 1
+    let rev = match ($ids | length) {
+        # Why the sha in the same slot when the commit carries no Change-Id: most history predates
+        # the hook, and a sha is hex while an id is letters k–z, so `resolve` tells them apart
+        # without a second field.
+        0 => $log.0
+        1 => $ids.0
+        # Why refuse two ids: a duplicate is legal (cherry-pick, `--amend -C`), but a link must name
+        # one thing, and choosing would be the tooling deciding which copy is real.
+        _ => {
+            error make {
+                msg: $"commit ($log.0) carries ($ids | length) Change-Id trailers"
+                label: {text: "last touched by an ambiguous commit", span: (metadata $file).span}
+                help: "write the link with the sha by hand"
+            }
+        }
+    }
+    $"($repo)@($rev):($path)"
+}
+
+# Print the file a link names, at the commit it names. A change-id resolves by search, since
+# nothing keeps a mapping (see the "Change-Id" section of the mono-repo-tooling-spec); a sha by
+# lookup. A prefix of either is accepted.
+@category cozy
+export def resolve [
+    link: string # `<repo>@<rev>:<path in repo>`, as printed by `cozy git link`
+]: nothing -> string {
+    let parts = $link | parse --regex '^(?<repo>.+?)@(?<rev>[0-9a-f]+|[k-z]+):(?<path>.+)$'
+    if ($parts | is-empty) {
+        error make {
+            msg: $"not a link: ($link)"
+            label: {text: "no <repo>@<rev>:<path> shape", span: (metadata $link).span}
+            help: "expected <repo>@<change-id or sha>:<path in repo>"
+        }
+    }
+    let p = $parts.0
+    let sha = if $p.rev =~ '^[k-z]' {
+        let hits = git-in $p.repo [log --all --format=%H --grep $"^Change-Id: ($p.rev)"] | lines
+        match ($hits | length) {
+            0 => {
+                error make {
+                    msg: $"no commit in ($p.repo) carries Change-Id ($p.rev)"
+                    label: {text: "unknown change-id", span: (metadata $link).span}
+                }
+            }
+            1 => $hits.0
+            _ => {
+                error make {
+                    msg: $"Change-Id ($p.rev) names ($hits | length) commits in ($p.repo)"
+                    label: {text: "ambiguous change-id", span: (metadata $link).span}
+                    help: $"pick one by sha: ($hits | str join ', ')"
+                }
+            }
+        }
+    } else { $p.rev }
+    git-in $p.repo [show $"($sha):($p.path)"]
 }
 
 # Harden a git repo against concurrent-access corruption on a shared mount.

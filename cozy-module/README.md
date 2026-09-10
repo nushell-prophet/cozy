@@ -80,6 +80,27 @@ cozy git install-change-id-hook              # the repo in the current dir
 cozy git install-change-id-hook ~/repos/foo  # any repo by path
 ```
 
+### `cozy git link` / `cozy git resolve`
+
+`link` composes a reference to a committed file as of the commit that last touched it: `<repo>@<change-id>:<path in repo>`, git's own `<rev>:<path>` with the repo in front, so a reference written in another repo says where to run git and what to show.
+The repo is the main checkout even when the file sits in a worktree.
+When the commit carries no `Change-Id`, the sha takes the same slot; the alphabets never overlap, so `resolve` tells them apart.
+A file with uncommitted changes, an untracked file, or a commit carrying two ids is an error, not a guess.
+
+`resolve` prints the file the link names.
+A change-id is found by searching every ref (`git log --all --grep`), a sha by lookup; a prefix of either works.
+
+```nushell
+cozy git link cozy-module/hooks/commit-msg
+# => /Users/user/git/ai-sandbox-dev-container/cozy@lmppvkrkrrxqpuzwtxwqzwlolwypulqz:cozy-module/hooks/commit-msg
+cozy git resolve /Users/user/git/ai-sandbox-dev-container/cozy@lmppvkrk:cozy-module/hooks/commit-msg | lines | first 3
+# => [
+# =>   "#!/bin/sh",
+# =>   "# Stamp a Change-Id trailer on a commit that does not already carry one.",
+# =>   "#"
+# => ]
+```
+
 ### `cozy configure claude-settings`
 
 Merges default Claude settings (effortLevel, cleanupPeriodDays) into sandbox `~/.claude/settings.json`.

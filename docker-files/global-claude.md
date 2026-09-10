@@ -137,6 +137,14 @@ Two caveats:
   So a reference to a commit, in a note or a report, is the first 8 letters of the trailer when the commit carries one; `git log -1 --format='%(trailers:key=Change-Id,valueonly)'` reads it, and `git log --all --grep='^Change-Id: <id>'` finds it again.
   The trailer is stamped by a `commit-msg` hook, and only repos that have it carry ids: `cozy git install-change-id-hook <repo>` installs it once per clone, into the common `.git/hooks`, so worktrees share it.
   Repos that cannot have it (an upstream clone such as Nushell) stay on shas — so the fallback is the sha, not a guess; and nothing warns about a missing hook, `ls "$(git rev-parse --git-common-dir)/hooks/commit-msg"` is the check.
+- **A file in another repo is named by a change-id link: `<repo>@<change-id>:<path in repo>`.** Git's own `<rev>:<path>` with the repo in front, so the reader knows where to run git and what to show.
+  When work spans repos, the commit body and the note name the files on the other side this way.
+  `cozy git link <file>` writes one: it names the commit that last touched the file, so the link survives the rewrites that move a sha, and it refuses a file with uncommitted changes, since a link names committed content.
+  `cozy git resolve <link>` prints the file at that commit; a prefix of the id works.
+  A commit without an id gets its sha in the same slot: hex is a sha, letters `k`-`z` are an id.
+  In helix, `+ t` copies the selection as `<selected-text link="…" lines="a-b">`; `+ s` stays for a path inside the same repo.
+  So a reference in a todo or a commit body is a change-id link, or a path plus a quote — never a bare sha, which the next rebase orphans.
+  Why: the repos on this machine change together but do not share a history, so a plain path names a file that has already moved on; the link names the state the writer saw and still resolves after.
 
 ## Constraints
 
