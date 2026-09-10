@@ -61,7 +61,7 @@ Every design file (except the map, which omits `covers`) carries:
 human-check: pending   # pending | verified
 covers:
   - <source paths this file is reconciled against, relative to cozy/ root>
-reconciled-at: <sha>   # commit this file was last reconciled against; absent = never
+reconciled-at: <Change-Id or sha>   # commit this file was last reconciled against; absent = never
 ---
 ```
 
@@ -75,17 +75,20 @@ A directory entry means "all source files under it."
 
 Default to incremental — only reconcile files whose `covers:` sources actually moved.
 
-1. Capture `HEAD` once at the start of the run; this is the SHA you will stamp.
+1. Capture `HEAD` once at the start of the run; this is the commit you will stamp — by its `Change-Id` when it carries one (all 32 letters, `git log -1 --format='%(trailers:key=Change-Id,valueonly)'`), by its sha otherwise.
 2. If a file has no `reconciled-at` (or the user asked for a **full** check), reconcile it in full — this establishes the baseline.
-3. Otherwise run `git log <reconciled-at>..HEAD -- <covers paths>`.
+3. Otherwise resolve `reconciled-at` to a commit and run `git diff <commit> HEAD -- <covers paths>`.
+   A sha is the commit.
+   An id names every commit carrying that trailer — `git log --all --format=%H --grep='^Change-Id: <id>'` — so take the one that is an ancestor of `HEAD` (`git merge-base --is-ancestor <hash> HEAD`), else the sole remaining match, else stop and ask: a rebase leaves twins under one id, and only the ancestor test tells them apart.
    **Empty ⇒ skip the file**, it is still in sync.
    Non-empty ⇒ reconcile against that diff.
-4. After a file is reconciled — whether you patched it or confirmed it clean — set its `reconciled-at:` to the captured `HEAD`.
+   A tree diff, not `git log <commit>..HEAD`: a landed branch's squash carries a new id, so a stamp made before the landing resolves only to the archived tip, which is no ancestor of the new trunk — `git log` would list the squash and re-reconcile the file against the whole branch, while the tree diff sees the squash's tree equal to the tip's and stays empty.
+4. After a file is reconciled — whether you patched it or confirmed it clean — set its `reconciled-at:` to the captured stamp.
    A skipped file keeps its old value.
 
 The stamp only advances on a real reconcile, so it always means "this file's claims held against the code at that commit."
 A `--full` run ignores every `reconciled-at`, re-checks all files, then re-stamps them — that is how you rebuild a baseline you no longer trust.
-Stamp the run-start `HEAD`, not the commit you are about to make: your commit touches only `design/`, never a `covers:` path, so the next run's `git log` over those paths stays empty for unchanged sources and nothing re-reconciles by mistake.
+Stamp the run-start `HEAD`, not the commit you are about to make: your commit touches only `design/`, never a `covers:` path, so the next run's `git diff` over those paths stays empty for unchanged sources and nothing re-reconciles by mistake.
 
 ## Process
 
@@ -93,7 +96,7 @@ Stamp the run-start `HEAD`, not the commit you are about to make: your commit to
 2. **For each file the *Incremental baseline* didn't skip**, read the `covers:` sources and run the four checks above (anchors, rationale, coverage, order).
 3. **Check the map** — does `README.md` still point at every file, in build order, no dead links?
 4. **Report** — numbered list grouped by file: what the notes say vs. what the code says.
-5. **Patch** — fix in place, preserve wording, reset `human-check: pending` on every file you edit, and set `reconciled-at` to the run-start `HEAD` on every file you reconciled (patched or confirmed clean).
+5. **Patch** — fix in place, preserve wording, reset `human-check: pending` on every file you edit, and set `reconciled-at` to the run-start stamp on every file you reconciled (patched or confirmed clean).
    When a doc claim and the code genuinely contradict (a stale rationale you can't resolve from the code alone), ask rather than guess.
 6. **Verify your own edits** — re-check that each `Code:` anchor you touched still resolves and `human-check` is back to `pending`.
    Reordering and rewrites are exactly when an anchor quietly goes stale.
