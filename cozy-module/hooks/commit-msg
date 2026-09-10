@@ -1,0 +1,29 @@
+#!/bin/sh
+# Stamp a Change-Id trailer on a commit that does not already carry one.
+#
+# The id lives in the message, so amend, rebase and cherry-pick carry it forward by themselves.
+# This hook therefore only ever adds one and never replaces one: replacing would break the single
+# property the trailer exists for. See the "Change-Id" section of the mono-repo-tooling-spec specification.
+
+set -e
+msg="$1"
+
+# An empty message aborts the commit. Adding a trailer would make it non-empty and let an abort
+# through as a commit with no subject, so a message that is only comments and blanks is left alone.
+if [ -z "$(git stripspace --strip-comments <"$msg")" ]; then
+    exit 0
+fi
+
+if git interpret-trailers --parse <"$msg" | grep -q '^Change-Id:'; then
+    exit 0
+fi
+
+# jj's reverse-hex alphabet: 16 random bytes written as 32 letters from z to k. Letters can never
+# read as a git sha, which is the whole job the Gerrit-style I prefix used to do here. The tr -d in
+# the middle is not optional: tr translates only what it is given, so od's spaces would survive.
+id=$(dd if=/dev/urandom bs=16 count=1 2>/dev/null | od -An -v -tx1 | tr -d ' \n' | tr '0123456789abcdef' 'zyxwvutsrqponmlk')
+
+# interpret-trailers, not an append: where the body ends in prose it opens a block with a blank
+# line, and where it already ends in a trailer block it joins that one. A hand-rolled append gets
+# one of the two wrong, and then `git log --format=%(trailers:key=...)` reads back nothing.
+git interpret-trailers --in-place --trailer "Change-Id: $id" "$msg"

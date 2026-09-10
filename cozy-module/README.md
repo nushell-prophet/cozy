@@ -68,6 +68,18 @@ cozy git-harden                  # harden the repo in the current dir
 cozy git-harden ~/workspace -a   # harden every git repo one level under the path
 ```
 
+### `cozy git install-change-id-hook`
+
+Installs the tracked `hooks/commit-msg` script into a repo's common `.git/hooks`, so every worktree of it stamps a `Change-Id` trailer on each new commit.
+The id survives amend, rebase and squash, which a sha does not, so it is what a cross-repo reference names.
+The hook adds an id and never replaces one, and leaves a comment-only message alone so an empty commit still aborts.
+A different `commit-msg` hook already in place is an error, not overwritten.
+
+```nushell
+cozy git install-change-id-hook              # the repo in the current dir
+cozy git install-change-id-hook ~/repos/foo  # any repo by path
+```
+
 ### `cozy configure claude-settings`
 
 Merges default Claude settings (effortLevel, cleanupPeriodDays) into sandbox `~/.claude/settings.json`.
