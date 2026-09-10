@@ -8,7 +8,6 @@ export use sandbox-state/
 export use dev-link.nu
 export use install/
 export use configure/
-export use git-harden.nu
 export use git.nu
 export use verify.nu
 export use logo.nu

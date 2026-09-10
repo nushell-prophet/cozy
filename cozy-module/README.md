@@ -58,14 +58,14 @@ cozy use-host-ssh-agent --enable   # this shell and its children may sign with t
 cozy use-host-ssh-agent --disable  # back to the default
 ```
 
-### `cozy git-harden`
+### `cozy git harden`
 
 Sets `gc.auto=0` and `receive.autoGc=false` in a repo's own `.git/config` so both the host and the sandbox git honor them, regardless of which side runs an operation.
 Mitigates pack/index corruption from VirtioFS torn writes when both sides hit `.git` on the shared mount at once.
 
 ```nushell
-cozy git-harden                  # harden the repo in the current dir
-cozy git-harden ~/workspace -a   # harden every git repo one level under the path
+cozy git harden                  # harden the repo in the current dir
+cozy git harden ~/workspace -a   # harden every git repo one level under the path
 ```
 
 ### `cozy git install-change-id-hook`

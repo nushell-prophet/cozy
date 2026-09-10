@@ -138,7 +138,7 @@ export def main [
     mkdir $git_xdg
     # safe.directory='*' is asserted in three places: here, mount.nu's `init`,
     # and the git-safe-directory.nu autoload (self-heals after sandbox create
-    # narrows it). gc.auto=0 also lives in cozy-module/git-harden.nu (repo-local,
+    # narrows it). gc.auto=0 also lives in cozy-module/git.nu (repo-local,
     # for host git). Edit one, check the others.
     # format.pretty puts the relative date first and folds the author onto the
     # same line. Why here and not in lazygit's config: the header above a patch
