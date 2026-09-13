@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Off by default in every new shell: parallel agent clients inside hang and the terminal can freeze with them; `killall ssh-agent` on the host frees both.
 - `cozy sandbox-state file-history snapshot <path>...` (short: `cozy fhs`) commits any number of files into a git repo under `sandbox-state/`, each keyed by its full path from the root.
   With no path it refreshes every file already tracked, so the repo doubles as the list of what to keep.
-- `cozy git install-change-id-hook [path]` installs the tracked `commit-msg` hook that stamps a `Change-Id` trailer (32 reverse-hex letters) on every new commit of a repo, into the common `.git/hooks` so worktrees share it.
+- `cozy git install-change-id-hook [path]` installs the tracked `commit-msg` hook that stamps a `Change-Id` trailer (32 reverse-hex letters: 24 random, then the unix time it was minted) on every new commit of a repo, into the common `.git/hooks` so worktrees share it.
   The id survives amend, rebase and squash, so it is what a cross-repo reference names; a different `commit-msg` hook already in place is refused, never overwritten.
 - `cozy git link <file>` writes that reference, `<repo>@<change-id>:<path in repo>`, naming the commit that last touched the file; `cozy git resolve <link>` prints the file at that commit, a prefix of the id works.
   A file with uncommitted changes is refused, since a link names committed content; a commit without an id gets its sha in the same slot.

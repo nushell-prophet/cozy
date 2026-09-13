@@ -18,10 +18,17 @@ if git interpret-trailers --parse <"$msg" | grep -q '^Change-Id:'; then
     exit 0
 fi
 
-# jj's reverse-hex alphabet: 16 random bytes written as 32 letters from z to k. Letters can never
-# read as a git sha, which is the whole job the Gerrit-style I prefix used to do here. The tr -d in
-# the middle is not optional: tr translates only what it is given, so od's spaces would survive.
-id=$(dd if=/dev/urandom bs=16 count=1 2>/dev/null | od -An -v -tx1 | tr -d ' \n' | tr '0123456789abcdef' 'zyxwvutsrqponmlk')
+# jj's reverse-hex alphabet: 12 random bytes and the unix time, written as 32 letters from z to k.
+# Letters can never read as a git sha, which is the whole job the Gerrit-style I prefix used to do
+# here. The tr -d in the middle is not optional: tr translates only what it is given, so od's spaces
+# would survive.
+# Why the time is the tail and not the head: a reference cuts the id to its first 8 letters, and
+# those stay random only while the random part leads. Why the time at all: the hook never replaces
+# an id, so the tail records when the change was first committed, and a rebase or cherry-pick
+# carries that date along with the id. %08x keeps the width until 2106.
+random=$(dd if=/dev/urandom bs=12 count=1 2>/dev/null | od -An -v -tx1 | tr -d ' \n')
+stamp=$(printf '%08x' "$(date +%s)")
+id=$(printf '%s%s' "$random" "$stamp" | tr '0123456789abcdef' 'zyxwvutsrqponmlk')
 
 # interpret-trailers, not an append: where the body ends in prose it opens a block with a blank
 # line, and where it already ends in a trailer block it joins that one. A hand-rolled append gets

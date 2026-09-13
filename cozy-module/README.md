@@ -72,6 +72,7 @@ cozy git harden ~/workspace -a   # harden every git repo one level under the pat
 
 Installs the tracked `hooks/commit-msg` script into a repo's common `.git/hooks`, so every worktree of it stamps a `Change-Id` trailer on each new commit.
 The id survives amend, rebase and squash, which a sha does not, so it is what a cross-repo reference names.
+Its first 24 letters are random and its last 8 are the unix time it was minted, so a prefix stays unique and the tail dates the change through every rewrite.
 The hook adds an id and never replaces one, and leaves a comment-only message alone so an empty commit still aborts.
 A different `commit-msg` hook already in place is an error, not overwritten.
 
@@ -92,8 +93,8 @@ A change-id is found by searching every ref (`git log --all --grep`), a sha by l
 
 ```nushell
 cozy git link cozy-module/hooks/commit-msg
-# => /Users/user/git/ai-sandbox-dev-container/cozy@lmppvkrkrrxqpuzwtxwqzwlolwypulqz:cozy-module/hooks/commit-msg
-cozy git resolve /Users/user/git/ai-sandbox-dev-container/cozy@lmppvkrk:cozy-module/hooks/commit-msg | lines | first 3
+# => /Users/user/git/ai-sandbox-dev-container/cozy@kplvovykwoxzruknymuutvowtppukupv:cozy-module/hooks/commit-msg
+cozy git resolve /Users/user/git/ai-sandbox-dev-container/cozy@kplvovyk:cozy-module/hooks/commit-msg | lines | first 3
 # => [
 # =>   "#!/bin/sh",
 # =>   "# Stamp a Change-Id trailer on a commit that does not already carry one.",

@@ -135,6 +135,7 @@ Two caveats:
   Stage the exact paths your change touched: `git add path/one path/two`.
 - **A commit is named by its `Change-Id` where it has one, by sha otherwise.** Repos here rewrite history often — amend, rebase, squash — and a sha dies with each rewrite, while the `Change-Id: <32 reverse-hex letters>` trailer travels inside the message.
   So a reference to a commit, in a note or a report, is the first 8 letters of the trailer when the commit carries one; `git log -1 --format='%(trailers:key=Change-Id,valueonly)'` reads it, and `git log --all --grep='^Change-Id: <id>'` finds it again.
+  The last 8 letters are the unix time the id was minted, in the same alphabet, so an id also dates a change even after a rebase moved the commit's own date: `printf '%s' <id> | cut --characters 25-32 | tr 'zyxwvutsrqponmlk' '0123456789abcdef'` gives the hex seconds.
   The trailer is stamped by a `commit-msg` hook, and only repos that have it carry ids: `cozy git install-change-id-hook <repo>` installs it once per clone, into the common `.git/hooks`, so worktrees share it.
   Repos that cannot have it (an upstream clone such as Nushell) stay on shas — so the fallback is the sha, not a guess; and nothing warns about a missing hook, `ls "$(git rev-parse --git-common-dir)/hooks/commit-msg"` is the check.
 - **A file in another repo is named by a change-id link: `<repo>@<change-id>:<path in repo>`.** Git's own `<rev>:<path>` with the repo in front, so the reader knows where to run git and what to show.
