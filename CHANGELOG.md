@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- `git diff` and `git show` keep git's `+`/`-` line prefixes under delta (`delta.keep-plus-minus-markers`), so diff lines copied out of the terminal into a message to an agent still say which were added and which removed.
 - `cozy git-harden` is `cozy git harden` now, beside the new `cozy git install-change-id-hook`; flags and output are unchanged.
 
 ## [0.4.3] - 2026-08-28

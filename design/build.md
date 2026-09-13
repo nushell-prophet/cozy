@@ -135,6 +135,7 @@ Errors if brew is missing.
 
 ### Step 2 — XDG git config
 Writes `~/.config/git/{config,ignore}`: identity `Agent <agent@sandbox>` (so Step 4 can commit), `safe.directory=*`, `gc.auto=0`, `core.fsync=all` + `core.fsyncMethod=fsync`, and `core.pager = delta` + `interactive.diffFilter = delta --color-only` (git-delta is a Step 1 brew install, so every `git diff`/`git show` and `git add -p` reads through it by default).
+Delta itself gets `keep-plus-minus-markers = true`: it drops git's `+`/`-` prefixes by default so a block copies out clean, but the user copies diff lines out of the terminal into messages to agents as feedback, and without the prefix the pasted lines no longer say which were added and which removed -- the colour does not survive the paste.
 Next to the pager, `format.pretty` replaces git's three-line `commit`/`Author`/`Date` header with the relative date and the author on one line — it sits here and not in lazygit's config because that header is git's own `git show` output, which lazygit passes through and has no setting for; it costs the `Merge:` line on merge commits.
 XDG (not `/etc/gitconfig`) avoids sudo and is overridden by a real user's `~/.gitconfig`, so a personal identity still wins.
 

@@ -161,6 +161,8 @@ export def main [
 	pager = delta
 [interactive]
 	diffFilter = delta --color-only
+[delta]
+	keep-plus-minus-markers = true
 [format]
 	pretty = format:commit %C(auto)%H%d%n%C(bold blue)%ar%C(reset)  %C(green)%an <%ae>%C(reset)%n%n%w(0,4,4)%B
 ' | save --force ($git_xdg | path join 'config')
