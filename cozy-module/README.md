@@ -74,11 +74,12 @@ Installs the tracked `hooks/commit-msg` script into a repo's common `.git/hooks`
 The id survives amend, rebase and squash, which a sha does not, so it is what a cross-repo reference names.
 Its first 24 letters are random and its last 8 are the unix time it was minted, so a prefix stays unique and the tail dates the change through every rewrite.
 The hook adds an id and never replaces one, and leaves a comment-only message alone so an empty commit still aborts.
-A different `commit-msg` hook already in place is an error, not overwritten.
+A different `commit-msg` hook already in place is an error, not overwritten; `--force` replaces it, which is how a repo carrying an older copy of this hook gets the current one.
 
 ```nushell
 cozy git install-change-id-hook              # the repo in the current dir
 cozy git install-change-id-hook ~/repos/foo  # any repo by path
+cozy git install-change-id-hook --force      # replace an older copy of the hook, or any other hook
 ```
 
 ### `cozy git link` / `cozy git resolve`

@@ -37,6 +37,22 @@ def error-of [call: closure]: nothing -> string {
 }
 
 const ID = 'zyxwvutsrqponmlkzyxwvutsrqponmlk'
+const HOOK = path self ../../cozy-module/hooks/commit-msg
+
+@test
+def "install refuses a different hook and replaces it with force" [] {
+    let repo = $in.repo
+    let dest = $repo | path join .git hooks commit-msg
+    "#!/bin/sh\nexit 0\n" | save --force $dest
+
+    let err = error-of { git install-change-id-hook $repo }
+    assert str contains $err 'a different commit-msg hook already exists'
+    assert equal (open --raw $dest) "#!/bin/sh\nexit 0\n"
+
+    assert equal (git install-change-id-hook $repo --force | get status) 'replaced'
+    assert equal (open --raw $dest) (open --raw $HOOK)
+    assert equal (git install-change-id-hook $repo | get status) 'already installed'
+}
 
 @test
 def "link names the change-id of the commit that last touched the file" [] {

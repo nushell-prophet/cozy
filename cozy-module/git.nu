@@ -29,18 +29,26 @@ def git-in [dir: path args: list<string>]: nothing -> string {
 @category cozy
 export def install-change-id-hook [
     path: path = '.' # the repo, or any directory inside it
+    --force # replace a different commit-msg hook instead of refusing
 ]: nothing -> record {
     let common = git-in $path [rev-parse --path-format=absolute --git-common-dir] | str trim
     let dest = $common | path join hooks commit-msg
     # Why refuse and not overwrite: in an arbitrary repo a commit-msg hook may already belong to
     # something else (husky, a project's own script), and a silent cp would destroy it.
+    # Why --force and not detecting an older copy of this hook: the script carries no version
+    # marker, and the common case for a differing hook is exactly an older copy of ours, so the
+    # human who knows that says so with the flag.
     let status = if ($dest | path exists) {
         if (open --raw $dest) == (open --raw $hook) {
             'already installed'
+        } else if $force {
+            cp $hook $dest
+            ^chmod +x $dest
+            'replaced'
         } else {
             error make --unspanned {
                 msg: $"a different commit-msg hook already exists: ($dest)"
-                help: "compare it with the tracked script and remove it by hand if it should be replaced"
+                help: "compare it with the tracked script; pass --force if it should be replaced"
             }
         }
     } else {
