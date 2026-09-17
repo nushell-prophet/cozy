@@ -66,6 +66,7 @@ I develop and use `cozy` on macOS, but I expect some of my students to use Windo
 After brief testing, the main issue turned out to be the keyboard: Windows has no Cmd key, and its Win combinations are reserved by the OS, so the best replacement I've found is Alt.
 
 To apply this automatically, run `cozy swap-zellij-super` inside the sandbox.
+The same command serves macOS Terminal.app, which keeps every Cmd+key for itself; there, also enable "Use Option as Meta key" in Settings > Profiles > Keyboard.
 
 ### Nushell
 
@@ -81,11 +82,12 @@ Zellij is an extremely convenient and powerful terminal multiplexer.
 A new tab can be spawned via `cmd+t` and a new pane within the current tab via `cmd+n`.
 
 The default mode is locked — all keys pass through to the running application.
-`ctrl+shift+g` toggles between locked and normal mode (the standard `ctrl+g` is left free for applications like Claude Code).
+`ctrl+g` toggles between locked and normal mode, Zellij's stock key.
+Claude Code also binds `ctrl+g` by default; the shipped `~/.claude/keybindings.json` unbinds it there, and its external editor stays on the stock chord `ctrl+x ctrl+e`, the same chord bash and zsh use to edit the command line in `$EDITOR`.
 
 Shortcuts:
 
-- `ctrl+shift+g` — toggle Zellij locked/normal mode
+- `ctrl+g` — toggle Zellij locked/normal mode
 - `cmd+t` — new tab
 - `cmd+n` — new pane within current tab
 - `cmd+w` — close the currently selected pane (or a floating window like Helix and Broot, described below)

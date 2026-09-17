@@ -39,7 +39,7 @@ Its module (`cozy-module/`) is autoloaded, so `cozy` is a command:
 | `cozy sync-repos` | Convert the `~/repos/` snapshots to git clones and pull the latest from GitHub (updates this sandbox in place) |
 | `cozy dev-link` | Swap vendored `~/repos/` copies for symlinks to the mounted workspace (edit-and-test, no rebuild) |
 | `cozy mount init` | Register the current directory's git subdirs as submodules (`git init`s and commits if needed) |
-| `cozy swap-zellij-super` | Rewrite Zellij's Super-key bindings (→ Alt/Ctrl) for Windows hosts |
+| `cozy swap-zellij-super` | Rewrite Zellij's Super-key bindings (→ Alt/Ctrl) for Windows hosts and macOS Terminal.app |
 | `cozy git harden` | Apply safer git defaults |
 | `cozy git install-change-id-hook` | Install the `commit-msg` hook that stamps a `Change-Id` trailer on every new commit of a repo, so a reference to it survives rebase and squash |
 | `cozy use-host-ssh-agent` | Show or switch (`--enable` / `--disable`) whether this shell reaches the forwarded host ssh-agent; off by default |
