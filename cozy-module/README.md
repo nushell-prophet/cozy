@@ -38,8 +38,9 @@ cozy dev-link
 
 ### `cozy swap-zellij-super`
 
-Rewrites `~/.config/zellij/config.kdl` in place to remove the Super modifier (Super+Shift→Alt+Shift, Super+Alt→Ctrl+Alt, Super→Alt).
-Intended for Windows hosts, where Win+key is reserved by the OS and the default Super-based bindings collide.
+Rewrites `~/.config/zellij/config.kdl` in place to remove the Super modifier (Super+Shift→Alt+Shift, Super+Alt→Ctrl+Alt, Super→Alt), then puts the resize keys on `Alt +`, `Alt =` and `Alt _`, the bytes a terminal without the kitty keyboard protocol actually sends for Option+Shift+= and Option+Shift+-.
+Intended for hosts where Super never reaches the shell: Windows, where Win+key is reserved by the OS, and macOS Terminal.app, which keeps every Cmd+key for itself.
+Terminal.app also needs "Use Option as Meta key" (Settings > Profiles > Keyboard), or Option+letter types a symbol instead.
 Idempotent.
 
 ```nushell
