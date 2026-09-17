@@ -23,6 +23,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `git diff` and `git show` keep git's `+`/`-` line prefixes under delta (`delta.keep-plus-minus-markers`), so diff lines copied out of the terminal into a message to an agent still say which were added and which removed.
 - `cozy git-harden` is `cozy git harden` now, beside the new `cozy git install-change-id-hook`; flags and output are unchanged.
 
+### Fixed
+
+- Apple `container` path: the two root execs `toolkit/container.nu` makes on every `up`, `restart` and `reload-egress` (mapping the proxy's name in `/etc/hosts`, clearing the resolver) resolved `sh` and `sed` through the image PATH, which leads with agent-writable directories — so a binary the agent dropped into `~/.local/bin` would have run as root on the human's next restart.
+  They now run `/bin/sh` by absolute path with PATH reset to the system directories; the plain-docker compose path never made these execs, so it was never affected. (wppymrwm)
+
 ## [0.4.3] - 2026-08-28
 
 ### Added
