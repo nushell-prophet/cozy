@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Apple `container` path: the two root execs `toolkit/container.nu` makes on every `up`, `restart` and `reload-egress` (mapping the proxy's name in `/etc/hosts`, clearing the resolver) resolved `sh` and `sed` through the image PATH, which leads with agent-writable directories — so a binary the agent dropped into `~/.local/bin` would have run as root on the human's next restart. They now run `/bin/sh` by absolute path with PATH reset to the system directories. compose was never affected (`cap_drop: [ALL]`). (b013052)
+
 ## [0.4.2] - 2026-08-16
 
 ### Added
