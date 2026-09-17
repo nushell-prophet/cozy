@@ -369,6 +369,25 @@ def egress-address []: nothing -> string {
 
 def proxy-url [host: string]: nothing -> string { $"http://($host):($proxy_port)" }
 
+# The only two rootful execs this script makes, funnelled through one door.
+# The image's ENV PATH leads with three agent-writable directories (see the
+# Dockerfile header), and an ENV is image-wide, so `exec --uid 0 … sh -c` let
+# an unqualified `sh` or `sed` resolve to whatever the agent had dropped into
+# ~/.local/bin — run as root on the human's next `up`, `restart` or
+# `reload-egress`. The Dockerfile names this primitive and says the mitigation
+# is not to run rootful execs; these two cannot be avoided (the agent has no
+# sudo, and both files are root-owned), so they run with nothing resolved
+# through PATH: the shell by absolute path, PATH reset to the system dirs as
+# the script's first statement, and every external tool spelled absolutely
+# (`echo` is a dash builtin). `/bin/sh` rather than bash also sidesteps
+# BASH_ENV, which points at a file the agent once owned. Not `--env PATH=…`
+# on the exec: whether `container exec` honours it was not checked, and a
+# flag that silently isn't applied would reopen the hole.
+const root_path = '/usr/sbin:/usr/bin:/sbin:/bin'
+def root-sh [name: string script: string]: nothing -> nothing {
+    container-cli [exec --uid 0 $name /bin/sh -c $"PATH=($root_path); export PATH; ($script)"] | ignore
+}
+
 # The one mutable link between the cozy container and its exit. Nothing on this
 # network keeps its address across a start (probed 2026-08-02: even the cozy
 # container's own address moved on a plain stop/start), so its *_PROXY env
@@ -382,7 +401,7 @@ def proxy-url [host: string]: nothing -> string { $"http://($host):($proxy_port)
 # `container start` leaves the name unresolvable (loud: "could not resolve host
 # cozy-egress") until `restart` runs.
 def set-egress-hosts [name: string ip: string]: nothing -> nothing {
-    container-cli [exec --uid 0 $name sh -c $"sed -i '/ ($egress_name)$/d' /etc/hosts; echo '($ip) ($egress_name)' >> /etc/hosts"]
+    root-sh $name $"/usr/bin/sed -i '/ ($egress_name)$/d' /etc/hosts; echo '($ip) ($egress_name)' >> /etc/hosts"
     print $"  (ansi green)Hosts:(ansi reset) ($egress_name) -> ($ip), mapped inside ($name)"
 }
 
@@ -405,7 +424,7 @@ def set-egress-hosts [name: string ip: string]: nothing -> nothing {
 # the container's life. Re-asserted on every start anyway: that is what repairs a
 # container created before this existed.
 def clear-resolver [name: string]: nothing -> nothing {
-    container-cli [exec --uid 0 $name sh -c $"echo '# cozy: no resolver — ($egress_name) resolves names' > /etc/resolv.conf"]
+    root-sh $name $"echo '# cozy: no resolver — ($egress_name) resolves names' > /etc/resolv.conf"
     print $"  (ansi green)Resolver:(ansi reset) cleared in ($name) — the cage has none, and the image's 1.1.1.1 costs 20s a lookup"
 }
 
