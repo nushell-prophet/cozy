@@ -83,7 +83,7 @@ A new tab can be spawned via `cmd+t` and a new pane within the current tab via `
 
 The default mode is locked — all keys pass through to the running application.
 `ctrl+g` toggles between locked and normal mode, Zellij's stock key.
-Claude Code also binds `ctrl+g` by default; the shipped `~/.claude/keybindings.json` unbinds it there, and its external editor stays on the stock chord `ctrl+x ctrl+e`, the same chord bash and zsh use to edit the command line in `$EDITOR`.
+Claude Code also binds `ctrl+g` by default; the shipped `~/.claude/keybindings.json` unbinds it there, and its external editor stays on the stock chord `ctrl+x ctrl+e`, the chord bash binds to edit the command line in `$EDITOR` (zsh has the same widget, `edit-command-line`, unbound by default).
 
 Shortcuts:
 
