@@ -195,7 +195,16 @@ config.keys = {
   -- Why: Claude Code doesn't recognize Shift+Enter for newlines without an explicit Kitty-style CSI u sequence
   { key = 'Enter', mods = 'SHIFT', action = wezterm.action.SendString '\x1b[13;2u' },
 
-  -- I use those keybidings here to check that to fix Wezterms cmd+shift passing for zellij.
+  -- Why: wezterm does not deliver Cmd+Shift+<letter> to the pane by itself,
+  -- even with enable_kitty_keyboard and disable_default_key_bindings set, so
+  -- zellij never sees the key. These SendStrings are the only path in.
+  -- `\x1b[<ascii>;10u` is the Kitty CSI u form; 10 = 1 + shift(1) + super(8).
+  -- Only h and l have a consumer today: zellij's `Super Shift h` and `Super
+  -- Shift l` (GoToPreviousTab / GoToNextTab, zellij/config.kdl). The rest are
+  -- future-proofing, since a new bind works only if its sequence already ships.
+  -- Before deleting any of them: comment the `h` line out, save, then press
+  -- Cmd+Shift+h in zellij. Verified 2026-09-17 on wezterm nightly: the tab
+  -- stops switching.
   -- cmd+shift+a
   { key = 'a', mods = 'CMD|SHIFT',  action = wezterm.action.SendString '\x1b[97;10u' },
   -- cmd+shift+b
