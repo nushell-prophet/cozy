@@ -87,11 +87,12 @@ const egress_repo = 'ubuntu/squid'
 # still resolve to a squid 6.6 build. The maintained stream is the tags naming
 # both versions, `<squid>-<ubuntu>_edge`, so that is the family to search.
 const egress_tag_pattern = '^\d+\.\d+-\d+\.\d+_edge$'
-# The digest lives in exactly two files and in this one shape, which is what
-# lets one regex rewrite both and `toolkit/check.nu egress-image` keep guarding
+# The digest lives in exactly three files and in this one shape, which is what
+# lets one regex rewrite all three and `toolkit/check.nu egress-image` keep guarding
 # them against each other.
 const pin_pattern = 'ubuntu/squid@sha256:[0-9a-f]{64}'
 const compose_yaml = ($cozy_root | path join 'compose.yaml')
+const container_zsh = ($cozy_root | path join toolkit container.zsh)
 const this_file = (path self)
 # A name of its own so nothing here can touch the live proxy, whatever fails.
 const rehearsal_name = 'cozy-egress-rehearsal'
@@ -1023,15 +1024,15 @@ def rehearse-egress [image: string policy: path]: nothing -> nothing {
     }
 }
 
-# Both files are checked before either is written: a half-applied pin would
-# leave the two run paths enforcing different proxies, which is the one thing
+# Every file is checked before any is written: a half-applied pin would
+# leave the run paths enforcing different proxies, which is the one thing
 # `toolkit/check.nu egress-image` exists to prevent.
 def write-egress-pin [digest: string]: nothing -> nothing {
-    let files = [$this_file $compose_yaml]
+    let files = [$this_file $compose_yaml $container_zsh]
     for file in $files {
         let hits = open --raw $file | lines | where $it =~ $pin_pattern | length
         if $hits != 1 {
-            error make {msg: $"expected exactly one pinned digest in ($file), found ($hits) — nothing was rewritten. Both run paths must carry the same single literal; fix the file by hand and re-run."}
+            error make {msg: $"expected exactly one pinned digest in ($file), found ($hits) — nothing was rewritten. Every run path must carry the same single literal; fix the file by hand and re-run."}
         }
     }
     for file in $files {
@@ -1040,12 +1041,12 @@ def write-egress-pin [digest: string]: nothing -> nothing {
 }
 
 # Move the pin forward: ask upstream what is newest, prove it on a throwaway
-# container, then write it into both files.
+# container, then write it into all three files.
 #
 # Why a command and not a floating tag in the image field: compose.yaml cannot
 # compute anything, so a self-updating pin would work on this path only and the
 # two paths would drift — and they must enforce the identical proxy. Keeping the
-# refresh a command keeps one literal in both files, keeps the repo an accurate
+# refresh a command keeps one literal in all three files, keeps the repo an accurate
 # record of what is running, and puts the moment a new image is adopted where a
 # human is present. That last part is the point: the move to squid 7.2 failed to
 # start at all, and meeting that here is a different thing from meeting it when
@@ -1068,7 +1069,7 @@ def "main refresh-egress" [
     print $"  (ansi green)Rehearsal:(ansi reset) came up, took the policy, answered -k parse"
 
     write-egress-pin $newest.digest
-    print $"  (ansi green)Pin:(ansi reset) rewritten in compose.yaml and toolkit/container.nu"
+    print $"  (ansi green)Pin:(ansi reset) rewritten in compose.yaml, toolkit/container.nu and toolkit/container.zsh"
     print ""
     print $"  review: git diff"
     print $"  adopt:  container stop ($egress_name); container delete ($egress_name); nu toolkit/container.nu restart <container>"
@@ -1101,7 +1102,7 @@ export alias restart = main restart
 # Apply an edited allowlist to a container that is already up.
 export alias reload-egress = main reload-egress
 
-# Move the proxy pin forward: upstream's newest, rehearsed, then written to both files.
+# Move the proxy pin forward: upstream's newest, rehearsed, then written to all three files.
 export alias refresh-egress = main refresh-egress
 
 # Open the cozy container in a WezTerm window, restarting the pair if it is down.
