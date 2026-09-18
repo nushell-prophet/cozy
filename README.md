@@ -236,7 +236,7 @@ Main commands:
 - `claude-nu sessions` — parse session files into structured summaries, with selectable columns (`--columns`/`--all-columns`: file ops, tool stats, agents, etc.); this is where session selection lives (`--last`, `--session` by UUID or `/rename` name, `--all-projects`)
 - `claude-nu export-session` — export session dialogue as markdown; it returns the text, so saving is the shell's job (`| save session.md`)
 - `claude-nu project-move` — retarget Claude's stored state after a project directory moves
-- `claude-nu gi` — status of the git-intent protocol in the current repo; `gi enable` seeds it (Canvas style and skills), `gi import` turns a session's dialogue into a canvas, `gi open <doc>` launches a session bound to that canvas, and `gi open --fork <doc>` copies the canvas to the next name in its series (`plan.md` → `plan_1.md`) and opens the copy in a fresh session
+- `claude-nu gi` — status of the git-intent protocol in the current repo; nothing is installed into the repo — `gi open` loads the Canvas style and skills as a plugin for that launch only, `gi import` turns a session's dialogue into a canvas, `gi open <doc>` launches a session bound to that canvas, and `gi open --fork <doc>` copies the canvas to the next name in its series (`plan.md` → `plan_1.md`) and opens the copy in a fresh session
 - `claude-nu example` — pick one of the module's own example pipelines and paste it into the command line, ready to edit and run
 
 The environment also includes Claude Code skills for building Nushell completions, writing opinionated Nushell code, practicing literate programming with numd and dotnu, and inspecting or rewriting the Nushell user REPL command history.
