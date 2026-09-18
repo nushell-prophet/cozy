@@ -33,6 +33,15 @@ export def install-change-id-hook [
 ]: nothing -> record {
     let common = git-in $path [rev-parse --path-format=absolute --git-common-dir] | str trim
     let dest = $common | path join hooks commit-msg
+    # Why refuse under core.hooksPath: git then never looks in the common dir, so an install there
+    # would report success for a hook that never fires. `--git-path hooks` is where git looks.
+    let live = git-in $path [rev-parse --path-format=absolute --git-path hooks] | str trim
+    if $live != ($dest | path dirname) {
+        error make --unspanned {
+            msg: $"core.hooksPath sends git to ($live), so a hook in ($dest | path dirname) would never run"
+            help: "copy the tracked hooks/commit-msg into that directory by hand, or unset core.hooksPath"
+        }
+    }
     # Why refuse and not overwrite: in an arbitrary repo a commit-msg hook may already belong to
     # something else (husky, a project's own script), and a silent cp would destroy it.
     # Why --force and not detecting an older copy of this hook: the script carries no version
