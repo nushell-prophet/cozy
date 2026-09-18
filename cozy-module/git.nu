@@ -79,11 +79,26 @@ export def link [
 ]: nothing -> string {
     let abs = $file | path expand
     let dir = $abs | path dirname
-    let loc = git-in $dir [rev-parse --path-format=absolute --git-common-dir --show-prefix] | lines
-    # Why the common dir's parent and not the worktree: a worktree is disposable, the repository is
+    let loc = git-in $dir [
+        rev-parse
+        --path-format=absolute
+        --git-common-dir
+        --git-dir
+        --show-toplevel
+        --show-prefix
+    ] | lines
+    # Why the main worktree and not a linked one: a linked worktree is disposable, the repository is
     # not, and `log --all` there sees every worktree's branches.
-    let repo = $loc.0 | path dirname
-    let path = $loc.1 + ($abs | path basename)
+    # Why not simply the common dir's parent: that holds only for `<repo>/.git`. A submodule's
+    # common dir is `<super>/.git/modules/<name>`, and a bare repo's is the repo itself.
+    let repo = if $loc.1 == $loc.0 {
+        $loc.2
+    } else if ($loc.0 | path basename) == '.git' {
+        $loc.0 | path dirname
+    } else {
+        $loc.0
+    }
+    let path = $loc.3 + ($abs | path basename)
 
     # Why the last commit that touched the file and not HEAD: `git show <rev>:<path>` then returns
     # exactly the content the writer saw, the link does not rot when unrelated files move, and that
