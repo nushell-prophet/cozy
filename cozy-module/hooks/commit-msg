@@ -30,6 +30,13 @@ random=$(dd if=/dev/urandom bs=12 count=1 2>/dev/null | od -An -v -tx1 | tr -d '
 stamp=$(printf '%08x' "$(date +%s)")
 id=$(printf '%s%s' "$random" "$stamp" | tr '0123456789abcdef' 'zyxwvutsrqponmlk')
 
+# Why: interpret-trailers needs the last line terminated. `git merge --no-edit` writes its message
+# without a final newline, and then the trailer lands on the subject line instead of in a block:
+# `%(trailers)` reads nothing and the next amend mints a second id.
+if [ -n "$(tail -c 1 "$msg")" ]; then
+    printf '\n' >>"$msg"
+fi
+
 # interpret-trailers, not an append: where the body ends in prose it opens a block with a blank
 # line, and where it already ends in a trailer block it joins that one. A hand-rolled append gets
 # one of the two wrong, and then `git log --format=%(trailers:key=...)` reads back nothing.
