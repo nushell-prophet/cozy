@@ -31,6 +31,7 @@ Nothing is dropped silently — a question you forgot you asked is the same fail
   Say which two, at the spot they belong.
 - **Conflicting** — the answer collides with another answer, with the document, or with a decision already in git history or in the code.
   Name the collision; never reconcile it on your own.
+  A decision in git history is named by its commit's short `Change-Id` (the first 8 characters) where it carries one, by sha only where the repo stamps none — the id survives the rebases the sha does not.
 
 Completeness runs both ways.
 An answer can open a decision nobody asked about yet, and your plan for the work can need a choice no answer covers.
@@ -41,14 +42,16 @@ If you hesitate between *clear* and *ambiguous*, it is ambiguous.
 
 ## Procedure
 
-1. **Clean-tree check** — `git status --porcelain`.
-   Non-empty → stop and ask the user to commit; half-written answers are not answers.
-   (Same guard as the sibling skills.)
+1. **Tree check** — `git status --porcelain`.
+   Uncommitted answers are a draft he is still writing: read them back if he pasted them as a `git diff`, and leave your readback uncommitted too; never write over his lines or sweep them into your commit.
+   (Same rule as `/gi:git-intent`; `/gi:git-intent-distill` alone still requires a clean tree, because it rewrites the whole file.)
 2. **Get the answers** — `git log -p -N -- <doc>` with `N = $ARGUMENTS` (default `1`); `$ARGUMENTS` may instead name a scope or file.
    `git show HEAD~N:<doc>` gives the pre-answer version — that is where your original questions still stand.
+   A pasted `git diff` is the same input, uncommitted: the answers are in the paste, and the pre-answer version is `HEAD:<doc>`.
 3. **Read the canvas in full** — a session launched by `gi open` was told its canvas path in its own instructions; if you were given no such path, ask which document.
 4. **Sort and write.**
    Ambiguous, unanswered, and conflicting go in as `???` next to the relevant spot, per the Canvas protocol.
+   At most three `???` per pass, the ones blocking the most work first; the rest wait for the next round (the Canvas cap).
    Clear ones go into one `## Readback` section — one line each — so the user reviews the whole set as a single diff instead of hunting through the file.
 5. **Commit** the document alone.
    Subject names the pass; body stays thin — the diff is the content.
@@ -61,10 +64,10 @@ Confirmation costs the user one word, and it is the only thing standing between 
 
 ## After
 
-The user edits, answers the `???`, commits — then `/git-intent` executes.
-The `## Readback` section is spent process material once the work starts: `/git-intent-distill` cuts it into history.
+The user edits, answers the `???`, commits — then `/gi:git-intent` executes.
+The `## Readback` section is spent process material once the work starts: `/gi:git-intent-distill` cuts it into history.
 
 ## Related
 
-- `/git-intent` — the execute loop this pass deliberately delays.
-- `/git-intent-distill` — removes the spent readback section afterwards.
+- `/gi:git-intent` — the execute loop this pass deliberately delays.
+- `/gi:git-intent-distill` — removes the spent readback section afterwards.

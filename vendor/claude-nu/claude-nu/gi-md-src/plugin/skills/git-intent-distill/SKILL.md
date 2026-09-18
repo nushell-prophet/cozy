@@ -6,7 +6,7 @@ allowed-tools: Bash(git *), Read, Edit, Write, Grep, Glob
 ---
 
 Distill compresses the *document*, not the history.
-`git-intent` writes the loop; `git-intent-squash-archive` collapses the commit stream; neither decides what text the canvas should still carry.
+`gi:git-intent` writes the loop; `gi:git-intent-squash-archive` collapses the commit stream; neither decides what text the canvas should still carry.
 Over a session the canvas accumulates rejected-path sections, resolved markers, and superseded caveats — the human wants to read current state, not the whole working record.
 Distill removes that accumulation *into history*: the doc converges to its meaning, every cut stays recoverable.
 
@@ -19,7 +19,7 @@ Run it whenever the canvas has drifted from lean, not only at finalization.
 **Remove only what history already holds.**
 Every cut must be recoverable from `git log -p -- <doc>`, so the precondition is a clean tree — all work committed — or the parent commit won't hold the full pre-distill version and the removed content is gone, not archived.
 Run `git status --porcelain`; if non-empty, stop and ask the user to commit first (same guard as the sibling skills).
-Scope of the guarantee: `git log -p -- <doc>` on the working branch; after `git-intent-squash-archive` the recovery path becomes the `archive/<branch>` tag.
+Scope of the guarantee: `git log -p -- <doc>` on the working branch; after `gi:git-intent-squash-archive` the recovery path becomes the `archive/<branch>` tag.
 
 ## What to cut, what to keep — the judgment
 
@@ -32,7 +32,9 @@ So weigh each candidate rather than sweeping.
 **Cut — dead process material:**
 
 - Resolved `!!` / `!!!`, `??` / `???`, `%%` / `%%%` markers and the scaffolding around them.
-- A `## Readback` section (from `/git-intent-readback`) once the work it confirmed has started — its job ended at the confirmation.
+- A spent `AA:` entry — one that reported a change or answered a point the user has since read and moved past.
+  The git-intent loop leaves it standing when the marker closes so the answer is visible under his line; once read, it is process material like a `## Readback` section.
+- A `## Readback` section (from `/gi:git-intent-readback`) once the work it confirmed has started — its job ended at the confirmation.
 - Working-list numbering gaps and half-formed notes the final state superseded.
 - Deliberation a later decision made moot — the settled outcome stays, the weighing goes.
 - A rejected path whose only value was recording *that* it was rejected — the deletion commit body carries that.
@@ -40,7 +42,10 @@ So weigh each candidate rather than sweeping.
 **Keep — live constraints:**
 
 - `## Open decisions` and anything still unresolved: live, not dead.
+- An `AA:` entry that still carries meaning: the one naming the sibling file with the long answer (cut it and the file loses its only link from the canvas), or a summary that is the current state of the point.
 - Protective why-nots — a rejected path documented to prevent re-litigation — stay inline unless the user says otherwise.
+  A long one may be cut down to one line plus a pointer at the commit that holds the reasoning — the why-not stays visible, the weighing goes to history.
+  The pointer is the commit's short `Change-Id` (the first 8 characters) where it carries one, by sha only where the repo stamps none: `git log --all --grep='^Change-Id: <id>'` still resolves it through the `archive/<branch>` tag after squash-archive, while a working-branch sha dies at the first rebase.
 - Current-state contracts and any caveat that still binds behavior.
 
 When a cut is judgment-heavy, do less: leaving a live constraint in costs a few lines; distilling one into archaeology costs a re-litigated decision.
@@ -56,7 +61,8 @@ With no instruction, apply the taxonomy above conservatively.
 ## Procedure
 
 1. **Clean-tree check** — `git status --porcelain`.
-   Non-empty → stop, ask the user to commit or stash.
+   Non-empty → stop, ask the user to commit or stash: this pass rewrites the whole file, so his uncommitted lines would be lost in it.
+   (The sibling skills accept a dirty tree; this one cannot.)
 2. **Read the canvas in full** — a session launched by `gi open` was told its canvas path in its own instructions; if you were given no such path, ask which document.
 3. **Classify** — mark each section cut/keep per the taxonomy and any `$ARGUMENTS` / `!!` instructions.
    Anything genuinely ambiguous between dead and protective: keep it, add a `???`.
@@ -67,5 +73,5 @@ With no instruction, apply the taxonomy above conservatively.
 
 ## Related
 
-- `/git-intent` — the write-loop that produced the material being distilled.
-- `/git-intent-squash-archive` — finalization: collapse the branch (distill commits included) into one clean commit for `main`, full history preserved in a tag.
+- `/gi:git-intent` — the write-loop that produced the material being distilled.
+- `/gi:git-intent-squash-archive` — finalization: collapse the branch (distill commits included) into one clean commit for `main`, full history preserved in a tag.

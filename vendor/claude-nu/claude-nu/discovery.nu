@@ -115,7 +115,7 @@ def resolve-session-name [
     --sessions-dir: path
 ]: nothing -> path {
     let local = if ($sessions_dir | path exists) {
-        ls $sessions_dir | where name =~ $UUID_JSONL_PATTERN | get name
+        discover-session-files $sessions_dir | where parent_session_id == null | get path
     } else { [] }
     let found = $local
         | sessions-named $name
@@ -148,9 +148,8 @@ def sessions-named [name: string]: list<path> -> list<path> {
     let marker = $'"customTitle":($name | to json --raw)'
     $files
     | rg-filter-session-files $marker --fixed-strings
-    | where {|file|
-        $file
-        | read-session-records --contains '"custom-title"'
+    | where {
+        read-session-records --contains '"custom-title"'
         | where type? == "custom-title"
         | get --optional customTitle
         | compact
@@ -176,9 +175,24 @@ export def session-id-from-path []: path -> string {
 # wants user turns — only ~30% of lines) never parses the rest; the caller still
 # re-filters the decoded `type`, so a line merely quoting the marker can't slip in.
 export def read-session-records [--contains: string]: path -> table {
-    open --raw $in
-    | if $contains == null { } else { lines | where ($it | str contains $contains) | str join "\n" }
-    | from json --objects
+    let file = $in
+    let raw = open --raw $file
+        | if $contains == null { } else { lines | where ($it | str contains $contains) | str join "\n" }
+    # Why: `from json --objects` is lazy, so its error surfaces wherever the
+    # caller consumes the table — pointing at some pipeline in discovery.nu and
+    # naming no file (a transcript padded with NUL bytes cost a scan of every
+    # session on the machine to find). Collect inside the try so the failure
+    # lands here, and rethrow it with the path and serde's own line. Only the
+    # parse is inside: a missing or unreadable file keeps its own error.
+    try {
+        $raw | from json --objects | collect
+    } catch {|e|
+        let detail = $e.details.inner? | get --optional 0.labels.0.text | default $e.msg
+        error make --unspanned {
+            msg: $"Session file is not valid JSONL: ($file)\n($detail)"
+            help: "one JSON record per line"
+        }
+    }
 }
 
 # Discover session files in a directory, newest first. Returns rows
