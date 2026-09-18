@@ -6,9 +6,10 @@
 # A rename replaces the *name* instead of the file, so the running process keeps
 # its old inode and the next launch picks up the new one.
 #
-# Why the check matters: nushell's `cp` prints the OS error to stderr and lets
-# the script continue, so the install used to report success while leaving the
-# old binary in place. `mv` raises, so the failure now stops here.
+# Why the external `^cp`: nushell's builtin `cp` prints the OS error to stderr
+# and lets the script continue. Before staging, that reported success while
+# leaving the old binary in place; with staging, it would move a copy cut short
+# (disk full) over a working binary. The external's exit code raises, as `mv` does.
 export def main [
     src: path
     dest: path
@@ -16,6 +17,6 @@ export def main [
     # Not a plain rename of $src because: the build directory may sit on another
     # filesystem, where rename(2) fails. Copying beside $dest keeps it one FS.
     let staged = $dest + ".new"
-    cp $src $staged
+    ^cp $src $staged
     mv --force $staged $dest
 }
