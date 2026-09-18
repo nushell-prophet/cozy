@@ -63,7 +63,8 @@ def commit-file [repo: path src: path]: nothing -> bool {
 #
 # With paths, adds or updates each one. Without any, refreshes every file the
 # repo already tracks — the repo is its own registry, so a file added once keeps
-# getting new versions with no separate list to maintain.
+# getting new versions with no separate list to maintain. A tracked file absent
+# on this machine is skipped and named in the summary.
 # A file whose bytes have not changed produces no commit, so re-running is free.
 #
 # A bare `*.md` arrives as that literal string, since nushell expands globs only
@@ -103,9 +104,13 @@ export def snapshot [
         return
     }
 
+    # Why skip rather than refuse on a refresh: the repo holds host and sandbox
+    # paths side by side, so a refresh on either machine always meets files that
+    # exist only on the other. Explicit paths were already checked above.
+    let absent = $sources | where not ($it | path exists)
     mut committed = 0
     mut unchanged = 0
-    for src in $sources {
+    for src in ($sources | where $it not-in $absent) {
         if (commit-file $repo $src) {
             $committed += 1
         } else {
@@ -114,4 +119,8 @@ export def snapshot [
     }
 
     print $"($committed) committed, ($unchanged) unchanged in ($repo)"
+    if ($absent | is-not-empty) {
+        print $"($absent | length) skipped, not on this machine:"
+        print ($absent | each { $"  ($in)" } | str join (char nl))
+    }
 }
