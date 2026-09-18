@@ -133,7 +133,8 @@ An empty section is worse than a missing one.
 What each section owes the reader:
 
 - **NAME** — one line, no trailing period (0 of 1520 have one), median 5 words, and it is a description, not a slogan.
-- **SYNOPSIS** — the invocation syntax only. Options in alphabetical order, digits first, uppercase before lowercase.
+- **SYNOPSIS** — the invocation syntax only.
+  Options in alphabetical order, digits first, uppercase before lowercase.
 - **DESCRIPTION** — opens by saying what the thing *is and does*, in one or two sentences, before any qualification.
   Motivation, if any, comes second and is historical, not promotional.
 - **FILES** — the path *and* how it is used: created, read, modified.
@@ -141,7 +142,9 @@ What each section owes the reader:
   "The config file could not be parsed." "The password was incorrect." "The message file is too large."
 - **EXAMPLES** — introduced by a sentence ending in a colon, then the block; that is the house form at 84% of blocks.
   `mdoc.7` gives exactly one imperative here: "Make sure that examples work properly!"
-- **SEE ALSO** — sorted by section number, then alphabetically. 99.8% conform. Median 4 entries.
+- **SEE ALSO** — sorted by section number, then alphabetically.
+  99.8% conform.
+  Median 4 entries.
 - **HISTORY** — when it first appeared and where it came from. 76% of pages have this.
 
 **Split a topic into its own section only when a reader may need it without reading the rest.**
@@ -161,7 +164,8 @@ The order and the contract survive the rename; the mdoc heading names do not hav
 253 pages have BUGS, 159 have CAVEATS.
 This is the hardest section to write and the one that most separates the corpus from vendor documentation.
 
-**BUGS is for what is wrong. CAVEATS is for what is correct but surprising.**
+**BUGS is for what is wrong.**
+**CAVEATS is for what is correct but surprising.**
 
 What is admitted there, with the cause named rather than a label pasted on:
 

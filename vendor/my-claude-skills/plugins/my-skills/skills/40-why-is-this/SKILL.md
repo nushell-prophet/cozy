@@ -116,11 +116,18 @@ If the file was renamed, find the rename with `git log --follow --name-status --
 
 **3. Hop into the archived branch history.**
 For each commit from step 2, read its full body.
-A body ending in `Archive: archive/<branch>` means that commit is a squash — the branch's real history is in that tag, and that is where the attempts are:
+A body ending in an `Archive:` trailer means that commit is a squash — the branch's real history is in an `archive/<branch>` tag, and that is where the attempts are.
+The value is either that tag name, or the `Change-Id` of the archived tip — 32 letters `k` to `z` — which still names the tip after the tag is renamed and stays unique across repos:
 
 ```
-git log archive/<branch>              # the road, including reverted attempts
-git log main..archive/<branch>        # only what the landing dropped
+git log --all --format=%H --grep='^Change-Id: <id>'   # the archived tip; `git tag --points-at <hash>` names its tag
+```
+
+Then, with the tag name or that hash as `<tip>`:
+
+```
+git log <tip>                         # the road, including reverted attempts
+git log main..<tip>                   # only what the landing dropped
 ```
 
 For search-shaped questions, `--all` reaches tags directly, so one command covers the trunk and every archive at once: `git log --all -S '<string>'`.

@@ -44,9 +44,11 @@ For each question, three lines:
 
 Then three short lists, each item pointing at where in the document it happens:
 
-- **Ambiguous** — a sentence you could read two ways. Give both readings; that is the evidence.
+- **Ambiguous** — a sentence you could read two ways.
+  Give both readings; that is the evidence.
 - **Assumed knowledge** — a term, tool, file or convention the page uses without introducing, that a reader outside the project would not have.
-- **Contradictions** — two places that cannot both be true. Quote both.
+- **Contradictions** — two places that cannot both be true.
+  Quote both.
 
 An empty list is a real result.
 Write it as empty rather than reaching for something to put in it — a manufactured finding costs the author a rewrite of a sentence that was fine.

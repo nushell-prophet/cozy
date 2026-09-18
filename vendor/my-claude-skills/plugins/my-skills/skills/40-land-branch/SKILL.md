@@ -114,17 +114,21 @@ Nothing is changed until the user confirms.
    None of these earns a line, even a summarized one; the message describes the approach that survived, not the road to it.
    If the branch has a `gi/` canvas or the current session holds reasoning that never reached a commit body, pull it in here — the tag preserves the old bodies, but only this commit is read on the trunk.
 
+   **Strip every `Change-Id:` trailer from what you fold in.**
+   The `commit-msg` hook adds an id only to a message that has none, so a trailer copied out of a folded body becomes the landing commit's own id — the same id as a commit the archive tag keeps, a duplicate the skill itself manufactured.
+   The landing commit gets a fresh id from the hook by carrying none into `git commit`.
+
    **No run status in the body.**
    Lines like `235 tests passed`, `all checks green`, `verified with nutest` do not belong in the commit message.
    They were true at one moment on one tree; on the trunk they are unverifiable and often already false.
    Report them in the chat reply, where the user reads them while they still mean something.
    The body carries *why*, not *it worked*.
 
-   **No hash of a commit inside `base..HEAD` either.**
-   The commit you are writing is the only address those changes will have on the trunk; every hash in the branch's own bodies names a commit the landing is about to rewrite.
+   **No hash of a commit inside `base..HEAD` either — and no short `Change-Id` of one.**
+   The commit you are writing is the only address those changes will have on the trunk; every hash in the branch's own bodies names a commit the landing is about to rewrite, and so does the id of one: the archive tag keeps that commit, but the trunk will not have it.
    When a body you are folding cites one, the citation goes with the rest of the correction.
    A message is worse than a file here: a file can be repointed afterwards, a body cannot without rewriting the trunk — so this is the only moment.
-   The exception is a message whose subject *is* the rewrite; then name `archive/<branch>` beside the hash, so the reader has something that resolves.
+   Two exceptions: a message whose subject *is* the rewrite — then name `archive/<branch>` beside the hash, so the reader has something that resolves — and the `Archive:` trailer of step 12, which names the archived tip by its id on purpose.
 
 7. **Find the working material.**
    `git diff --name-status <base>..HEAD -- todo/ gi/`.
@@ -156,6 +160,21 @@ Nothing is changed until the user confirms.
    Only added lines are scanned — a line already on the trunk cannot cite a commit this branch made.
    `git grep -n <hash>` then names the file and line citing each hit, which is what step 8 has to show.
 
+   A repo that stamps `Change-Id` trailers cites commits by the short id as well, so the same scan runs a second time for ids — 8 or 32 letters `k` to `z`, resolved through the trailer before the ancestor tests, because English words match that alphabet too (`tomorrow` does):
+
+   ```sh
+   git diff <base>..HEAD | grep '^+' | grep -v '^+++' | grep -oE '\b[k-z]{8}\b|\b[k-z]{32}\b' | sort -u |
+   while read -r id; do
+     for h in $(git log --all --format=%H --grep="^Change-Id: $id"); do
+       git merge-base --is-ancestor "$h" HEAD 2>/dev/null || continue
+       git merge-base --is-ancestor "$h" <base> 2>/dev/null && continue
+       echo "$id $h"
+     done
+   done
+   ```
+
+   A word that resolves to nothing is not an id and falls out by itself; an id that resolves to a commit this landing rewrites is settled at step 11a exactly like a hash.
+
 8. **Judgement, then STOP.**
    Two calls to make first:
    - Already one clean commit with a good body?
@@ -168,13 +187,17 @@ Nothing is changed until the user confirms.
      Build exactly that many commits — never split further just because a correction happened along the way, never merge two subjects into one just because they happen to share a file (`references/grouped.md` decides that case).
      Say so plainly whenever the count comes out above one, whether or not `--grouped` was passed — the shape is the branch's own; `--grouped` only lets the user skip straight to it.
 
-   Show the user, in one block: the chapters found and which original commits fold into each, the generated message(s), the `todo/`/`gi/` paths being dropped, each hash from step 7a with the file citing it and whether it is dropped or repointed (step 11a), an `archive/<branch>` overwrite warning if `git tag -l` finds one, the rebase warning from step 5, the content fork-point from step 5a with its evidence if one was found, any branch step 13b will offer to re-base, the exact merge command, and the branch-delete command from step 13a.
+   Show the user, in one block: the chapters found and which original commits fold into each, the generated message(s), the `todo/`/`gi/` paths being dropped, each hash from step 7a with the file citing it and whether it is dropped or repointed (step 11a), an overwrite warning if `git tag -l` already finds the tag step 9 will write, the rebase warning from step 5, the content fork-point from step 5a with its evidence if one was found, any branch step 13b will offer to re-base, the exact merge command, and the branch-delete command from step 13a.
    **Wait for confirmation.**
 
 ## Landing
 
 9. **Archive first** — only on the squash path.
    `git tag -f archive/<branch> HEAD`.
+   In a monorepo — the root `CLAUDE.md` says so, and step 7 has already read it — the tag is `archive/<repo>/<branch>` instead, where `<repo>` is the subdirectory the branch's diff lives in: `git diff --name-only <base>..HEAD | cut -d/ -f1 | sort -u`.
+   A branch whose diff spans several subdirectories keeps the plain `archive/<branch>`.
+   Why the prefix: a monorepo's tag namespace is flat and shared by every repo it holds, so an unprefixed name collides the first time two of them archive the same branch name — its tooling spec says so, and writes the archives it imports under the same `archive/<repo>/` prefix.
+   Every later `archive/<branch>` in this skill, the `-prerebase` tags of step 13b included, means the name chosen here.
    This runs before anything destructive, and it is what makes the rest reversible — every original commit, including the `todo/` ones, stays reachable.
    Skip it entirely when step 8 sent you to the merge: there is nothing to make reachable.
 
@@ -212,8 +235,11 @@ Nothing is changed until the user confirms.
 
     Skip a hash whose file was dropped at step 11 — that file is not landing.
 
-12. **Commit** with the message from step 6, plus an `Archive: archive/<branch>` trailer.
-    Run the drafted message through step 7a's loop first, with the message text in place of the diff — a hash reaching the body is usually one copied out of a folded commit, and after the commit exists there is no fixing it.
+12. **Commit** with the message from step 6, plus an `Archive:` trailer naming the archived tip.
+    Its value is the tip's `Change-Id`, read with `git log -1 --format='%(trailers:key=Change-Id,valueonly)' archive/<branch>`, because the id still names that commit after the tag is renamed, and tag names stop being unique across repos; when that prints nothing — the repo stamps no ids, or the tip predates the hook — the value is the tag name, `archive/<branch>`.
+    The tag from step 9 is written either way: an id keeps nothing alive, only a ref does.
+    Run the drafted body through both of step 7a's loops first — before the `Archive:` trailer is appended, since that trailer names the tip by design — with the message text in place of the diff and `archive/<branch>` in place of `HEAD`: after step 10 `HEAD` is `<base>`, and against it the ancestor tests flag nothing.
+    A hash or an id reaching the body is usually one copied out of a folded commit, and after the commit exists there is no fixing it.
 
 13. **Merge.**
     `git switch <trunk>` then `git merge --ff-only <branch>`.
@@ -240,7 +266,7 @@ Nothing is changed until the user confirms.
     **Ask before running it**: this rewrites work the user did not name, and `git worktree list` may show one of these branches checked out elsewhere, where a rebase moves that worktree's files under whoever is working in it.
     The test catches a branch that contains the whole landed branch; one forked from its middle is caught by step 5a when its own turn comes.
 
-14. **Report**, briefly: the trunk's new commit, that the user is now standing on `<trunk>` (say it plainly — the next edit would otherwise land there), that `<branch>` was deleted, and — if step 9 ran — that `git log archive/<branch>` still holds the full history.
+14. **Report**, briefly: the trunk's new commit — by its short `Change-Id` where it carries one, by sha only where the repo stamps none — that the user is now standing on `<trunk>` (say it plainly — the next edit would otherwise land there), that `<branch>` was deleted, and — if step 9 ran — that `git log archive/<branch>` still holds the full history.
     Split the leftover working-tree state from step 11 into notes still open and artifacts this branch completed; for the completed ones give the `rm` command (`allowed-tools` here is git only, so the user runs it).
     This is also where run status belongs — `nutest run` → `57 passed`, not in the commit body.
     Name every branch step 13b re-based, with its `archive/<other>-prerebase` tag, and every one you offered and the user declined — a branch left long-routed is the next session's conflict.

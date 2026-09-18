@@ -18,8 +18,10 @@ A local copy of the OpenBSD manual tree, at `upstream-big-repos/obsd-man/usr/sha
 
 Two filters matter, and dropping either poisons the result:
 
-- **Only files with a `.Dd` line.** The ~254 pages without one, and all 728 pages in man3p, are generated from Perl POD by `Pod::Man`. They are machine output, not examples of anyone's writing.
-- **`grep -a` is load-bearing.** Four files are ISO-8859, not UTF-8 (`man5/isakmpd.conf.5`, `man5/sasyncd.conf.5`, `man8/isakmpd.8`, `man8/sasyncd.8`). Plain `grep` calls them binary and silently matches nothing, which is how a 100% figure reads as 99.7%.
+- **Only files with a `.Dd` line.** The ~254 pages without one, and all 728 pages in man3p, are generated from Perl POD by `Pod::Man`.
+  They are machine output, not examples of anyone's writing.
+- **`grep -a` is load-bearing.** Four files are ISO-8859, not UTF-8 (`man5/isakmpd.conf.5`, `man5/sasyncd.conf.5`, `man8/isakmpd.8`, `man8/sasyncd.8`).
+  Plain `grep` calls them binary and silently matches nothing, which is how a 100% figure reads as 99.7%.
 
 Arch subdirectories (`man4/amd64` and friends) are excluded; including them gives 1935 files.
 
@@ -31,13 +33,16 @@ These come from `man7/mdoc.7`, `man7/man.7`, `man7/roff.7` and `man1/mandoc.1`, 
   Three sections are marked "Not used in OpenBSD": LIBRARY, IMPLEMENTATION NOTES, SECURITY CONSIDERATIONS.
 - "This begins with an expansion of the brief, one line description in NAME" — `mdoc.7:288-289` on DESCRIPTION.
 - "List the options in alphabetical order, uppercase before lowercase for each letter and with no regard to whether an option takes an argument. Put digits in ascending order before all letter options." — `mdoc.7:306-309`.
-- "Example usages. This often contains snippets of well-formed, well-tested invocations. Make sure that examples work properly!" — `mdoc.7:366-368`. The only imperative with an exclamation mark in the document.
-- "Cross-references should conventionally be ordered first by section, then alphabetically (ignoring case)." — `mdoc.7:394-395`. And "This section should exist for most manuals" — `mdoc.7:393`, the only section given that status.
+- "Example usages. This often contains snippets of well-formed, well-tested invocations. Make sure that examples work properly!" — `mdoc.7:366-368`.
+  The only imperative with an exclamation mark in the document.
+- "Cross-references should conventionally be ordered first by section, then alphabetically (ignoring case)." — `mdoc.7:394-395`.
+  And "This section should exist for most manuals" — `mdoc.7:393`, the only section given that status.
 - "Common misuses and misunderstandings should be explained in this section." — `mdoc.7:423-424` on CAVEATS.
 - "Known bugs, limitations, and work-arounds should be described in this section." — `mdoc.7:426-427` on BUGS.
 - EXIT STATUS was historically documented under DIAGNOSTICS, "a practise that is now discouraged" — `mdoc.7:359-361`, `mdoc.7:376-379`.
 - "It's helpful to document both the file name and a short description of how the file is used (created, modified, etc.)." — `mdoc.7:350-352` on FILES.
-- "Each sentence should terminate at the end of an input line." — `roff.7:305-309`. `mandoc` lints the breach as "new sentence, new line" (`mandoc.1:1815-1818`).
+- "Each sentence should terminate at the end of an input line." — `roff.7:305-309`.
+  `mandoc` lints the breach as "new sentence, new line" (`mandoc.1:1815-1818`).
 
 **The gap that shaped this skill.** Nothing in those four documents states a rule about tense, voice, person, sentence length, or whether EXAMPLES should exist.
 Grep for those terms returns nothing.
@@ -93,8 +98,10 @@ The order is a total order pages sample from, not a template they copy.
     while read -r f; do grep -a '^\.Sh' "$f" | sed 's/^\.Sh[[:space:]]*//'; done < corpus.txt
 
 `.Nd` one-line description: exactly one per file in all 1520.
-Characters min 6, median 32, p90 53, max 103. Words min 2, median 5, max 14.
-Ends with a period: **0**. Starts uppercase: 50.3%, and that half is proper nouns — man4 is 85% uppercase because of vendor and chip names, man1 only 6.9%.
+Characters min 6, median 32, p90 53, max 103.
+Words min 2, median 5, max 14.
+Ends with a period: **0**.
+Starts uppercase: 50.3%, and that half is proper nouns — man4 is 85% uppercase because of vendor and chip names, man1 only 6.9%.
 
 Page length, comment lines excluded: median 79 lines, p90 357, max 8252 (`tmux.1`).
 Half the corpus is under ~100 lines.

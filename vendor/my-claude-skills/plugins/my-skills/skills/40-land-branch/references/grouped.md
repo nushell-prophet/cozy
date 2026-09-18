@@ -52,8 +52,10 @@ An intermediate commit holding part of a file may not build — the ordered-hist
 - `git restore --staged .` — unstage all of it.
   The working tree is untouched.
 - Per chapter: `git add <the chapter's paths>` — a split file is staged by its mechanism from *Splitting a shared file* instead — then `git commit` with that chapter's message.
-  The last chapter's body also carries the `Archive: archive/<branch>` trailer; one pointer is enough.
-- Step 11a runs per chapter, just before that chapter's commit, and gains one case: a hash folding into a chapter **already committed** can be repointed at its real new hash, since that hash now exists — unless step 5 found the trunk moved, because the rebase then changes that hash again and the citation breaks a second time; drop it instead.
+  The last chapter's body also carries the `Archive:` trailer from step 12 — the archived tip's `Change-Id`, or the tag name where there is none; one pointer is enough.
+- Step 11a runs per chapter, just before that chapter's commit, and gains one case: a citation folding into a chapter **already committed** can be repointed, since that commit now exists.
+  Repoint it at the chapter's short `Change-Id` where the repo stamps one: step 5's rebase changes the hash again and would break a hash a second time, but it carries the id inside the message, so the citation survives it.
+  Where the repo stamps no ids the old caveat stands — repoint at the new hash only when the trunk did not move, and drop the citation otherwise.
   A hash folding into the chapter being written, or into a later one, is dropped as on the squash path — the first cannot name itself, the second does not exist yet, and reaching back to fix it later would rewrite the chapter that cites it.
 - `todo/` and `gi/` are never added, so step 11's `git restore --staged` has nothing to do and disappears — the same result reached by doing nothing.
   What they leave behind in the working tree, and your duty to report it instead of claiming a clean tree, is exactly as step 11 describes.
