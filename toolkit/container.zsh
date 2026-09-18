@@ -37,6 +37,7 @@ typeset -r CAGED_SUBNET=192.168.216.0/24
 typeset -r EGRESS_NAME=cozy-egress
 typeset -r EGRESS_IMAGE='ubuntu/squid@sha256:6c919903a7a60f3ddd27735cab4516e2991420d49dfc3247e5228de994172d8b'
 typeset -r PROXY_PORT=3128
+typeset -r ROOT_PATH=/usr/sbin:/usr/bin:/sbin:/bin
 typeset -r POLICY_CONF=/etc/squid/policy/squid.conf
 # An IP literal, so no DNS is involved and --no-dns cannot be mistaken for
 # isolation. Same probe as cozy verify's `egress: no direct route` row.
@@ -284,14 +285,21 @@ egress_address() {
     say 'Exit:' "$(proxy_url $EGRESS_IP)"
 }
 
+# Why: the image's PATH leads with agent-owned dirs (~/.local/bin, ~/.cargo/bin,
+# linuxbrew), so a bare `sh` or `sed` in a uid-0 exec runs whatever the agent
+# dropped there. Same two measures as `root-sh` in container.nu: the shell by
+# absolute path, and PATH reset as the script's first statement.
+root_sh() {
+    container_cli exec --uid 0 $1 /bin/sh -c "PATH=$ROOT_PATH; export PATH; $2"
+}
+
 # The one mutable link between the cozy container and its exit. Nothing on this
 # network keeps its address across a start, so the container's *_PROXY env
 # carries the proxy's *name* and this line maps that name to wherever the proxy
 # is right now. /etc/hosts because a host-only network has no DNS; written as
 # root because the `agent` user has no sudo.
 set_egress_hosts() {
-    container_cli exec --uid 0 $1 sh -c \
-        "sed --in-place '/ $EGRESS_NAME\$/d' /etc/hosts; echo '$2 $EGRESS_NAME' >> /etc/hosts"
+    root_sh $1 "sed --in-place '/ $EGRESS_NAME\$/d' /etc/hosts; echo '$2 $EGRESS_NAME' >> /etc/hosts"
     say 'Hosts:' "$EGRESS_NAME -> $2, mapped inside $1"
 }
 
@@ -302,8 +310,7 @@ set_egress_hosts() {
 # 20s default. With no nameserver line glibc falls back to 127.0.0.1, which
 # refuses instantly; names are resolved by the proxy anyway.
 clear_resolver() {
-    container_cli exec --uid 0 $1 sh -c \
-        "echo '# cozy: no resolver — $EGRESS_NAME resolves names' > /etc/resolv.conf"
+    root_sh $1 "echo '# cozy: no resolver — $EGRESS_NAME resolves names' > /etc/resolv.conf"
     say 'Resolver:' "cleared in $1 — the cage has none, and the image's 1.1.1.1 costs 20s a lookup"
 }
 
