@@ -79,7 +79,9 @@ export def link [
     # Why the last commit that touched the file and not HEAD: `git show <rev>:<path>` then returns
     # exactly the content the writer saw, the link does not rot when unrelated files move, and that
     # commit's body says why the file is the way it is.
-    let log = git-in $dir [log -1 '--format=%H%n%(trailers:key=Change-Id,valueonly)' -- $abs]
+    # Why --literal-pathspecs: a pathspec expands glob characters, so `a[1].txt` also matched
+    # `a1.txt` and the link named that file's commit.
+    let log = git-in $dir [--literal-pathspecs log -1 '--format=%H%n%(trailers:key=Change-Id,valueonly)' -- $abs]
         | lines
         | compact --empty
     if ($log | is-empty) {
@@ -92,7 +94,7 @@ export def link [
     # Why refuse an uncommitted file: the link would name content no reader can reproduce.
     # Why after the log and not before: an untracked file is dirty too (`??` in porcelain), and the
     # first check to run names the cause — so tracked-ness is asked first, dirtiness second.
-    if (git-in $dir [status --porcelain -- $abs] | is-not-empty) {
+    if (git-in $dir [--literal-pathspecs status --porcelain -- $abs] | is-not-empty) {
         error make {
             msg: $"($path) has uncommitted changes"
             label: {text: "dirty in the worktree" span: (metadata $file).span}
