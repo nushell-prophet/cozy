@@ -587,7 +587,7 @@ export def gi-reject-owned-flags [extra: list<string>]: nothing -> nothing {
     if ($owned | is-not-empty) {
         error make --unspanned {
             msg: $"gi sets ($owned | str join ', ') itself — a canvas launch cannot pass it through"
-            help: "the canvas binds the session (--session-id/--resume/--name) and carries the protocol (--plugin-dir) and the hook (--settings); to work in another session, open another canvas"
+            help: "the canvas binds the session (--session-id/--resume/--name) and carries the style name and the hook (--settings); to work in another session, open another canvas"
         }
     }
 }
