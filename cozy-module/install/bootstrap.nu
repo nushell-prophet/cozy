@@ -172,6 +172,12 @@ export def main [
     # active excludesFile on shell start, and verify.nu's check-git-ignore derives
     # its patterns from this file. Single source: edit here, the others follow.
     ".DS_Store\nThumbs.db\ndesktop.ini\n" | save --force ($git_xdg | path join 'ignore')
+    # Global attributes, git's XDG-default path: CRLF is converted to LF on
+    # commit in every repo. Why global and not a .gitattributes per repo: one
+    # file covers every repo, new ones included; the host gets the same line
+    # once, by hand. Stray `^M` lines kept reaching diffs, pasted in from
+    # outside, and a per-repo file duplicates the one rule ten times.
+    "* text=auto eol=lf\n" | save --force ($git_xdg | path join 'attributes')
 
     # Step 3 — populate ~/repos/ with vendored modules
     populate-repos
