@@ -148,6 +148,12 @@ export def main [
     # it has no setting for it. Belongs in this layer, next to core.pager: a
     # display preference everyone in the sandbox shares, unlike the identity in
     # ~/.gitconfig. Costs the `Merge:` line on merge commits.
+    # core.autocrlf=input converts CRLF to LF on commit, never back on
+    # checkout: stray `^M` line ends kept reaching diffs, pasted in from
+    # outside. Why here and not a .gitattributes per repo, nor a global
+    # `* text=auto eol=lf` in ~/.config/git/attributes: one key in a file this
+    # step already writes, and on the host the user reproduces it with a single
+    # `git config --global core.autocrlf input` instead of hand-writing a file.
     '[user]
 	name = Agent
 	email = agent@sandbox
@@ -159,6 +165,7 @@ export def main [
 	fsync = all
 	fsyncMethod = fsync
 	pager = delta
+	autocrlf = input
 [interactive]
 	diffFilter = delta --color-only
 [delta]
@@ -172,12 +179,6 @@ export def main [
     # active excludesFile on shell start, and verify.nu's check-git-ignore derives
     # its patterns from this file. Single source: edit here, the others follow.
     ".DS_Store\nThumbs.db\ndesktop.ini\n" | save --force ($git_xdg | path join 'ignore')
-    # Global attributes, git's XDG-default path: CRLF is converted to LF on
-    # commit in every repo. Why global and not a .gitattributes per repo: one
-    # file covers every repo, new ones included; the host gets the same line
-    # once, by hand. Stray `^M` lines kept reaching diffs, pasted in from
-    # outside, and a per-repo file duplicates the one rule ten times.
-    "* text=auto eol=lf\n" | save --force ($git_xdg | path join 'attributes')
 
     # Step 3 — populate ~/repos/ with vendored modules
     populate-repos

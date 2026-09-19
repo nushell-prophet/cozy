@@ -22,6 +22,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - `git diff` and `git show` keep git's `+`/`-` line prefixes under delta (`delta.keep-plus-minus-markers`), so diff lines copied out of the terminal into a message to an agent still say which were added and which removed.
 - `cozy git-harden` is `cozy git harden` now, beside the new `cozy git install-change-id-hook`; flags and output are unchanged.
+- Git in the sandbox converts CRLF to LF on commit (`core.autocrlf = input` in `~/.config/git/config`), so a file pasted in with Windows line endings no longer lands as `^M` in every diff.
+  A clone that keeps CRLF on purpose — an upstream repo with Windows-ending test fixtures — needs `git config --local core.autocrlf false`. (ab9f71b)
 
 ### Fixed
 
