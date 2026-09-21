@@ -69,12 +69,9 @@ The machine cozy was installed on.
 
 ## Caveat — `CLAUDE.md catalog` (sandbox target)
 
-This one row can fail on a healthy build.
-The catalog is appended to `~/.claude/CLAUDE.md` by bootstrap step 6, but that same file is also user state: `cozy sandbox-state restore` overwrites it whole from a snapshot.
-If the snapshot has no catalog, restore wipes the build's catalog and the check fails — not a build defect.
-Worse, it can't self-heal: `snapshot` captures the clobbered (catalog-less) file, so once lost the catalog stays lost across the snapshot/restore loop.
-Before treating this row as a real failure, check whether `cozy sandbox-state restore` ran in this sandbox.
-(Underlying fix — give the catalog a marker block so `snapshot` strips it and the build keeps owning it — is unbuilt as of 2026-07.)
+The catalog is appended to `~/.claude/CLAUDE.md` by bootstrap step 6, and that same file is also user state.
+`cozy sandbox-state global-claude restore` overwrites no `CLAUDE.md`, so the live file survives it and this row failing means the catalog is genuinely missing.
+Taking the history's version by hand (`git -C ~/.claude restore CLAUDE.md`) can still drop a newer catalog; re-run `cozy install bootstrap`, which replaces the marker block in place.
 
 ## Manual checks (not automated)
 

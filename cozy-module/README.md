@@ -139,8 +139,31 @@ The workspace directory survives sandbox recreation.
 
 ### `cozy sandbox-state global-claude snapshot` / `restore`
 
-Copies the global `~/.claude/CLAUDE.md` to/from `$env.WORKSPACE_DIR/sandbox-state/`, so the agent's persistent instructions survive sandbox recreation.
+Keeps the global `~/.claude/CLAUDE.md` as git history in `$env.WORKSPACE_DIR/sandbox-state/global-claude-history`, so the agent's persistent instructions survive sandbox recreation and every version can be diffed against the one before it.
 The combined `cozy sandbox-state snapshot` / `restore` runs this alongside history and projects.
+
+`snapshot` commits the live file into `~/.claude`'s own git repo and pushes it.
+It does nothing when the file has not changed, so it is safe on every machine recreation.
+The push goes to the history repo's `master` when that is a fast-forward; otherwise to a branch named after the timestamp, which you merge by hand.
+
+A workspace that has no history repo yet needs one made by hand — neither command creates it, so that a wrong or missing mount cannot start an empty history and call it a success:
+
+```nushell
+git init --bare $env.WORKSPACE_DIR/sandbox-state/global-claude-history
+```
+
+`restore` runs `git reset --mixed`, which moves `HEAD` and the index and writes no file of its own.
+So every other file in `~/.claude` — sessions, credentials, settings — is left alone by construction, and afterwards the live `CLAUDE.md` shows as modified against the history:
+
+```nushell
+git -C ~/.claude diff -- CLAUDE.md       # what your machine has on top of the history
+git -C ~/.claude restore CLAUDE.md       # or take the history's version
+```
+
+The one file `restore` does write is `.gitignore`, and only when it is missing.
+It comes from the history, and without it the first `git status` in `~/.claude` lists every session file — one keystroke from staging credentials in lazygit.
+
+Run `restore` after `cozy install bootstrap`, never before: bootstrap step 6 rewrites `CLAUDE.md` to refresh its cozy catalog block.
 
 ### `cozy sandbox-state file-history snapshot`
 

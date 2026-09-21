@@ -11,9 +11,9 @@
 # of the machine it came from, and the same-looking `~/.claude/CLAUDE.md` is a
 # different file in the sandbox than on the host.
 #
-# Sibling of `global-claude.nu`, which keeps the global CLAUDE.md its own way and
-# is left alone — its repo, `../global-claude-history/`, is a finished artifact
-# with hand-written history from the old machine.
+# Sibling of `global-claude.nu`, which keeps the global CLAUDE.md its own way:
+# its repo, `../global-claude-history/`, is a remote that `~/.claude` itself
+# pushes to, so the commits are made there and not here.
 
 const repo_name = 'file-history'
 

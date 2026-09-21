@@ -20,6 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- `cozy sandbox-state global-claude snapshot` / `restore` keep `~/.claude/CLAUDE.md` as git history in `sandbox-state/global-claude-history`, so every version can be diffed against the one before it.
+  `restore` uses `git reset --mixed` and writes no file except a missing `.gitignore`, so nothing else in `~/.claude` can be overwritten; a `snapshot` that is not a fast-forward goes to a branch named after the timestamp, to merge by hand.
+  `snapshot` errors when `~/.claude` is not yet wired to the history repo — run `restore` first.
 - `git diff` and `git show` keep git's `+`/`-` line prefixes under delta (`delta.keep-plus-minus-markers`), so diff lines copied out of the terminal into a message to an agent still say which were added and which removed.
 - `cozy git-harden` is `cozy git harden` now, beside the new `cozy git install-change-id-hook`; flags and output are unchanged.
 - Git in the sandbox converts CRLF to LF on commit (`core.autocrlf = input` in `~/.config/git/config`), so a file pasted in with Windows line endings no longer lands as `^M` in every diff.
