@@ -17,9 +17,8 @@ export def --env install []: nothing -> nothing {
     $env.RUSTUP_MAX_RETRIES = '10'
 
     # Why: sandbox proxy (host.docker.internal:3128) is flaky; cargo's default
-    # 30s timeout with no retries fails on first hiccup. Originally set in
-    # Dockerfile, restored here since rust moved to runtime install (commit
-    # 22a7dbf dropped it). Idempotent — only writes if missing.
+    # 30s timeout with no retries fails on first hiccup. Idempotent — only
+    # writes if missing.
     let cargo_config = $nu.home-dir | path join .cargo config.toml
     if not ($cargo_config | path exists) {
         mkdir ($cargo_config | path dirname)

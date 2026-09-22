@@ -38,8 +38,7 @@ network:
   allowedDomains:
     # Homebrew: install script + formula API + registry token/manifest + the
     # blob host. ghcr.io serves the manifest and then redirects the bottle
-    # itself to pkg-containers — objects.githubusercontent.com, which used to
-    # stand here, is not on that path at all.
+    # itself to pkg-containers.
     - raw.githubusercontent.com
     - formulae.brew.sh
     - ghcr.io

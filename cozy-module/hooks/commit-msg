@@ -19,9 +19,8 @@ if git interpret-trailers --parse <"$msg" | grep -q '^Change-Id:'; then
 fi
 
 # jj's reverse-hex alphabet: 12 random bytes and the unix time, written as 32 letters from z to k.
-# Letters can never read as a git sha, which is the whole job the Gerrit-style I prefix used to do
-# here. The tr -d in the middle is not optional: tr translates only what it is given, so od's spaces
-# would survive.
+# Letters can never read as a git sha. The tr -d in the middle is not optional: tr translates only
+# what it is given, so od's spaces would survive.
 # Why the time is the tail and not the head: a reference cuts the id to its first 8 letters, and
 # those stay random only while the random part leads. Why the time at all: the hook never replaces
 # an id, so the tail records when the change was first committed, and a rebase or cherry-pick

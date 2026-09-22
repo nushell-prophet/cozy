@@ -45,8 +45,8 @@ export def attach-window [
 
     let closure = {
         # Why: set the background via --config at window creation rather than the
-        # SANDBOX_MODE OSC user-var trick, which applied it only after the shell
-        # started and briefly flashed the config-file default first.
+        # OSC user-var trick, which applies it only after the shell starts and
+        # briefly flashes the config-file default first.
         ^wezterm --config-file $conf --config $'colors={background="#($background)"}' start --always-new-process -- ...$launch
     }
 

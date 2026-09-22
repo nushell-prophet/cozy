@@ -234,7 +234,7 @@ export def main [
     }
     $updated | save --force $claude_md
 
-    # Step 7 — broot init (moved here from Dockerfile so host gets it too)
+    # Step 7 — broot init (so host gets it too)
     let xdg_config = $env.XDG_CONFIG_HOME? | default ($nu.home-dir | path join '.config')
     ^broot --write-default-conf ($xdg_config | path join 'broot')
     ^broot --set-install-state installed

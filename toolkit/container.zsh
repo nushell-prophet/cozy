@@ -651,7 +651,7 @@ cmd_restart() {
     [[ $container_state != absent ]] || die \
 "no container named $name — nothing to restart. Create it: \`$SELF up $name <folder>\`"
 
-    # The one rebuild instruction left: the container was attached to the
+    # The one rebuild instruction: the container was attached to the
     # network at creation, and nothing proves it comes back into a *recreated*
     # network rather than around it — an unproven cage must not come back
     # quietly.
@@ -662,9 +662,8 @@ cmd_restart() {
     container_status $EGRESS_NAME
     local egress_state=$C_STATE
     if [[ $egress_state == absent ]]; then
-        # A gone proxy no longer forces rebuilding the cozy container: it points
-        # at the name, so a fresh proxy on a fresh address is mapped below like
-        # any other.
+        # The cozy container points at the proxy's name, so a fresh proxy on a
+        # fresh address is mapped below like any other.
         resolve_policy "$policy_flag"
         ensure_egress "$POLICY_DIR"
     elif [[ $egress_state != running ]]; then

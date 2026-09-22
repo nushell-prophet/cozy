@@ -6,7 +6,7 @@
 
 use ~/repos/claude-nu/claude-nu/
 # Only the two completions claude-nu still owns. Everything else (zellij, fd,
-# chafa, sandbox-exec) moved to the dotfiles repo and is loaded by the
+# chafa, sandbox-exec) lives in the dotfiles repo and is loaded by the
 # `completions.nu` autoload deployed beside this file — not from here.
 use ~/repos/claude-nu/completions/claude.nu *
 use ~/repos/claude-nu/completions/nu.nu *

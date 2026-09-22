@@ -211,8 +211,7 @@ def assert-caged [name: string]: nothing -> nothing {
     # with nothing on stdout. An empty stdout is "not ready yet"; curl always
     # prints a status, even for a connection that never happened.
     # Every attempt came back empty: no status to judge, which the checks below
-    # treat as an unproven cage — the same verdict the old empty-string default
-    # produced.
+    # treat as an unproven cage.
     #
     # Defaulted to a whole record rather than reading `stdout` with
     # `get --optional`: the error message at the bottom reads `exit_code` and
@@ -257,11 +256,10 @@ def assert-caged [name: string]: nothing -> nothing {
 
 # Squid re-reads its whole config on reconfigure — including the files quoted
 # from it, which is what the allowlist is — so an edited policy reaches a
-# *running* proxy without a new container. Recreation no longer strands the
-# cozy container — since the exit moved to a name, its hosts mapping follows the
-# proxy wherever it lands — but in-place still wins: nothing moves, nothing
-# needs re-mapping, and it works the same whether that container is up or
-# stopped. This used to stop, delete and re-run the proxy for every edit.
+# *running* proxy without a new container. Recreation would not strand the cozy
+# container — its hosts mapping follows the proxy wherever it lands — but
+# in-place still wins: nothing moves, nothing needs re-mapping, and it works the
+# same whether that container is up or stopped.
 #
 # `-k parse` first is the safety, not a nicety. It validates in a separate
 # process and signals only if that succeeds, so a bad list dies in the validator
@@ -341,12 +339,11 @@ def ensure-egress [policy: path reload: bool]: nothing -> nothing {
 }
 
 # Why: Apple `container` has no static-IP flag and its `inspect` schema is
-# undocumented, so this used to ask the proxy for its own addresses with
-# `exec hostname -I` and keep the one matching the caged subnet. That broke on an
-# image without `hostname` in it: the exec fails, the loop finds nothing, and 15
-# seconds later `restart` dies claiming the proxy never got an address — while
-# the proxy is up and perfectly healthy. A minimal image is not a strange thing
-# to meet here, so asking the container to run a program was the wrong question.
+# undocumented. Not `exec hostname -I` in the proxy: that asks the container to
+# run a program, and an image without `hostname` in it breaks the whole command
+# — the exec fails, the loop finds nothing, and 15 seconds later `restart` dies
+# claiming the proxy never got an address while the proxy is up and perfectly
+# healthy. A minimal image is not a strange thing to meet here.
 #
 # The runtime already knows. `container ls --format json` carries
 # `status.networks`, a row per attachment with `network` naming it and
@@ -372,8 +369,7 @@ def egress-address []: nothing -> string {
         error make {msg: $"($egress_name) never got an address on ($caged_network) — check `container logs ($egress_name)` and that it is attached to it"}
     }
     let ip = $found | first
-    # Printed here rather than at each call site: all three printed this exact
-    # line right after calling, and none of them varied it.
+    # Printed here rather than at each call site.
     print $"  (ansi green)Exit:(ansi reset) (proxy-url $ip)"
     $ip
 }
@@ -395,11 +391,10 @@ def proxy-url [host: string]: nothing -> string { $"http://($host):($proxy_port)
 # those absolutely as well would be a second fix for one hole — if the reset
 # is not enough, it is the wrong fix, so there is one of it.
 #
-# `/bin/sh` rather than bash also sidesteps BASH_ENV, which points at a file
-# the agent once owned; probed 2026-09-17, /bin/sh here is dash, which reads
-# $ENV only when interactive. Not `--env PATH=…` on the exec: whether
-# `container exec` honours it was not checked, and a flag that silently isn't
-# applied would reopen the hole.
+# `/bin/sh` rather than bash also sidesteps BASH_ENV; probed 2026-09-17,
+# /bin/sh here is dash, which reads $ENV only when interactive. Not
+# `--env PATH=…` on the exec: whether `container exec` honours it was not
+# checked, and a flag that silently isn't applied would reopen the hole.
 const root_path = '/usr/sbin:/usr/bin:/sbin:/bin'
 def root-sh [name: string script: string]: nothing -> nothing {
     container-cli [
@@ -674,12 +669,7 @@ def "main up" [
     for w in $ws_list { reject-writable $w $policy_dir }
 
     # `up` creates; an existing name means the user wants restart or
-    # reload-egress, so abort before anything is touched. The check used to sit
-    # *below* ensure-egress, which made the reload workflow destructive: it
-    # stopped and deleted the proxy the running container pointed at (fatal
-    # back when that container held the proxy's address rather than its name),
-    # then aborted here with "a container named X already exists" — an error
-    # the user reads as "nothing happened".
+    # reload-egress, so abort before anything is touched.
     if (container-status $name) != 'absent' {
         error make {
             msg: $"a container named ($name) already exists"
@@ -824,8 +814,7 @@ def "main reload-egress" [
     } else {
         # A stopped container needs no mapping: the runtime regenerates /etc/hosts
         # at start anyway, and `restart` writes the line right after. Saying
-        # "live" about a container that is not running is what this used to
-        # print.
+        # "live" about a container that is not running would be wrong.
         print $"  (ansi green)Done:(ansi reset) ($name) is ($container_state) — the allowlist is live; `nu toolkit/container.nu restart ($name)` starts it and maps its exit"
     }
 
@@ -858,7 +847,7 @@ def "main restart" [
         }
     }
 
-    # The one rebuild instruction left: the container was attached to the
+    # The one rebuild instruction: the container was attached to the
     # network at creation, and nothing proves a container comes back into a
     # *recreated* network rather than around it — an unproven cage must not
     # come back quietly.
@@ -867,10 +856,8 @@ def "main restart" [
     }
     let egress_state = container-status $egress_name
     if $egress_state == 'absent' {
-        # A gone proxy used to force rebuilding the cozy container too — its env
-        # held the old address, unreachable and unchangeable. The container
-        # points at the name now, so a fresh proxy on a fresh address is fine:
-        # it is mapped below like any other.
+        # The container points at the name, so a fresh proxy on a fresh address
+        # is fine: it is mapped below like any other.
         ensure-egress (resolve-policy $policy) false
     } else if $egress_state != 'running' {
         container-cli [[start $egress_name]]
@@ -894,9 +881,7 @@ def "main restart" [
     assert-caged $name
 
     # Reconnect the exit: wherever the proxy came back, the container's hosts
-    # line follows it. This repair is what restart is for — before the exit
-    # moved to a name, all it could do here was detect the mismatch and demand a
-    # rebuild.
+    # line follows it. This repair is what restart is for.
     assert-exit-by-name $name
     set-egress-hosts $name $ip
     clear-resolver $name
@@ -928,14 +913,14 @@ def "main attach" [
 ]: nothing -> any {
     # the window's job id — `job kill` it to close the window
 
-    # A stopped container used to get a window regardless: `container exec -it`
-    # cannot enter one, so the window opened on that error and nothing was said
-    # here. Stopped is exactly what a runtime restart (`container system
-    # stop/start`, an upgrade, a reboot) leaves behind, and the command a human
-    # reaches for then is this one — `restart` is the one they have to remember
-    # instead. So bring the pair back rather than open a window on a corpse:
-    # restart starts the proxy, starts the container, re-proves the cage and
-    # re-maps the exit, and the window then lands on something that answers.
+    # `container exec -it` cannot enter a stopped container, so a window opened
+    # on one lands on that error. Stopped is exactly what a runtime restart
+    # (`container system stop/start`, an upgrade, a reboot) leaves behind, and
+    # the command a human reaches for then is this one — `restart` is the one
+    # they have to remember instead. So bring the pair back rather than open a
+    # window on a corpse: restart starts the proxy, starts the container,
+    # re-proves the cage and re-maps the exit, and the window then lands on
+    # something that answers.
     #
     # Not offered as a flag: a window on a container that is not running has no
     # other meaning to ask about.
