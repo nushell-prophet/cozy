@@ -22,8 +22,12 @@
 # `attach` is the exception — it opens the WezTerm window as a background job,
 # which dies with a one-shot `nu <script>`, so it needs an interactive nu:
 #
-#   use toolkit/container.nu
-#   container attach my-cozy --workdir ~/path/to/project
+#   use toolkit
+#   toolkit container attach my-cozy --workdir ~/path/to/project
+#
+# Why `use toolkit` and not `use toolkit/container.nu`: the direct form exports
+# this module's `main` as `container`, which shadows the `container` CLI for the
+# rest of that session.
 #
 # Why a group per runtime rather than one command per job: everything here is
 # specific to `container` — its flags, its two-address proxy, its lack of a
@@ -761,7 +765,7 @@ def "main up" [
     if $ssh_agent { assert-agent-reachable $name }
 
     print ""
-    print $"  attach:  use toolkit/container.nu; container attach ($name) --workdir ($ws)"
+    print $"  attach:  use toolkit; toolkit container attach ($name) --workdir ($ws)"
     print $"  check:   container exec ($name) nu --commands 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'"
     print $"  refused: container logs --follow ($egress_name)"
 
@@ -887,7 +891,7 @@ def "main restart" [
     clear-resolver $name
 
     print ""
-    print $"  attach:  use toolkit/container.nu; container attach ($name)"
+    print $"  attach:  use toolkit; toolkit container attach ($name)"
     print $"  refused: container logs --follow ($egress_name)"
 
     summary $name running $ip
@@ -898,7 +902,7 @@ def "main restart" [
 #
 # Unlike `up` and `restart`, this one cannot be run as a script: the window is a
 # background job and a job dies with the nu that spawned it. Run it from an
-# interactive nu instead — `use toolkit/container.nu`, then `container attach`.
+# interactive nu instead — `use toolkit`, then `toolkit container attach`.
 #
 # Restarts the pair first when the container is not running, so this is also the
 # whole launch path after the runtime itself came back.

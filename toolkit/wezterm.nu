@@ -39,7 +39,7 @@ export def attach-window [
     if not ($nu.is-interactive or $no_job) {
         error make --unspanned {
             msg: "the WezTerm window is spawned as a background job, and a job dies when the nu that spawned it exits — run as a one-shot script, it would leave no window"
-            help: "run it from an interactive nu: `use toolkit/container.nu; container attach <name>` (or `use toolkit/sbxw.nu; sbxw <name>`). Pass --no-job to run wezterm in the foreground of this shell instead — it blocks until the window closes."
+            help: "run it from an interactive nu: `use toolkit; toolkit container attach <name>` (or `toolkit sbxw <name>`). Pass --no-job to run wezterm in the foreground of this shell instead — it blocks until the window closes."
         }
     }
 
