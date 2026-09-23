@@ -1,6 +1,6 @@
 # Refresh vendored modules and configs into vendor/
-# Run before pushing — the sbx kit clones cozy from GitHub on every run — or
-# before `docker build` for the plain-docker image.
+# Run before `container build` (or `docker build`) for the Debian image, or
+# before pushing — the sbx kit clones cozy from GitHub on every run.
 #
 # Default: download tarballs from GitHub (no git clone, no auth needed)
 # --local: rsync from the sibling repos next to cozy/ (original rsync behavior)

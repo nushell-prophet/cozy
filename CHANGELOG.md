@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- The README quick start now runs cozy under Apple `container` (macOS 26+, Apple silicon): the rootless Debian image behind the egress allowlist, which is the most tested path.
+  `sbx` moves to its own section; use `use toolkit; toolkit container attach <name>`, since `use toolkit/container.nu` hides the `container` CLI.
 - `cozy sandbox-state global-claude snapshot` / `restore` keep `~/.claude/CLAUDE.md` as git history in `sandbox-state/global-claude-history`, so every version can be diffed against the one before it.
   `restore` uses `git reset --mixed` and writes no file except a missing `.gitignore`, so nothing else in `~/.claude` can be overwritten; a `snapshot` that is not a fast-forward goes to a branch named after the timestamp, to merge by hand.
   `snapshot` errors when `~/.claude` is not yet wired to the history repo — run `restore` first.

@@ -1,8 +1,8 @@
 # Sandbox Environment
 
 This file is appended to `~/.claude/CLAUDE.md` by every cozy install path, so check which one you are on before relying on the environment notes below.
-The usual one is an `sbx` sandbox — Docker's standalone sandbox runtime, on Ubuntu.
-The others are a `debian:12-slim` image run under plain `docker`/Apple `container`, and a plain host install (macOS or Linux).
+The usual one is the `debian:12-slim` image run under Apple `container` (or plain `docker`), rootless and behind an egress allowlist.
+The others are an `sbx` sandbox — Docker's standalone sandbox runtime, on Ubuntu — and a plain host install (macOS or Linux).
 In a sandbox the workspace is mounted at its original host path, not `/workspace` or `/home/agent`.
 
 ## Available Tools
@@ -16,7 +16,8 @@ In a sandbox the workspace is mounted at its original host path, not `/workspace
 - `broot` / `br` (in Nushell)
 - `fzf`, `rg` (ripgrep), `bat`, `fd`
 - `vd` (visidata)
-- `python3`, `node`, `go` — from the `sbx` base image only; absent on the Debian image
+- `python3` — everywhere, pulled in by brew as a VisiData dependency
+- `node`, `go` — from the `sbx` base image only; absent on the Debian image
 - `jq`
 - `xxd` — hex dump; for viewing only, prefer `open --raw file | into binary`
 - `topiary` — Nushell grammar support

@@ -15,29 +15,34 @@ The install steps and the reasoning behind each of them are described in [design
 
 ## Quick start
 
-Cozy's primary target is [`sbx`](https://www.docker.com/products/docker-sandboxes/) (Docker's standalone sandbox runtime), so the quick start uses the `sbx` kit.
-Other targets — plain Docker, Apple `container`, a macOS host — run the same installer and land on the same toolset: see [Install elsewhere](#install-elsewhere) and [Debian image](#debian-image-in-testing) below.
+The most tested path is [Apple `container`](https://github.com/apple/container) on a Mac: a rootless `debian:12-slim` image behind an egress allowlist you control.
+It needs a Mac with Apple silicon, **macOS 26 or later**, and Nushell on the host (or see [Without nushell on the host](#without-nushell-on-the-host)).
+Other targets — [`sbx`](#sbx), plain Docker, a macOS or Linux host — run the same installer and land on the same toolset.
 
-For a step-by-step walkthrough of these commands and what the installer does, see the [installation manual](https://github.com/nushell-prophet/nushell-prophet-manuals/blob/main/manuals/06-install-cozy/manual.md).
-
-First, install the `sbx` CLI: https://docs.docker.com/ai/sandboxes/#get-started
+First, install `container` from its [release page](https://github.com/apple/container/releases) (a signed `.pkg`).
 
 ```sh
-# Clone the repo, cd into it
+# the runtime refuses every command until its service runs
+container system start
+
 git clone https://github.com/nushell-prophet/cozy
 cd cozy
 
-# Create a sandbox with the cozy kit. `shell` is the agent; `--kit sbx-kit/`
-# clones this repo in-sandbox and runs the shared run-install.sh boot tail (no
-# image build). The trailing paths are mounted; the first one is where you start.
-sbx create --name NAME --kit sbx-kit/ shell ~/some/dir ~/another/dir
+# the allowlist lives outside the repo, so the agent cannot edit its own cage
+mkdir -p ~/.config/cozy && cp -r firewall ~/.config/cozy/firewall
 
-# connect to the sandbox and start the Zellij session (NAME as chosen above)
-sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
+container build -t cozy:latest .
+
+# create the container and its egress proxy; the paths are mounted, the first is where you start
+nu toolkit/container.nu up my-cozy ~/path/to/project
+
+# connect and start the Zellij session
+container exec --interactive --tty my-cozy nu --login --execute 'zellij attach --create my-cozy'
 ```
 
-Note: the kit installs cozy from GitHub — the latest commit on the default branch — not from your local checkout.
-Push before `sbx create`, or pin `--branch <tag>` on the `git clone` line in [sbx-kit/spec.yaml](sbx-kit/spec.yaml).
+With [WezTerm](#wezterm), `use toolkit; toolkit container attach my-cozy` in an interactive nu opens the session in a new window instead.
+If the first build fails with `Rosetta is not installed`, see the Rosetta note at the end of this page.
+Everything else about this path — several folders, `--ssh-agent`, editing the allowlist, recovering after a reboot — is in [Apple `container`](#apple-container) below.
 
 ## Technologies
 
@@ -46,27 +51,13 @@ Claude Code lands here too, but from its own official installer.
 
 **Containers only** (apt; a host install skips them): procps, file, gcc, libc6-dev, xxd, man-db
 
-**From the base image, not from cozy**: git, curl, Python, Node.js, Go, ripgrep, jq, gh.
+**From the image, not from the installer**: the Debian `Dockerfile` apt-installs git, curl, ripgrep, jq, less and openssh-client; the `sbx` base image ships git, curl, Node.js, Go, ripgrep, jq and gh.
 A host install adds none of these — install what you want yourself.
+Python 3 is on every path anyway: brew pulls it in for VisiData.
 
 **Optional** (`cozy install`): Rust, nu_plugin_polars, nu-plugin-image, Claude Code (reinstall)
 
 **Rebuild from source** (`cozy install`): Nushell, Zellij (without web sharing)
-
-### sbx
-
-Cozy is based on [Docker's sandbox runtime](https://docs.docker.com/ai/sandboxes/) (`sbx`), so it is:
-- macOS and Windows* (experimental) compatible — the kit builds in-sandbox on whatever architecture `sbx` runs, `arm64` or `amd64`
-- isolated
-- with built-in AI agent (I personally tested it with `claude code`)
-
-**\* Windows support**
-
-I develop and use `cozy` on macOS, but I expect some of my students to use Windows.
-After brief testing, the main issue turned out to be the keyboard: Windows has no Cmd key, and its Win combinations are reserved by the OS, so the best replacement I've found is Alt.
-
-To apply this automatically, run `cozy swap-zellij-super` inside the sandbox.
-The same command serves macOS Terminal.app, which keeps every Cmd+key for itself; there, also enable "Use Option as Meta key" in Settings > Profiles > Keyboard.
 
 ### Nushell
 
@@ -183,12 +174,11 @@ Changes from WezTerm defaults:
 - **Keybindings**: all defaults disabled; CMD+SHIFT+letter sends kitty-protocol escape sequences so Zellij and apps behind it can distinguish them
 - **Dynamic modes**: the `ZEN_MODE` user variable adjusts font size at runtime; the sandbox background is set at window creation via `--config` (see the launch command below)
 
-The launch command below targets `sbx`, the entry point I test against:
+On Apple `container`, `use toolkit; toolkit container attach NAME` opens the window with this config (`toolkit sbxw NAME` does the same for `sbx`).
+The command it runs, for any other runtime — swap the `container exec` part:
 
 ```
-# NAME = your sandbox name (from `sbx ls`) — replace both
-# on another runtime, swap the `sbx exec -it NAME` part (Apple container, …)
-wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua --config 'colors={background="#000000"}' start -- sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
+wezterm --config-file vendor/dotfiles/wezterm/wezterm.lua --config 'colors={background="#000000"}' start --always-new-process -- container exec --interactive --tty NAME nu --login --execute 'zellij attach --create NAME'
 ```
 
 **On Windows I'd use the standard terminal instead.**
@@ -247,6 +237,37 @@ The environment also includes Claude Code skills for building Nushell completion
 Licensed under MIT.
 Not autoloaded — use `use ~/repos/nutest/nutest` to load.
 
+## sbx
+
+[`sbx`](https://docs.docker.com/ai/sandboxes/) is Docker's standalone sandbox runtime: isolated, with a built-in AI agent, on macOS and Windows (experimental), `arm64` or `amd64`.
+Cozy ran on it first; it now gets less testing than Apple `container`.
+For a step-by-step walkthrough of these commands, see the [installation manual](https://github.com/nushell-prophet/nushell-prophet-manuals/blob/main/manuals/06-install-cozy/manual.md).
+
+First, install the `sbx` CLI: https://docs.docker.com/ai/sandboxes/#get-started
+
+```sh
+git clone https://github.com/nushell-prophet/cozy
+cd cozy
+
+# Create a sandbox with the cozy kit. `shell` is the agent; `--kit sbx-kit/`
+# clones this repo in-sandbox and runs the shared run-install.sh boot tail (no
+# image build). The trailing paths are mounted; the first one is where you start.
+sbx create --name NAME --kit sbx-kit/ shell ~/some/dir ~/another/dir
+
+# connect to the sandbox and start the Zellij session (NAME as chosen above)
+sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
+```
+
+Note: the kit installs cozy from GitHub — the latest commit on the default branch — not from your local checkout.
+Push before `sbx create`, or pin `--branch <tag>` on the `git clone` line in [sbx-kit/spec.yaml](sbx-kit/spec.yaml).
+
+**Windows.**
+I develop and use `cozy` on macOS, but I expect some of my students to use Windows.
+After brief testing, the main issue turned out to be the keyboard: Windows has no Cmd key, and its Win combinations are reserved by the OS, so the best replacement I've found is Alt.
+
+To apply this automatically, run `cozy swap-zellij-super` inside the sandbox.
+The same command serves macOS Terminal.app, which keeps every Cmd+key for itself; there, also enable "Use Option as Meta key" in Settings > Profiles > Keyboard.
+
 ## Install elsewhere
 
 `cozy-module/install/run-install.sh` is the same boot tail the Dockerfile and the sbx kit run — one script, so the install paths can't drift apart.
@@ -265,29 +286,20 @@ cozy-module/install/run-install.sh             # install
 cozy-module/install/run-install.sh --force     # reinstall over existing user configs
 ```
 
-## Debian image (in testing)
+## Debian image
 
-Alongside the standard `sbx` path, the [Dockerfile](Dockerfile) builds a lean `debian:12-slim` image for plain `docker run` and Apple `container`.
+The [Dockerfile](Dockerfile) builds the lean `debian:12-slim` image the quick start runs, on Apple `container` or plain `docker run`.
+Apple `container` is the tested runtime; the docker and compose path below gets less use.
 The `agent` user gets passwordless sudo only during the build and loses it in the final layer, so the running container is rootless — no standing privilege, which suits working with valuable data.
 
 ### Egress firewall
 
-`compose.yaml` runs the image behind an allowlist you control.
-
-```
-mkdir -p ~/.config/cozy && cp -r firewall ~/.config/cozy/firewall
-COZY_WORKSPACE=~/path/to/project docker compose up -d
-docker compose exec cozy nu --login
-docker compose logs -f egress   # watch what gets allowed and refused
-```
-
-The cozy container is attached to a network created with `internal: true`, so Docker gives it no default route and no way to resolve external names.
-Its only neighbour is a squid proxy that allows the domains in `allowed-domains.txt` and refuses the rest.
-To change what is reachable, edit that file and run `docker compose restart egress`.
+The image runs behind an allowlist you control: the container's only way out is a squid proxy that allows the domains in `allowed-domains.txt` and refuses the rest.
+`toolkit/container.nu` builds that cage on Apple `container`, `compose.yaml` on docker.
 
 The policy lives in `~/.config/cozy/firewall/`, outside this repo; the copy in `firewall/` is only a template.
 That separation is what makes the allowlist human-managed: an agent working on cozy itself would otherwise edit the very files that define its cage, which are read fresh from the host at the next `up`.
-So **`COZY_WORKSPACE` must not point at this repo or any parent of it** — everything under it is agent-writable, `compose.yaml` and the `Dockerfile` included.
+So **the workspace must not be this repo or any parent of it** (`COZY_WORKSPACE` on docker, a mounted folder on Apple `container`) — everything under it is agent-writable, `compose.yaml` and the `Dockerfile` included.
 For the same reason, never mount `/var/run/docker.sock` into the agent and never add it to the `docker` group; that is root on the host, and no network policy survives it.
 
 Nothing is decrypted.
@@ -299,7 +311,7 @@ A bare `docker run` of the image has no cage, and fails those rows rather than p
 
 #### Apple `container`
 
-Apple `container` has no compose, so `toolkit/container.nu` assembles the same three pieces by hand — `up` builds the cage, `restart` brings it back, `reload-egress` applies an edited allowlist, `refresh-egress` moves the proxy pin to upstream's newest maintained image, `attach` opens a window on it, restarting the pair first if it is not running.
+Apple `container` has no compose, so `toolkit/container.nu` does compose's job by hand — `up` builds the cage, `restart` brings it back, `reload-egress` applies an edited allowlist, `refresh-egress` moves the proxy pin to upstream's newest maintained image, `attach` opens a window on it, restarting the pair first if it is not running.
 It needs **macOS 26 or later**: `container network create` does not exist before that, so on macOS 15 there is no way to build the cage at all.
 
 ```
@@ -313,12 +325,13 @@ nu toolkit/container.nu reload-egress my-cozy   # after editing the allowlist
 nu toolkit/container.nu refresh-egress          # move the squid pin to upstream's newest, rehearsed first
 container logs -f cozy-egress   # watch what gets allowed and refused
 
-use toolkit/container.nu                   # attach needs an interactive nu, see below
-container attach my-cozy --workdir ~/path/to/project
+use toolkit                                # attach needs an interactive nu, see below
+toolkit container attach my-cozy --workdir ~/path/to/project
 ```
 
 `attach` opens the WezTerm window as a background job, and a nushell job dies with the nu that spawned it — so `nu toolkit/container.nu attach …` would exit before the window is up and no window would appear.
-Load the module in your REPL instead (the same holds for `toolkit/sbxw.nu` on the sbx path).
+Load the module in your REPL instead (the same holds for `toolkit sbxw` on the sbx path).
+Load it as `use toolkit`, not `use toolkit/container.nu`: the second form names the module's `main` `container`, which hides the `container` CLI for the rest of that session.
 `--no-job` runs wezterm in the foreground of the current shell, which does work from a script, but blocks it until the window closes.
 
 ##### Without nushell on the host
@@ -360,7 +373,7 @@ One Claude Code process holds around 300 MB, so at 1 GB two of them leave nothin
 That shows up as a container pinning several cores with nothing running in it.
 
 The cozy container lands on a `--internal` (host-only) network with no route out, and the same pinned squid is dual-homed onto that network and the default one.
-Two things differ from the docker path.
+Two things differ from the [docker path](#docker-compose).
 A host-only network has no resolver, so the container runs with `--no-dns` and reaches allowed hosts by handing the name to the proxy, which resolves it on the default network.
 And `container` has no static-IP flag, so the proxy's address is read back after it starts — the container reaches it by the name `cozy-egress`, which `up` and `restart` pin to the current address in its `/etc/hosts`.
 
@@ -377,6 +390,19 @@ Only a *stopped* proxy gets recreated, which is the one case where the address c
 After `container system stop/start`, an upgrade or a reboot, both containers are stopped rather than gone — the one state `up` cannot recover from.
 `restart` is for that: it starts the pair (recreating the proxy if it is gone entirely), re-proves the cage, and re-pins `cozy-egress` to wherever the proxy came back.
 A container created before the exit moved to a name carries a fixed address instead, which nothing can update; for those `restart` asks for a one-time recreation, in as many words.
+
+#### Docker compose
+
+```
+mkdir -p ~/.config/cozy && cp -r firewall ~/.config/cozy/firewall
+COZY_WORKSPACE=~/path/to/project docker compose up -d
+docker compose exec cozy nu --login
+docker compose logs -f egress   # watch what gets allowed and refused
+```
+
+The cozy container is attached to a network created with `internal: true`, so Docker gives it no default route and no way to resolve external names.
+Its only neighbour is the squid proxy.
+To change what is reachable, edit `allowed-domains.txt` and run `docker compose restart egress`.
 
 #### What this does not cover
 

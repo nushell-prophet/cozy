@@ -1,8 +1,8 @@
 # cozy
 
-Modern, beginner-friendly terminal workspace where a human and an AI agent work side by side, running inside `sbx` (Docker's standalone sandbox runtime, formerly `docker sandbox`).
+Modern, beginner-friendly terminal workspace where a human and an AI agent work side by side, running in a container: Apple `container` on a Mac, or `sbx` (Docker's standalone sandbox runtime, formerly `docker sandbox`).
 The agent is a required part of the environment, not its centerpiece.
-Tested with Claude Code; other agents can be configured via `sbx`.
+Tested with Claude Code; under `sbx`, other agents can be configured.
 
 ## Architecture
 
@@ -13,7 +13,9 @@ The code they describe is `Dockerfile` + `cozy-module/install/bootstrap.nu`.
 
 ## Run
 
-The `sbx` kit is the standard run path — no image build.
+The most tested run path is the Debian image under Apple `container` (below); `README.md`'s quick start walks it.
+
+The `sbx` kit is the other run path — no image build.
 It clones cozy in-sandbox and runs the same `run-install.sh` boot tail.
 Flags come before the agent positional, matching `sbx`'s own docs:
 
@@ -25,14 +27,15 @@ sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
 
 `sbx create` builds the sandbox and leaves you at your prompt — it blocks for the whole build, printing nothing (hence the install-log redirect in `sbx-kit/spec.yaml`); you connect afterwards with `sbx exec`.
 `sbx run` creates and attaches in one step.
-`README.md`'s quick start uses the `create` + `exec` pair — that is the tested path.
+`README.md`'s `sbx` section uses the `create` + `exec` pair.
 
 `sbx` pulls images only from a registry, and cozy images stay local-only (never pushed), so a `docker build`ed image can't be fed to `sbx` — the kit (in-sandbox build) replaces that path entirely.
 
-A second run path is **in testing**: the `Dockerfile` builds a `debian:12-slim` image for plain `docker run` and Apple `container`.
+The main run path: the `Dockerfile` builds a `debian:12-slim` image for Apple `container` and plain `docker run`.
+Apple `container` (via `toolkit/container.nu`) is the runtime in daily use; the docker and `compose.yaml` side gets less testing.
 Its point is a rootless runtime — the `agent` has passwordless sudo only during the build, revoked in the final layer — which suits working with valuable data.
 It runs the same `bootstrap.nu` and passes `cozy verify` (all 62 checks) when launched via `compose.yaml`; a bare `docker run` fails the two `egress:` checks because it has no allowlist in front of it.
-This is a separate path, not fed to `sbx` (see the registry note above); `sbx` stays primary.
+This is a separate path, not fed to `sbx` (see the registry note above).
 Verify a build of it with `verify-cozy docker`.
 
 `compose.yaml` + `firewall/` give that path a human-managed egress allowlist: the cozy container sits on an `internal: true` network (no default route) whose only neighbour is a squid proxy holding the policy.
@@ -44,7 +47,7 @@ Two documented limits, both real: `internal: true` does not hide the Docker brid
 
 The agent name (`claude`, `shell`, etc.) selects which agent process runs inside the sandbox — it is independent of the base image (`docker/sandbox-templates:shell`) the sbx sandbox runs on.
 
-Requires Docker Desktop 4.58+ on macOS or Windows.
+The `sbx` path requires Docker Desktop 4.58+ on macOS or Windows; the Apple `container` path requires macOS 26+.
 
 ## Local Docs
 
@@ -55,7 +58,8 @@ When you need Docker sandbox docs, read from `docs.docker.com/` instead of fetch
 ## Rebuilding
 
 The kit re-clones cozy and re-runs `bootstrap.nu` on every `sbx run`, so picking up changes just means running it again — but the kit clones from GitHub, so push first.
-The Dockerfile image is built separately (`docker build`) and isn't used by `sbx`; rebuild it only for the plain-`docker` artifact.
+The Dockerfile image is the main path's artifact and isn't used by `sbx`: rebuild it with `container build -t cozy:latest .` from the local checkout, no push needed.
+A container keeps the image it was created from, and `up` refuses a name that exists, so picking up a rebuild means `container stop NAME; container delete NAME`, then `up` again.
 
 ## Rules
 

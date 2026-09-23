@@ -2,8 +2,8 @@
 name: verify-cozy
 description: >
   Verify a cozy build by running `cozy verify` against a target you name — a
-  locally-built docker container (default), a running sbx sandbox, or a host
-  checkout. The checks live in cozy-module/verify.nu. Use when you say "verify
+  locally-built docker container (default), a running Apple `container` cage,
+  a running sbx sandbox, or a host checkout. The checks live in cozy-module/verify.nu. Use when you say "verify
   the build", "build-check", "smoke test the
   sandbox", "is everything wired up", "/verify-cozy docker", after building the
   image, or after creating a sandbox.
@@ -54,8 +54,21 @@ docker run --rm cozy:verify \
   A bare `docker run` has no allowlist in front of it — the cage comes from `compose.yaml`, not the image.
   Expect 2 failures here and read the other 59; to see all 61 pass, bring the container up with `docker compose up -d` and verify through `docker compose exec cozy`.
 - **Boundary:** this validates the shared install logic, NOT sbx-specific wiring (the kit spec, sbx's git-config rewrites, the microVM).
-  It is a fast pre-check — do a final `sbx run` smoke test before relying on a change.
+  It is a fast pre-check — the final smoke test is the Apple `container` path, the one in daily use (target `container <name>` below).
+  Add an `sbx run` only when the change touches the kit or other sbx wiring.
 - A missing external command (e.g. `gh` on a lean image) is reported as a `pass: false` row, not an abort — the transport turns command-not-found into exit 127.
+
+### `container <name>` — verify a running Apple `container` cage
+
+The main run path: an image from `container build -t cozy:latest .`, brought up with `nu toolkit/container.nu up <name> <workspace>`.
+Run the `check:` line that `up` prints:
+
+```sh
+container exec <name> nu --commands 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'
+```
+
+The cage is in front here, so this is the target where the two `egress:` rows are meant to pass.
+A rebuilt image reaches only a new container: `up` refuses an existing name, so `container stop <name>; container delete <name>` first.
 
 ### `<sandbox-name>` — verify a running sbx sandbox
 

@@ -108,6 +108,5 @@ After completing, tell the user:
 
 - The new version number and date
 - Summary of what was released
-- Remind them to push: `git push && git push --tags` — pushing is what makes the release live, since the sbx kit clones cozy from GitHub on every `sbx run`
-- Only if they use the plain-`docker` path: rebuild the image (`docker build -t cozy:<version> .`).
-  It is not used by `sbx`
+- Remind them to push: `git push && git push --tags` — that publishes the release, and it is what the sbx kit clones on every `sbx run`
+- For the main Apple `container` path, pushing changes nothing locally: rebuild the image with `container build -t cozy:latest .` (`up` defaults to `cozy:latest`), and recreate the container to pick it up (`container stop <name>; container delete <name>`, then `nu toolkit/container.nu up`)

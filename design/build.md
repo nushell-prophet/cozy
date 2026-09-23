@@ -15,8 +15,8 @@ reconciled-at: 874e4a409b8c7877a9c05a0db8f6acbefd07b1ef
 **Everything starts here.** Three entry paths converge on the same boot tail, [`../cozy-module/install/run-install.sh`](../cozy-module/install/run-install.sh) (ensure brew → `ensure-nu.sh` → `bootstrap.nu`) — the command sequence exists in that one script and nowhere else, so the environment is identical whether you build the image, install on a host, or layer the [`sbx` kit](https://docs.docker.com/ai/sandboxes/customize/kits/).
 The paths differ only in how the checkout lands:
 
-- **sbx kit** (primary) — [`../sbx-kit/spec.yaml`](../sbx-kit/spec.yaml) clones the repo in-sandbox → `run-install.sh`
-- **Docker** — [`../Dockerfile`](../Dockerfile) COPYs the repo bits → `run-install.sh`
+- **Docker** (primary, run under Apple `container`) — [`../Dockerfile`](../Dockerfile) COPYs the repo bits → `run-install.sh`
+- **sbx kit** — [`../sbx-kit/spec.yaml`](../sbx-kit/spec.yaml) clones the repo in-sandbox → `run-install.sh`
 - **Host** — a git checkout → [`cozy-module/install/run-install.sh`](../cozy-module/install/run-install.sh)
 
 This file follows **execution order**: first the two entry points that deliver the checkout, then the shared tail they both hand off to — `run-install.sh` → `ensure-nu.sh` → `bootstrap.nu`'s steps 0–9 — linking out to the other design files at the step where each is reached.
@@ -28,17 +28,9 @@ Change the order here and propagate it everywhere.
 Both only put the repo on disk and call `run-install.sh`; everything after that is shared.
 The third path — a host checkout — has no entry artifact of its own: it starts straight at the tail.
 
-### sbx-kit/spec.yaml — the kit (primary path)
+### Dockerfile — the Debian rootless image (primary path)
 
-A [`mixin`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#top-level-fields) kit that layers cozy on the standard [`shell`](https://docs.docker.com/ai/sandboxes/agents/shell/) agent — no image build, so this is the path `sbx run` takes.
-[`environment.variables`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#environment) mirrors the Dockerfile `ENV` block (below); [`commands.install`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#install) is two steps: clone cozy (the one step that can't live in `run-install.sh` — the script doesn't exist in-sandbox until the clone lands) → `run-install.sh`, its output redirected to `~/cozy-install.log` (sbx swallows install-command stdout with no flag to show it, so the log is the only way to watch progress or read back a failure — `sbx exec -it <name> tail -f ~/cozy-install.log` from a second terminal).
-No [`files/`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#static-files) tree — the repo is cloned in-sandbox, so `cozy_root` lines up via `path self`.
-[`network.allowedDomains`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#network) is provisional — it started as a walk of the install path and grows as real use needs a host that walk never reached (`codeberg.org`, for git over https); verify on a real [`sbx run`](https://docs.docker.com/reference/cli/sbx/run/).
-**Code:** [`sbx-kit/spec.yaml`](../sbx-kit/spec.yaml)
-
-### Dockerfile — the Debian rootless image (secondary, in testing)
-
-The Dockerfile builds the **Debian rootless** run path — plain `docker run` and Apple `container`, **in testing** (`sbx` never touches it; it uses the kit).
+The Dockerfile builds the **Debian rootless** run path, for Apple `container` (the most tested runtime) and plain `docker run` (`sbx` never touches it; it uses the kit).
 Its point is least privilege: the `agent` gets passwordless sudo only during the build (apt, brew's chown, the tree-sitter compile), revoked in the final layer, so the running container can't escalate.
 One qualification the image itself cannot fix: `ENV PATH` leads with three agent-writable dirs (`~/.local/bin`, `~/.cargo/bin`, the agent-owned linuxbrew prefix) and an `ENV` is image-wide, not per-user — so any unqualified command name in a `docker exec -u root` resolves to bytes the agent controls.
 Putting brew on the agent's PATH is the point of the image, so the only real mitigation is not to run rootful execs here.
@@ -84,6 +76,14 @@ Its layers, in order:
     In this image every value it carries is already an `ENV` directive, so the line matters only for `run-install.sh` bootstrapped into a foreign container, where the block is the sole source.
     It carries machine env only — the agent's identity is not a shell value, see step 9.
     This is the flavour `cozy verify` reads env through (a bare `bash -c`), so the check fails when any of it breaks.
+
+### sbx-kit/spec.yaml — the kit
+
+A [`mixin`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#top-level-fields) kit that layers cozy on the standard [`shell`](https://docs.docker.com/ai/sandboxes/agents/shell/) agent — no image build, so this is the path `sbx run` takes.
+[`environment.variables`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#environment) mirrors the Dockerfile `ENV` block (above); [`commands.install`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#install) is two steps: clone cozy (the one step that can't live in `run-install.sh` — the script doesn't exist in-sandbox until the clone lands) → `run-install.sh`, its output redirected to `~/cozy-install.log` (sbx swallows install-command stdout with no flag to show it, so the log is the only way to watch progress or read back a failure — `sbx exec -it <name> tail -f ~/cozy-install.log` from a second terminal).
+No [`files/`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#static-files) tree — the repo is cloned in-sandbox, so `cozy_root` lines up via `path self`.
+[`network.allowedDomains`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#network) is provisional — it started as a walk of the install path and grows as real use needs a host that walk never reached (`codeberg.org`, for git over https); verify on a real [`sbx run`](https://docs.docker.com/reference/cli/sbx/run/).
+**Code:** [`sbx-kit/spec.yaml`](../sbx-kit/spec.yaml)
 
 ## run-install.sh (the shared boot tail)
 
