@@ -1,5 +1,7 @@
 #!/bin/sh
 # Stamp a Change-Id trailer on a commit that does not already carry one.
+# Why the line above never changes: `cozy git install-change-id-hook` knows an installed copy as
+# this hook by it and updates that copy; new wording makes every installed copy a foreign hook.
 #
 # The id lives in the message, so amend, rebase and cherry-pick carry it forward by themselves.
 # This hook therefore only ever adds one and never replaces one: replacing would break the single

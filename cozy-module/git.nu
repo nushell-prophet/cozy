@@ -44,15 +44,18 @@ export def install-change-id-hook [
     }
     # Why refuse and not overwrite: in an arbitrary repo a commit-msg hook may already belong to
     # something else (husky, a project's own script), and a silent cp would destroy it.
-    # Why --force and not detecting an older copy of this hook: the script carries no version
-    # marker, and the common case for a differing hook is exactly an older copy of ours, so the
-    # human who knows that says so with the flag.
+    # Why an older copy of ours is replaced without --force: a fix to the hook reaches no repo
+    # otherwise, and nothing reports a stale copy — it keeps stamping ids the old way. The header
+    # comment on line 2 is what marks a copy as ours; it has been the same in every version, so
+    # changing it would turn every installed copy into a foreign hook.
     let status = if ($dest | path exists) {
-        if (open --raw $dest) == (open --raw $hook) {
+        let current = open --raw $hook
+        let installed = open --raw $dest
+        if $installed == $current {
             'already installed'
+        } else if ($installed | lines | get 1?) == ($current | lines | get 1) {
+            'updated'
         } else if $force {
-            cp $hook $dest
-            ^chmod +x $dest
             'replaced'
         } else {
             error make --unspanned {
@@ -62,9 +65,11 @@ export def install-change-id-hook [
         }
     } else {
         mkdir ($dest | path dirname)
+        'installed'
+    }
+    if $status != 'already installed' {
         cp $hook $dest
         ^chmod +x $dest
-        'installed'
     }
     {repo: ($common | path dirname) hook: $dest status: $status}
 }

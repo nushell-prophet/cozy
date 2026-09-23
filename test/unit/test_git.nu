@@ -55,6 +55,16 @@ def "install refuses a different hook and replaces it with force" [] {
 }
 
 @test
+def "install updates an older copy of its own hook without force" [] {
+    let repo = $in.repo
+    let dest = $repo | path join .git hooks commit-msg
+    open --raw $HOOK | lines | first 2 | append 'exit 0' | str join "\n" | save --force $dest
+
+    assert equal (git install-change-id-hook $repo | get status) 'updated'
+    assert equal (open --raw $dest) (open --raw $HOOK)
+}
+
+@test
 def "link names the change-id of the commit that last touched the file" [] {
     let repo = $in.repo
     commit-file $repo a.txt one (with-id $ID)
