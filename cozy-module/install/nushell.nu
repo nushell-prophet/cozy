@@ -56,13 +56,13 @@ export def install [
         let defaults = open Cargo.toml | get features.default
         if "mcp" in $defaults {
             let features = $defaults | where $it != "mcp" | str join ","
-            ^cargo build --release -j 1 --config 'profile.release.lto=false' --no-default-features --features $features
+            ^cargo build --release --locked -j 1 --config 'profile.release.lto=false' --no-default-features --features $features
         } else {
             print $"  (ansi yellow)Warning(ansi reset): 'mcp' not in default features — building with all defaults"
-            ^cargo build --release -j 1 --config 'profile.release.lto=false'
+            ^cargo build --release --locked -j 1 --config 'profile.release.lto=false'
         }
     } else {
-        ^cargo build --release -j 1 --config 'profile.release.lto=false'
+        ^cargo build --release --locked -j 1 --config 'profile.release.lto=false'
     }
 
     let bin = $repo_dir | path join target release nu

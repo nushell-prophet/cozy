@@ -23,7 +23,7 @@ export def install []: nothing -> nothing {
     } else {
         print "  Installing nu_plugin_polars (this may take several minutes)..."
         # -j 1 to avoid OOM in sandbox VMs (limited RAM).
-        ^cargo install nu_plugin_polars -j 1
+        ^cargo install nu_plugin_polars --locked -j 1
         print $"  (ansi green)nu_plugin_polars(ansi reset): installed"
     }
 
