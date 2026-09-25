@@ -63,9 +63,6 @@ Python 3 is on every path anyway: brew pulls it in for VisiData.
 
 A modern shell for the AI era: Nushell with sensible settings that I've chosen over 3 years of Nushell experience.
 
-Nushell has built-in MCP functionality that lets AI agents use all of its rich capabilities with persistent session state: variables an agent sets survive across calls.
-The MCP server is activated for `claude code` out of the box.
-
 ### Zellij
 
 Zellij is an extremely convenient and powerful terminal multiplexer.
@@ -110,8 +107,8 @@ Three layers of git config do that, each narrower than the last:
 | `GIT_AUTHOR_*` / `GIT_COMMITTER_*` env | `Claude <claude@anthropic.com>` | the Claude Code process only; env beats every config file |
 
 The top layer lives in the `env` field of `~/.claude/settings.json`, which bootstrap step 9 writes.
-Claude Code exports it into its own process, so everything it spawns inherits it — the bash tool, the nushell MCP server, subagents — while your own shells, not being its children, keep your identity.
-A shell rc export would do the opposite: tag your shells, and still miss the MCP `nu`.
+Claude Code exports it into its own process, so everything it spawns inherits it — the bash tool, subagents — while your own shells, not being its children, keep your identity.
+A shell rc export would do the opposite: tag your shells.
 
 The middle layer is the one you supply.
 On the Apple `container` path `nu toolkit/container.nu up` reads your host's `git config --global user.name`/`user.email` and forwards them, so a fresh container already knows you — nothing personal is stored in the repo or the image, and it does nothing if you have no global identity set.

@@ -164,8 +164,8 @@ def check-dirs [run: closure]: nothing -> list {
 # Read env from a bare `bash -c`, not this process. Why: on a base image that
 # bakes no ENV these values live only in /etc/sandbox-persistent.sh, which a
 # shell sources but a directly-spawned nu does not — so reading `$env`/`printenv`
-# here false-fails when verify runs under the nushell MCP tool (its nu isn't a
-# shell child).
+# here false-fails when verify runs in a nu spawned directly, not from a shell
+# (a bare `sbx exec <name> nu`).
 #
 # Not `bash -lc` because: non-interactive and non-login is the strictest of the
 # three bash flavours — the only one reaching neither /etc/profile nor
@@ -200,30 +200,9 @@ def check-envs [run: closure]: nothing -> list {
     }
 }
 
-# A bare `sbx exec` doesn't start a nushell session, so the autoload
-# may not have patched ~/.claude.json yet. Run it explicitly first (idempotent
-# self-heal), then list. Registered-but-not-connected is a real fault, not a
-# cold-start artifact — `claude mcp list` actively probes the server.
-def check-mcp [run: closure]: nothing -> record {
-    do $run [nu ($autoload_dir | path join mcp-server.nu)] | ignore
-    let r = do $run [claude mcp list]
-    # Assert on the nushell row alone. Matching 'Connected' anywhere in the
-    # output means any *other* healthy server (a dotfiles-deployed .claude.json,
-    # `sandbox-state restore`) supplies the word while nushell itself shows
-    # "✗ Failed to connect" — and the row still passes.
-    let row = $r.stdout | lines | where $it =~ '^nushell:' | get --optional 0
-    if $row == null {
-        fail 'mcp: nushell' 'not registered'
-    } else if ($row | str contains 'Connected') {
-        ok 'mcp: nushell' 'connected'
-    } else {
-        fail 'mcp: nushell' $"registered but not connected: ($row)"
-    }
-}
-
 # The agent's identity, checked where it lives: the `env` field of
 # ~/.claude/settings.json, which Claude Code exports into its own process and
-# every child inherits — Bash tool, nushell MCP, subagents.
+# every child inherits — Bash tool, subagents.
 #
 # A file check, not an env check, and that is the ceiling of what verify can
 # assert: nothing here runs inside Claude Code, so the effective value is out of
@@ -297,7 +276,7 @@ def check-git-xdg [run: closure]: nothing -> record {
 # core.excludesFile (which shadows git's XDG default). The patterns are derived
 # from the sandbox's canonical ~/.config/git/ignore — the git-global-ignore
 # autoload mirrors that file into the active excludesFile. Run the autoload
-# first (idempotent self-heal, same as check-mcp), then assert every canonical
+# first (idempotent self-heal), then assert every canonical
 # pattern is reported ignored. check-ignore needs a work tree, but a global
 # excludesFile applies in any repo, so init a throwaway in /tmp — don't depend
 # on ~/repos/cozy being a repo: it's a real clone under the sbx kit, a symlink
@@ -417,7 +396,6 @@ export def run-checks [run: closure]: nothing -> table {
         ...(check-dirs $run)
         ...(check-envs $run)
         ...(check-claude-env $run)
-        (check-mcp $run)
         (check-pbcopy $run)
         (check-bootstrap-parses $run)
         (check-catalog $run)
@@ -447,9 +425,9 @@ export def local-runner []: nothing -> closure {
 }
 
 # Print a colored pass/fail summary as a side effect, then return the results
-# table. Why: a printed-only result is unconsumable — the nushell MCP captures
-# the return value, not stdout, so `cozy verify` surfaced `[]` while the table
-# went nowhere a caller could reach. Humans still see the full table via the
+# table. Why: a printed-only result is unconsumable — a caller (a pipeline, a
+# script) gets the return value, not stdout, so the table would go nowhere a
+# caller could reach. Humans still see the full table via the
 # returned value's auto-view; only the summary line needs an explicit print.
 @category cozy-verify
 export def report [results: table]: nothing -> table {

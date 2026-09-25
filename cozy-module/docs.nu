@@ -2,9 +2,9 @@
 #
 # Fetches with curl, not `http get`: `http get` doesn't work through the Docker
 # sandbox proxy, curl does (same constraint as `toolkit docs`, which mirrors the
-# Docker sandbox docs). Each command returns a structured summary so the nushell
-# MCP captures the result — a bare `print` only reaches stdout, which the MCP
-# drops. Output dirs are gitignored generated content, refetch anytime.
+# Docker sandbox docs). Each command returns a structured summary so a caller
+# gets the result — a bare `print` only reaches stdout, which cannot be piped.
+# Output dirs are gitignored generated content, refetch anytime.
 
 const CLAUDE_DOCS_DIR = 'claude-code-docs'
 const NUSHELL_DOCS_DIR = 'nushell-docs'

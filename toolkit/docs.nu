@@ -57,8 +57,8 @@ export def main []: nothing -> record {
     commit $dir
 
     # Why: return the summary as structured data -- a bare `print` only reaches
-    # stdout, which the nushell MCP doesn't capture, so callers got an empty
-    # result. The record renders in the REPL and survives through the MCP.
+    # stdout, which cannot be piped, so callers would get an empty result. The
+    # record still renders in the REPL.
     {
         discovered: ($pages | length)
         ok: ($results | where status == "ok" | length)

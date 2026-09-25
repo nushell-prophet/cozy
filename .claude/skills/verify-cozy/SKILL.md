@@ -19,10 +19,10 @@ The repo, autoload and env checks derive their expected values from sources that
 The binary list is the exception: `verify.nu`'s `const tools` is hand-kept, because the binaries are spread across the base image and `bootstrap.nu`'s `brew install` with no machine-readable source of truth.
 Add a brew tool, add it there too.
 
-The checks cover: that each expected binary *launches* (not merely resolves on PATH), vendored repos, autoload scripts, runtime env, MCP wiring, pbcopy, the appended CLAUDE.md tool catalog, that `bootstrap.nu` parses on the shipped nu, topiary's grammar, the global-ignore patterns, XDG git config, and the two network rows — that `api.anthropic.com` is tunneled rather than intercepted (`tls:`), and that an egress allowlist is in force (`egress:`).
+The checks cover: that each expected binary *launches* (not merely resolves on PATH), vendored repos, autoload scripts, runtime env, the agent's identity in Claude Code settings, pbcopy, the appended CLAUDE.md tool catalog, that `bootstrap.nu` parses on the shipped nu, topiary's grammar, the global-ignore patterns, XDG git config, and the two network rows — that `api.anthropic.com` is tunneled rather than intercepted (`tls:`), and that an egress allowlist is in force (`egress:`).
 
 `cozy` is a Nushell overlay (loaded by the `modules-core.nu` autoload), not a PATH binary.
-Autoloads fire in an interactive shell and the MCP `evaluate` tool but **not** under `nu -c`, so there load the overlay yourself: `nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'`.
+Autoloads fire in an interactive shell but **not** under `nu -c`, so there load the overlay yourself: `nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'`.
 
 The env checks read a bare `bash -c` with each expected key stripped from the child's environment first (`env -u`), so they report what the sandbox itself supplies, however verify was launched.
 On a base image that bakes no `ENV` those keys live only in `/etc/sandbox-persistent.sh`, and a non-interactive non-login shell reads neither `/etc/profile` nor `/etc/bash.bashrc` — so something must carry them there, or the rows false-fail.
@@ -72,8 +72,7 @@ A rebuilt image reaches only a new container: `up` refuses an existing name, so 
 
 ### `<sandbox-name>` — verify a running sbx sandbox
 
-Run `cozy verify` inside the sandbox — any launch path works: the nushell MCP `evaluate` tool, an interactive shell, or `nu -c` from Bash (load the overlay yourself under `nu -c`, per above).
-One MCP-only gotcha: an `evaluate` session caches the module it loaded at startup, so if you edit `verify.nu` mid-session, re-run via `nu -c` (fresh parse), not the stale overlay.
+Run `cozy verify` inside the sandbox — any launch path works: an interactive shell, or `nu -c` from Bash (load the overlay yourself under `nu -c`, per above).
 
 ### `host` — a host checkout
 
@@ -107,7 +106,6 @@ Where a step produces a sandbox or container, run `verify-cozy` on the result in
 - [ ] Cold `docker build --no-cache -t cozy:v<N> .` succeeds, then the built container passes `verify-cozy docker` (or a sandbox from that image passes).
 - [ ] Drop a module from `toolkit/vendor.yml`, rebuild, recreate — `cozy verify` reports the dropped module absent from `~/repos/`.
 - [ ] On macOS: `cozy-module/install/run-install.sh` from a clean state succeeds and `cozy verify` passes.
-      Then confirm `claude mcp list` resolves a brew `nu` path (`/opt/homebrew/bin/nu` on Apple Silicon, `/home/linuxbrew/...` on Intel) — host-specific, not covered by `verify`.
 - [ ] Pre-existing host `~/.gitconfig` (the user's real identity) survives — XDG `~/.config/git/config` only fills unset keys.
 - [ ] `hx`, `lazygit`, `zellij` open into their TUIs on a real TTY and quit cleanly; `cmd+t`, `cmd+n`, `cmd+shift+g` respond as documented in `vendor/dotfiles/zellij/config.kdl`.
 

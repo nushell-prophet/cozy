@@ -31,6 +31,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Git in the sandbox converts CRLF to LF on commit (`core.autocrlf = input` in `~/.config/git/config`), so a file pasted in with Windows line endings no longer lands as `^M` in every diff.
   A clone that keeps CRLF on purpose — an upstream repo with Windows-ending test fixtures — needs `git config --local core.autocrlf false`. (ab9f71b)
 
+### Removed
+
+- Nushell's MCP server (`nu --mcp`) is no longer registered in Claude Code, and `cozy verify` no longer checks it: agents run Nushell through their shell tool instead.
+  An existing sandbox keeps a dead `nushell` entry until `claude mcp remove --scope user nushell`.
+
 ### Fixed
 
 - Apple `container` path: the two root execs `toolkit/container.nu` makes on every `up`, `restart` and `reload-egress` (mapping the proxy's name in `/etc/hosts`, clearing the resolver) resolved `sh` and `sed` through the image PATH, which leads with agent-writable directories — so a binary the agent dropped into `~/.local/bin` would have run as root on the human's next restart.

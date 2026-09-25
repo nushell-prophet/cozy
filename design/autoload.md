@@ -3,7 +3,6 @@ human-check: pending   # pending | verified — flip to verified after you read 
 covers:                # source paths update-design reconciles this file against
   - docker-files/nushell-autoload/modules-core.nu
   - docker-files/nushell-autoload/modules-repl.nu
-  - docker-files/nushell-autoload/mcp-server.nu
   - docker-files/nushell-autoload/git-global-ignore.nu
   - docker-files/nushell-autoload/git-identity.nu
   - docker-files/nushell-autoload/git-safe-directory.nu
@@ -26,7 +25,7 @@ Each entry records why the file ships — the self-healing or workaround it exis
 
 ## Autoload scripts (`~/.config/nushell/autoload/`)
 
-Nushell loads autoload scripts alphabetically; they're listed below in that order (`git-global-ignore` → `git-identity` → `git-safe-directory` → `mcp-server` → `modules-core` → `modules-repl`).
+Nushell loads autoload scripts alphabetically; they're listed below in that order (`git-global-ignore` → `git-identity` → `git-safe-directory` → `modules-core` → `modules-repl`).
 The only ordering dependency is `modules-core` before `modules-repl` — alphabetical naming guarantees it, so the REPL-only modules can build on the core overlays.
 
 Cozy is not the only writer of that directory: Step 4's dotfiles deploy lands `br.nu`, `completions.nu`, `hooks-config.nu` and `zzz_ignore_vars.nu` there too, from `vendor/dotfiles/nushell/autoload/`.
@@ -55,18 +54,6 @@ Self-healing: sandbox creation overwrites the global setting with just the works
 Guarded so the normal path writes nothing.
 **Code:** [`docker-files/nushell-autoload/git-safe-directory.nu`](../docker-files/nushell-autoload/git-safe-directory.nu)
 
-### mcp-server.nu
-Two jobs.
-First, raise `$env.NU_MCP_OUTPUT_LIMIT` to 64kb from nu-mcp's 10kb default: over the cap the tool returns *no* output at all, only a note pointing at `$history.N`, so every long result cost a second round trip — and in the session logs more than half were never fetched.
-Set here rather than via `claude mcp add --env` because nu-mcp reads it with `as_filesize`, which refuses a string, so a process env var is silently ignored.
-Not `0` (unlimited): one stray `open big.json` would then push a whole file into the context window — a roomier backstop, still a backstop.
-Second, ensure the nushell MCP server is registered in Claude Code user config.
-Self-healing: sandbox create may overwrite `~/.claude.json`, this restores the `mcpServers.nushell` stdio entry (`$nu.current-exe` + `--mcp`, matching Step 9).
-It compares the stored `command` rather than testing for presence, so an entry that is present but wrong gets repaired — a presence test never fires for one.
-The path is `$nu.current-exe` and not `which nu` because `which` answers about any command of that name, which a `def` or an alias can shadow.
-> NOTE: registered in `~/.claude.json` (user scope), NOT `~/.claude/settings.json`.
-**Code:** [`docker-files/nushell-autoload/mcp-server.nu`](../docker-files/nushell-autoload/mcp-server.nu)
-
 ### modules-core.nu
 Resolve `$env.WORKSPACE_DIR` to the in-VM mount path, then overlay the vendored `~/repos/` modules that must work in any context: nu-goodies, cozy, nu-kv, dotnu, numd.
 Sets `$env.kv.path` under the workspace sandbox-state dir when mounted.
@@ -83,7 +70,7 @@ The completions for tools claude-nu has nothing to do with (zellij, fd, chafa, s
 
 ## global-claude.md
 The tool catalog appended to `~/.claude/CLAUDE.md` by `bootstrap.nu` Step 6.
-A markdown brief that tells the agent what cozy built around it: available tools (shell, editors, git, search, data/languages, formatting, package managers), where Nushell modules live, a Nushell pitfalls cheatsheet, the registered Nushell MCP server and its two usage caveats (the `evaluate` session persists across calls and re-running `use` does *not* reliably re-read an edited module — tested three ways, all served the stale copy, and a stale `toolkit/container.nu` once recreated the egress proxy from the previous pin while printing success; the fix is a fresh process, not a re-`use`. And the MCP `nu` skips the login shell, so anything set only in `/etc/sandbox-persistent.sh` is absent — the agent's own identity is not, it rides Claude Code's `env` setting), git rules for the sandbox (chiefly: never `git add -A`/`git add .`, which stage parked notes and another task's edits), sandbox constraints, a note that the code here is agent-written and the agent should keep an eye on it, and a privacy section.
+A markdown brief that tells the agent what cozy built around it: available tools (shell, editors, git, search, data/languages, formatting, package managers), where Nushell modules live, a Nushell pitfalls cheatsheet, git rules for the sandbox (chiefly: never `git add -A`/`git add .`, which stage parked notes and another task's edits), sandbox constraints, a note that the code here is agent-written and the agent should keep an eye on it, and a privacy section.
 Its most load-bearing line is not a fact but an instruction: end any nu pipeline you are going to read with `| to nuon --pretty`, because a stock one-shot `nu` renders an 80-column box table that drops columns and truncates names without saying so.
 That it is an instruction and not a mechanism is a decision, not an omission — a `nu` wrapper injecting a display config was built and reverted, since `--config` is an opt-out (and the documented `nu --config …/modules-core.nu -c …` form was exactly the one it could not reach), while a pipeline ending in `| table` renders to a string before any config is consulted.
 An instruction cannot rot; its weakness is that it fires only when the agent remembers.

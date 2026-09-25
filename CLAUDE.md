@@ -34,7 +34,7 @@ sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
 The main run path: the `Dockerfile` builds a `debian:13-slim` image for Apple `container` and plain `docker run`.
 Apple `container` (via `toolkit/container.nu`) is the runtime in daily use; the docker and `compose.yaml` side gets less testing.
 Its point is a rootless runtime — the `agent` has passwordless sudo only during the build, revoked in the final layer — which suits working with valuable data.
-It runs the same `bootstrap.nu` and passes `cozy verify` (all 62 checks) when launched via `compose.yaml`; a bare `docker run` fails the two `egress:` checks because it has no allowlist in front of it.
+It runs the same `bootstrap.nu` and passes `cozy verify` (all 60 checks) when launched via `compose.yaml`; a bare `docker run` fails the two `egress:` checks because it has no allowlist in front of it.
 This is a separate path, not fed to `sbx` (see the registry note above).
 Verify a build of it with `verify-cozy docker`.
 
@@ -73,7 +73,7 @@ A container keeps the image it was created from, and `up` refuses a name that ex
 
 ## Commit messages
 
-`<type>(<area>): <subject>` — types are `feat`, `fix`, `docs`, `refactor`, `test`, `chore`; the area is the subsystem the change lives in (`container`, `install`, `toolkit`, `verify`, `mcp`, `egress`, `firewall`, `global-claude`, `design`, `readme`).
+`<type>(<area>): <subject>` — types are `feat`, `fix`, `docs`, `refactor`, `test`, `chore`; the area is the subsystem the change lives in (`container`, `install`, `toolkit`, `verify`, `egress`, `firewall`, `global-claude`, `design`, `readme`).
 Drop the parens only when no single area owns the change (`fix: the agent's identity belongs to Claude Code, not to a shell`).
 The script-generated `vendor: update <repo>` is the one prefix that is neither.
 

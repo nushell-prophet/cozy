@@ -189,14 +189,14 @@ Read the history with `git -C ($env.WORKSPACE_DIR | path join sandbox-state file
 
 ### `cozy verify`
 
-Runs the post-build checks against the sandbox you are inside: tools launch, expected files/dirs/env vars exist, the nushell MCP, pbcopy, topiary, and git-XDG wiring is in place, and — the only checks that touch the network — that `api.anthropic.com` is not intercepted and that an egress allowlist is in force.
+Runs the post-build checks against the sandbox you are inside: tools launch, expected files/dirs/env vars exist, the agent's identity, pbcopy, topiary, and git-XDG wiring is in place, and — the only checks that touch the network — that `api.anthropic.com` is not intercepted and that an egress allowlist is in force.
 Every expected value is derived from repo sources (`vendored-repos.nuon`, the autoload glob, `bootstrap.nu`), so the checklist can't drift from the build.
 
 ```nushell
 cozy verify
 ```
 
-The `cozy` module is autoloaded only in an interactive nushell session, so run this from an interactive shell or the nushell MCP `evaluate` tool — a one-shot `nu -c` skips autoloads and won't have `cozy` unless you load it explicitly (`nu --config ~/.config/nushell/autoload/modules-core.nu -c 'cozy verify'`).
+The `cozy` module is autoloaded only in an interactive nushell session, so run this from an interactive shell — a one-shot `nu -c` skips autoloads and won't have `cozy` unless you load it explicitly (`nu --config ~/.config/nushell/autoload/modules-core.nu -c 'cozy verify'`).
 
 ### `cozy docs claude` / `cozy docs nushell`
 
@@ -229,7 +229,7 @@ cozy nu-demo-instance --here
 
 Installer subcommands used during image build or inside a running sandbox: `bootstrap`, `claude`, `topiary`, `nushell`, `polars`, `rust`, `zellij`, `nu-plugin-image`.
 
-`bootstrap` is the single entry point that sets up the sandbox (or host) end-to-end — brew tools, XDG git config, vendored modules, dotfiles, Claude skills, broot, topiary, and Claude Code with the nushell MCP.
+`bootstrap` is the single entry point that sets up the sandbox (or host) end-to-end — brew tools, XDG git config, vendored modules, dotfiles, Claude skills, broot, topiary, and Claude Code.
 Every install path reaches it through the shared `install/run-install.sh`.
 
 ## License

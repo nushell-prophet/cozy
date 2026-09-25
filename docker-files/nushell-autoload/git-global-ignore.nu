@@ -6,7 +6,7 @@
 # XDG config, so cozy can't reclaim it — it must augment whatever file is active.
 # Mirror cozy's canonical ignore (~/.config/git/ignore, written by bootstrap.nu)
 # into the resolved excludesFile, keeping sbx's own entries (`.sbx`).
-# Same self-healing pattern as git-safe-directory.nu / mcp-server.nu.
+# Same self-healing pattern as git-safe-directory.nu.
 # Guarded so the normal path writes nothing.
 let canonical = $nu.home-dir | path join .config git ignore
 let active = do { git config --get core.excludesFile } | complete

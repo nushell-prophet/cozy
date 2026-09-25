@@ -2,7 +2,7 @@
 #
 # One entry point that sets up the sandbox (or host) end-to-end:
 # brew tools, XDG git config, vendored modules under ~/repos/, dotfiles,
-# Claude skills, broot, topiary, and Claude Code with the nushell MCP.
+# Claude skills, broot, topiary, and Claude Code.
 #
 # Safe to re-run: every step converges to the same clean setup. Cozy-owned
 # config is replaced in place (the /etc env block, the autoload dir,
@@ -40,13 +40,12 @@ const cozy_root = path self | path dirname | path dirname | path dirname
 
 # The agent's own identity. Step 9 writes it into Claude Code's `env` setting,
 # so it lives in the *agent process*, not in a shell rc — Claude Code exports it
-# into its own environment and every child inherits it: the Bash tool, the
-# nushell MCP server, subagents. Not in /etc/sandbox-persistent.sh because: that
-# file is sourced by every shell in the sandbox, the human's included, so the
-# agent's name overrode the human's own git config the moment they typed `git
-# commit` in a container shell — and it still missed the two places the agent
-# actually works (non-interactive bash needed the BASH_ENV hook to see it; the
-# MCP `nu` is not a shell child at all and never saw it).
+# into its own environment and every child inherits it: the Bash tool,
+# subagents. Not in /etc/sandbox-persistent.sh because: that file is sourced by
+# every shell in the sandbox, the human's included, so the agent's name would
+# override the human's own git config the moment they typed `git commit` in a
+# container shell — and it would still miss where the agent actually works
+# (non-interactive bash needs the BASH_ENV hook to see it).
 # $HOME is expanded at install time — settings.json values are literal strings.
 const agent_env = {
     GIT_AUTHOR_NAME: "Claude"
@@ -256,20 +255,12 @@ export def main [
     }
     topiary install
 
-    # Step 9 — Claude Code + nushell MCP
+    # Step 9 — Claude Code
     claude install
-    # Why remove-then-add: `claude mcp add` exits 1 when the entry already
-    # exists and has no --force, so a re-run died right here — before the
-    # externalEditorContext merge below and before the .cozy-installed stamp,
-    # which then made the *next* host run trip check-no-clobber on cozy's own
-    # deployed files. `remove` exits 1 on a not-yet-registered server, so its
-    # status is the one thing here we genuinely don't care about.
-    ^claude mcp remove --scope user nushell | complete | ignore
-    ^claude mcp add --scope user --transport stdio nushell -- (which nu | get path.0) --mcp
 
     # Enable "Show last response in external editor". externalEditorContext is a
-    # ~/.claude.json global-config field (not settings.json), so merge it into the
-    # file `claude mcp add --scope user` just wrote.
+    # ~/.claude.json global-config field (not settings.json), so merge it into
+    # whatever that file already holds.
     let claude_json = $nu.home-dir | path join '.claude.json'
     let existing = if ($claude_json | path exists) { open $claude_json } else { {} }
     $existing | upsert externalEditorContext true | save --force $claude_json

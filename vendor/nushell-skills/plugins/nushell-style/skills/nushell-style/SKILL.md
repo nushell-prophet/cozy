@@ -1,6 +1,6 @@
 ---
 name: nushell-style
-description: This skill should be used when writing, editing, reviewing, or debugging Nushell (.nu) files. Covers opinionated pipeline composition, command choices (where vs filter, match vs if/else, get --optional), formatting conventions (Topiary), type signatures, module structure, testing with nutest (unit tests, snapshot tests, @example attributes, coverage), NUON data format, the fancy-regex flavor behind =~ and --regex flags, toolkit.nu patterns, nu --ide-check debugging, the Nushell MCP server, and migration guide for updating scripts across Nushell versions (0.100–0.115: breaking changes, renamed commands, new idioms). Relevant when the user says "write nushell code," "review my .nu file," "nushell style," "nushell best practices," "format nushell," "nushell pipeline," "nutest," "NUON," "nushell regex," "lookahead," "lookbehind," "backreference," "nu --ide-check," "nushell MCP," "update nushell script," "nushell breaking changes," or "nushell migration."
+description: This skill should be used when writing, editing, reviewing, or debugging Nushell (.nu) files. Covers opinionated pipeline composition, command choices (where vs filter, match vs if/else, get --optional), formatting conventions (Topiary), type signatures, module structure, testing with nutest (unit tests, snapshot tests, @example attributes, coverage), NUON data format, the fancy-regex flavor behind =~ and --regex flags, toolkit.nu patterns, nu --ide-check debugging, and migration guide for updating scripts across Nushell versions (0.100–0.115: breaking changes, renamed commands, new idioms). Relevant when the user says "write nushell code," "review my .nu file," "nushell style," "nushell best practices," "format nushell," "nushell pipeline," "nutest," "NUON," "nushell regex," "lookahead," "lookbehind," "backreference," "nu --ide-check," "update nushell script," "nushell breaking changes," or "nushell migration."
 ---
 
 # Nushell Code Style Guide
@@ -15,7 +15,6 @@ description: This skill should be used when writing, editing, reviewing, or debu
 - `references/nuon.md` — NUON format, data serialization, config files
 - `references/testing.md` — nutest framework, snapshots, coverage
 - `references/toolkit.md` — toolkit.nu, repo utilities, commit conventions
-- `references/mcp.md` — Nushell as MCP server (`nu --mcp`), tools, persistent state
 - `references/migration.md` — breaking changes, renamed commands, new idioms (0.100 → 0.115)
 - `references/enhancements.md` — new features to improve existing scripts (0.100 → 0.115)
 

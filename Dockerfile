@@ -210,9 +210,8 @@ USER agent
 # bootstrapped into a foreign container, where the block is the only source and a
 # `bash -c nu` would otherwise start with no XDG_DATA_HOME. It carries no identity:
 # the agent's GIT_AUTHOR_*/JJ_CONFIG live in Claude Code's own settings (bootstrap
-# Step 9), because a shell hook is the wrong scope for them — it reached the human's
-# shells, which should stay the human's, and missed the MCP `nu`, which is no
-# shell's child.
+# Step 9), because a shell hook is the wrong scope for them — it would reach the
+# human's shells, which should stay the human's.
 #
 # BASH_ENV applies to every non-interactive bash, so `bash -lc` sources the file
 # twice — once here, once via profile.d. The exports are idempotent, and the

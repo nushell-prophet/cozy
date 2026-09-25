@@ -38,9 +38,7 @@ Modules are in `~/repos/`:
 - `nutest` — test framework; **not** autoloaded, load it with `use ~/repos/nutest/nutest`
 
 Autoload scripts in `~/.config/nushell/autoload/` load the modules above (except `nutest`) — and the `cozy` command — for you, but only when nu starts an **interactive** session.
-The nushell MCP `evaluate` tool runs such a session, so the modules are ready there too.
 A one-shot `nu -c '…'` (e.g. run from Bash) is not interactive and skips autoloads, so `cozy`, `nu-goodies`, `kv` and the rest are absent — you'll get `command not found`.
-The MCP `evaluate` tool is good for interactive exploration (autoloads fire, structured output) — but read its caveats under *Nushell MCP Server* below before relying on it.
 If you use `nu -c`, load the modules with `--config`: `nu --config ~/.config/nushell/autoload/modules-core.nu --commands '…'` — `--config` runs even in `-c` mode (unlike autoload), so the full core module set (`cozy`, `nu-goodies`, `kv`, `dotnu`, `numd`) is available.
 
 **End every nu pipeline you are going to read with `| to nuon --pretty`.** A one-shot `nu` loads no config, so it renders with stock defaults — an 80-column box table built for a terminal, not for a reader.
@@ -110,24 +108,6 @@ The one thing never to write is `| table` — it forces the box back.
   It also takes a path argument resolved against the script's own directory, which is how a script points at a neighbour without a hardcoded absolute path: `const SIBLING = path self ../CLAUDE.md`.
   Both forms work in a `const`, neither works in a command body.
   It needs a real file too, so `nu --commands 'path self'` fails — test it in a script, not with `-c`.
-
-## Nushell MCP Server
-
-A Nushell MCP server is registered in `~/.claude.json`.
-It provides `evaluate`, `list_commands`, and `command_help` tools for running Nushell commands with structured output.
-
-Two caveats:
-
-- **The session persists — and re-running `use` may not fix it.** All `evaluate` calls share one long-lived nushell state: variables, `$env`, and loaded modules stay between calls.
-  When you edit a module, the old definition can keep being served, and `use module.nu` in the same command line does *not* reliably re-read the file — tested by bare name, by absolute directory and by direct path to `mod.nu`, all serving the stale copy.
-  (`use` is a parse-time keyword: the whole block is parsed before any of it runs, so `save` then `use` in one block cannot work either.)
-  The rule behind which edits get picked up is not established.
-  Nothing fails loudly — a stale `toolkit/container.nu` once recreated the egress proxy from the previous image digest and printed its usual green success.
-  **The reliable answer is a fresh process: run the file as a script, `nu toolkit/container.nu restart <name>`, or a one-shot `nu -c '…'` from Bash.** The same staleness applies to a long-lived interactive REPL, not just this MCP server.
-- **It skips the login environment.** The MCP `nu` is spawned directly, not from a login shell, so it never sources `/etc/sandbox-persistent.sh` — anything that lives only in that file is absent there.
-  Real container ENV (`XDG_*`, `HELIX_RUNTIME`, `LANG`) is inherited fine, so the gap is easy to miss.
-  If a command depends on a var only the shell sets, run it via `nu -c` from Bash (whose shell sourced the profile) or `bash -lc 'nu -c "…"'`.
-  Your identity is not affected: `GIT_AUTHOR_*`, `GIT_COMMITTER_*` and `JJ_CONFIG` come from Claude Code's own `env` setting, so every process it spawns — the Bash tool, this MCP server, subagents — has them.
 
 ## Git
 

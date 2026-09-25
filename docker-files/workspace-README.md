@@ -65,7 +65,7 @@ Edit them freely.
 
 - `config.nu`, `env.nu` — opinionated shell settings (from dotfiles)
 - `autoload/*.nu` — loaded when nu starts an **interactive** session (a one-shot `nu -c '…'` skips them).
-  From cozy's `docker-files/`: `git-global-ignore.nu`, `git-identity.nu`, `git-safe-directory.nu`, `mcp-server.nu`, `modules-core.nu`, `modules-repl.nu`.
+  From cozy's `docker-files/`: `git-global-ignore.nu`, `git-identity.nu`, `git-safe-directory.nu`, `modules-core.nu`, `modules-repl.nu`.
   From dotfiles: `br.nu`, `completions.nu`, `hooks-config.nu`, `zzz_ignore_vars.nu`
 - `completions/*.nu` — custom tab-completions for `bat`, `chafa`, `delta`, `fd`, `fzf`, `hx`, `lazygit`, `rg`, `sandbox-exec`, `vd`, `zellij` (from dotfiles; loaded by `autoload/completions.nu`)
 
@@ -85,4 +85,3 @@ Edit them freely.
 **Home & Claude**
 
 - `~/.claude/CLAUDE.md` — cozy's tool catalog is appended here
-- `~/.claude.json` — Nushell's built-in MCP server (`nu --mcp`) is registered (gives the agent `evaluate` / `list_commands` / `command_help`)

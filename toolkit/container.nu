@@ -471,8 +471,7 @@ def assert-exit-by-name [name: string]: nothing -> nothing {
 
 # What every subcommand returns, so the three answer the same question in the
 # same shape. Why return anything when the run already prints: `print` reaches
-# stdout only — it cannot be piped, and the nushell MCP does not capture it, so
-# a caller gets an empty result. toolkit/docs.nu returns its summary for exactly
+# stdout only — it cannot be piped, so a caller gets an empty result. toolkit/docs.nu returns its summary for exactly
 # that reason. The prints stay; they narrate a slow build while it runs.
 def summary [name: string state: string ip: string]: nothing -> record {
     {

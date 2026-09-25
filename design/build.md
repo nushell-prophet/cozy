@@ -168,12 +168,9 @@ No clone fallback — if the vendored grammar is missing it fails loudly (fail-f
 See [`install.md`](install.md) for what `topiary install` does.
 **Code:** `bootstrap.nu` (Step 8 block) → `topiary install`
 
-### Step 9 — Claude Code + nushell MCP
-`claude install` (see [`install.md`](install.md)), then `claude mcp remove` followed by `claude mcp add --scope user --transport stdio nushell -- (which nu | get path.0) --mcp` — the absolute path is resolved on purpose, so a pinned `~/.local/bin/nu` is the one the MCP server runs.
-Remove-then-add because `mcp add` exits 1 on an existing entry and has no `--force`, so a re-run died right here, before the merges and the stamp below — which then made the *next* host run trip `check-no-clobber` on cozy's own files.
-`remove`'s own status is the one thing ignored: it exits 1 when nothing is registered yet.
-Then merges `externalEditorContext: true` into `~/.claude.json`, and the agent's identity (`GIT_AUTHOR_*`, `GIT_COMMITTER_*`, `JJ_CONFIG` — the `agent_env` record at the top of `bootstrap.nu`) into the `env` field of `~/.claude/settings.json`.
+### Step 9 — Claude Code
+`claude install` (see [`install.md`](install.md)), then merges `externalEditorContext: true` into `~/.claude.json`, and the agent's identity (`GIT_AUTHOR_*`, `GIT_COMMITTER_*`, `JJ_CONFIG` — the `agent_env` record at the top of `bootstrap.nu`) into the `env` field of `~/.claude/settings.json`.
 Merged, not written over: step 4 already deployed the dotfiles `settings.json` there.
-That field is the whole git-attribution mechanism — Claude Code exports it into its own process, so the Bash tool, the nushell MCP and subagents all inherit it, while the human's shells do not.
-It was a shell export until 2026-07-27, which had it backwards on both ends: the human's shells got the agent's name, and the MCP `nu` — no shell's child — never got it.
+That field is the whole git-attribution mechanism — Claude Code exports it into its own process, so the Bash tool and subagents inherit it, while the human's shells do not.
+It was a shell export until 2026-07-27, which gave the human's shells the agent's name.
 Finally writes the `~/.cozy-installed` stamp (last, so a partial failure leaves no stamp and forces `--force` to recover) and, if env exports were just written but the current shell predates them, prints a "run `exec bash -l`" note.
