@@ -510,8 +510,7 @@ def parse-session-columns [selected: list<string>]: path -> record {
     } else { {} }
 
     # Why `select` (not where+reduce): it keeps $selected's order and fails fast
-    # if SESSION_COLUMNS names a column this record doesn't compute — drift
-    # between the two lists used to be silently dropped.
+    # if SESSION_COLUMNS names a column this record doesn't compute.
     {
         summary: $summary
         first_timestamp: $timestamps.first
@@ -550,7 +549,7 @@ def parse-session-columns [selected: list<string>]: path -> record {
 # True when a value is a record (which is a 1-row table once piped). Strips the
 # `<...>` type detail so `record<a: int>` and a bare `record` both match.
 def is-record []: any -> bool {
-    ($in | describe | str replace --regex '<.*' '') == "record"
+    peek | metadata access {|md| $md.peek.type == "record" }
 }
 
 # Extract session file paths from piped input
@@ -724,7 +723,7 @@ export def main [
 
     # Why: --columns is a comma-separated string (see the completer) — split,
     # trim, and drop empties so "version, cwd" and a trailing comma are forgiving.
-    # uniq because `select` (unlike the old where+reduce) rejects a repeated name.
+    # uniq because `select` rejects a repeated name.
     let requested = $columns
         | default ""
         | split row ','
@@ -733,7 +732,14 @@ export def main [
         | uniq
 
     if $all_columns and ($requested | is-not-empty) {
-        error make "--columns and --all-columns are mutually exclusive"
+        error make {
+            msg: "--columns and --all-columns are mutually exclusive"
+            labels: [
+                {text: "these columns" span: (metadata $columns).span}
+                {text: "...and every column" span: (metadata $all_columns).span}
+            ]
+            help: "drop one — --all-columns already covers every name --columns could ask for"
+        }
     }
 
     let selected = if $all_columns {
@@ -747,6 +753,7 @@ export def main [
         if ($unknown | is-not-empty) {
             error make {
                 msg: $"Unknown session column\(s): ($unknown | str join ', ')"
+                label: {text: "not a session column" span: (metadata $columns).span}
                 help: $"valid columns: ($all_names | str join ', ')"
             }
         }
@@ -776,7 +783,14 @@ export def export-session [
     let piped_files = resolve-piped-sessions $input
 
     if $piped_files != null and $title != null {
-        error make "Piped input conflicts with title argument"
+        error make {
+            msg: "Piped input conflicts with title argument"
+            label: {
+                text: "a title names one document, but the pipe may carry several sessions"
+                span: (metadata $title).span
+            }
+            help: "drop the title, or pipe one session at a time"
+        }
     }
 
     let export_one = {|session_file|
