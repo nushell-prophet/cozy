@@ -16,7 +16,7 @@
 # to bytes the agent controls. Putting brew on PATH for the agent is the point
 # of the image, so the only real mitigation is not to run rootful execs here.
 
-FROM debian:12-slim
+FROM debian:13-slim
 
 # ---- build-time root layer: base deps + agent user with temporary sudo ----
 
@@ -26,11 +26,11 @@ FROM debian:12-slim
 # toolchain, rsync for `toolkit install-skills` (Step 5). bootstrap's Step 0
 # apt-installs gcc/libc6-dev/procps/file again (harmless re-install) for the
 # tree-sitter-nu compile in `topiary install`. All of these ship in the
-# docker/sandbox-templates base but not in debian:12-slim.
+# docker/sandbox-templates base but not in debian:13-slim.
 #
 # ripgrep+jq+less are agent tools the template bundled and slim lacks — kept on
 # apt (not brew) so the change stays local to this image; the shared brew list in
-# bootstrap.nu Step 1 is untouched. bookworm's rg 13 / jq 1.6 are adequate as
+# bootstrap.nu Step 1 is untouched. trixie's rg 14 / jq 1.7 are adequate as
 # leaf tools (nushell is cozy's primary data tool); brew would only buy newer
 # versions at the cost of touching every install path.
 #

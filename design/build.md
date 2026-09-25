@@ -38,7 +38,7 @@ Debian slim ships none of the sbx template's agent tooling, so the early layers 
 The image carries no proxy address, so it stays runnable standalone; the egress cage is wrapped around it at runtime by [`../compose.yaml`](../compose.yaml) — see [`firewall.md`](firewall.md).
 Its layers, in order:
 
-1. `FROM debian:12-slim`.
+1. `FROM debian:13-slim`.
 2. **Root build layer** — rewrite apt sources `http://` → `https://` (the VM allows :443, not :80; TLS peer-verify is off for this first apt because the CA bundle isn't installed yet — apt still verifies packages via gpg), then `apt-get install` sudo, ca-certificates, curl, git, build-essential, procps, file, rsync, ripgrep, jq, less, openssh-client.
    build-essential/procps/file back Homebrew's Linux toolchain requirement; rsync backs `install-skills` (Step 5); rg + jq + less replace agent tools the template bundled (kept on apt so the shared brew list stays untouched) — less because git, git-delta and nu-goodies' `L` all page through it and slim has no pager; openssh-client because slim ships no ssh client at all, so `ssh-keygen` and git-over-ssh are simply missing.
    Recommends are left on (no `--no-install-recommends`) — the recommended set is what a Debian user gets by default and what these packages assume is around, and the size it costs buys a workspace that behaves like a normal machine.

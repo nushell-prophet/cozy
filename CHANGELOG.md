@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- The Debian image is built on `debian:13-slim` (trixie, the current stable) instead of `debian:12-slim` (bookworm, now oldstable), so the image tracks the latest stable Debian and its security updates.
 - The README quick start now runs cozy under Apple `container` (macOS 26+, Apple silicon): the rootless Debian image behind the egress allowlist, which is the most tested path.
   `sbx` moves to its own section; use `use toolkit; toolkit container attach <name>`, since `use toolkit/container.nu` hides the `container` CLI.
 - `cozy sandbox-state global-claude snapshot` / `restore` keep `~/.claude/CLAUDE.md` as git history in `sandbox-state/global-claude-history`, so every version can be diffed against the one before it.

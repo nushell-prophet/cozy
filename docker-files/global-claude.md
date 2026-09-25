@@ -1,7 +1,7 @@
 # Sandbox Environment
 
 This file is appended to `~/.claude/CLAUDE.md` by every cozy install path, so check which one you are on before relying on the environment notes below.
-The usual one is the `debian:12-slim` image run under Apple `container` (or plain `docker`), rootless and behind an egress allowlist.
+The usual one is the `debian:13-slim` image run under Apple `container` (or plain `docker`), rootless and behind an egress allowlist.
 The others are an `sbx` sandbox — Docker's standalone sandbox runtime, on Ubuntu — and a plain host install (macOS or Linux).
 In a sandbox the workspace is mounted at its original host path, not `/workspace` or `/home/agent`.
 

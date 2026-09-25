@@ -393,7 +393,7 @@ def setup-docker-system []: nothing -> nothing {
     # Why xxd: agents reach for it constantly on binary files and it is absent
     # from both container bases. Nushell's `into binary` covers viewing a hex
     # dump, but nothing here replaces `xxd -r` (dump back to bytes). Tiny
-    # package, in main on both Ubuntu and bookworm — cheaper than the misses.
+    # package, in main on both Ubuntu and Debian — cheaper than the misses.
     # Why man-db: without a `man` binary `git push --help` dies with "failed to
     # exec 'man'" instead of printing the page. It reaches brew's pages (git's
     # included) — apt packages install without theirs, because the slim base

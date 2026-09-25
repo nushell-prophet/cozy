@@ -15,7 +15,7 @@ The install steps and the reasoning behind each of them are described in [design
 
 ## Quick start
 
-The most tested path is [Apple `container`](https://github.com/apple/container) on a Mac: a rootless `debian:12-slim` image behind an egress allowlist you control.
+The most tested path is [Apple `container`](https://github.com/apple/container) on a Mac: a rootless `debian:13-slim` image behind an egress allowlist you control.
 It needs a Mac with Apple silicon, **macOS 26 or later**, and Nushell on the host (or see [Without nushell on the host](#without-nushell-on-the-host)).
 Other targets — [`sbx`](#sbx), plain Docker, a macOS or Linux host — run the same installer and land on the same toolset.
 
@@ -288,7 +288,7 @@ cozy-module/install/run-install.sh --force     # reinstall over existing user co
 
 ## Debian image
 
-The [Dockerfile](Dockerfile) builds the lean `debian:12-slim` image the quick start runs, on Apple `container` or plain `docker run`.
+The [Dockerfile](Dockerfile) builds the lean `debian:13-slim` image the quick start runs, on Apple `container` or plain `docker run`.
 Apple `container` is the tested runtime; the docker and compose path below gets less use.
 The `agent` user gets passwordless sudo only during the build and loses it in the final layer, so the running container is rootless — no standing privilege, which suits working with valuable data.
 

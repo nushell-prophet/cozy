@@ -31,7 +31,7 @@ sbx exec -it NAME nu --login --execute 'zellij attach -c NAME'
 
 `sbx` pulls images only from a registry, and cozy images stay local-only (never pushed), so a `docker build`ed image can't be fed to `sbx` — the kit (in-sandbox build) replaces that path entirely.
 
-The main run path: the `Dockerfile` builds a `debian:12-slim` image for Apple `container` and plain `docker run`.
+The main run path: the `Dockerfile` builds a `debian:13-slim` image for Apple `container` and plain `docker run`.
 Apple `container` (via `toolkit/container.nu`) is the runtime in daily use; the docker and `compose.yaml` side gets less testing.
 Its point is a rootless runtime — the `agent` has passwordless sudo only during the build, revoked in the final layer — which suits working with valuable data.
 It runs the same `bootstrap.nu` and passes `cozy verify` (all 62 checks) when launched via `compose.yaml`; a bare `docker run` fails the two `egress:` checks because it has no allowlist in front of it.
