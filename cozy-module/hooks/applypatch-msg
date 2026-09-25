@@ -1,0 +1,10 @@
+#!/bin/sh
+# Hand each message `git am` applies to the Change-Id commit-msg hook beside this one.
+# Why the line above never changes: `cozy git install-change-id-hook` knows an installed copy as
+# this hook by it and updates that copy; new wording makes every installed copy a foreign hook.
+#
+# Why this hook exists: `git am` never runs commit-msg, so without it every applied patch lands
+# with no Change-Id. It only forwards, so the stamping logic stays in one script.
+# Why exec with no existence test, unlike git's own sample: the two hooks are installed together,
+# and a missing commit-msg must stop the `am`, not let it land commits with no id.
+exec "$(git rev-parse --git-path hooks/commit-msg)" "$@"

@@ -76,7 +76,8 @@ The id survives amend, rebase and squash, which a sha does not, so it is what a 
 Its first 24 letters are random and its last 8 are the unix time it was minted, so a prefix stays unique and the tail dates the change through every rewrite.
 The hook adds an id and never replaces one, and leaves a comment-only message alone so an empty commit still aborts.
 An older copy of this hook is replaced and reported as `updated`: a copy is recognised as this hook by its header comment on line 2, which every version carries.
-Any other `commit-msg` hook already in place is an error, not overwritten; `--force` replaces it.
+It also installs `hooks/applypatch-msg`, which hands each message `git am` applies to that same hook, since `am` never runs `commit-msg` itself.
+Any other `commit-msg` or `applypatch-msg` hook already in place is an error, not overwritten, and then neither hook is installed; `--force` replaces it.
 
 ```nushell
 cozy git install-change-id-hook              # the repo in the current dir

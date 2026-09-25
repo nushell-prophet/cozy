@@ -1,13 +1,15 @@
-# Install the commit-msg hook that stamps a Change-Id trailer on every new commit.
+# Install the hooks that stamp a Change-Id trailer on every new commit.
 #
 # The id names a change across the rewrites that destroy a sha — amend, rebase, squash — so a
-# reference from one repo into another can survive them. The hook is one tracked shell script,
+# reference from one repo into another can survive them. The stamping is one tracked shell script,
 # `hooks/commit-msg` beside this file: it fires on host commits too (lazygit on macOS), where `nu`
 # is not on the PATH, so it stays `#!/bin/sh`. Its contract — add an id, never replace one; leave a
 # comment-only message alone — is documented in the "Change-Id" section of the mono-repo-tooling-spec
-# specification. Why here and not in that repo's toolkit: a cross-repo reference needs the id on
-# both sides, and not every repo on the machine lives in the monorepo.
-const hook = path self hooks/commit-msg
+# specification. `hooks/applypatch-msg` forwards to it, because `git am` never runs commit-msg.
+# Why here and not in that repo's toolkit: a cross-repo reference needs the id on both sides, and
+# not every repo on the machine lives in the monorepo.
+const hooks_src = path self hooks
+const hook_names = [commit-msg applypatch-msg]
 
 # Run git in a directory and return its stdout, or fail with git's own stderr as the message.
 # Why not a bare `^git …` at each call: that raises too, but its message is Nushell's generic one
@@ -22,56 +24,67 @@ def git-in [dir: path args: list<string>]: nothing -> string {
     $res.stdout
 }
 
-# Why the common git dir and not `core.hooksPath`: the hook lands where every worktree of the
-# repository shares it, and the setting that could point at a tracked directory lives in
+# What installing `src` over `dest` would do, or an error when it must not.
+# Why refuse and not overwrite: in an arbitrary repo a hook may already belong to something else
+# (husky, a project's own script), and a silent cp would destroy it.
+# Why an older copy of ours is replaced without --force: a fix to the hook reaches no repo
+# otherwise, and nothing reports a stale copy — it keeps working the old way. The header comment on
+# line 2 is what marks a copy as ours; it has been the same in every version, so changing it would
+# turn every installed copy into a foreign hook.
+def install-status [src: path dest: path force: bool]: nothing -> string {
+    if not ($dest | path exists) { return 'installed' }
+    let current = open --raw $src
+    let installed = open --raw $dest
+    if $installed == $current {
+        'already installed'
+    } else if ($installed | lines | get 1?) == ($current | lines | get 1) {
+        'updated'
+    } else if $force {
+        'replaced'
+    } else {
+        error make --unspanned {
+            msg: $"a different ($dest | path basename) hook already exists: ($dest)"
+            help: "compare it with the tracked script; pass --force if it should be replaced"
+        }
+    }
+}
+
+# Why the common git dir and not `core.hooksPath`: the hooks land where every worktree of the
+# repository shares them, and the setting that could point at a tracked directory lives in
 # `.git/config`, which is not tracked either — so both cost one manual step per clone, and this one
 # covers the worktrees for free.
 @category cozy
 export def install-change-id-hook [
     path: path = '.' # the repo, or any directory inside it
-    --force # replace a different commit-msg hook instead of refusing
-]: nothing -> record {
+    --force # replace a different commit-msg or applypatch-msg hook instead of refusing
+]: nothing -> table<repo: string, hook: string, status: string> {
     let common = git-in $path [rev-parse --path-format=absolute --git-common-dir] | str trim
-    let dest = $common | path join hooks commit-msg
+    let dest_dir = $common | path join hooks
     # Why refuse under core.hooksPath: git then never looks in the common dir, so an install there
-    # would report success for a hook that never fires. `--git-path hooks` is where git looks.
+    # would report success for hooks that never fire. `--git-path hooks` is where git looks.
     let live = git-in $path [rev-parse --path-format=absolute --git-path hooks] | str trim
-    if $live != ($dest | path dirname) {
+    if $live != $dest_dir {
         error make --unspanned {
-            msg: $"core.hooksPath sends git to ($live), so a hook in ($dest | path dirname) would never run"
-            help: "copy the tracked hooks/commit-msg into that directory by hand, or unset core.hooksPath"
+            msg: $"core.hooksPath sends git to ($live), so a hook in ($dest_dir) would never run"
+            help: "copy the tracked hooks/commit-msg and hooks/applypatch-msg into that directory by hand, or unset core.hooksPath"
         }
     }
-    # Why refuse and not overwrite: in an arbitrary repo a commit-msg hook may already belong to
-    # something else (husky, a project's own script), and a silent cp would destroy it.
-    # Why an older copy of ours is replaced without --force: a fix to the hook reaches no repo
-    # otherwise, and nothing reports a stale copy — it keeps stamping ids the old way. The header
-    # comment on line 2 is what marks a copy as ours; it has been the same in every version, so
-    # changing it would turn every installed copy into a foreign hook.
-    let status = if ($dest | path exists) {
-        let current = open --raw $hook
-        let installed = open --raw $dest
-        if $installed == $current {
-            'already installed'
-        } else if ($installed | lines | get 1?) == ($current | lines | get 1) {
-            'updated'
-        } else if $force {
-            'replaced'
-        } else {
-            error make --unspanned {
-                msg: $"a different commit-msg hook already exists: ($dest)"
-                help: "compare it with the tracked script; pass --force if it should be replaced"
-            }
-        }
-    } else {
-        mkdir ($dest | path dirname)
-        'installed'
+    # Why every status is decided before any copy: a refusal must leave the repo as it was. Half an
+    # install is an applypatch-msg forwarding into someone else's commit-msg.
+    # Not `each`: an error raised inside its closure reaches the user as "Eval block failed with
+    # pipeline input", and the refusal is the message they must read.
+    mut plan = []
+    for name in $hook_names {
+        let src = $hooks_src | path join $name
+        let dest = $dest_dir | path join $name
+        $plan ++= [{src: $src dest: $dest status: (install-status $src $dest $force)}]
     }
-    if $status != 'already installed' {
-        cp $hook $dest
-        ^chmod +x $dest
+    mkdir $dest_dir
+    for h in ($plan | where status != 'already installed') {
+        cp $h.src $h.dest
+        ^chmod +x $h.dest
     }
-    {repo: ($common | path dirname) hook: $dest status: $status}
+    $plan | each {|h| {repo: ($common | path dirname) hook: $h.dest status: $h.status} }
 }
 
 # Compose a link to a file as of the commit that last touched it:

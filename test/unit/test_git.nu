@@ -38,6 +38,17 @@ def error-of [call: closure]: nothing -> string {
 
 const ID = 'zyxwvutsrqponmlkzyxwvutsrqponmlk'
 const HOOK = path self ../../cozy-module/hooks/commit-msg
+const APPLYPATCH_HOOK = path self ../../cozy-module/hooks/applypatch-msg
+
+# Two commits made without the hook, the second turned into a patch and undone, so an `am` of it
+# is the only way a Change-Id can reach the repo.
+def patch-of-second-commit [repo: path]: nothing -> string {
+    commit-file $repo base.txt base "base"
+    commit-file $repo second.txt second "second"
+    let patch = ^git -C $repo format-patch -1 --stdout
+    ^git -C $repo reset --quiet --hard HEAD~1
+    $patch
+}
 
 @test
 def "install refuses a different hook and replaces it with force" [] {
@@ -49,9 +60,43 @@ def "install refuses a different hook and replaces it with force" [] {
     assert str contains $err 'a different commit-msg hook already exists'
     assert equal (open --raw $dest) "#!/bin/sh\nexit 0\n"
 
-    assert equal (git install-change-id-hook $repo --force | get status) 'replaced'
+    assert equal (git install-change-id-hook $repo --force | get status) ['replaced' 'installed']
     assert equal (open --raw $dest) (open --raw $HOOK)
-    assert equal (git install-change-id-hook $repo | get status) 'already installed'
+    assert equal (git install-change-id-hook $repo | get status) ['already installed' 'already installed']
+}
+
+@test
+def "install refused over a different applypatch-msg installs neither hook" [] {
+    let repo = $in.repo
+    let hooks = $repo | path join .git hooks
+    "#!/bin/sh\nexit 0\n" | save --force ($hooks | path join applypatch-msg)
+
+    let err = error-of { git install-change-id-hook $repo }
+    assert str contains $err 'a different applypatch-msg hook already exists'
+    assert (not ($hooks | path join commit-msg | path exists))
+}
+
+@test
+def "a commit that git am applies gets a change-id" [] {
+    let repo = $in.repo
+    let patch = patch-of-second-commit $repo
+    git install-change-id-hook $repo
+
+    $patch | ^git -C $repo am --quiet
+    let trailers = ^git -C $repo log -1 --format='%(trailers:key=Change-Id,valueonly)' | str trim
+    assert ($trailers =~ '^[k-z]{32}$') $"no change-id stamped: ($trailers)"
+}
+
+@test
+def "git am stops when the commit-msg hook is missing" [] {
+    let repo = $in.repo
+    let patch = patch-of-second-commit $repo
+    git install-change-id-hook $repo
+    rm ($repo | path join .git hooks commit-msg)
+
+    let res = $patch | ^git -C $repo am --quiet | complete
+    assert not equal $res.exit_code 0
+    assert equal (^git -C $repo rev-list --count HEAD | str trim) '1'
 }
 
 @test
@@ -60,8 +105,9 @@ def "install updates an older copy of its own hook without force" [] {
     let dest = $repo | path join .git hooks commit-msg
     open --raw $HOOK | lines | first 2 | append 'exit 0' | str join "\n" | save --force $dest
 
-    assert equal (git install-change-id-hook $repo | get status) 'updated'
+    assert equal (git install-change-id-hook $repo | get status) ['updated' 'installed']
     assert equal (open --raw $dest) (open --raw $HOOK)
+    assert equal (open --raw ($repo | path join .git hooks applypatch-msg)) (open --raw $APPLYPATCH_HOOK)
 }
 
 @test
