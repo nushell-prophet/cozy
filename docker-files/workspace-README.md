@@ -41,7 +41,7 @@ Its module (`cozy-module/`) is autoloaded, so `cozy` is a command:
 | `cozy mount init` | Register the current directory's git subdirs as submodules (`git init`s and commits if needed) |
 | `cozy swap-zellij-super` | Rewrite Zellij's Super-key bindings (→ Alt/Ctrl) for Windows hosts and macOS Terminal.app |
 | `cozy git harden` | Apply safer git defaults |
-| `cozy git install-change-id-hook` | Install the `commit-msg` hook that stamps a `Change-Id` trailer on every new commit of a repo, so a reference to it survives rebase and squash |
+| `cozy git install-change-id-hook` | Install the `commit-msg` and `applypatch-msg` hooks that stamp a `Change-Id` trailer on every new commit of a repo, `git am` included, so a reference to it survives rebase and squash |
 | `cozy use-host-ssh-agent` | Show or switch (`--enable` / `--disable`) whether this shell reaches the forwarded host ssh-agent; off by default |
 | `cozy verify` | Run the post-build check suite against this environment |
 | `cozy docs claude` / `cozy docs nushell` | Fetch Claude Code / Nushell reference docs into a local folder for offline use |
