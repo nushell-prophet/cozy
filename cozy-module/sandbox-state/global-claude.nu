@@ -14,6 +14,7 @@
 const global_claude_dir = '~/.claude'
 const remote_name = 'sb-snapshot'
 const tracked_file = 'CLAUDE.md'
+const own_branch = 'global-claude'
 
 # The history repo inside the mounted workspace; errors when no workspace is mounted.
 def history-repo []: nothing -> path {
@@ -128,11 +129,26 @@ export def restore []: nothing -> nothing {
         error make --unspanned {msg: $"($repo) has no `master` branch — nothing to restore from"}
     }
 
+    let head = git-ok $dir ['rev-parse' '--verify' '--quiet' 'HEAD']
+    let related = $head and (git-ok $dir ['merge-base' 'HEAD' $upstream])
     # Refuse to rewind a branch holding versions the history has never seen. `reset` moves the
     # current branch, so without this, restore on a machine that never managed to push would undo
     # exactly the CLAUDE.md edits it is supposed to protect.
-    if (remote-branches-with-head $dir | is-empty) and (git-ok $dir ['rev-parse' '--verify' '--quiet' 'HEAD']) {
+    if $related and (remote-branches-with-head $dir | is-empty) {
         error make --unspanned {msg: $"($dir) has commits the history repo does not — run `cozy sandbox-state global-claude snapshot` first"}
+    }
+    # A history with no common ancestor is someone else's repo — dotfiles' `push-to-machine`
+    # git-inits ~/.claude and commits there during bootstrap. Leave its branch alone and put the
+    # CLAUDE.md history on a branch of its own.
+    # Why: the dotfiles can be used without cozy, so the two should not interfere. A temporary
+    # decision.
+    if $head and not $related {
+        let branch = $"refs/heads/($own_branch)"
+        if (git-ok $dir ['rev-parse' '--verify' '--quiet' $branch]) {
+            error make --unspanned {msg: $"($dir) is not on its `($own_branch)` branch — check it out first: `git -C ($dir) symbolic-ref HEAD ($branch)`"}
+        }
+        ^git -C $dir symbolic-ref HEAD $branch
+        print $"($dir) holds an unrelated history — the ($tracked_file) history goes to branch ($own_branch)"
     }
 
     if (git-ok $dir ['remote' 'get-url' $remote_name]) {
