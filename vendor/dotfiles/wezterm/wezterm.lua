@@ -118,20 +118,7 @@ config.set_environment_variables = ok and env_vars or {}
 -- ============================================================================
 -- APPEARANCE
 -- ============================================================================
--- Font configuration with fallback chain
--- WezTerm skips unavailable fonts and uses the next available one
-config.font = wezterm.font_with_fallback {
-  { family = 'ZedMono Nerd Font', stretch = 'Expanded' }, -- brew install --cask font-zed-mono-nerd-font
-  'JetBrains Mono',
-  'Fira Code',
-  'Cascadia Code',
-  'Iosevka',
-  'Menlo',
-  'Consolas',
-  'Courier New',
-}
 -- Font configuration
--- brew install --cask font-zed-mono-nerd-font
 config.font_size = local_settings.font_size
 
 -- Color settings
@@ -195,16 +182,7 @@ config.keys = {
   -- Why: Claude Code doesn't recognize Shift+Enter for newlines without an explicit Kitty-style CSI u sequence
   { key = 'Enter', mods = 'SHIFT', action = wezterm.action.SendString '\x1b[13;2u' },
 
-  -- Why: wezterm does not deliver Cmd+Shift+<letter> to the pane by itself,
-  -- even with enable_kitty_keyboard and disable_default_key_bindings set, so
-  -- zellij never sees the key. These SendStrings are the only path in.
-  -- `\x1b[<ascii>;10u` is the Kitty CSI u form; 10 = 1 + shift(1) + super(8).
-  -- Only h and l have a consumer today: zellij's `Super Shift h` and `Super
-  -- Shift l` (GoToPreviousTab / GoToNextTab, zellij/config.kdl). The rest are
-  -- future-proofing, since a new bind works only if its sequence already ships.
-  -- Before deleting any of them: comment the `h` line out, save, then press
-  -- Cmd+Shift+h in zellij. Verified 2026-09-17 on wezterm nightly: the tab
-  -- stops switching.
+  -- I use those keybidings here to check that to fix Wezterms cmd+shift passing for zellij.
   -- cmd+shift+a
   { key = 'a', mods = 'CMD|SHIFT',  action = wezterm.action.SendString '\x1b[97;10u' },
   -- cmd+shift+b
@@ -308,6 +286,17 @@ local quick_select_patterns = {
   -- jj change IDs (use k-z alphabet to avoid forming words)
   "\\b[k-z]{8,12}\\b",
 
+  -- Change-Id trailers from cozy's commit-msg hook: 32 letters of the same
+  -- k-z alphabet. The rule above cannot reach them: no \b falls after letter 12.
+  -- Their 8-letter short form is already covered by the rule above.
+  "\\b[k-z]{32}\\b",
+
+  -- The text typed after a ❯ prompt (Claude Code's TUI), trimmed at both ends.
+  -- Why \x{a0}: Claude Code puts a no-break space after the ❯, not a plain one.
+  -- Why it sits before the path rule: a prompt like `/40-land-branch` starts
+  -- where the path match starts, and on an equal start the earlier rule wins.
+  "(?<=❯[ \\x{a0}])\\S(?:.*\\S)?",
+
   -- file:line:col (rg --vimgrep, nushell table rows, stack traces,
   -- nushell error headers like ╭─[/path/to/file.nu:1946:63])
   "[^\\s│╭─\\[]+:\\d+:\\d+",
@@ -317,7 +306,10 @@ local quick_select_patterns = {
   -- $env.config.table.header_on_separator = true
   -- $env.config.footer_mode = "Always"
   "(?<=─|╭|┬)([a-zA-Z0-9 _%.-]+?)(?=─|╮|┬)", -- Headers
-  "(?<=│ )([a-zA-Z0-9 _.-]+?)(?= │)", -- Column values
+  -- Column values. Why the first character excludes the space: an empty cell,
+  -- or a blank line inside a lazygit/nushell box, is all spaces between two │
+  -- and would otherwise be offered as a match.
+  "(?<=│ )([a-zA-Z0-9_.-][a-zA-Z0-9 _.-]*?)(?= │)",
 
   -- File paths: absolute, relative and ~-prefixed; strips trailing punctuation
   -- (. , ; : " ' `) via lookbehind.
