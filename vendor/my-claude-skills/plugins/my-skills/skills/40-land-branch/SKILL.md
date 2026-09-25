@@ -1,7 +1,7 @@
 ---
 name: 40-land-branch
 description: Land a finished branch on the trunk as a coherent commit — fold the rollback commits into the work they correct, carry the branch's reasoning into the message, archive the old history in a tag, keep `todo/` and `gi/` off the trunk, then merge. Use when the user says "land the branch", "land this", "merge to main", "finish this branch", or "squash and merge".
-argument-hint: [--grouped] [trunk branch, if not main/master]
+argument-hint: [--grouped]
 allowed-tools: Bash(git *), Read, Write, Edit
 ---
 
@@ -32,26 +32,26 @@ Two things stay off-limits even here: **never push**, and never run this on the 
 
 ## Repo snapshot
 
-The block below runs once, before any of this reaches Claude — steps 1, 3, and 4 start with the answer already in hand instead of each costing its own tool call and turn.
-It assumes the default trunk (`main`, falling back to `master`); it does not read `$ARGUMENTS`, so a trunk name given there is not covered.
-When step 3 lands on a trunk the snapshot did not use, re-run these same queries against it; steps 4 and 5 then read your numbers in place of the snapshot's.
+The block below runs once, before any of this reaches Claude — steps 1, 3, 4 and 5 start with the answer already in hand instead of each costing its own tool call and turn.
+It looks for a local `main` and a local `master` and reports what it found: one name, both, or none.
 
 ```!
 branch=$(git branch --show-current)
 echo "current-branch: ${branch:-<detached HEAD>}"
-if git rev-parse --verify -q main >/dev/null 2>&1; then trunk=main
-elif git rev-parse --verify -q master >/dev/null 2>&1; then trunk=master
-else trunk=""
-fi
-echo "default-trunk: ${trunk:-<none found>}"
-if [ -n "$trunk" ]; then
+candidates=""
+for t in main master; do
+  git show-ref --verify --quiet "refs/heads/$t" && candidates="$candidates $t"
+done
+candidates=${candidates# }
+echo "trunk-candidates: ${candidates:-<none>}"
+for trunk in $candidates; do
   base=$(git merge-base "$trunk" HEAD 2>/dev/null)
-  echo "merge-base: $base"
-  echo "trunk-head: $(git rev-parse "$trunk")"
-  echo "trunk-moved: $([ "$(git rev-parse "$trunk")" = "$base" ] && echo no || echo yes)"
-  echo "commits base..HEAD:"
+  echo "[$trunk] merge-base: $base"
+  echo "[$trunk] trunk-head: $(git rev-parse "$trunk")"
+  echo "[$trunk] trunk-moved: $([ "$(git rev-parse "$trunk")" = "$base" ] && echo no || echo yes)"
+  echo "[$trunk] commits base..HEAD:"
   git log --oneline "$base"..HEAD 2>/dev/null
-fi
+done
 ```
 
 ## Procedure
@@ -70,15 +70,20 @@ Nothing is changed until the user confirms.
    A soft reset would otherwise sweep unrelated edits into the landing commit.
 
 3. **Find the trunk.**
-   Strip `--grouped` out of `$ARGUMENTS` first — it's the multi-commit shortcut, not a branch name.
-   What remains is the trunk name if given (verify it yourself with `git rev-parse --verify <name>` — the snapshot only covers the default case), else the snapshot's `default-trunk`.
+   `trunk-candidates` from the snapshot names it.
+   One name: that is the trunk, and every `<trunk>` below means it.
+   Two names or `<none>`: stop and ask the user which branch is the trunk — a repo can carry a stale `master` beside `main`, and only the user knows which one is live.
+   If the branch the user names is `current-branch`, stop as step 1 would have.
+   If it is one the snapshot did not print, run the block's per-candidate lines against it, so steps 4 and 5 have their numbers.
+   Do not probe for the trunk yourself with `git rev-parse` or `git branch`, and never assume `main`: the snapshot already looked, and in past sessions agents ran `git merge-base main HEAD` in `master` repos and failed.
 
 4. **Find the base.**
-   The snapshot's `merge-base` and `commits base..HEAD` answer this.
+   The snapshot's `[<trunk>] merge-base` and `[<trunk>] commits base..HEAD` answer this.
+   Read the lines of the trunk step 3 settled.
    An empty commit list means "nothing to land" — report that and exit.
 
 5. **Has the trunk moved?**
-   The snapshot's `trunk-moved` answers this.
+   The snapshot's `[<trunk>] trunk-moved` answers this.
    If it moved, `--ff-only` will fail.
    The plan then gains a `git rebase <trunk>` between the squash and the merge — one commit to replay, but say plainly that a conflict there needs the user's hands.
    Never substitute a merge commit for the rebase without saying so.
@@ -130,6 +135,27 @@ Nothing is changed until the user confirms.
    A message is worse than a file here: a file can be repointed afterwards, a body cannot without rewriting the trunk — so this is the only moment.
    Two exceptions: a message whose subject *is* the rewrite — then name `archive/<branch>` beside the hash, so the reader has something that resolves — and the `Archive:` trailer of step 12, which names the archived tip by its id on purpose.
 
+   **The body leaves this repo — write it for whoever receives it.**
+   The trunk is not the last stop.
+   A published repo gets cloned; a monorepo exports each subdirectory to the recipient it was imported from, and that export copies the message byte for byte — `mono check` verifies exactly that equality — so nothing downstream can repair a body.
+   This is the only moment, and the test is one question: can a reader who has nothing but the receiving repo follow every pointer in this body?
+   Four shapes fail it, measured on a real export where 62 of 141 patches failed the question while the prose itself was fine everywhere:
+
+   - **A `todo/` or `gi/` path.**
+     Step 11 drops those files from the trunk, and in a monorepo, where they do land, they still never cross: `mono.yml` excludes `todo/` from the export, and `gi/` sits outside every exported subdirectory.
+     Either way the pointer is dead in every recipient, by design.
+     A note is not a reference, it is the source you are copying from: what the commit took from it goes into the body itself.
+   - **The monorepo's point of view.**
+     A path carrying the mono's subdirectory prefix, an absolute `/Users/...` path, the name of the directory that holds the recipients, "the three-repo checkpoint".
+     Each of these resolves here and none of them resolves there.
+   - **Session shorthand.**
+     "task 4", "the audit", "the survey", a branch name nobody kept, a slash command.
+     Each was clear to the session that wrote it and to nobody after; say what it meant.
+   - **A bare sha.**
+     The rule above bans the hashes of `base..HEAD`; this one bans the rest.
+     An export rewrites every commit it crosses, so a sha that resolves here resolves nowhere on the other side — and a rebase kills it on this side too.
+     Name the commit by its short `Change-Id` where the repo stamps one, and where it stamps none, say what that commit did instead of pointing at it.
+
 7. **Find the working material.**
    `git diff --name-status <base>..HEAD -- todo/ gi/`.
    Keep the status letters; they decide what the working tree looks like afterwards (step 11).
@@ -139,6 +165,9 @@ Nothing is changed until the user confirms.
    If it says the repo is a monorepo, personal, internal, or never sent upstream, then `todo/` and `gi/` are ordinary content there — they land with everything else, and steps 7, 11 and 11a have nothing to do.
    Say so once in the step 8 block instead of listing paths to drop.
    Only when nothing says it is the repo published, which is the default this step assumes.
+
+   This settles the **files**, not the body.
+   A monorepo keeps its own `todo/` and `gi/`, but its commit *messages* are exported to the recipients — so step 6's outside-reader rule holds there in full, and most sharply there, since that is where the leak was measured.
 
    7a. **Find the branch's own commits cited inside the tree.**
    A changelog line, a design doc, a code comment may quote a commit hash.
@@ -175,6 +204,44 @@ Nothing is changed until the user confirms.
 
    A word that resolves to nothing is not an id and falls out by itself; an id that resolves to a commit this landing rewrites is settled at step 11a exactly like a hash.
 
+   7b. **Does the branch touch more than one exported repo?** — monorepo only, decided by the `CLAUDE.md` step 7 already read.
+   `git diff --name-only <base>..HEAD | cut -d/ -f1 | sort -u` names the subdirectories the branch touched, and `mono.yml` maps each to a repo and says whether it has a recipient (`export: false` means none).
+   Two or more exported subdirectories means the commit you are about to write gets split at the export: each recipient receives only its own part of the diff, under this one whole body.
+   A body describing the entire change then arrives in a repo where most of what it describes has no diff to stand on — a reader there sees a message about work that is not in front of them.
+   So the body says which part lands where: one line per exported repo, naming the subdirectory and what that repo actually gets.
+   Step 9 needs this same subdirectory list for the tag name — compute it once.
+
+   7c. **Find prose that explains the change instead of the result.**
+   A comment or a `.md` line written during the branch tends to define the new design by contrasting it with the one it replaces — "not as a pile of timestamped files", "instead of writing a flat copy", "`restore` used to overwrite it whole".
+   Step 6 asks for exactly that contrast in the *body*, where it is the point.
+   In the tree it fails the same outside-reader test: whoever arrives after this lands never saw the old design, so the contrast costs them a paragraph and tells them nothing, while git history holds it for anyone who goes looking.
+   The rule is `CLAUDE.md`'s **The reader never saw the previous version**, together with the bullet under it on `# Not <alternative> because:` — a live alternative, never the implementation this change retired — both are stated there, and this step is only where they get enforced.
+
+   Scan the added lines for contrast framing.
+   Same input as 7a, a different test:
+
+   ```sh
+   git diff --unified=0 <base>..HEAD | awk '
+     /^\+\+\+ b\// { f = substr($0, 7); next }
+     /^\+/ && !/^\+\+\+/ {
+       line = substr($0, 2)
+       if (tolower(line) ~ /instead of|no longer|previously|used to|formerly|rather than|unlike the|not as a/ &&
+           tolower(line) !~ /(^|[^a-z])(is|are|was|were|be|been|being) used to/)
+         print f ": " line
+     }'
+   ```
+
+   The second condition drops the passive "the flag is used to pick the trunk", which has nothing to do with time; nothing filters the rest.
+   The `(^|[^a-z])` is a word boundary — without it "this used to" matches the passive and is dropped.
+   All eight markers run in one pass here, where `40-archaeology-sweep` splits them and holds four back: that skill reads a whole repo, where the noisy four cost 96 hits against 18, and this one reads only the lines one branch added, where they cost a few.
+   A hit is a candidate, never a verdict — "say what that commit did instead of pointing at it" is the same words doing honest work.
+   Read each one and ask whether a reader who never saw the old state needs that sentence.
+   `40-archaeology-sweep`'s *The defect* names the one thing a hit is guilty of — a sentence a reader can only follow by knowing a state the tree does not hold — and its *Not archaeology* list names the classes a hit can be innocent by: a CHANGELOG entry under `Removed`, a present-tense contrast between two live options, captured text, five more.
+   Judge against those two rather than re-deriving them here.
+   Calibration: on the code commit that produced the three examples above, the scan named those three lines and nothing else.
+   On a branch that is only prose — a skill, a design doc — expect a handful of innocent hits, the heading of this step among them.
+   Propose the cut at step 8 and let the user confirm it — the edit happens at 11b.
+
 8. **Judgement, then STOP.**
    Two calls to make first:
    - Already one clean commit with a good body?
@@ -187,7 +254,7 @@ Nothing is changed until the user confirms.
      Build exactly that many commits — never split further just because a correction happened along the way, never merge two subjects into one just because they happen to share a file (`references/grouped.md` decides that case).
      Say so plainly whenever the count comes out above one, whether or not `--grouped` was passed — the shape is the branch's own; `--grouped` only lets the user skip straight to it.
 
-   Show the user, in one block: the chapters found and which original commits fold into each, the generated message(s), the `todo/`/`gi/` paths being dropped, each hash from step 7a with the file citing it and whether it is dropped or repointed (step 11a), an overwrite warning if `git tag -l` already finds the tag step 9 will write, the rebase warning from step 5, the content fork-point from step 5a with its evidence if one was found, any branch step 13b will offer to re-base, the exact merge command, and the branch-delete command from step 13a.
+   Show the user, in one block: the chapters found and which original commits fold into each, the generated message(s), the `todo/`/`gi/` paths being dropped, each hash from step 7a with the file citing it and whether it is dropped or repointed (step 11a), each contrast-framing line from step 7c with the words you propose to cut from it, the exported repos step 7b found and the per-repo lines the body carries for them, an overwrite warning if `git tag -l` already finds the tag step 9 will write, the rebase warning from step 5, the content fork-point from step 5a with its evidence if one was found, any branch step 13b will offer to re-base, the exact merge command, and the branch-delete command from step 13a.
    **Wait for confirmation.**
 
 ## Landing
@@ -235,9 +302,16 @@ Nothing is changed until the user confirms.
 
     Skip a hash whose file was dropped at step 11 — that file is not landing.
 
+    11b. **Cut the prose** — the step 7c hits the user confirmed at step 8 — in the working tree, then `git add` each file you touched.
+    Cut the defect and change nothing else: take out the words that name the gone state and leave the rest of the sentence as it stands, so what survives says what the code does now and the constraint that makes it right.
+    An edit that swaps the tense and keeps the line's length has removed nothing.
+    The contrast you are deleting is not lost, it goes into the body this landing writes.
+    Skip a file dropped at step 11, exactly as 11a does.
+
 12. **Commit** with the message from step 6, plus an `Archive:` trailer naming the archived tip.
     Its value is the tip's `Change-Id`, read with `git log -1 --format='%(trailers:key=Change-Id,valueonly)' archive/<branch>`, because the id still names that commit after the tag is renamed, and tag names stop being unique across repos; when that prints nothing — the repo stamps no ids, or the tip predates the hook — the value is the tag name, `archive/<branch>`.
     The tag from step 9 is written either way: an id keeps nothing alive, only a ref does.
+    This trailer is the deliberate exception to step 6's outside-reader rule — the archive it names exists only here, it resolves in no recipient, and that is accepted, not repaired: it is explained once in the recipient's README rather than dropped from every commit that has one.
     Run the drafted body through both of step 7a's loops first — before the `Archive:` trailer is appended, since that trailer names the tip by design — with the message text in place of the diff and `archive/<branch>` in place of `HEAD`: after step 10 `HEAD` is `<base>`, and against it the ancestor tests flag nothing.
     A hash or an id reaching the body is usually one copied out of a folded commit, and after the commit exists there is no fixing it.
 

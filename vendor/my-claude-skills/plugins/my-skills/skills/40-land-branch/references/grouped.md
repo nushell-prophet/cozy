@@ -11,7 +11,12 @@ A multi-subject branch is an accident of workflow, not a unit — a merge commit
 Landing plain keeps the history one shape: linear, exactly like the squash path.
 The cost: each chapter's body must be self-sufficient, because no other place survives to carry its reasoning.
 
-Steps 1–7a and 9 run unchanged.
+Self-sufficient means step 6's outside-reader test applied once per chapter, not once per branch: every chapter's body is exported on its own, so each one has to answer the question alone.
+Step 7b's per-repo lines belong to whichever chapter actually crosses the boundary.
+Chapters often split along the recipients already — a subject per repo — and then no chapter needs them; a chapter whose own paths reach two exported subdirectories carries them, and the others say nothing about repos they do not touch.
+
+Steps 1–7c and 9 run unchanged.
+Step 7c scans the branch's added lines, not its commits, so the chapter split changes nothing about what it finds; where each confirmed rewrite lands is settled below, with step 11b.
 The archive tag still matters: `reset --soft` makes the original commits unreachable here too.
 
 ## Folding corrections, grouping by subject
@@ -57,6 +62,9 @@ An intermediate commit holding part of a file may not build — the ordered-hist
   Repoint it at the chapter's short `Change-Id` where the repo stamps one: step 5's rebase changes the hash again and would break a hash a second time, but it carries the id inside the message, so the citation survives it.
   Where the repo stamps no ids the old caveat stands — repoint at the new hash only when the trunk did not move, and drop the citation otherwise.
   A hash folding into the chapter being written, or into a later one, is dropped as on the squash path — the first cannot name itself, the second does not exist yet, and reaching back to fix it later would rewrite the chapter that cites it.
+- Step 11b's rewrites are made once, in the working tree, after the soft reset and before the first chapter is committed.
+  Each rewritten line then lands with whichever chapter stages its file — the same mechanism that folds a later correction automatically (above), so no rewrite needs repeating per chapter.
+  For a file split between chapters the line lands with whichever part of the split carries it, which may not be the chapter whose body explains the rewrite.
 - `todo/` and `gi/` are never added, so step 11's `git restore --staged` has nothing to do and disappears — the same result reached by doing nothing.
   What they leave behind in the working tree, and your duty to report it instead of claiming a clean tree, is exactly as step 11 describes.
 - If every chapter comes out empty, the branch held only working material.
