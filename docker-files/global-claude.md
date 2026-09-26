@@ -109,6 +109,20 @@ The one thing never to write is `| table` — it forces the box back.
   Both forms work in a `const`, neither works in a command body.
   It needs a real file too, so `nu --commands 'path self'` fails — test it in a script, not with `-c`.
 
+### Reading Claude Code sessions: `claude-nu`
+
+Transcripts live in `~/.claude/projects/**/*.jsonl`.
+Read them with `claude-nu`, not with jq, python or grep: it already drops tool results and the wrappers Claude Code writes itself, joins tool calls to their results, and scopes by project or session.
+The `claude-nu` skill (nushell-skills) is the full guide; the short form:
+
+- Scope is what you pipe in: nothing is the current project, `claude-nu projects | ...` every project, `claude-nu sessions --session '9787e004' | ...` one session — a UUID, a quoted id prefix, `agent-<id>`, a `/rename` name or a path.
+- `messages 'regex'` is what the user said (`--context 2` adds the rows around each hit; `where kind == typed` keeps the user's own words, not `!` commands or their output).
+- `tool-calls --tool Bash 'regex'` is what agents ran (`--results` adds what came back), `timeline` every block in file order, `records` every raw line.
+- `sessions --columns ...` the numbers per session, `--active-since` by record time; `workflows` the Workflow runs, and `sessions --subagents --columns agent_type,agent_label` which agent each transcript is.
+- Every row carries `uuid` and `session`, so any result pipes onward as the next scope.
+
+A plain `rg` over `~/.claude` can find nothing and say nothing: where `~/.claude` is a git repo ignoring `*`, rg skips it all — pass `--no-ignore`.
+
 ## Git
 
 - **Never `git add -A`** (nor `git add .`, nor `git commit -a`).
