@@ -19,6 +19,8 @@
   modules:
   - claude-nu
   - completions
+  - README.md
+  - guide
 - repo: nu-cmd-stack
   github: nushell-prophet/nu-cmd-stack
   modules:

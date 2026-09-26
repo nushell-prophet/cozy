@@ -65,8 +65,6 @@ The subject says what changed; the body is Why (his reasoning, and what was reje
 A grammar fix gets a subject and no body.
 Name what he did not ask for: a choice you made to fill a gap, a thing you added on your own, gets one line in the `AA:` entry and in the body, `Not requested: <the choice>`.
 He updates his model of the task from his own description, which is often imprecise, so filling gaps is your job; a gap filled silently leaves his model wrong, and a page of reasoning overflows it, so name the choice, not the argument.
-A cut is the mirror of a filled gap: when you narrow what he asked — rows, cases or files his words could cover — never state it inside an `AA:` entry as settled; place a `???` whose default is the wider reading, so his `go` never approves a cut he did not see.
-Why: he asked to fix "all dangling pointers", meaning everything an outside reader trips on; the review used `dangling` for one class of three, and "Mismatches (16 rows) stay as they are" rode an `AA:` entry past his "все верно, go" without being asked.
 Propagate the decision to stale references; if a symbol, path, or key is named, grep across the whole repo, not just the file.
 Commit code changes and canvas-file changes separately, so the code-only commits can be cherry-picked into the trunk.
 
