@@ -31,13 +31,15 @@ The commands **the user** runs go into their REPL, where the module is already l
 First check you are not already there.
 `gi` on its own reports which plugin carries the protocol and whether the asking session is bound to a canvas; a non-null `canvas` means this **is** a canvas session — say so and stop, there is nothing to launch.
 Doing this first matters because the alternative is importing a session that is already a canvas into a second file, which splits one conversation across two documents.
-`ls gi/*.md` lists the repo's existing canvases.
+New canvases land in `gi-canvas/`, or in `todo/` when the repo has that folder and no `gi-canvas/`.
+A few repos still keep canvases in `gi/`, the older name of the folder.
+`ls gi-canvas/*.md todo/*.md gi/*.md` lists the repo's existing canvases; a folder that does not exist is an error for that pattern only.
 
 Then read `$ARGUMENTS` and the conversation:
 
 - **No canvas yet, and this chat is worth keeping** (the usual case) → import this session.
 - **No canvas yet, nothing here worth keeping** → a blank canvas.
-- **A canvas path is given or exists in `gi/`** → open it.
+- **A canvas path is given, or one exists in `gi-canvas/`, `todo/` or `gi/`** → open it.
 
 A canvas keeps one session for life, and `gi open` handles both halves of that: a canvas with no `session:` in its frontmatter gets one minted and written in, one that has it is resumed.
 You do not have to tell them apart.
@@ -45,7 +47,7 @@ You do not have to tell them apart.
 ## Import this session
 
 ```nushell
-nu -c 'use ~/repos/claude-nu/claude-nu/; claude-nu gi import'                     # → gi/session-<id>.md
+nu -c 'use ~/repos/claude-nu/claude-nu/; claude-nu gi import'                     # → gi-canvas/<date>-session-<id>.md
 nu -c 'use ~/repos/claude-nu/claude-nu/; claude-nu gi import --tools'             # ...keeping tool calls, each input rendered whole
 nu -c 'use ~/repos/claude-nu/claude-nu/; claude-nu gi import --to notes/x.md'     # ...at a chosen path
 ```
@@ -66,8 +68,8 @@ The import wrote this session's id into the canvas, so that reopens **this same 
 Hand over one of these, as is:
 
 ```nushell
-claude-nu gi open                 # new timestamped canvas, then launch
-claude-nu gi open gi/plan.md      # a named one; created if new, resumed if it holds a session
+claude-nu gi open                 # new canvas, gi-canvas/<date>-canvas-<time>.md, then launch
+claude-nu gi open gi-canvas/plan.md # a named one; created if new, resumed if it holds a session
 claude-nu gi open <doc> --no-hook # style only, no Stop-hook floor
 ```
 

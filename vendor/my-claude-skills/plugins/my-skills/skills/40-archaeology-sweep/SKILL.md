@@ -56,7 +56,7 @@ Read this before the first grep.
 The scans below hit far more innocent prose than guilty prose, and every class here is innocent by *purpose*, not by file extension:
 
 - **A document whose subject is change.** A CHANGELOG, a migration or upgrade guide, release notes, a `design/` decision record. These exist to tell you what moved; the rule does not reach them. In a CHANGELOG the contrast belongs under `Removed` — an `Added` entry still describes the new thing on its own.
-- **The user's own working material.** `todo/` notes, `gi/` canvases. Not yours to rewrite.
+- **The user's own working material.** `todo/` notes, `gi-canvas/` and `gi/` canvases. Not yours to rewrite.
 - **Captured text.** A test fixture holding a recorded session, an exported transcript, a saved API response. It quotes what someone said, so the words are theirs and the rule does not reach them; editing one also breaks the test that asserts on it.
 - **A vendored copy of another repo.** The fix belongs upstream; editing the copy is thrown away at the next vendor run. Skip the whole directory.
 - **An external product's old name.** "`sbx`, formerly `docker sandbox`" helps a reader who will meet both names in the wild. That name is outside this tree, so the rule does not apply to it.
@@ -83,7 +83,7 @@ Do not crawl sibling repos, even when a comment points at one.
 On `main` or `master`, stop: propose `git switch --create archaeology-sweep` and wait — do not create it yourself.
 On any other branch, the run goes through to the commits without asking again — step 5 is why that is safe.
 
-List the exempt paths for this repo from the classes above — typically `CHANGELOG.md`, `design/`, `todo/`, `gi/`, `vendor/`, any `*/migration.md`.
+List the exempt paths for this repo from the classes above — typically `CHANGELOG.md`, `design/`, `todo/`, `gi-canvas/`, `gi/`, `vendor/`, any `*/migration.md`.
 
 ## Step 2 — The past-state scan
 
@@ -92,7 +92,7 @@ This is the scan that pays, and the default run is this one alone.
 ```sh
 git grep -niE 'used to|no longer|formerly|previously|originally|moved (here|to|from)|restored here' -- . |
   grep -viE '(^|[^a-z])(is|are|was|were|be|been|being) used to' |
-  grep -vE '^(vendor/|design/|todo/|gi/|CHANGELOG\.md)'
+  grep -vE '^(vendor/|design/|todo/|gi-canvas/|gi/|CHANGELOG\.md)'
 ```
 
 The second filter drops the passive "the flag is used to pick the trunk", which carries no sense of time.
@@ -115,7 +115,7 @@ Only when the user asks for it, and say the ratio before you run it.
 
 ```sh
 git grep -niE 'instead of|rather than|unlike the|not as a' -- . |
-  grep -vE '^(vendor/|design/|todo/|gi/|CHANGELOG\.md)'
+  grep -vE '^(vendor/|design/|todo/|gi-canvas/|gi/|CHANGELOG\.md)'
 ```
 
 The exempt filter is step 2's third one, and it is what makes the count below reachable: without it the same repo returns 396.

@@ -65,7 +65,7 @@ An intermediate commit holding part of a file may not build — the ordered-hist
 - Step 11b's rewrites are made once, in the working tree, after the soft reset and before the first chapter is committed.
   Each rewritten line then lands with whichever chapter stages its file — the same mechanism that folds a later correction automatically (above), so no rewrite needs repeating per chapter.
   For a file split between chapters the line lands with whichever part of the split carries it, which may not be the chapter whose body explains the rewrite.
-- `todo/` and `gi/` are never added, so step 11's `git restore --staged` has nothing to do and disappears — the same result reached by doing nothing.
+- `todo/`, `gi-canvas/` and `gi/` are never added, so step 11's `git restore --staged` has nothing to do and disappears — the same result reached by doing nothing.
   What they leave behind in the working tree, and your duty to report it instead of claiming a clean tree, is exactly as step 11 describes.
 - If every chapter comes out empty, the branch held only working material.
   Report that and stop, as step 11 says.

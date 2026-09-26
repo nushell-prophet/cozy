@@ -167,8 +167,8 @@ git show -s --format='%h %ad%n%B' <sha>
 **7. Look outside git for what git does not carry.**
 `# Why:` and `# Not <alternative> because:` comments sit at the decision point in the code.
 `todo/` notes carry a known-but-unfixed problem and an `origin_session:` UUID — that UUID is a direct address into the transcripts, and following it is the hand-off described above, not an optional extra.
-`gi/` holds the canvas discussion.
-`todo/` and `gi/` are deliberately kept off the trunk, so they exist only on branches and inside archive tags — reachable through step 3, invisible from `main`.
+`gi-canvas/` holds the canvas discussion, and so does `gi/`, its older name, in a few repos.
+`todo/`, `gi-canvas/` and `gi/` are deliberately kept off the trunk, so they exist only on branches and inside archive tags — reachable through step 3, invisible from `main`.
 
 **8. Anchor a sentence to its birth commit.**
 When the target is a line of prose — a comment, a README sentence, a flag description — find the commit that introduced it before going anywhere near the transcripts:
