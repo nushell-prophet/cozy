@@ -43,7 +43,7 @@ If you use `nu -c`, load the modules with `--config`: `nu --config ~/.config/nus
 
 **End every nu pipeline you are going to read with `| to nuon --pretty`.** A one-shot `nu` loads no config, so it renders with stock defaults — an 80-column box table built for a terminal, not for a reader.
 Read as text it loses data and never says so: identifiers wrap mid-word, a whole column collapses into a bare `...`, a nested value becomes `[list 3 items]`.
-Measured over 3,819 session transcripts, 647 of 2,980 rendered tables came back damaged that way, and after a placeholder or a dropped column the agent re-ran the command to recover the data 14.7% of the time against a 2.5% baseline.
+Measured on 2026-08-18 over 3,819 session transcripts, 647 of 2,980 rendered tables came back damaged that way, and after a placeholder or a dropped column the agent re-ran the command to recover the data 14.7% of the time against a 2.5% baseline.
 NUON is lossless, round-trips through `from nuon`, and costs 1.5-2.7x fewer tokens than the box on real commands.
 The one thing never to write is `| table` — it forces the box back.
 
