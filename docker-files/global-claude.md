@@ -97,9 +97,11 @@ The one thing never to write is `| table` — it forces the box back.
 - **In `where`, parentheses turn a column name into a command.** `where (a == 1 and b == 2)` fails with ``Command `a` not found``.
   Without the parens the same line works: `where a == 1 and b == 2`.
   For anything more complex use a closure: `where {|r| $r.a == 1 and $r.b > 2 }`.
-- **Stale names.** `$nu.temp-path` → `$nu.temp-dir`, `$nu.home-path` → `$nu.home-dir`, `$nu.scope` → the `scope` commands; `range` → `slice`; `std` is a module (`use std` first), and `std/testing` is an empty stub — the test runner is `nutest`.
+- **Stale names.** `$nu.temp-path` → `$nu.temp-dir`, `$nu.home-path` → `$nu.home-dir`, `$nu.scope` → the `scope` commands; `range` → `slice`; `std` is a module (`use std` first), and `std/testing` holds only the attribute aliases (`@test`, `@before-each` and the like) — the test runner is `nutest`.
   A wrong `$nu` field fails at runtime, not parse time, and `dotnu diagnose` calls the file clean — so the check above misses it.
   `$nu | columns` prints the current set.
+- **An external argument that starts with `{` is a record or closure since 0.116.** `^find . -exec cat {} ';'` fails with `Can't convert to string.`; quote it: `^find . -exec cat '{}' ';'`.
+- **In `take while` / `take until`, put flags before the closure.** `take while {|x| $x < 3 } --include 1` is a parse error since 0.116 (`expected operator`); `take while --include 1 {|x| $x < 3 }` works.
 - **After `use foo.nu` every command carries the file stem as a prefix, and `main` takes the module's own name.** `use toolkit.nu` gives you `toolkit` (which is `main`) and `toolkit main test` (which is `main test`) — not `toolkit test`, and never a bare `main test`. `use toolkit.nu *` imports them unprefixed.
   To simply run it, use the script form: `nu toolkit.nu test`.
   When unsure, look instead of guessing: `scope commands | where name =~ toolkit | get name`.
