@@ -68,7 +68,7 @@ The import wrote this session's id into the canvas, so that reopens **this same 
 Hand over one of these, as is:
 
 ```nushell
-claude-nu gi open                 # new canvas, gi-canvas/<date>-canvas-<time>.md, then launch
+claude-nu gi open                 # today's canvas, gi-canvas/<date>-canvas.md, then launch; a second run that day resumes it
 claude-nu gi open gi-canvas/plan.md # a named one; created if new, resumed if it holds a session
 claude-nu gi open <doc> --no-hook # style only, no Stop-hook floor
 ```

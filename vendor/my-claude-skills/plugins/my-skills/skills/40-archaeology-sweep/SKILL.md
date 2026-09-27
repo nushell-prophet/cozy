@@ -104,7 +104,7 @@ The first four are tense words: the line says outright that something was once o
 The last three are relocation words, and they catch the shape the tense words miss entirely — "moved here from Dockerfile", "Originally set in X, restored here since Y moved to Z".
 A relocation line explains where the code sits by naming where it sat, so it fails the rule for the same reason, and it can do so without a single past-tense verb about the code itself.
 
-Calibration, measured on one mixed code-and-docs repo of 248 tracked files: the four tense words returned 21 hits, of which about half named a retired state of its own code; the three relocation words returned 9 more, of which 8 did.
+Calibration, measured on 2026-09-21 on one mixed code-and-docs repo of 248 tracked files: the four tense words returned 21 hits, of which about half named a retired state of its own code; the three relocation words returned 9 more, of which 8 did.
 The relocation group is the better-yielding half and the cheaper one to read — a move is nearly always this repo's own history, where a tense word is often a general rule or an outside product's old name.
 Seven single-module repos, scanned whole with no exempt list, returned 0 to 6 tense-word hits each and 0 to 2 relocation hits — except one carrying captured session transcripts as test fixtures, which returned 51, half of them inside those fixtures.
 A sweep is a sitting's work, not a project; a repo that stores captured text is the exception, and step 1 exempts that directory.
@@ -185,7 +185,7 @@ Nothing was changed there, and a name the agent could not resolve is the one cas
 One message, after the commits exist:
 
 - The commits made, one line each — file and what moved.
-- The KEEPs by count per class, not line by line. The point of that number is that the scan was noisy; the user does not need to re-read innocent prose.
+- The KEEPs per class as bare `file:line` addresses, not their text. The scan was noisy and the user does not need to re-read innocent prose, but a count with no list behind it cannot be checked.
 - Every ASSUMED in full, with what would settle it.
 - Every CANDIDATE, one line each; the user says which, if any, a second pass takes.
 - The exempt list step 1 used, so a wrong entry is visible as a choice rather than as silence.
