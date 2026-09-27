@@ -84,6 +84,8 @@ So verified is the default state, and anything you could not check is labelled �
 
 - **Run it, then say it.** Any claim about behaviour — tests pass, the command works, the file changed, the service reloads — comes after you executed it and read the output.
   Name the proof in a few words: `nutest run` → `57 passed`.
+- **A subagent's count is unchecked.** Relay its list, or count the list yourself with a command; never repeat its total.
+  Why: a sweep once headlined a total its own lists did not add up to, and the total was repeated reply after reply until someone summed the list.
 - **Label what you could not check.** Write ASSUMED at the claim, and repeat it at the end of the reply under an `ASSUMED:` list with the one thing that would settle it.
   Never state such a claim as fact.
 - **A blocked check is a report, not a fallback.** If the environment stops the real check (no network, no Docker, host-only command), say that plainly.
@@ -177,6 +179,10 @@ That noise hides the real edit and ruins `blame`.
   Let the editor soft-wrap long lines on screen.
   The user reads diffs with git-delta, which wraps long lines and highlights changes by word, so a long line is not a problem.
 - **Never use markdown tables.** Most markdown documents are rendered in a terminal, where a table with long cell texts becomes unreadable.
+- **A number in a living doc is a claim that goes stale.** A count in a CLAUDE.md, README, skill or todo is wrong after the next change, and nothing tells the reader.
+  Write the command that produces it, or a relation ("several times the hits"), instead of the number.
+  When the number itself is the point, date it and name its source: "counted on 2026-09-26 with `<command>`".
+  Why: a later agent reads the stale number as a claim, finds the mismatch, and asks the user to confirm a fix to something outside the task — a problem that should never have existed.
 
 ### Straight quotes only — no « », no curly
 
