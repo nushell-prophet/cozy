@@ -92,7 +92,7 @@ Each entry should answer: "would this matter to someone deciding whether to adop
 - KEEP: user-facing CLI/flag changes, behavior changes a user would notice, bug fixes adopters could still hit, vendored module bumps with the new capability named.
 - DROP: "Affects: X, Y, Z" file lists, internal refactor rationale, build-time bug fixes that no longer apply, vague "refreshed from upstream" lines.
 - One line per entry, two at most.
-  Include commit hash(es) for traceability.
+  Include commit hash(es) for traceability: short shas, not Change-Ids — the released commits are on `master` and the version tag freezes them, so a sha stays valid.
 - When editing existing sections, verify diff scope matches commit message — `7130961` silently deleted `[0.2.3]` while claiming only to extend a file list.
 
 ## Sources of truth
