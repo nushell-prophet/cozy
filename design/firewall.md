@@ -14,9 +14,9 @@ reconciled-at: 874e4a409b8c7877a9c05a0db8f6acbefd07b1ef
 [`../compose.yaml`](../compose.yaml) puts the cozy container on a network with no way out except a squid proxy, and [`../firewall/`](../firewall/) holds the policy that proxy enforces.
 It applies to the **Debian rootless** run path only (see [`build.md`](build.md)); the `sbx` path gets its own allowlist from `network.allowedDomains` in [`../sbx-kit/spec.yaml`](../sbx-kit/spec.yaml).
 
-That path has two runtimes and therefore two assemblers.
+That path has two runtimes and three assemblers.
 Under docker, `compose.yaml` declares the whole thing.
-Apple `container` has no compose, so [`../toolkit/container.nu`](../toolkit/container.nu) assembles the same three pieces by hand — caged network, dual-homed squid, the cozy container on the caged side only — from the same policy directory and the same digest-pinned image (`toolkit check` guards the two pins against each other; see [`toolkit.md`](toolkit.md)).
+Apple `container` has no compose, so [`../toolkit/container.nu`](../toolkit/container.nu) assembles the same three pieces by hand — caged network, dual-homed squid, the cozy container on the caged side only — from the same policy directory and the same digest-pinned image; [`../toolkit/container.zsh`](../toolkit/container.zsh) repeats its `up` and `restart` for a host without Nushell (`toolkit check` guards the three pins against each other; see [`toolkit.md`](toolkit.md)).
 It also carries two pieces compose gets for free, both of them consequences of a host-only network having no DNS.
 First, nothing on that network keeps its address across a start, so the cozy container's `*_PROXY` holds the proxy's *name* — the convention compose already uses with `egress` — and `set-egress-hosts` rewrites `/etc/hosts` on every `up` and `restart` to point that name wherever the proxy landed; the mapping is written by hand because there is nothing to resolve it.
 Second, `--no-dns` only stops the runtime from *writing* a resolver — the debian base image already carries one, unreachable inside the cage and black-holed rather than refused, so every lookup waits out the glibc timeout — and `clear-resolver` empties the file, on every `up` and `restart` so that a container created before it existed is repaired too.
@@ -72,7 +72,7 @@ The proxy image is pinned by **digest with no tag** — with both, the tag is ig
 It holds the policy and is the one container with internet, so it must not change under a `pull`.
 Frozen also means upstream CVE fixes never arrive; re-pin deliberately.
 What it points at is a build from the maintained `<squid>-<ubuntu>_edge` family — squid **7.2** on Ubuntu 26.04 when the pin was first set on 2026-08-06, moved forward by `refresh-egress` since (last on 2026-08-16, `b481a4b`).
-Only the digest is written down, in both files, so the tag behind the current one is whatever upstream's newest was on the day it moved.
+Only the digest is written down, in all three files, so the tag behind the current one is whatever upstream's newest was on the day it moved.
 Tracking `:latest` is not the fresher alternative it looks like: upstream has not moved that tag in eight months, and it resolves to a squid 6.6 `_beta` build — so un-pinning would have pinned us to something older, with the guarantee dropped as well.
 The maintained stream is the `_edge` tags, and following it means re-pinning, not un-pinning.
 
@@ -82,8 +82,8 @@ The brackets are Pebble's default arguments; passing our own means `--args squid
 Three consequences, all of them now in both run paths: the arguments carry `--args squid`; the binary is `/usr/sbin/squid-gnutls` and there is no `squid` on PATH, which every `-k parse` / `-k reconfigure` call depends on; and `PEBBLE_VERBOSE=1` is set, because Pebble keeps a service's output to itself and the refusal log would otherwise vanish from `logs`.
 What survived unchanged: `firewall/squid.conf` parses clean under 7.2, and `-k reconfigure` still reaches the running squid through its pid file even with Pebble as process 1 — so an allowlist edit is still a reload, not a recreate.
 
-**Moving the pin is a command, not an afternoon.** `nu toolkit/container.nu refresh-egress` asks Docker Hub for the newest tag in the maintained `<squid>-<ubuntu>_edge` family, rehearses it on a throwaway container under its own name — it must come up, take the policy and answer `-k parse` — and only then rewrites the digest in both files.
-It refuses to write half of them, since two run paths enforcing different proxies is what `toolkit check` exists to prevent.
+**Moving the pin is a command, not an afternoon.** `nu toolkit/container.nu refresh-egress` asks Docker Hub for the newest tag in the maintained `<squid>-<ubuntu>_edge` family, rehearses it on a throwaway container under its own name — it must come up, take the policy and answer `-k parse` — and only then rewrites the digest in all three files.
+It refuses to write only some of them, since two run paths enforcing different proxies is what `toolkit check` exists to prevent.
 The pin therefore stays a digest, and the repo stays an accurate record of what is running; what changed is that finding the next one is cheap.
 Why not simply track a floating tag instead: `compose.yaml` cannot compute anything, so a self-updating pin would work on the `container` path alone and the two would drift — and adopting a new image is exactly the moment you want a human present, since the candidate may not start at all.
 

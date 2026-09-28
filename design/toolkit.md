@@ -52,8 +52,8 @@ Three invariants that nothing else enforces:
   The `PATH` is a *prefix* comparison across the same two — `bootstrap.nu`'s block writes no `PATH` (recorded as `(n/a)`), and the Dockerfile's tail is the base image's `${PATH}`, which no file here can say, so checking the full tail would only hardcode a second guess.
   Values are normalized before comparing (`$HOME`/`${HOME}` → `/home/agent`), because the kit spells the paths out while the other two expand a variable.
 - `vendored-repos.nuon` matches `vendor.yml` (catches a manifest left stale).
-- The egress proxy image is pinned by digest and identical in its two copies — `services.egress.image` in [`../compose.yaml`](../compose.yaml) and `egress_image` in [`toolkit/container.nu`](../toolkit/container.nu).
-  Both cage the agent behind the same proxy holding the same policy, so the two literals must agree.
+- The egress proxy image is pinned by digest and identical in its three copies — `services.egress.image` in [`../compose.yaml`](../compose.yaml), `egress_image` in [`toolkit/container.nu`](../toolkit/container.nu) and `EGRESS_IMAGE` in [`toolkit/container.zsh`](../toolkit/container.zsh).
+  All three cage the agent behind the same proxy holding the same policy, so the two literals must agree.
   The `@sha256:` is asserted separately: swapping in a floating tag silently un-pins the one container that has internet, and comparing the copies alone would not catch it.
   See [`firewall.md`](firewall.md).
 
