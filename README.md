@@ -51,7 +51,7 @@ Claude Code lands here too, but from its own official installer.
 
 **Containers only** (apt; a host install skips them): procps, file, gcc, libc6-dev, xxd, man-db
 
-**From the image, not from the installer**: the Debian `Dockerfile` apt-installs git, curl, ripgrep, jq, less and openssh-client; the `sbx` base image ships git, curl, Node.js, Go, ripgrep, jq and gh.
+**From the image, not from the installer**: the Debian `Dockerfile` apt-installs git, curl, rsync, ripgrep, jq, less and openssh-client; the `sbx` base image ships git, curl, Node.js, Go, ripgrep, jq and gh.
 A host install adds none of these — install what you want yourself.
 Python 3 is on every path anyway: brew pulls it in for VisiData.
 
