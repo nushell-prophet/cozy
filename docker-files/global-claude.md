@@ -3,7 +3,7 @@
 This file is appended to `~/.claude/CLAUDE.md` by every cozy install path, so check which one you are on before relying on the environment notes below.
 The usual one is the `debian:13-slim` image run under Apple `container` (or plain `docker`), rootless and behind an egress allowlist.
 The others are an `sbx` sandbox — Docker's standalone sandbox runtime, on Ubuntu — and a plain host install (macOS or Linux).
-In a sandbox the workspace is mounted at its original host path, not `/workspace` or `/home/agent`.
+Under Apple `container` and `sbx` the workspace is mounted at its original host path; under `docker compose` it is `/home/agent/workspace`.
 
 ## Available Tools
 
@@ -146,8 +146,8 @@ A plain `rg` over `~/.claude` can find nothing and say nothing: where `~/.claude
 
 ## Constraints
 
-- Docker socket is available for container operations (sandbox paths only)
-- In a sandbox the home directory is at `/home/agent`; the mounted workspace is at `$env.WORKSPACE_DIR` (host path, bind-mounted at the same absolute path on macOS/Linux; on Windows the autoload rewrites `C:\Users\…` → `/c/Users/…`)
+- Docker socket is available for container operations on the `sbx` path only; the Debian image never gets one
+- In a sandbox the home directory is at `/home/agent`; the mounted workspace is at `$env.WORKSPACE_DIR` (the host path under Apple `container` and `sbx`, `/home/agent/workspace` under `docker compose`; on Windows the autoload rewrites `C:\Users\…` → `/c/Users/…`)
 
 ## The code here is agent-written — keep an eye on it
 
