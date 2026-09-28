@@ -77,6 +77,48 @@ def "install refused over a different applypatch-msg installs neither hook" [] {
 }
 
 @test
+def "an untouched verbose template aborts the commit" [] {
+    let repo = $in.repo
+    commit-file $repo base.txt base "base"
+    git install-change-id-hook $repo
+    "changed" | save --force ($repo | path join base.txt)
+    ^git -C $repo add base.txt
+
+    let res = with-env {GIT_EDITOR: true} { ^git -C $repo commit --verbose | complete }
+    assert equal $res.exit_code 1 $"committed: ($res.stdout)"
+    assert equal (^git -C $repo log --format=%s) "base"
+}
+
+@test
+def "an untouched verbose template aborts with a custom comment char" [] {
+    let repo = $in.repo
+    commit-file $repo base.txt base "base"
+    git install-change-id-hook $repo
+    ^git -C $repo config core.commentChar ';'
+    "changed" | save --force ($repo | path join base.txt)
+    ^git -C $repo add base.txt
+
+    let res = with-env {GIT_EDITOR: true} { ^git -C $repo commit --verbose | complete }
+    assert equal $res.exit_code 1 $"committed: ($res.stdout)"
+    assert equal (^git -C $repo log --format=%s) "base"
+}
+
+@test
+def "a verbose commit with a message gets a change-id and no diff" [] {
+    let repo = $in.repo
+    commit-file $repo base.txt base "base"
+    git install-change-id-hook $repo
+    "changed" | save --force ($repo | path join base.txt)
+    ^git -C $repo add base.txt
+
+    # git runs the editor through sh with the message file as $1
+    let editor = 'f() { { echo subject; cat "$1"; } > "$1.new" && mv "$1.new" "$1"; }; f'
+    with-env {GIT_EDITOR: $editor} { ^git -C $repo commit --quiet --verbose }
+    let msg = ^git -C $repo log -1 --format=%B | str trim
+    assert ($msg =~ '^subject\n\nChange-Id: [k-z]{32}$') $"unexpected message: ($msg)"
+}
+
+@test
 def "a commit that git am applies gets a change-id" [] {
     let repo = $in.repo
     let patch = patch-of-second-commit $repo

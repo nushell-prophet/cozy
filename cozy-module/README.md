@@ -74,7 +74,7 @@ cozy git harden ~/workspace -a   # harden every git repo one level under the pat
 Installs the tracked `hooks/commit-msg` script into a repo's common `.git/hooks`, so every worktree of it stamps a `Change-Id` trailer on each new commit.
 The id survives amend, rebase and squash, which a sha does not, so it is what a cross-repo reference names.
 Its first 24 letters are random and its last 8 are the unix time it was minted, so a prefix stays unique and the tail dates the change through every rewrite.
-The hook adds an id and never replaces one, and leaves a comment-only message alone so an empty commit still aborts.
+The hook adds an id and never replaces one, and leaves a comment-only message alone so an empty commit still aborts, `commit --verbose` included, whatever the comment character.
 An older copy of this hook is replaced and reported as `updated`: a copy is recognised as this hook by its header comment on line 2, which every version carries.
 It also installs `hooks/applypatch-msg`, which hands each message `git am` applies to that same hook, since `am` never runs `commit-msg` itself.
 Any other `commit-msg` or `applypatch-msg` hook already in place is an error, not overwritten, and then neither hook is installed; `--force` replaces it.

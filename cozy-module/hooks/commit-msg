@@ -12,7 +12,11 @@ msg="$1"
 
 # An empty message aborts the commit. Adding a trailer would make it non-empty and let an abort
 # through as a commit with no subject, so a message that is only comments and blanks is left alone.
-if [ -z "$(git stripspace --strip-comments <"$msg")" ]; then
+# Why the cut at the scissors line: `commit --verbose` puts the diff below it without comment
+# marks, so an untouched template would count as a message. Git cuts there too before its check.
+# Why any prefix: git writes the line with the configured comment character, and
+# core.commentChar=auto or a multi-character core.commentString leave it unknowable here.
+if [ -z "$(sed '/^.* -\{24\} >8 -\{24\}$/,$d' "$msg" | git stripspace --strip-comments)" ]; then
     exit 0
 fi
 
