@@ -60,7 +60,7 @@ Its layers, in order:
    Both the builder and the runtime derive `HOME` from the passwd entry of `USER agent`; the assert fails the build on a builder that doesn't, rather than letting the `XDG_*` values below turn into garbage.
    Those values are spelled literally for the same reason — with no `ENV HOME` there is no `$HOME` to expand at ENV time.
    The kit spells them out too, and `toolkit check` normalizes `$HOME` before comparing, so both forms pass the drift guard.
-8. `brew install nushell` — cache-priming too: `ensure-nu.sh` (via `run-install.sh`) installs `nu` when it's absent.
+8. `brew analytics off && brew install nushell` — analytics off before the first package install; cache-priming too: `ensure-nu.sh` (via `run-install.sh`) installs `nu` when it's absent.
 9. `COPY` repo bits — `vendor/` → `/tmp/vendor/` (bootstrap fans it out under `~/repos/`); [`cozy-module/`](../cozy-module/) + [`docker-files/`](../docker-files/) → `~/repos/cozy/`, so `bootstrap.nu` resolves `cozy_root` from `path self` (three dirnames up).
 10. `RUN run-install.sh` — the shared boot tail: ensure brew (no-op here) → `ensure-nu.sh` (see below) → `nu bootstrap.nu` (steps 0–9 below).
 11. `COPY workspace-README.md` → `~/workspace/README.md`.
@@ -90,7 +90,7 @@ No [`files/`](https://docs.docker.com/ai/sandboxes/customize/kit-reference/#stat
 The one script every path runs.
 Ensures brew — auto-installs only on Linux with passwordless sudo (the sbx case; it then `eval`s `brew shellenv`, since the installer never touches the calling shell's PATH, and asserts brew is on PATH afterwards because `eval` of an empty string also exits 0), fails fast with a copy-paste snippet on macOS (keeps password prompts out of the no-prompt flow).
 The installer is downloaded to a file and then run — not `bash -c "$(curl …)"`, where a blocked host makes the substitution empty and `bash -c ''` exits 0, so a network failure read as a successful install and resurfaced two steps later as ensure-nu.sh blaming the user for missing Homebrew.
-Then `ensure-nu.sh`, then `nu bootstrap.nu ${1+"$@"}` (that form, not `"$@"`: under `set -u` Apple's stock `/bin/bash` 3.2 treats an empty `"$@"` as unbound, which would kill the README's plain no-flag install on macOS).
+Then `brew analytics off` (before any package install, so none reports to Homebrew), then `ensure-nu.sh`, then `nu bootstrap.nu ${1+"$@"}` (that form, not `"$@"`: under `set -u` Apple's stock `/bin/bash` 3.2 treats an empty `"$@"` as unbound, which would kill the README's plain no-flag install on macOS).
 On hosts (no container markers — same detection as bootstrap.nu Step 0) it finally appends a marker-wrapped `# >>> cozy env >>>` block to the user's shell rc, carrying two exports: `XDG_CONFIG_HOME` (so macOS `nu` reads `~/.config/nushell/` instead of `~/Library/Application Support/`) and `~/.local/bin` at the front of `PATH` — the script's own `export PATH` dies with the script, so without that line a pinned `nu` from `ensure-nu.sh` stops shadowing brew's the moment the install ends and the next shell runs the version the install just rejected.
 Only bash and zsh get it — any other `$SHELL` is skipped silently, block and message both.
 For bash it picks the first of `.bash_profile` / `.bash_login` / `.profile` that already exists, falling back to creating `~/.profile` when none do.

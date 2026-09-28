@@ -142,7 +142,9 @@ ENV HOMEBREW_NO_ASK=1 \
 # Cache-prime latest nushell too — ensure-nu.sh (called by run-install.sh)
 # installs it when `nu` is absent, checks that it can load bootstrap.nu, and
 # falls back to the pinned version if pre-1.0 syntax has drifted in latest.
-RUN brew install nushell
+# `brew analytics off` first: this is the image's first `brew install`, ahead of
+# the one in run-install.sh.
+RUN brew analytics off && brew install nushell
 
 # Stage cozy repo bits for bootstrap.nu:
 #  - vendor/  → /tmp/vendor/        (bootstrap fans it out under ~/repos/)

@@ -50,6 +50,13 @@ command -v brew >/dev/null || {
     fi
 }
 
+# Before the first `brew install` of the boot tail (ensure-nu.sh), so no
+# install reports home. The Dockerfile repeats it ahead of its own earlier one.
+# Not HOMEBREW_NO_ANALYTICS=1 because: an env var must be kept in the
+# Dockerfile ENV, the kit spec and bootstrap's exports alike, while this
+# setting lives in brew's own config and survives any shell.
+brew analytics off
+
 export PATH="$HOME/.local/bin:$PATH"
 ./ensure-nu.sh
 # ${1+"$@"} not "$@": under set -u, bash < 4.4 treats empty "$@" as unbound —
