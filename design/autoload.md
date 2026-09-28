@@ -1,12 +1,7 @@
 ---
 human-check: pending   # pending | verified — flip to verified after you read it
 covers:                # source paths update-design reconciles this file against
-  - docker-files/nushell-autoload/modules-core.nu
-  - docker-files/nushell-autoload/modules-repl.nu
-  - docker-files/nushell-autoload/git-global-ignore.nu
-  - docker-files/nushell-autoload/git-identity.nu
-  - docker-files/nushell-autoload/git-safe-directory.nu
-  - docker-files/nushell-autoload/host-ssh-agent.nu
+  - docker-files/nushell-autoload/
   - docker-files/global-claude.md
   - docker-files/pbcopy
   - docker-files/logo.ans
