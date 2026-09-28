@@ -5,7 +5,8 @@ covers:                # source paths update-design reconciles this file against
   - firewall/squid.conf
   - firewall/allowed-domains.txt
   - toolkit/container.nu
-reconciled-at: 874e4a409b8c7877a9c05a0db8f6acbefd07b1ef
+  - toolkit/container.zsh
+reconciled-at: mzxsrtwkwnskuypxowpvxoowtpoqnrnw
 ---
 
 # firewall — human-managed egress for the Debian image
@@ -21,6 +22,8 @@ It also carries two pieces compose gets for free, both of them consequences of a
 First, nothing on that network keeps its address across a start, so the cozy container's `*_PROXY` holds the proxy's *name* — the convention compose already uses with `egress` — and `set-egress-hosts` rewrites `/etc/hosts` on every `up` and `restart` to point that name wherever the proxy landed; the mapping is written by hand because there is nothing to resolve it.
 Second, `--no-dns` only stops the runtime from *writing* a resolver — the debian base image already carries one, unreachable inside the cage and black-holed rather than refused, so every lookup waits out the glibc timeout — and `clear-resolver` empties the file, on every `up` and `restart` so that a container created before it existed is repaired too.
 Docker has neither gap: it rewrites `/etc/resolv.conf` to its own embedded DNS.
+Both fixes write root-owned files, so they are the only two rootful execs the script makes, and both go through `root-sh` (`root_sh` in the zsh twin): the shell by absolute path, `/bin/sh`, and `PATH` reset to the system dirs as the script's first statement.
+The image's `ENV PATH` leads with agent-writable dirs (see [`build.md`](build.md)), so an unqualified `sh` or `sed` in a `--uid 0` exec would run whatever the agent dropped there, as root, on the human's next `up`, `restart` or `reload-egress`.
 Everything below holds for both unless it names one.
 
 ## Why it is not in the image

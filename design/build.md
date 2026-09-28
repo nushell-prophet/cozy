@@ -7,7 +7,7 @@ covers:                # source paths update-design reconciles this file against
   - cozy-module/install/ensure-nu.sh
   - cozy-module/install/.nushell-version
   - cozy-module/install/bootstrap.nu
-reconciled-at: 874e4a409b8c7877a9c05a0db8f6acbefd07b1ef
+reconciled-at: mzxsrtwkwnskuypxowpvxoowtpoqnrnw
 ---
 
 # build — the boot sequence (the spine)
