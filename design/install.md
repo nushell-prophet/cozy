@@ -26,7 +26,7 @@ This file records only why each one compiles from source rather than taking a pa
 
 Shared by every Rust-based builder: installs Rust on demand, and holds memory down for the small sandbox VM — `zellij`, `nushell` and `nu-plugin-image` build with `-j 1` + `profile.release.lto=false`, `polars` with `-j 1`.
 Re-running skips the clone but rebuilds: only the already-built check in `polars` short-circuits.
-`nushell`, `polars` and `nu-plugin-image` build with `--locked`, so a lockfile that drifted from `Cargo.toml` fails the build instead of being silently rewritten, and `cargo install` keeps the crate's own lockfile instead of resolving the newest compatible dependencies.
+Every cargo builder uses `--locked`, so a lockfile that drifted from `Cargo.toml` fails the build instead of being silently rewritten, and `cargo install` keeps the crate's own lockfile instead of resolving the newest compatible dependencies.
 Clones go through `_clone-or-fail`, which sets `GIT_TERMINAL_PROMPT=0` so a 404 fails fast instead of hanging on git's credential prompt.
 The built binary is put in place by `_install-binary`, never a plain `cp`: writing into a file the kernel is executing fails with `ETXTBSY`, which `cozy install nushell` hits every time it is run from the very nushell it replaces.
 It copies beside the destination first (the build dir may sit on another filesystem, where a bare rename fails) and then `mv --force`s over the name, so a running process keeps its old inode and a failed replacement raises.
