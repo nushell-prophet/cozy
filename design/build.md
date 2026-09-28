@@ -130,7 +130,7 @@ Last, `~/.cargo/bin` is created empty: cargo-built binaries (`cozy install nushe
 **Code:** `bootstrap.nu` → `export def main` (pre-Step-1 block)
 
 ### Step 1 — brew installs
-`brew install nushell fzf lazygit helix zellij broot git-delta visidata bat topiary fd jj git-lfs`, then `brew cleanup --prune=all`.
+`brew install nushell git fzf lazygit helix zellij broot git-delta visidata bat topiary fd jj git-lfs`, then `brew cleanup --prune=all`.
 Errors if brew is missing.
 
 ### Step 2 — XDG git config

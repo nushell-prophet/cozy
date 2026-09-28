@@ -125,7 +125,10 @@ export def main [
     if (which brew | is-empty) {
         error make {msg: "brew not found — install Homebrew first: https://brew.sh"}
     }
-    ^brew install nushell fzf lazygit helix zellij broot git-delta visidata bat topiary fd jj git-lfs
+    # Why git: the apt git the Dockerfile installs for the Homebrew installer is
+    # frozen at Debian stable (2.47), too old for `git fast-export
+    # --signed-commits` in mono.nu. Brew git sits earlier on PATH and tracks upstream.
+    ^brew install nushell git fzf lazygit helix zellij broot git-delta visidata bat topiary fd jj git-lfs
     ^brew cleanup --prune=all
 
     # Step 2 — minimal XDG git config with an agent identity.
