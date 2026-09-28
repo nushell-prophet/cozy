@@ -7,40 +7,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-28
+
 ### Added
 
 - `cozy use-host-ssh-agent` shows or switches (`--enable` / `--disable`) whether the current shell reaches the ssh-agent forwarded by `container.nu up --ssh-agent`.
-  Off by default in every new shell: parallel agent clients inside hang and the terminal can freeze with them; `killall ssh-agent` on the host frees both.
+  Off by default in every new shell: parallel agent clients inside hang and the terminal can freeze with them; `killall ssh-agent` on the host frees both. (02d4097)
 - `cozy sandbox-state file-history snapshot <path>...` (short: `cozy fhs`) commits any number of files into a git repo under `sandbox-state/`, each keyed by its full path from the root.
-  With no path it refreshes every file already tracked, so the repo doubles as the list of what to keep.
+  With no path it refreshes every file already tracked, so the repo doubles as the list of what to keep. (71dca5d, 0a85508)
 - `cozy git install-change-id-hook [path]` installs the tracked `commit-msg` hook that stamps a `Change-Id` trailer (32 reverse-hex letters: 24 random, then the unix time it was minted) on every new commit of a repo, into the common `.git/hooks` so worktrees share it.
   The id survives amend, rebase and squash, so it is what a cross-repo reference names; an older copy of this hook is updated in place, while any other `commit-msg` hook is refused unless `--force` says to replace it.
-  It installs `applypatch-msg` beside it, so commits applied with `git am` get an id too.
+  It installs `applypatch-msg` beside it, so commits applied with `git am` get an id too. (eb0d185, 1772074, 18ecea3, 71b1e45, 76f1811, 693100d, 74ac495, b10158b)
 - `cozy git link <file>` writes that reference, `<repo>@<change-id>:<path in repo>`, naming the commit that last touched the file; `cozy git resolve <link>` prints the file at that commit, a prefix of the id works.
-  A file with uncommitted changes is refused, since a link names committed content; a commit without an id gets its sha in the same slot.
+  A file with uncommitted changes is refused, since a link names committed content; a commit without an id gets its sha in the same slot. (245234c, 00eaa85, 53234c0)
+- `toolkit/container.zsh up` / `restart` start and revive the Apple `container` cage on a Mac without Nushell; `reload-egress`, `refresh-egress` and `attach` stay in `container.nu`. (40e2a61, be6cbbe)
+- claude-nu: `claude-nu gi new <slug>` creates a canvas on its own branch and opens it in `$EDITOR`; `gi open` loads the Canvas style as a plugin for that launch only, and `gi enable` is gone.
+  `--session` also accepts a `/rename` name. (6957c70, 10cfc3d)
+- Helix: `+ h` stages the selected lines; `+ g` / `+ G` stage the file and commit in a Zellij pane, with the diff below the message. (fb7dc59)
+- Zellij: `Super Shift e` / `Super Alt e` dump the focused pane (viewport or full scrollback) to a file that names its source pane, and open it in Helix. (0c7e6fa)
+- dotnu: `dotnu style let-layout` checks blank lines and pipe indent around `let`, and `--fix` inserts the missing blank lines. (a12ecc3)
+- Skills: new `40-why-is-this` (replaces `40-code-archaeology` and `40-decision-provenance`), `40-triad-polish`, `40-archaeology-sweep` and `40-gi-canvas`, plus the `quote-digger` and `cold-reader` agents. (3e8cff2, 7b35c6d, 2987748)
 
 ### Changed
 
-- The Debian image is built on `debian:13-slim` (trixie, the current stable) instead of `debian:12-slim` (bookworm, now oldstable), so the image tracks the latest stable Debian and its security updates.
+- The Debian image is built on `debian:13-slim` (trixie, the current stable) instead of `debian:12-slim` (bookworm, now oldstable), so the image tracks the latest stable Debian and its security updates. (799ce87)
 - The README quick start now runs cozy under Apple `container` (macOS 26+, Apple silicon): the rootless Debian image behind the egress allowlist, which is the most tested path.
-  `sbx` moves to its own section; use `use toolkit; toolkit container attach <name>`, since `use toolkit/container.nu` hides the `container` CLI.
+  `sbx` moves to its own section; use `use toolkit; toolkit container attach <name>`, since `use toolkit/container.nu` hides the `container` CLI. (9a434e6, 30f4901)
 - `cozy sandbox-state global-claude snapshot` / `restore` keep `~/.claude/CLAUDE.md` as git history in `sandbox-state/global-claude-history`, so every version can be diffed against the one before it.
   `restore` uses `git reset --mixed` and writes no file except a missing `.gitignore`, so nothing else in `~/.claude` can be overwritten; a `snapshot` that is not a fast-forward goes to a branch named after the timestamp, to merge by hand.
-  `snapshot` errors when `~/.claude` is not yet wired to the history repo — run `restore` first.
-- `git diff` and `git show` keep git's `+`/`-` line prefixes under delta (`delta.keep-plus-minus-markers`), so diff lines copied out of the terminal into a message to an agent still say which were added and which removed.
-- `cozy git-harden` is `cozy git harden` now, beside the new `cozy git install-change-id-hook`; flags and output are unchanged.
+  `snapshot` errors when `~/.claude` is not yet wired to the history repo — run `restore` first. (f1cdf63, 059cf95)
+- `git diff` and `git show` keep git's `+`/`-` line prefixes under delta (`delta.keep-plus-minus-markers`), so diff lines copied out of the terminal into a message to an agent still say which were added and which removed. (2ff6094)
+- `cozy git-harden` is `cozy git harden` now, beside the new `cozy git install-change-id-hook`; flags and output are unchanged. (3a79805)
+- `cozy swap-zellij-super` also serves macOS Terminal.app, and the resize keys land on `Alt +`, `Alt =` and `Alt _`. (2454137)
 - Git in the sandbox converts CRLF to LF on commit (`core.autocrlf = input` in `~/.config/git/config`), so a file pasted in with Windows line endings no longer lands as `^M` in every diff.
-  A clone that keeps CRLF on purpose — an upstream repo with Windows-ending test fixtures — needs `git config --local core.autocrlf false`. (ab9f71b)
+  A clone that keeps CRLF on purpose — an upstream repo with Windows-ending test fixtures — needs `git config --local core.autocrlf false`. (ab9f71b, 5297a99)
 
 ### Removed
 
 - Nushell's MCP server (`nu --mcp`) is no longer registered in Claude Code, and `cozy verify` no longer checks it: agents run Nushell through their shell tool instead.
-  An existing sandbox keeps a dead `nushell` entry until `claude mcp remove --scope user nushell`.
+  An existing sandbox keeps a dead `nushell` entry until `claude mcp remove --scope user nushell`. (a6946a7)
 
 ### Fixed
 
 - Apple `container` path: the two root execs `toolkit/container.nu` makes on every `up`, `restart` and `reload-egress` (mapping the proxy's name in `/etc/hosts`, clearing the resolver) resolved `sh` and `sed` through the image PATH, which leads with agent-writable directories — so a binary the agent dropped into `~/.local/bin` would have run as root on the human's next restart.
-  They now run `/bin/sh` by absolute path with PATH reset to the system directories; the plain-docker compose path never made these execs, so it was never affected. (wppymrwm)
+  They now run `/bin/sh` by absolute path with PATH reset to the system directories; the plain-docker compose path never made these execs, so it was never affected. (7dd91be, 703b731)
+- `cozy install nushell` no longer replaces a working `nu` with a truncated one when the copy is cut short (disk full, file size limit). (62caae9)
 
 ## [0.4.3] - 2026-08-28
 
@@ -795,7 +806,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.4.3...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.5.0...HEAD
+[0.5.0]: https://github.com/nushell-prophet/cozy/compare/0.4.3...0.5.0
 [0.4.3]: https://github.com/nushell-prophet/cozy/compare/0.4.2...0.4.3
 [0.4.2]: https://github.com/nushell-prophet/cozy/compare/0.4.1...0.4.2
 [0.4.1]: https://github.com/nushell-prophet/cozy/compare/0.4.0...0.4.1
