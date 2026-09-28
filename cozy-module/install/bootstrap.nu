@@ -147,6 +147,12 @@ export def main [
     # it has no setting for it. Belongs in this layer, next to core.pager: a
     # display preference everyone in the sandbox shares, unlike the identity in
     # ~/.gitconfig. Costs the `Merge:` line on merge commits.
+    # Its `%+N` tail shows git notes, which a custom format hides otherwise:
+    # a note is how an old commit message gets edited, with `git log -p
+    # refs/notes/commits` as the history of those edits. Why notes: default
+    # git functionality instead of a tool of our own. Indented 8, not 4, so a
+    # note does not read as part of the message. notes.rewriteRef carries notes
+    # through amend and rebase, which drop them by default.
     # core.autocrlf=input converts CRLF to LF on commit, never back on
     # checkout: stray `^M` line ends kept reaching diffs, pasted in from
     # outside. Why here and not a .gitattributes per repo, nor a global
@@ -170,7 +176,9 @@ export def main [
 [delta]
 	keep-plus-minus-markers = true
 [format]
-	pretty = format:commit %C(auto)%H%d%n%C(bold blue)%ar%C(reset)  %C(green)%an <%ae>%C(reset)%n%n%w(0,4,4)%B
+	pretty = format:commit %C(auto)%H%d%n%C(bold blue)%ar%C(reset)  %C(green)%an <%ae>%C(reset)%n%n%w(0,4,4)%B%w(0,8,8)%+N
+[notes]
+	rewriteRef = refs/notes/commits
 ' | save --force ($git_xdg | path join 'config')
     # Global ignore, git's XDG-default path. Read directly when core.excludesFile
     # is unset (Dockerfile / host path); under sbx — which sets excludesFile and

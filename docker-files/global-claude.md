@@ -144,6 +144,16 @@ A plain `rg` over `~/.claude` can find nothing and say nothing: where `~/.claude
   So a reference in a todo or a commit body is a change-id link, or a path plus a quote — never a bare sha, which the next rebase orphans.
   Why: the repos on this machine change together but do not share a history, so a plain path names a file that has already moved on; the link names the state the writer saw and still resolves after.
 
+- **An old commit message is corrected with a git note, never by rewriting history.** `git notes edit <sha>` writes it; `git log` shows it indented under the message, and `git log -p refs/notes/commits` shows every correction as a diff.
+  A custom `--format` hides notes unless it has `%N`, so read a commit you are about to act on without one.
+  Notes stay local: `git push` does not send `refs/notes/*`, and none is set up to, so a fresh clone and the remote never see a correction.
+  Don't push them.
+  Why: the user wants to fix the messages of old commits and see the diff of each fix, with default git functionality instead of a tool of our own.
+  "Old" means something depends on the sha: the commit is pushed, or a trailer, a note or a file names it.
+  A commit that is only on a local branch, with nothing naming its sha, is rewritten instead — `commit --amend`, or a `rebase` fixup when later commits sit on it — after the user's go, like any history rewrite; its `Change-Id` survives.
+  Why: a note on such a commit keeps a false sentence in the history for no reader who relies on it.
+  The user: "if the commit was recent and nothing relies on this sha, we can amend, if that is better."
+
 ## Constraints
 
 - Docker socket is available for container operations on the `sbx` path only; the Debian image never gets one
