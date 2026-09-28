@@ -2,7 +2,7 @@
 
 This file describes the environment **cozy** built around you — where things live and which config files it touched.
 It is not about the project mounted in this workspace.
-For cozy itself (build, install, full feature tour) see `~/repos/cozy/README.md`.
+For cozy itself (build, install, full feature tour) see `~/repos/cozy/README.md`, which lands after `cozy sync-repos`; the `cozy` command reference, `~/repos/cozy/cozy-module/README.md`, is there from the start.
 
 ## `~/repos/` — vendored modules
 
@@ -41,6 +41,7 @@ Its module (`cozy-module/`) is autoloaded, so `cozy` is a command:
 | `cozy mount init` | Register the current directory's git subdirs as submodules (`git init`s and commits if needed) |
 | `cozy swap-zellij-super` | Rewrite Zellij's Super-key bindings (→ Alt/Ctrl) for Windows hosts and macOS Terminal.app |
 | `cozy git harden` | Apply safer git defaults |
+| `cozy git link <file>` / `cozy git resolve <link>` | Write a `<repo>@<change-id>:<path>` reference to a file as last committed; print the file that reference names |
 | `cozy git install-change-id-hook` | Install the `commit-msg` and `applypatch-msg` hooks that stamp a `Change-Id` trailer on every new commit of a repo, `git am` included, so a reference to it survives rebase and squash |
 | `cozy use-host-ssh-agent` | Show or switch (`--enable` / `--disable`) whether this shell reaches the forwarded host ssh-agent; off by default |
 | `cozy verify` | Run the post-build check suite against this environment |
@@ -52,6 +53,7 @@ Its module (`cozy-module/`) is autoloaded, so `cozy` is a command:
 | `cozy sandbox-state history seed` | Seed the Nushell history with useful commands from the bundled seed file |
 | `cozy sandbox-state projects snapshot` / `restore` | Just Claude Code session files |
 | `cozy sandbox-state global-claude snapshot` / `restore` | Just the global `~/.claude/CLAUDE.md` |
+| `cozy sandbox-state file-history snapshot [paths]` (alias `cozy fhs`) | Commit any file into a git history under `sandbox-state/file-history/`; no paths refreshes every tracked file |
 
 The rest of `~/repos/cozy/` holds the shared installer (`cozy-module/install/`, entered via `run-install.sh`) and `docker-files/` (autoload scripts, the appended Claude tool catalog).
 Only `cozy-module/` and `docker-files/` are copied in — the `Dockerfile`, `sbx-kit/` and the rest of the repo stay on the host.
@@ -65,7 +67,7 @@ Edit them freely.
 
 - `config.nu`, `env.nu` — opinionated shell settings (from dotfiles)
 - `autoload/*.nu` — loaded when nu starts an **interactive** session (a one-shot `nu -c '…'` skips them).
-  From cozy's `docker-files/`: `git-global-ignore.nu`, `git-identity.nu`, `git-safe-directory.nu`, `modules-core.nu`, `modules-repl.nu`.
+  From cozy's `docker-files/`: `git-global-ignore.nu`, `git-identity.nu`, `git-safe-directory.nu`, `host-ssh-agent.nu`, `modules-core.nu`, `modules-repl.nu`.
   From dotfiles: `br.nu`, `completions.nu`, `hooks-config.nu`, `zzz_ignore_vars.nu`
 - `completions/*.nu` — custom tab-completions for `bat`, `chafa`, `delta`, `fd`, `fzf`, `hx`, `lazygit`, `rg`, `sandbox-exec`, `vd`, `zellij` (from dotfiles; loaded by `autoload/completions.nu`)
 
