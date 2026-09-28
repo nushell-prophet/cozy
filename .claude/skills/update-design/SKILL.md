@@ -25,7 +25,7 @@ The Nushell modules are self-documenting (`help <cmd>` and doc comments).
 So this skill does **not** check Purpose strings, flag lists, or per-command contracts — restating those here is the duplication we removed.
 Check whether the *build steps* and the *reasons* still hold, not what a command's signature is.
 
-`design/README.md` is the Tier-1 map (why + a one-line pointer per file); the per-subsystem files (`build.md`, `install.md`, `modules.md`, `autoload.md`, `toolkit.md`) hold the detail.
+`design/README.md` is the Tier-1 map (why + a one-line pointer per file); the per-subsystem files (`build.md`, `install.md`, `modules.md`, `autoload.md`, `toolkit.md`, `firewall.md`) hold the detail.
 
 ## What to verify
 
