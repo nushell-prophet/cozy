@@ -50,7 +50,7 @@ export def install [
     let low_resource_config = if $low_resource_compilation {
         [--config 'profile.release.codegen-units=256' --config 'profile.release.opt-level=0']
     } else { [] }
-    ^cargo build --release -j 1 --no-default-features --features plugins_from_target,vendored_curl --config 'profile.release.lto=false' ...$low_resource_config
+    ^cargo build --release --locked -j 1 --no-default-features --features plugins_from_target,vendored_curl --config 'profile.release.lto=false' ...$low_resource_config
 
     # Remove brew-installed zellij if present
     if (^brew list zellij | complete).exit_code == 0 {

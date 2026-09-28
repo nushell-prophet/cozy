@@ -97,12 +97,12 @@ A change-id is found by searching every ref (`git log --all --grep`), a sha by l
 
 ```nushell
 cozy git link cozy-module/hooks/commit-msg
-# => /Users/user/git/ai-sandbox-dev-container/cozy@kplvovykwoxzruknymuutvowtppukupv:cozy-module/hooks/commit-msg
-cozy git resolve /Users/user/git/ai-sandbox-dev-container/cozy@kplvovyk:cozy-module/hooks/commit-msg | lines | first 3
+# => /Users/user/git/ai-sandbox-dev-container/cozy@oqmkkvpwwususytokkwpmsyvtpoqnwlz:cozy-module/hooks/commit-msg
+cozy git resolve /Users/user/git/ai-sandbox-dev-container/cozy@oqmkkvpw:cozy-module/hooks/commit-msg | lines | first 3
 # => [
 # =>   "#!/bin/sh",
 # =>   "# Stamp a Change-Id trailer on a commit that does not already carry one.",
-# =>   "#"
+# =>   "# Why the line above never changes: `cozy git install-change-id-hook` knows an installed copy as"
 # => ]
 ```
 
@@ -203,7 +203,7 @@ The `cozy` module is autoloaded only in an interactive nushell session, so run t
 
 Fetches reference docs into a local folder for offline / in-sandbox use.
 `claude` downloads the Claude Code doc pages listed in the sitemap (in parallel); `nushell` makes a shallow sparse checkout of the Nushell docs (book, cookbook, blog) and re-runs as a `git pull`.
-Both fetch with curl — `http get` doesn't work through the sandbox proxy — and return a structured summary.
+`claude` fetches with curl — `http get` doesn't work through the sandbox proxy — and `nushell` with git; both return a structured summary.
 Output dirs (`claude-code-docs/`, `nushell-docs/`, overridable with `--output-dir`) are generated content; refetch anytime.
 
 ```nushell

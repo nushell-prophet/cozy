@@ -52,7 +52,7 @@ docker run --rm cozy:verify \
   The Dockerfile already uses https apt sources, so builds work in restricted networks.
 - **The two `egress:` rows fail on this target, by design.**
   A bare `docker run` has no allowlist in front of it — the cage comes from `compose.yaml`, not the image.
-  Expect 2 failures here and read the other 59; to see all 61 pass, bring the container up with `docker compose up -d` and verify through `docker compose exec cozy`.
+  Expect 2 failures here and read the other 58; to see all 60 pass, bring the container up with `docker compose up -d` and verify through `docker compose exec cozy`.
 - **Boundary:** this validates the shared install logic, NOT sbx-specific wiring (the kit spec, sbx's git-config rewrites, the microVM).
   It is a fast pre-check — the final smoke test is the Apple `container` path, the one in daily use (target `container <name>` below).
   Add an `sbx run` only when the change touches the kit or other sbx wiring.
@@ -107,7 +107,7 @@ Where a step produces a sandbox or container, run `verify-cozy` on the result in
 - [ ] Drop a module from `toolkit/vendor.yml`, rebuild, recreate — `cozy verify` reports the dropped module absent from `~/repos/`.
 - [ ] On macOS: `cozy-module/install/run-install.sh` from a clean state succeeds and `cozy verify` passes.
 - [ ] Pre-existing host `~/.gitconfig` (the user's real identity) survives — XDG `~/.config/git/config` only fills unset keys.
-- [ ] `hx`, `lazygit`, `zellij` open into their TUIs on a real TTY and quit cleanly; `cmd+t`, `cmd+n`, `cmd+shift+g` respond as documented in `vendor/dotfiles/zellij/config.kdl`.
+- [ ] `hx`, `lazygit`, `zellij` open into their TUIs on a real TTY and quit cleanly; `cmd+t`, `cmd+n`, `cmd+alt+l` respond as documented in `vendor/dotfiles/zellij/config.kdl`.
 
 ## When to escalate
 

@@ -21,7 +21,7 @@ Each test drives a real zellij session with a PTY client and live TUIs; running 
 Serial is the correct model here.
 If you invoke `nutest run-tests` directly, pass `--strategy { threads: 1 }` yourself.
 
-Tests are written with nutest's **description-tag** attributes (`# [test]`, `# [before-each]`, `# [after-each]`) rather than `@test`: the vendored nutest predates nu 0.113's `attr`-command requirement, so `@test` fails to parse but the `[tag]` form discovers correctly.
+Tests are written with nutest's **description-tag** attributes (`# [test]`, `# [before-each]`, `# [after-each]`) rather than `@test`: `@test` parses only in a file that runs `use std/testing *` (the form `test/unit/` uses), while the `[tag]` form needs no import.
 
 ## The #4508 PTY-client requirement
 
@@ -59,8 +59,6 @@ The create-todo suite waits for helix's `NOR` status line before sending `:q`.
 - **Layer 1** (out of scope): zellij's own keybind chords (`Super e`, mode switches).
   Not triggerable via `zellij action`; needs key bytes injected into a client's input stream.
   Cover later with a manual-testing protocol.
-
-See the todo for the full split.
 
 ## Current targets
 

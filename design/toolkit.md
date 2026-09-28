@@ -7,10 +7,11 @@ covers:
   - toolkit/check.nu
   - toolkit/docs.nu
   - toolkit/container.nu
+  - toolkit/container.zsh
   - toolkit/sbxw.nu
   - toolkit/wezterm.nu
   - cozy-module/vendored-repos.nuon
-reconciled-at: 874e4a409b8c7877a9c05a0db8f6acbefd07b1ef
+reconciled-at: mzxsrtwkwnskuypxowpvxoowtpoqnrnw
 ---
 
 # toolkit — host-side vendor tooling
@@ -52,8 +53,8 @@ Three invariants that nothing else enforces:
   The `PATH` is a *prefix* comparison across the same two — `bootstrap.nu`'s block writes no `PATH` (recorded as `(n/a)`), and the Dockerfile's tail is the base image's `${PATH}`, which no file here can say, so checking the full tail would only hardcode a second guess.
   Values are normalized before comparing (`$HOME`/`${HOME}` → `/home/agent`), because the kit spells the paths out while the other two expand a variable.
 - `vendored-repos.nuon` matches `vendor.yml` (catches a manifest left stale).
-- The egress proxy image is pinned by digest and identical in its two copies — `services.egress.image` in [`../compose.yaml`](../compose.yaml) and `egress_image` in [`toolkit/container.nu`](../toolkit/container.nu).
-  Both cage the agent behind the same proxy holding the same policy, so the two literals must agree.
+- The egress proxy image is pinned by digest and identical in its three copies — `services.egress.image` in [`../compose.yaml`](../compose.yaml), `egress_image` in [`toolkit/container.nu`](../toolkit/container.nu) and `EGRESS_IMAGE` in [`toolkit/container.zsh`](../toolkit/container.zsh).
+  All three cage the agent behind the same proxy holding the same policy, so the literals must agree.
   The `@sha256:` is asserted separately: swapping in a floating tag silently un-pins the one container that has internet, and comparing the copies alone would not catch it.
   See [`firewall.md`](firewall.md).
 
@@ -70,8 +71,9 @@ Two run paths need host-side orchestration; they are split by runtime rather tha
 - [`toolkit/sbxw.nu`](../toolkit/sbxw.nu) — the sbx twin of `container attach`: open a sandbox in a new WezTerm window and attach its zellij session.
   It knows nothing about the cage.
 
-Opening the window needs an **interactive** nu (`use toolkit/sbxw.nu`, not `nu toolkit/sbxw.nu`; same for `container attach`): the window is a background job, and a job dies with the one-shot nu that spawned it.
-That holds for `sbxw` and `container attach` only — `container up` / `restart` / `reload-egress` / `refresh-egress` run fine as `nu toolkit/container.nu <sub>`, and the script form is the safer one anyway: an imported module can serve a stale definition long after the file changed (see [`autoload.md`](autoload.md)), which is how a moved egress pin was nearly recorded as applied while the old proxy came back up.
+Opening the window needs an **interactive** nu (`use toolkit`, then `toolkit sbxw <name>` or `toolkit container attach <name>`, not `nu toolkit/sbxw.nu`): the window is a background job, and a job dies with the one-shot nu that spawned it.
+The import is `use toolkit`, not `use toolkit/container.nu`: the direct form exports that module's `main` as `container`, which shadows the `container` CLI for the rest of the session.
+That holds for `sbxw` and `container attach` only — `container up` / `restart` / `reload-egress` / `refresh-egress` run fine as `nu toolkit/container.nu <sub>`, and the script form is the safer one anyway: an imported module can serve a stale definition long after the file changed, which is how a moved egress pin was nearly recorded as applied while the old proxy came back up.
 The one thing the two paths genuinely share — opening that window — lives in [`toolkit/wezterm.nu`](../toolkit/wezterm.nu), which both `use`.
 
 ## Local docs
