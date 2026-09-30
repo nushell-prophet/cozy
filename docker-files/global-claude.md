@@ -112,6 +112,8 @@ The one thing never to write is `| table` — it forces the box back.
   It also takes a path argument resolved against the script's own directory, which is how a script points at a neighbour without a hardcoded absolute path: `const SIBLING = path self ../CLAUDE.md`.
   Both forms work in a `const`, neither works in a command body.
   It needs a real file too, so `nu --commands 'path self'` fails — test it in a script, not with `-c`.
+- **A script's output cannot be piped onward into more Nushell from outside.** `nu script.nu | to nuon` run from Bash pipes into a program named `to` (`command not found`, then `broken_pipe` from nu); `nu script.nu | nu --stdin --commands '...'` gets the rendered box table as one string.
+  Load the script into the same `nu` and call it as a command: `nu --commands 'source script.nu; main sub arg | to nuon --pretty'`.
 
 ### Reading Claude Code sessions: `claude-nu`
 
