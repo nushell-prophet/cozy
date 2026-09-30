@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Nushell's MCP server (`nu --mcp`) is registered in Claude Code again and checked by `cozy verify` (`mcp: nushell`), undoing its removal in 0.5.0.
 - `git log` and `git show` print a commit's git note under its message, indented 8 spaces, and notes follow their commit through amend and rebase (`notes.rewriteRef`); `git notes edit <sha>` corrects an old message, `git log -p refs/notes/commits` shows the edits.
 
 ## [0.5.0] - 2026-09-28

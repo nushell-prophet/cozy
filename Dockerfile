@@ -213,7 +213,8 @@ USER agent
 # `bash -c nu` would otherwise start with no XDG_DATA_HOME. It carries no identity:
 # the agent's GIT_AUTHOR_*/JJ_CONFIG live in Claude Code's own settings (bootstrap
 # Step 9), because a shell hook is the wrong scope for them — it would reach the
-# human's shells, which should stay the human's.
+# human's shells, which should stay the human's, and miss the MCP `nu`, which is
+# no shell's child.
 #
 # BASH_ENV applies to every non-interactive bash, so `bash -lc` sources the file
 # twice — once here, once via profile.d. The exports are idempotent, and the
