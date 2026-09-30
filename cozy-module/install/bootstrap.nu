@@ -156,7 +156,10 @@ export def main [
     # refs/notes/commits` as the history of those edits. Why notes: default
     # git functionality instead of a tool of our own. Indented 8, not 4, so a
     # note does not read as part of the message. notes.rewriteRef carries notes
-    # through amend and rebase, which drop them by default.
+    # through amend and rebase, which drop them by default. Why a glob: an
+    # exact ref that does not exist yet makes git warn "notes ref ... is
+    # invalid" on every amend in a repo with no notes; a glob matching
+    # nothing stays quiet.
     # core.autocrlf=input converts CRLF to LF on commit, never back on
     # checkout: stray `^M` line ends kept reaching diffs, pasted in from
     # outside. Why here and not a .gitattributes per repo, nor a global
@@ -182,7 +185,7 @@ export def main [
 [format]
 	pretty = format:commit %C(auto)%H%d%n%C(bold blue)%ar%C(reset)  %C(green)%an <%ae>%C(reset)%n%n%w(0,4,4)%B%w(0,8,8)%+N
 [notes]
-	rewriteRef = refs/notes/commits
+	rewriteRef = refs/notes/*
 ' | save --force ($git_xdg | path join 'config')
     # Global ignore, git's XDG-default path. Read directly when core.excludesFile
     # is unset (Dockerfile / host path); under sbx — which sets excludesFile and
