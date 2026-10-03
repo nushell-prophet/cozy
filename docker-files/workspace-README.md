@@ -35,7 +35,7 @@ Its module (`cozy-module/`) is autoloaded, so `cozy` is a command:
 | Command | Does |
 |---|---|
 | `cozy logo` | Print the cozy logo |
-| `cozy install <tool>` | Install or rebuild one tool — `bootstrap` (full reinstall), `rust` (rustup), `topiary` (brew), `claude` (official installer); `nushell`, `zellij`, `polars`, `nu-plugin-image` compile from source |
+| `cozy install <tool>` | Install or rebuild one tool — `bootstrap` (full reinstall), `rust` (rustup), `topiary` (brew), `claude` (official installer); `nushell`, `zellij`, `polars`, `nu-plugin-image` compile from source (`nushell` and `polars` take `--github` to download the release binary instead) |
 | `cozy sync-repos` | Convert the `~/repos/` snapshots to git clones and pull the latest from GitHub (updates this sandbox in place) |
 | `cozy dev-link` | Swap vendored `~/repos/` copies for symlinks to the mounted workspace (edit-and-test, no rebuild) |
 | `cozy mount init` | Register the current directory's git subdirs as submodules (`git init`s and commits if needed) |

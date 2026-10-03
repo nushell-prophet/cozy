@@ -45,8 +45,9 @@ export def zellij [
 export def nushell [
     --dev # Build from main branch instead of latest release
     --no-mcp # Build without MCP support
+    --github # Download the latest release binary instead of building
 ]: nothing -> nothing {
-    use nushell.nu [ install ]; install --dev=$dev --no-mcp=$no_mcp
+    use nushell.nu [ install ]; install --dev=$dev --no-mcp=$no_mcp --github=$github
 }
 
 # Build nu_plugin_image (to png / from png) and register it

@@ -11,6 +11,7 @@ covers:                # source paths update-design reconciles this file against
   - cozy-module/install/nu-plugin-image.nu
   - cozy-module/install/_clone-or-fail.nu
   - cozy-module/install/_install-binary.nu
+  - cozy-module/install/_nu-release.nu
 reconciled-at: mzxsrtwkwnskuypxowpvxoowtpoqnrnw
 ---
 
@@ -22,9 +23,9 @@ Exposing them is deliberate: the user can build an up-to-date app inside the run
 The trade-off is build time — a large crate like polars takes a while.
 
 What each builder *does* is in its own doc comment and code (wired in [`../cozy-module/install/mod.nu`](../cozy-module/install/mod.nu)).
-This file records only why each one compiles from source rather than taking a packaged binary.
+This file records only why each one compiles from source rather than taking a packaged binary, and where `--github` takes the packaged binary instead.
 
-Shared by every Rust-based builder: installs Rust on demand, and holds memory down for the small sandbox VM — `zellij`, `nushell` and `nu-plugin-image` build with `-j 1` + `profile.release.lto=false`, `polars` with `-j 1`.
+Shared by every Rust-based builder: installs Rust on demand (skipped on the `--github` paths, which build nothing), and holds memory down for the small sandbox VM — `zellij`, `nushell` and `nu-plugin-image` build with `-j 1` + `profile.release.lto=false`, `polars` with `-j 1`.
 Re-running skips the clone but rebuilds: only the already-built check in `polars` short-circuits.
 Every cargo builder uses `--locked`, so a lockfile that drifted from `Cargo.toml` fails the build instead of being silently rewritten, and `cargo install` keeps the crate's own lockfile instead of resolving the newest compatible dependencies.
 Clones go through `_clone-or-fail`, which sets `GIT_TERMINAL_PROMPT=0` so a 404 fails fast instead of hanging on git's credential prompt.
@@ -43,6 +44,8 @@ That staging copy is the external `^cp`, whose exit code raises: nushell's built
 - **zellij** — from source with `--no-default-features` to exclude `web_server_capability` (no web session sharing).
   `--low-resource-compilation` raises `codegen-units` and drops `opt-level` to 0 — the optimization passes are the dominant memory consumer.
 - **nushell** — from source so cozy can track the latest release (or `main` via `--dev`), and drop the `mcp` feature with `--no-mcp` when needed.
+  `--github` downloads the latest release binary instead; it refuses `--dev` (main has no release) and `--no-mcp` (the release binary is built with MCP).
+  Both `--github` paths share `_nu-release`: every nushell release tarball carries `nu` and the bundled plugins, `nu_plugin_polars` among them.
 - **nu-plugin-image** — from source at the tag matching the running `nu` version; provides `to png` / `from png`.
 
 **Code:** [`cozy-module/install/`](../cozy-module/install/) — one file per tool.

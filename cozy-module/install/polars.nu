@@ -1,4 +1,4 @@
-use _install-binary.nu
+use _nu-release.nu
 
 # Show the help of this module; `install` runs the nu_plugin_polars build.
 export def main [] { help polars }
@@ -20,7 +20,11 @@ export def install [
     let plugin_path = $cargo_bin | path join nu_plugin_polars
 
     if $github {
-        download $plugin_path
+        # Why the running version, never the latest release: a plugin loads only
+        # into the nu it was built for, so a newer one fails at `plugin add`.
+        let version = version | get version
+        _nu-release $version nu_plugin_polars $plugin_path
+        print $"  (ansi green)nu_plugin_polars(ansi reset): installed ($version)"
     } else {
         # Ensure Rust is installed
         use rust.nu
@@ -43,36 +47,4 @@ export def install [
     print "  Registering plugin..."
     plugin add $plugin_path
     print $"  (ansi green)polars plugin(ansi reset): registered — restart Nushell or run: plugin use polars"
-}
-
-# Puts nu_plugin_polars from the nushell release tarball at $dest.
-def download [dest: path]: nothing -> nothing {
-    # Why the running version, never the latest release: a plugin loads only
-    # into the nu it was built for, so a newer one fails at `plugin add`.
-    let version = version | get version
-    let os = match $nu.os-info.name {
-        linux => 'unknown-linux-gnu'
-        macos => 'apple-darwin'
-        $other => { error make {msg: $"no nushell release build for OS ($other)"} }
-    }
-    let target = $"($nu.os-info.arch)-($os)"
-    let archive = $"nu-($version)-($target)"
-    let url = $"https://github.com/nushell/nushell/releases/download/($version)/($archive).tar.gz"
-
-    print $"  Downloading nu_plugin_polars ($version) from ($url)..."
-    let response = http get --raw --full --allow-errors $url
-    if $response.status != 200 {
-        error make {
-            msg: $"no nushell release asset for nu ($version) on ($target): HTTP ($response.status)"
-            help: "a dev build of nu has no release; build the plugin from source with `cozy install polars`"
-        }
-    }
-
-    let tmp = mktemp --directory
-    $response.body | save ($tmp | path join archive.tar.gz)
-    ^tar --extract --gzip --file ($tmp | path join archive.tar.gz) --directory $tmp $"($archive)/nu_plugin_polars"
-    mkdir ($dest | path dirname)
-    _install-binary ($tmp | path join $archive nu_plugin_polars) $dest
-    rm --recursive $tmp
-    print $"  (ansi green)nu_plugin_polars(ansi reset): installed ($version)"
 }

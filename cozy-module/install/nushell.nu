@@ -1,6 +1,7 @@
 use rust.nu
 use _clone-or-fail.nu
 use _install-binary.nu
+use _nu-release.nu
 
 # Show the help of this module; `install` runs the nushell build.
 export def main [] { help nushell }
@@ -11,11 +12,26 @@ export def main [] { help nushell }
 # from main branch (bleeding edge).
 # Installs Rust automatically if not already present.
 # Safe to re-run — pulls latest and rebuilds.
+#
+# --github downloads the latest release binary instead: no Rust, no build.
 export def install [
     --dev # Build from main branch instead of latest release
     --no-mcp # Build without MCP support
+    --github # Download the latest release binary instead of building
 ]: nothing -> nothing {
     let cargo_bin = $nu.home-dir | path join .cargo bin
+
+    if $github {
+        # Why refuse instead of ignoring: main has no release, and the release
+        # binary is built with MCP — either flag would silently not happen.
+        if $dev or $no_mcp {
+            error make {msg: "--github downloads the latest release build; it cannot honor --dev or --no-mcp"}
+        }
+        let tag = http get https://api.github.com/repos/nushell/nushell/releases/latest | get tag_name
+        _nu-release $tag nu ($cargo_bin | path join nu)
+        report ($cargo_bin | path join nu)
+        return
+    }
 
     # Ensure Rust is installed
     rust install
@@ -73,6 +89,10 @@ export def install [
         $env.PATH = ($env.PATH | prepend $cargo_bin)
     }
 
+    report $dest
+}
+
+def report [dest: path]: nothing -> nothing {
     let version = ^$dest --version | str trim
     print $"  (ansi green)nushell(ansi reset): ($version) installed to ($dest)"
     # Why: the shell you ran this from keeps executing the old binary until it
