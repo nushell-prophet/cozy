@@ -57,7 +57,8 @@ Python 3 is on every path anyway: brew pulls it in for VisiData.
 
 **Optional** (`cozy install`): Rust, nu_plugin_polars, nu-plugin-image, Claude Code (reinstall)
 
-**Rebuild from source** (`cozy install`): Nushell, Zellij (without web sharing)
+**Rebuild from source** (`cozy install`): Nushell, Zellij (without web sharing).
+`--github` downloads the release binary instead, for Nushell, Zellij and nu_plugin_polars; Zellij's is also without web sharing unless you add `--web-server`.
 
 ### Nushell
 

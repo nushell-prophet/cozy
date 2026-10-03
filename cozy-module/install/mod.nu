@@ -31,13 +31,15 @@ export def topiary []: nothing -> nothing {
     use topiary.nu [ install ]; install
 }
 
-# Build zellij from source without web session sharing.
+# Build zellij from source without web session sharing, or download the release with --github.
 # Pass --low-resource-compilation if the build is OOM-killed in a small VM.
 @category cozy-install
 export def zellij [
     --low-resource-compilation # Split codegen into smaller units to lower peak RAM (avoids OOM in small VMs)
+    --github # Download the latest release binary instead of building
+    --web-server # With --github, take the release with web session sharing
 ]: nothing -> nothing {
-    use zellij.nu [ install ]; install --low-resource-compilation=$low_resource_compilation
+    use zellij.nu [ install ]; install --low-resource-compilation=$low_resource_compilation --github=$github --web-server=$web_server
 }
 
 # Build nushell from source (latest release or --dev for main)

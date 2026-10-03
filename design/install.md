@@ -43,6 +43,9 @@ That staging copy is the external `^cp`, whose exit code raises: nushell's built
 - **topiary** — binary via brew, but the tree-sitter-nu grammar `.so` is compiled by hand (clone + gcc) because `topiary prefetch`'s HTTP client can fail behind the sandbox proxy.
 - **zellij** — from source with `--no-default-features` to exclude `web_server_capability` (no web session sharing).
   `--low-resource-compilation` raises `codegen-units` and drops `opt-level` to 0 — the optimization passes are the dominant memory consumer.
+  `--github` downloads the latest release binary instead: the `zellij-no-web-*` asset zellij publishes beside each release, the same feature set as the source build.
+  `--web-server` opts in to the full asset with web session sharing; it needs `--github`, since the source build never has it.
+  `--github` refuses `--low-resource-compilation`: there is no build to lower.
 - **nushell** — from source so cozy can track the latest release (or `main` via `--dev`), and drop the `mcp` feature with `--no-mcp` when needed.
   `--github` downloads the latest release binary instead; it refuses `--dev` (main has no release) and `--no-mcp` (the release binary is built with MCP).
   Both `--github` paths share `_nu-release`: every nushell release tarball carries `nu` and the bundled plugins, `nu_plugin_polars` among them.
