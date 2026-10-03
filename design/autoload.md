@@ -85,11 +85,13 @@ The completions for tools claude-nu has nothing to do with (zellij, fd, chafa, s
 **Code:** [`docker-files/nushell-autoload/modules-repl.nu`](../docker-files/nushell-autoload/modules-repl.nu)
 
 ## global-claude.md
-The tool catalog appended to `~/.claude/CLAUDE.md` by `bootstrap.nu` Step 6.
+The tool catalog and the working rules, appended to `~/.claude/CLAUDE.md` by `bootstrap.nu` Step 6.
 A markdown brief that tells the agent what cozy built around it: available tools (shell, editors, git, search, data/languages, formatting, package managers), where Nushell modules live, a Nushell pitfalls cheatsheet, the registered Nushell MCP server and its two usage caveats (the `evaluate` session persists across calls and re-running `use` does *not* reliably re-read an edited module — tested three ways, all served the stale copy, and a stale `toolkit/container.nu` once recreated the egress proxy from the previous pin while printing success; the fix is a fresh process, not a re-`use`. And the MCP `nu` skips the login shell, so anything set only in `/etc/sandbox-persistent.sh` is absent — the agent's own identity is not, it rides Claude Code's `env` setting), how to read Claude Code session transcripts with `claude-nu`, git rules for the sandbox (chiefly: never `git add -A`/`git add .`, which stage parked notes and another task's edits; and name commits by `Change-Id` and files in other repos by change-id links, so references survive a rebase), sandbox constraints, a note that the code here is agent-written and the agent should keep an eye on it, and a privacy section.
 Its most load-bearing line is not a fact but an instruction: end any nu pipeline you are going to read with `| to nuon --pretty`, because a stock one-shot `nu` renders an 80-column box table that drops columns and truncates names without saying so.
 That it is an instruction and not a mechanism is a decision, not an omission — a `nu` wrapper injecting a display config was built and reverted, since `--config` is an opt-out (and the documented `nu --config …/modules-core.nu -c …` form was exactly the one it could not reach), while a pipeline ending in `| table` renders to a string before any config is consulted.
 An instruction cannot rot; its weakness is that it fires only when the agent remembers.
+Below the catalog, a `# Working Rules` half carries the rules that hold for any cozy user — collaboration, one step at a time, long flags, fail-fast, verification, commits and branches, comments, git-friendly prose, conciseness.
+It is the neutral part of the maintainer's own global `CLAUDE.md`, kept in sync with it by hand; dotfiles ships no `CLAUDE.md`, so a user's personal instructions sit above the marked block and Step 6 leaves them alone.
 **Code:** [`docker-files/global-claude.md`](../docker-files/global-claude.md)
 
 ## pbcopy

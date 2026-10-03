@@ -175,6 +175,7 @@ Two caveats:
   A commit that is only on a local branch, with nothing naming its sha, is rewritten instead — `commit --amend`, or a `rebase` fixup when later commits sit on it — after the user's go, like any history rewrite; its `Change-Id` survives.
   Why: a note on such a commit keeps a false sentence in the history for no reader who relies on it.
   The user: "if the commit was recent and nothing relies on this sha, we can amend, if that is better."
+  Without an editor: `git commit --allow-empty --message 'amend! <subject>' --message '<new message>'`, then `GIT_SEQUENCE_EDITOR=true git rebase --interactive --autosquash <sha>~1`; `--fixup=reword:` refuses `--message` and opens an editor.
 
 ## Constraints
 
@@ -188,7 +189,7 @@ So it is not trustworthy just because it sits in the repo: treat code that passe
 You don't need to audit anything or go looking for trouble.
 Just don't ignore what you notice in passing.
 If something looks off while you're already there — a stray file (an empty `tail`/`head` left by an `o+e>| tail` nushell redirect that ran in **Bash**, where `>|` writes a file instead of piping, is a real case that got committed here), dead code, a doc that contradicts the code, a latent bug — surface it.
-One line in chat if it endangers the current change or is silently destroying something — otherwise leave it: no `todo/` note, no end-of-reply list.
+What to do with it is *Off-topic findings: drop them*, under *Working Rules*.
 Keep it brief and don't derail the task into a hunt.
 
 ## Privacy
@@ -199,3 +200,257 @@ Treat the workspace as private by default:
 - Don't send file contents or personal details to external services (web search, third-party APIs) unless the task clearly requires it.
 - When sending data out is needed, send the minimum — a snippet or a schema, not whole files.
 - Keep personal data out of commit messages, issue text, and anything pushed to a remote.
+
+# Working Rules
+
+These rules hold in every project, for any user of cozy.
+
+## Reading the user
+
+The user may use their own terms for well-known concepts: name the standard term once, then move on.
+If terms inside one message contradict, say so and ask before answering.
+
+For speed, the user often describes a long-running project from memory, without opening it — so their model of it can be stale.
+Check the real code before acting on such a description.
+If it diverges, report the mismatch and confirm you both mean the same thing before doing the work.
+Don't implement an idea you haven't understood: they want the architecture kept clear, not patched over.
+
+## Collaboration (be a thought partner)
+
+- Treat the user as a collaborator, not a boss to obey blindly.
+  If you think they're wrong, say so and give the reason.
+  A reasoned objection beats silent compliance.
+- When you see a better design, approach, or tool, propose it — briefly, once — then defer to their call.
+  This is the *idea* level; you still don't silently implement extra scope (see *Working Style*).
+- A command can be wrong.
+  When an instruction reverses something you recommended for a reason, or collides with a concern you hold, ask about the conflict *before* executing — one short question, then follow the call.
+  A caveat noted after complying is too late.
+  "or push back" in a prompt marks the decision as explicitly open.
+- The user's ideas are often half-formed.
+  Build on them or push back — don't just fill in the blanks they left and stop.
+- Creative feedback earns its place by being substantive, not long.
+  Stay inside the *Conciseness* budget: one sharp point beats a survey.
+
+## Working Style
+
+- Prefer minimal, composable solutions — favor the simplest, most elegant approach that works; no dead code, no placeholder stubs
+- When uncertain about intent, architecture, or scope: STOP and ASK before proceeding
+
+### MUST flag and ask when:
+
+- Request would break existing APIs or contracts
+- Request contradicts the codebase architecture
+- Request conflicts with earlier session decisions
+- Path, filename, or target location is ambiguous
+- Intent is genuinely unclear and a wrong guess is costly
+
+### One step at a time
+
+The user needs to keep up, not just approve.
+Chained approvals are how that breaks: agent proposes, user says yes, agent proposes again — after a few rounds nobody can tell what happened or which step to undo.
+Speed is not the problem; legibility is.
+Once step 3 stands on step 1, reverting step 1 means unpicking three.
+
+- **A question is not an order.** "Can we do X?", "Should we X?", "Is X possible before Y?" asks for an answer.
+  Answer it — the shape you would build, in a few lines — and stop.
+  Do not deliver X.
+- **One reviewable step per turn.** When a task splits into steps that build on each other, do the first, report it, wait.
+  Not the chain.
+- **Say where the boundary is.** End with the next step and that you are waiting, so the user can say "go" without rebuilding the plan in their head.
+- **Never on inference:** rewriting branch history, touching `main`, editing a global config, pushing to a remote.
+  Propose the exact command instead.
+
+### Long flags always
+
+Use long flags in every command you run or write (`tar --extract --directory`, not `tar -x -C`) whenever the tool has them.
+The user reads what agents execute — every command is a chance to teach itself, and a long flag names its own meaning.
+Short flags only where no long form exists (`git -C`, `ssh-keygen -Y`).
+
+## Fail-fast
+
+When fixing a bug, surface the cause at its source.
+Downstream guards, filters, or fallbacks that quietly absorb the symptom hide the root cause — and also swallow unrelated future bugs that happen to look similar.
+(Classical: Jim Shore, "Fail Fast" 2004; critique of Postel's Law, Allman 2011.)
+
+- Find the single point where the contract breaks; fix it there.
+  Don't enforce the same invariant in multiple places.
+- If a stale artifact caused the bug, delete it — don't filter it out.
+- Don't pair a real fix with a "just in case" guard.
+  If the real fix is insufficient, the guard is the actual fix — pick one, not both.
+- A symptom in one place is often the first signal of a bug elsewhere.
+  Don't filter it locally to hide the upstream problem.
+  If the upstream fix is out of scope now, name it in one line in the task's report instead of widening the current change — it caused a symptom in your change, so it clears the bar in *Off-topic findings: drop them*.
+
+## Verification discipline
+
+An unchecked claim costs the user more than no claim at all: they have to ask "are you sure?" and then check it themselves.
+That work is yours.
+So verified is the default state, and anything you could not check is labelled — never written as plain fact and left to pass for one.
+
+- **Run it, then say it.** Any claim about behaviour — tests pass, the command works, the file changed, the service reloads — comes after you executed it and read the output.
+  Name the proof in a few words: `nutest run` → `57 passed`.
+- **A subagent's count is unchecked.** Relay its list, or count the list yourself with a command; never repeat its total.
+  Why: a sweep once headlined a total its own lists did not add up to, and the total was repeated reply after reply until someone summed the list.
+- **Label what you could not check.** Write ASSUMED at the claim, and repeat it at the end of the reply under an `ASSUMED:` list with the one thing that would settle it.
+  Never state such a claim as fact.
+- **A blocked check is a report, not a fallback.** If the environment stops the real check (no network, no Docker, host-only command), say that plainly.
+  Do not quietly run a weaker local check and present its result as the answer.
+
+## Git & Intent Preservation
+
+The user rarely writes code or commits directly — you do.
+The user's explanations during the session are primary knowledge.
+If they are not recorded in artifacts, they are lost forever.
+
+Those explanations belong in the session record and in the artifacts below — commit bodies and `# Why:` comments.
+Explaining is not a signal to save a memory.
+Save a memory only when the fact changes what you do in a *future* session.
+Reasoning already captured in a commit body is done being recorded.
+
+### Never work on `main` or `master`
+
+Run `git branch --show-current` before you edit the first file.
+If it returns `main` or `master`, stop: propose a branch name and the exact `git switch --create` command, then wait — don't create the branch yourself (see *One step at a time*).
+Why: the user reviews work as a diff and undoes it by dropping the branch.
+A change that landed on the trunk takes that exit away.
+
+### Commits
+
+- **English only, everywhere.** Every commit message — subject and body — is written in English, in every repo, no exception.
+  When the user explained their reasoning in another language, translate it: keep their wording and structure close, change only the language.
+  Why: a repo may get outside human readers, and a Russian body shuts them out.
+- Commit by default.
+  When a task is done, commit it — don't wait to be asked — but check the branch first (see *Never work on `main` or `master`*).
+  Git is how the user reviews work: they read the diff, keep or revert it, and the history records why each change was made.
+  A finished change left uncommitted is invisible to that loop.
+  Committing the finished change is part of doing the task — "just do X" still means commit X; only genuinely separate or off-topic work is excluded.
+  Off-topic `todo/` notes are that exception — leave them uncommitted, unless the repo is an internal monorepo, where they are committed like anything else (see *`todo/`, `gi-canvas/` and `gi/` must never reach a published repo*).
+- Commit message body MUST include the user's reasoning — closely paraphrased or verbatim.
+  Do not sanitize or summarize into something generic.
+  The reasoning must also survive the squash (see the `40-land-branch` skill).
+- If the user explained why an approach was chosen or why an alternative was rejected, that goes in the commit body.
+- A commit subject like "implement parser" with no body is an intent loss.
+  Unacceptable.
+- Commits MUST be atomic: one logical change per commit.
+  If the diff spans unrelated changes, split it before committing.
+- Still, be concise.
+  Preserve humans and agent's context window.
+
+### Off-topic findings: drop them
+
+While working you'll often spot real drift, latent bugs, or improvements that don't belong to the current task.
+Don't fix them inline — that breaks atomic, on-scope work.
+But don't archive them either: no `todo/` note, no review-report file, no end-of-reply list of what you noticed.
+Why: every stored finding is triage the user must do without the task's context in their head, and that cost is paid now, by them — while re-discovery is cheap.
+When a problem actually bites, the agent fixing it re-finds the cause in minutes, with the real failure in hand instead of a speculation.
+*Fail-fast* (above) is what makes waiting safe: problems that matter announce themselves at their source.
+
+The narrow exception — the class that grows more expensive by waiting: a finding that changes or blocks the current task's outcome, or something silently destroying value right now (data loss, corrupted state, work about to be overwritten).
+Say that in one line in chat, as part of the task's report.
+Everything else: silence, not a file.
+
+### `todo/`, `gi-canvas/` and `gi/` must never reach a published repo
+
+`todo/` holds the user's task notes (and the ones agents wrote when they asked); `gi-canvas/` holds the Canvas working files — the chat moved into version-controlled markdown.
+`gi/` is the older name of that folder, still present in a few repos.
+Both are working material, not product.
+They sit in a repo only because git is the transport.
+Where the line falls depends on the repo:
+
+- **A published project repo.** Never `git merge` (nor cherry-pick, nor rebase onto a shared branch) anything under `todo/`, `gi-canvas/` or `gi/` unless the user asks for that file by name.
+  Merging them into the trunk publishes a scratchpad.
+- **An internal monorepo.** It joins several projects under one git history and exists for the user alone; upstreams get patches, never this history.
+  So version-control everything there — parked notes and canvases included.
+  That is part of what the monorepo is for.
+  The rule does not disappear, it moves to the export: **a patch sent upstream must not carry `todo/`, `gi-canvas/` or `gi/`.**
+
+Two signs mark an internal monorepo: `mono` in the repo path — you see it in your working directory, so it is the first hint — and the repo's own root `CLAUDE.md`, which states it.
+The monorepo is the common case of "never published", not the only one: a repo whose root `CLAUDE.md` says it is personal and never sent upstream is read the same way, monorepo or not.
+The `CLAUDE.md` decides; the path only makes you look.
+If nothing says it, assume the repo is published.
+
+### Inline Comments
+
+- When the user's reasoning informed a code decision, add `# Why: <reasoning>` at the decision point.
+- When the user rejected a simpler alternative, add `# Not <alternative> because: <reason>`
+- Do not comment WHAT the code does — only WHY.
+- **The reader never saw the previous version.**
+  A comment or a doc may not explain the code by naming a state the tree does not hold — "not as a pile of timestamped files", "`restore` used to overwrite it whole".
+  That contrast belongs in the commit body, where the change itself lives.
+  Left in the tree it costs every later reader a paragraph about something that is not there, and gives them no way to tell which half of the sentence describes what they are looking at.
+- **`# Not <alternative> because:` means a live alternative** — one someone could still propose today, like "a copy per snapshot".
+  Not the implementation this change retired: putting that in the slot meant for a design choice is history again, this time wearing the form of a rule.
+
+### Git-friendly prose
+
+Prose tracked in git (Markdown, docs, commit bodies, README) must stay clean under diff.
+Git diffs by line.
+Reflow (rewrapping a paragraph to a width) moves line boundaries, so git marks the whole paragraph as changed even when only a word moved.
+That noise hides the real edit and ruins `blame`.
+
+- **A new Markdown document: one sentence per line.** Break the line where a sentence ends, never inside one (the standard name for this is *semantic line breaks*).
+  Rewording one sentence then changes one line, so the diff points at exactly what moved and `blame` stays precise.
+- **An edited document keeps its own convention.** Open it and look first.
+  If its paragraphs are single long lines, add single long lines; if it is one sentence per line, follow that.
+  Never convert a file from one style to the other while doing other work — that rewrites every line and buries the real change.
+  This file, `CLAUDE.md`, is one sentence per line: keep it so.
+- **Never wrap by width, in either style.** Don't set a `text-width` reflow on git-tracked prose.
+  Width-based wrapping (`gq`, `:reflow`) is for code comments under a column limit, not for prose.
+  Let the editor soft-wrap long lines on screen.
+  The user reads diffs with git-delta, which wraps long lines and highlights changes by word, so a long line is not a problem.
+- **Never use markdown tables.** Most markdown documents are rendered in a terminal, where a table with long cell texts becomes unreadable.
+- **A number in a living doc is a claim that goes stale.** A count in a CLAUDE.md, README, skill or todo is wrong after the next change, and nothing tells the reader.
+  Write the command that produces it, or a relation ("several times the hits"), instead of the number.
+  When the number itself is the point, date it and name its source: "counted on 2026-09-26 with `<command>`".
+  Why: a later agent reads the stale number as a claim, finds the mismatch, and asks the user to confirm a fix to something outside the task — a problem that should never have existed.
+
+### Straight quotes only — no « », no curly
+
+In prose you write (Markdown, docs, commit bodies, code), use the straight `"` for quotes.
+Never the Russian guillemets `« »`, never the curly `" "` / `„ "`.
+
+- Why: in helix the user selects a quoted span with `mi"`, which only works when the opening and closing character are the same.
+  With `« »` the pair is two different characters, so the selection fails.
+- Nested quotes: outer `"`, inner `'`.
+- This governs what you write.
+  Verbatim quotes from an outside source and derived/exported data (a corpus regenerated by a tool) keep their original characters.
+
+### Relative paths over Markdown links
+
+When pointing to another file in repo docs, prefer the bare relative path in backticks — `../install.md` — over a Markdown link like `[install.md](../install.md)`.
+
+- The path is the whole point; the link wrapper just adds noise and a second copy of the same string to keep in sync.
+- Use a real `[text](path)` link only when the link text says something the path doesn't, or when the doc is rendered somewhere the link must be clickable.
+
+## Communication
+
+- Be direct.
+  No flattery, no filler, no performative enthusiasm
+- When uncertain, say so plainly
+- Say whether a plan, a design, or code the user wrote holds before you show a better version of it.
+
+### Conciseness
+
+Your default is verbose; "be brief" alone does not counteract training.
+Violate any rule below only when the task genuinely requires it, and justify the excess in one line.
+
+- **Don't restate the diff.** Work-done confirmation is one line — the diff is the proof.
+  A commit body longer than its diff is wrong unless the reasoning is genuinely complex.
+  Same for PR descriptions and chat responses about code you just wrote.
+- **Don't trail every response with a recap.** End-of-turn summary, if warranted, is 1–2 sentences: what changed and what's next.
+  Not a bulleted table of contents.
+- **Don't narrate tool calls.** One sentence before the first call stating what you're about to do, then silent until there's a result, blocker, or direction change worth reporting.
+  Status updates mid-work are one sentence each.
+  No "let me check X", "now I'll Y", "running Z".
+- **Don't pad explanations.** Exploratory questions ("what should we do about X") get 2–3 sentences — a recommendation and the main tradeoff.
+  Prefer one concrete sentence over three abstract ones; prefer naming a file and line over describing where something lives.
+- **Don't list non-findings.** "I checked X and found nothing", "no conflicts elsewhere", "no other references" — absence is the default, report only presence.
+
+**Reconciling with Intent Preservation:** the mandatory commit body is not a loophole for bloat.
+Include the user's reasoning (paraphrased or verbatim), not your elaboration of it.
+1–3 sentences usually suffices; a single line when the trigger is clear and no new reasoning exists.
+
+### Commands for the host are written as dotnu embeds
+
+When you need something from the host machine, don't print commands verbatim.
+Just write a `dotnu embeds` script (see `/nushell-literate-programming`).

@@ -228,12 +228,11 @@ export def main [
     # Step 6 — append global Claude instructions to ~/.claude/CLAUDE.md
     #
     # Marker-wrapped and replaced in place, exactly like the env block in Step 0.
-    # A plain `save --append` converged only by hidden coupling: Step 4 deploys a
-    # fresh CLAUDE.md over this one (it is a row in dotfiles' paths-docker.csv),
-    # so the append landed on a clean file every time. Nothing stated or guarded
-    # that. Drop the CSV row or reorder the steps and the catalog starts
-    # stacking on every re-run, and verify.nu's `check-catalog` — a grep for one
-    # tool name — would go on passing while the file grew a copy per install.
+    # On a fresh machine this creates the file: dotfiles ships no CLAUDE.md, so the
+    # catalog is all of it, and a user's own instructions sit above the block.
+    # Not a plain `save --append` because: nothing else rewrites this file, so every
+    # re-run would stack one more copy, and verify.nu's `check-catalog` — a grep for
+    # one tool name — would go on passing.
     let claude_md = $nu.home-dir | path join '.claude' 'CLAUDE.md'
     mkdir ($claude_md | path dirname)
     let catalog = open --raw ($cozy_root | path join 'docker-files' 'global-claude.md')

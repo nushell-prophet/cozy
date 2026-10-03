@@ -157,8 +157,9 @@ Always `--docker` because cozy only vendors the docker paths file.
 Config sources live in the `dotfiles` repo — see [`modules.md`](modules.md).
 
 ### Step 6 — global Claude instructions
-Appends [`docker-files/global-claude.md`](../docker-files/global-claude.md) (the tool catalog) to `~/.claude/CLAUDE.md`, marker-wrapped (`# >>> cozy catalog >>>`) and replaced in place on a re-run — the same idiom as Step 0's env block.
-Before that it was a plain append, which converged only because Step 4 deploys a fresh `CLAUDE.md` over it first (a row in dotfiles' `paths-docker.csv`); nothing stated that coupling, and `verify.nu`'s `check-catalog` greps for a single tool name, so a stacking catalog would have gone on passing.
+Appends [`docker-files/global-claude.md`](../docker-files/global-claude.md) (the tool catalog and the working rules) to `~/.claude/CLAUDE.md`, marker-wrapped (`# >>> cozy catalog >>>`) and replaced in place on a re-run — the same idiom as Step 0's env block.
+Dotfiles ships no `CLAUDE.md`, so on a fresh machine this step creates the file and the catalog is all of it; a user's own instructions go above the block, and a re-run leaves them alone.
+Not a plain append, because nothing else rewrites the file: every re-run would stack a copy, and `verify.nu`'s `check-catalog` greps for a single tool name, so it would go on passing.
 
 ### Step 7 — broot init
 `broot --write-default-conf` + `--set-install-state installed` (moved here from the Dockerfile so host installs get it too).

@@ -86,5 +86,5 @@ Edit them freely.
 
 **Home & Claude**
 
-- `~/.claude/CLAUDE.md` — cozy's tool catalog is appended here
+- `~/.claude/CLAUDE.md` — cozy's tool catalog and working rules are appended here
 - `~/.claude.json` — Nushell's built-in MCP server (`nu --mcp`) is registered (gives the agent `evaluate` / `list_commands` / `command_help`)
