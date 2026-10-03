@@ -37,7 +37,8 @@ That staging copy is the external `^cp`, whose exit code raises: nushell's built
   Writes `~/.cargo/config.toml` (retries, long timeout, sparse registry) to survive the flaky sandbox proxy, and raises `RUSTUP_MAX_RETRIES` for the fetcher that config does not cover: rustup never reads `~/.cargo/config.toml`, and a pinned toolchain (zellij's `rust-toolchain.toml`) is downloaded by rustup *before* cargo fetches a crate, so the first download died on the proxy with rustup's default of 3 tries.
   Exported with `--env` so it reaches the caller — the failing download happens in the calling builder's process, not in this one.
 - **polars** — `nu_plugin_polars` from source, then `plugin add`.
-  Source because there's no packaged build matching the running `nu`.
+  `--github` instead takes the binary from the nushell release tarball whose tag equals the running `nu` version — never the latest release, because a plugin loads only into the `nu` it was built for.
+  A dev build of `nu` has no such release, so `--github` fails there and the source build stays the default.
 - **topiary** — binary via brew, but the tree-sitter-nu grammar `.so` is compiled by hand (clone + gcc) because `topiary prefetch`'s HTTP client can fail behind the sandbox proxy.
 - **zellij** — from source with `--no-default-features` to exclude `web_server_capability` (no web session sharing).
   `--low-resource-compilation` raises `codegen-units` and drops `opt-level` to 0 — the optimization passes are the dominant memory consumer.

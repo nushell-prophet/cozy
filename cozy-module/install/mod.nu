@@ -19,8 +19,10 @@ export def rust []: nothing -> nothing {
 
 # Install nu_plugin_polars and register it with Nushell
 @category cozy-install
-export def polars []: nothing -> nothing {
-    use polars.nu [ install ]; install
+export def polars [
+    --github # Download the prebuilt plugin from the nushell release matching the running nu
+]: nothing -> nothing {
+    use polars.nu [ install ]; install --github=$github
 }
 
 # Install topiary formatter with nushell support
