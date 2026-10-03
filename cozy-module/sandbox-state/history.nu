@@ -45,7 +45,8 @@ export def seed []: nothing -> nothing {
 export def snapshot [
     path?: path # Output file (default: $env.WORKSPACE_DIR/sandbox-state/history-<timestamp>.nuon)
 ]: nothing -> nothing {
-    let out = $path | default (sandbox-state-path $"history-(date now | format date '%Y%m%d-%H%M%S').nuon")
+    # A closure, so the workspace is needed only when no path is given.
+    let out = $path | default { sandbox-state-path $"history-(date now | format date '%Y%m%d-%H%M%S').nuon" }
     let db = $history_db | path expand
     if not ($db | path exists) {
         error make --unspanned {msg: $"history database not found: ($db)"}

@@ -28,7 +28,7 @@ export def snapshot [
     if not ($src | path exists) {
         error make --unspanned {msg: $"projects directory not found: ($src)"}
     }
-    let dst = $path | default (sandbox-state-path 'projects')
+    let dst = $path | default { sandbox-state-path 'projects' }
     mkdir $dst
     ^rsync -a --exclude='.DS_Store' $"($src)/" $"($dst)/"
     let count = ls $src | where type == dir | length
@@ -43,7 +43,7 @@ export def snapshot [
 export def restore [
     path?: path # Input directory (default: $env.WORKSPACE_DIR/sandbox-state/projects)
 ]: nothing -> nothing {
-    let src = $path | default (sandbox-state-path 'projects')
+    let src = $path | default { sandbox-state-path 'projects' }
     if not ($src | path exists) {
         error make --unspanned {msg: $"projects directory not found: ($src)"}
     }
