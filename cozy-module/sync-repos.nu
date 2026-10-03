@@ -23,10 +23,8 @@ def remote-head-branch []: nothing -> string {
 # fetch and fast-forward when it is safe.
 @category cozy
 export def main []: nothing -> nothing {
-    open $manifest
-    | each {|row|
+    for row in (open $manifest) {
         let name = $row.name
-        let url = $row.url
         let dir = $base | path join $name
 
         # Why: `cozy dev-link` replaces ~/repos/<name> with a symlink into the
@@ -36,7 +34,7 @@ export def main []: nothing -> nothing {
         # sync-repos.
         if ($dir | path type) == 'symlink' {
             print $"  (ansi yellow)($name)(ansi reset): dev-linked, skipping \(managed in workspace, not by sync-repos)"
-            return
+            continue
         }
 
         mkdir $dir
@@ -51,11 +49,11 @@ export def main []: nothing -> nothing {
             # Not `pull --ff-only` because that re-fetches; merge reuses the fetch.
             try { ^git fetch origin } catch {
                 print $"  (ansi yellow)($name)(ansi reset): cannot reach remote, skipping"
-                return
+                continue
             }
-            if (^git status --porcelain | str trim) != '' {
+            if (^git status --porcelain | is-not-empty) {
                 print $"  (ansi yellow)($name)(ansi reset): local changes — fetched, not fast-forwarding"
-                return
+                continue
             }
             try {
                 ^git merge --ff-only '@{upstream}'
@@ -68,17 +66,16 @@ export def main []: nothing -> nothing {
         } else {
             print $"  (ansi cyan)($name)(ansi reset): init + fetch"
             cd $dir
-            ^git init -b main
-            ^git remote add origin $url
+            ^git init --initial-branch main
+            ^git remote add origin $row.url
             ^git fetch origin
             let branch = try { remote-head-branch } catch {
                 print $"  (ansi yellow)($name)(ansi reset): cannot detect remote HEAD branch, skipping"
-                return
+                continue
             }
             ^git reset --hard $"origin/($branch)"
-            ^git branch -M $branch
-            ^git branch -u $"origin/($branch)"
+            ^git branch --move --force $branch
+            ^git branch --set-upstream-to $"origin/($branch)"
         }
     }
-    | ignore
 }

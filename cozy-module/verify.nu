@@ -103,9 +103,15 @@ def expected-dirs []: nothing -> list<string> {
 def expected-envs []: nothing -> record {
     open --raw $bootstrap
     | parse --regex '(?m)export[ \t]+(?<k>\w+)="(?<v>[^"]*)"'
-    | reduce --fold {} {|row acc|
-        $acc | insert $row.k ($row.v | str replace --all '$HOME' $home)
-    }
+    | update v { str replace --all '$HOME' $home }
+    | rows-to-record
+}
+
+# `k`/`v` rows to a record. Not `transpose --as-record` because: `insert` raises
+# on a duplicate key where transpose keeps the first one silently, and an empty
+# input stays a record instead of turning into a list.
+def rows-to-record []: table -> record {
+    reduce --fold {} {|row acc| $acc | insert $row.k $row.v }
 }
 
 # The agent's identity, parsed from bootstrap.nu's `agent_env` record — the one
@@ -118,9 +124,8 @@ def expected-agent-env []: nothing -> record {
     | get --optional body.0
     | default ''
     | parse --regex '(?m)^\s+(?<k>\w+): "(?<v>[^"]*)"'
-    | reduce --fold {} {|row acc|
-        $acc | insert $row.k ($row.v | str replace --all '$HOME' $home)
-    }
+    | update v { str replace --all '$HOME' $home }
+    | rows-to-record
 }
 
 # The suite asserts no row count, and `glob` on a missing directory returns []
@@ -174,7 +179,7 @@ def check-dirs [run: closure]: nothing -> list {
 # already: every agent commit in the Debian image was authored `Agent
 # <agent@sandbox>` while these rows stayed green.
 #
-# Scrubbed with `env -u` before reading, because a child bash inherits its
+# Scrubbed with `env --unset` before reading, because a child bash inherits its
 # parent's environment: run from any shell that already has XDG_DATA_HOME —
 # every interactive session, `sbx exec -it <name> nu`, `docker compose exec` —
 # and all rows passed with BASH_ENV unset and nothing sourcing the block.
@@ -183,11 +188,11 @@ def check-dirs [run: closure]: nothing -> list {
 # test, not a value under test.
 def check-envs [run: closure]: nothing -> list {
     let want = expected-envs
-    let scrub = $want | columns | each {|k| [-u $k] } | flatten
+    let scrub = $want | columns | each {|k| [--unset $k] } | flatten
     let actual = (do $run ([env] ++ $scrub ++ [bash -c printenv])).stdout
         | lines
         | parse '{k}={v}'
-        | reduce --fold {} {|row acc| $acc | insert $row.k $row.v }
+        | rows-to-record
     $want | items {|name expected|
         let got = $actual | get --optional $name
         if $got == null {
@@ -277,13 +282,13 @@ def check-bootstrap-parses [run: closure]: nothing -> record {
 
 # The tool catalog (bootstrap step 6) was appended to the global CLAUDE.md.
 def check-catalog [run: closure]: nothing -> record {
-    let r = do $run [grep -c fd ($home | path join .claude CLAUDE.md)]
+    let r = do $run [grep --count fd ($home | path join .claude CLAUDE.md)]
     if $r.exit == 0 { ok 'CLAUDE.md catalog' } else { fail 'CLAUDE.md catalog' 'tool catalog (step 6) not appended' }
 }
 
 # topiary formats a .nu file, so the grammar and query symlink are in place.
 def check-topiary [run: closure]: nothing -> record {
-    let r = do $run [nu -c "'def main [] { 1 }' | save --force /tmp/cozy-verify.nu; topiary format /tmp/cozy-verify.nu"]
+    let r = do $run [nu --commands "'def main [] { 1 }' | save --force /tmp/cozy-verify.nu; topiary format /tmp/cozy-verify.nu"]
     if $r.exit == 0 { ok 'topiary formats .nu' } else { fail 'topiary formats .nu' 'grammar/symlink missing (bootstrap step 8)' }
 }
 
@@ -304,10 +309,10 @@ def check-git-xdg [run: closure]: nothing -> record {
 # in a cozy-dev sandbox, and plain COPYs (no .git) under the Dockerfile.
 def check-git-ignore [run: closure]: nothing -> record {
     do $run [nu ($autoload_dir | path join git-global-ignore.nu)] | ignore
-    let want = (do $run [cat ($home | path join .config git ignore)]).stdout | lines | where ($it | str trim | is-not-empty)
+    let want = (do $run [cat ($home | path join .config git ignore)]).stdout | lines | where $it =~ '\S'
     if ($want | is-empty) { return (fail 'git ignore: patterns' 'canonical ~/.config/git/ignore missing or empty') }
     let tmp = '/tmp/cozy-verify-ignore'
-    do $run [git init -q $tmp] | ignore
+    do $run [git init --quiet $tmp] | ignore
     let r = do $run ([git -C $tmp check-ignore] | append $want)
     let got = $r.stdout | lines
     let unignored = $want | where $it not-in $got
@@ -327,11 +332,11 @@ def check-tls-passthrough [run: closure]: nothing -> list {
     # refuses the CONNECT instead of forging a cert). Nothing to compare against
     # then, but the handshake still runs: it is this suite's only positive
     # control, the one check that proves an allowlisted host is truly reachable.
-    let ca_cn = (do $run [bash -lc 'printenv PROXY_CA_CERT_B64 | base64 -d | openssl x509 -noout -subject -nameopt RFC2253']).stdout
+    let ca_cn = (do $run [bash --login -c 'printenv PROXY_CA_CERT_B64 | base64 --decode | openssl x509 -noout -subject -nameopt RFC2253']).stdout
         | parse --regex 'CN=(?<cn>[^,]+)'
         | get --optional cn.0
     $tls_passthrough_hosts | each {|h|
-        let r = do $run [bash -lc $"curl -sS -o /dev/null -v https://($h) 2>&1"]
+        let r = do $run [bash --login -c $"curl --silent --show-error --output /dev/null --verbose https://($h) 2>&1"]
         let issuer = $r.stdout
             | lines
             | where $it =~ '^\*\s+issuer:'
@@ -354,7 +359,7 @@ def check-tls-passthrough [run: closure]: nothing -> list {
 # "never got an answer" and is returned as-is — the callers below read those two
 # cases very differently, so they must not collapse into one.
 def http-code [run: closure cmd: string]: nothing -> any {
-    (do $run [bash -lc $cmd]).stdout
+    (do $run [bash --login -c $cmd]).stdout
     | str trim
     | parse --regex '^(?<n>\d{3})$'
     | get --optional n.0
@@ -372,35 +377,30 @@ def http-code [run: closure cmd: string]: nothing -> any {
 #     refusal (403 block page) stays distinguishable from a proxy that is simply
 #     down (no status). A broken firewall must fail, never pass.
 def check-egress-cage [run: closure]: nothing -> list {
-    let direct = http-code $run $"curl -sS --noproxy '*' --max-time 10 -o /dev/null -w '%{http_code}' ($egress_direct_probe)"
-    let route = if $direct == null {
-        fail 'egress: no direct route' 'could not probe — no usable curl'
-    } else if $direct == '000' {
-        ok 'egress: no direct route' $"($egress_direct_probe) gave no answer without the proxy"
-    } else {
-        fail 'egress: no direct route' $"($egress_direct_probe) answered ($direct) with the proxy bypassed — traffic can leave unfiltered"
+    let direct = http-code $run $"curl --silent --show-error --noproxy '*' --max-time 10 --output /dev/null --write-out '%{http_code}' ($egress_direct_probe)"
+    let route = match $direct {
+        null => (fail 'egress: no direct route' 'could not probe — no usable curl')
+        '000' => (ok 'egress: no direct route' $"($egress_direct_probe) gave no answer without the proxy")
+        _ => (fail 'egress: no direct route' $"($egress_direct_probe) answered ($direct) with the proxy bypassed — traffic can leave unfiltered")
     }
 
-    # Pointed at the proxy with -x rather than left to the environment: curl
+    # Pointed at the proxy with --proxy rather than left to the environment: curl
     # honours only the lowercase `http_proxy` for http URLs (httpoxy), and sbx
     # sets just the uppercase one, so an env-driven canary would skip the proxy
     # entirely and fail on DNS instead of testing anything.
-    let proxy = (do $run [bash -lc 'printenv HTTPS_PROXY https_proxy HTTP_PROXY http_proxy']).stdout
+    let proxy = (do $run [bash --login -c 'printenv HTTPS_PROXY https_proxy HTTP_PROXY http_proxy']).stdout
         | lines
         | get --optional 0
         | default ''
     let deny = if ($proxy | is-empty) {
         fail 'egress: default deny' 'no *_PROXY set — there is no filtered exit at all'
     } else {
-        let canary = http-code $run $"curl -sS -x ($proxy) --max-time 20 -o /dev/null -w '%{http_code}' ($egress_canary)"
-        if $canary == null {
-            fail 'egress: default deny' 'could not probe — no usable curl'
-        } else if $canary == '000' {
-            fail 'egress: default deny' $"no answer for ($egress_canary) — a refusal would be a 403; ($proxy) looks down"
-        } else if ($canary | into int) >= 400 {
-            ok 'egress: default deny' $"($egress_canary) blocked with ($canary)"
-        } else {
-            fail 'egress: default deny' $"($egress_canary) fetched ($canary) — the allowlist is not in force"
+        let canary = http-code $run $"curl --silent --show-error --proxy ($proxy) --max-time 20 --output /dev/null --write-out '%{http_code}' ($egress_canary)"
+        match $canary {
+            null => (fail 'egress: default deny' 'could not probe — no usable curl')
+            '000' => (fail 'egress: default deny' $"no answer for ($egress_canary) — a refusal would be a 403; ($proxy) looks down")
+            $c if ($c | into int) >= 400 => (ok 'egress: default deny' $"($egress_canary) blocked with ($c)")
+            _ => (fail 'egress: default deny' $"($egress_canary) fetched ($canary) — the allowlist is not in force")
         }
     }
 
@@ -439,9 +439,7 @@ export def run-checks [run: closure]: nothing -> table {
 @category cozy-verify
 export def local-runner []: nothing -> closure {
     {|argv|
-        let cmd = $argv | first
-        let rest = $argv | skip 1
-        let r = try { run-external $cmd ...$rest | complete } catch { {stdout: '' exit_code: 127} }
+        let r = try { run-external ...$argv | complete } catch { {stdout: '' exit_code: 127} }
         {stdout: ($r.stdout | str trim) exit: $r.exit_code}
     }
 }

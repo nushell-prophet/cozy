@@ -15,13 +15,7 @@ export def main [] { help nu-plugin-image }
 # Installs Rust automatically if not already present.
 # Safe to re-run — pulls latest matching tag and rebuilds.
 export def install []: nothing -> nothing {
-    let cargo_bin = $nu.home-dir | path join .cargo bin
-
-    # Ensure Rust is installed
     rust install
-    if $cargo_bin not-in $env.PATH {
-        $env.PATH = ($env.PATH | prepend $cargo_bin)
-    }
 
     let repo_dir = $nu.home-dir | path join git nu_plugin_image
     if not ($repo_dir | path exists) {
@@ -35,23 +29,18 @@ export def install []: nothing -> nothing {
     ^git fetch --tags
 
     # Plugin versions track Nushell versions — build the matching tag.
-    let nu_ver = version | get version
-    let tag = $"v($nu_ver)"
+    let tag = $"v(version | get version)"
     print $"  Checking out ($tag)..."
     ^git checkout $tag
 
     print $"  Building nu_plugin_image ($tag) — this may take a few minutes..."
-    # -j 1 to avoid OOM in sandbox VMs (limited RAM).
+    # --jobs 1 to avoid OOM in sandbox VMs (limited RAM).
     # Not thin LTO because: even thin LTO OOM-kills the linker in sandbox VMs.
-    ^cargo build --release --locked -j 1 --config 'profile.release.lto=false'
+    ^cargo build --release --locked --jobs 1 --config 'profile.release.lto=false'
 
     let bin = $repo_dir | path join target release nu_plugin_image
-    let dest = $cargo_bin | path join nu_plugin_image
+    let dest = $rust.cargo_bin | path join nu_plugin_image
     _install-binary $bin $dest
-
-    if $cargo_bin not-in $env.PATH {
-        $env.PATH = ($env.PATH | prepend $cargo_bin)
-    }
 
     print "  Registering plugin..."
     plugin add $dest

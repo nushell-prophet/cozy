@@ -1,3 +1,4 @@
+use rust.nu
 use _nu-release.nu
 
 # Show the help of this module; `install` runs the nu_plugin_polars build.
@@ -16,8 +17,7 @@ export def main [] { help polars }
 export def install [
     --github # Download the prebuilt plugin from the nushell release matching the running nu
 ]: nothing -> nothing {
-    let cargo_bin = $nu.home-dir | path join .cargo bin
-    let plugin_path = $cargo_bin | path join nu_plugin_polars
+    let plugin_path = $rust.cargo_bin | path join nu_plugin_polars
 
     if $github {
         # Why the running version, never the latest release: a plugin loads only
@@ -26,19 +26,14 @@ export def install [
         _nu-release $version nu_plugin_polars $plugin_path
         print $"  (ansi green)nu_plugin_polars(ansi reset): installed ($version)"
     } else {
-        # Ensure Rust is installed
-        use rust.nu
         rust install
-        if $cargo_bin not-in $env.PATH {
-            $env.PATH = ($env.PATH | prepend $cargo_bin)
-        }
 
         if ($plugin_path | path exists) {
             print $"  (ansi green)nu_plugin_polars(ansi reset): already installed"
         } else {
             print "  Installing nu_plugin_polars (this may take several minutes)..."
-            # -j 1 to avoid OOM in sandbox VMs (limited RAM).
-            ^cargo install nu_plugin_polars --locked -j 1
+            # --jobs 1 to avoid OOM in sandbox VMs (limited RAM).
+            ^cargo install nu_plugin_polars --locked --jobs 1
             print $"  (ansi green)nu_plugin_polars(ansi reset): installed"
         }
     }

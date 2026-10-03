@@ -11,6 +11,8 @@
 # timestamped branch, and merging those branches is manual. No engineering here — skipping several
 # rounds costs nothing while the commits are in the history.
 
+use paths.nu *
+
 const global_claude_dir = '~/.claude'
 const remote_name = 'sb-snapshot'
 const tracked_file = 'CLAUDE.md'
@@ -18,17 +20,14 @@ const own_branch = 'global-claude'
 
 # The history repo inside the mounted workspace; errors when no workspace is mounted.
 def history-repo []: nothing -> path {
-    if $env.WORKSPACE_DIR? == null {
-        error make --unspanned {msg: "WORKSPACE_DIR not set — sandbox-state requires a mounted workspace"}
-    }
-    $env.WORKSPACE_DIR | path join sandbox-state global-claude-history
+    sandbox-state-dir | path join global-claude-history
 }
 
 # Whether a git command in `dir` succeeds, with its output discarded.
 # The arguments come as a list, not as rest args, because: nushell reads any `-x`/`--x` among rest
 # args as a flag of this command and refuses to parse it as data for git.
-def git-ok [dir: path, args: list<string>]: nothing -> bool {
-    (do { ^git -C $dir ...$args } | complete | get exit_code) == 0
+def git-ok [dir: path args: list<string>]: nothing -> bool {
+    (^git -C $dir ...$args | complete).exit_code == 0
 }
 
 # Remote-tracking branches of the history repo that already contain the checked-out commit.

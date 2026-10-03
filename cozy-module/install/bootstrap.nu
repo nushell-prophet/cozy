@@ -31,6 +31,7 @@
 #                and ~/repos/. Also needed to recover from a partial
 #                first-run failure (stamp file not yet written).
 
+use rust.nu
 use topiary.nu
 use claude.nu
 
@@ -108,7 +109,7 @@ export def main [
         let existing = which pbcopy | get --optional path.0
         if $existing in [null $shim] {
             mkdir $local_bin
-            ^install -m 755 ($cozy_root | path join 'docker-files' 'pbcopy') $shim
+            ^install --mode=755 ($cozy_root | path join 'docker-files' 'pbcopy') $shim
         }
     }
 
@@ -120,7 +121,7 @@ export def main [
     # installed later, it's already missing from those PATHs, and new zellij
     # tabs keep resolving `nu` to the brew binary. Creating it up front keeps
     # it in PATH from the first shell.
-    mkdir ($nu.home-dir | path join '.cargo' 'bin')
+    mkdir $rust.cargo_bin
 
     # Step 1 — brew installs
     if (which brew | is-empty) {
@@ -206,7 +207,7 @@ export def main [
     # the current run is stale (e.g. an entry removed upstream). Without
     # this, re-runs accumulated removed-upstream autoload files indefinitely.
     let autoload_dst = $nu.home-dir | path join '.config' 'nushell' 'autoload'
-    if ($autoload_dst | path exists) { rm --recursive --force $autoload_dst }
+    rm --recursive --force $autoload_dst
     mkdir $autoload_dst
     for f in (glob ($cozy_root | path join 'docker-files' 'nushell-autoload' '*.nu')) {
         ^cp $f $autoload_dst
@@ -236,17 +237,7 @@ export def main [
     let claude_md = $nu.home-dir | path join '.claude' 'CLAUDE.md'
     mkdir ($claude_md | path dirname)
     let catalog = open --raw ($cozy_root | path join 'docker-files' 'global-claude.md')
-    let block = $"# >>> cozy catalog >>>\n($catalog)\n# <<< cozy catalog <<<\n"
-    let existing = if ($claude_md | path exists) { open --raw $claude_md } else { '' }
-    let marker_re = '(?ms)# >>> cozy catalog >>>.*?# <<< cozy catalog <<<\n?'
-    # `$` -> `$$` for the same reason as the env block: str replace --regex reads
-    # `$name` in the replacement as a capture-group backref.
-    let updated = if ($existing =~ $marker_re) {
-        $existing | str replace --regex $marker_re ($block | str replace --all '$' '$$')
-    } else {
-        $existing + "\n" + $block
-    }
-    $updated | save --force $claude_md
+    upsert-marked-block $claude_md 'cozy catalog' $"($catalog)\n" --separator "\n"
 
     # Step 7 — broot init (so host gets it too)
     let xdg_config = $env.XDG_CONFIG_HOME? | default ($nu.home-dir | path join '.config')
@@ -293,9 +284,7 @@ export def main [
     # dotfiles settings.json here, and merging into the existing `env` leaves any
     # variable cozy does not own alone.
     let settings = $nu.home-dir | path join '.claude' 'settings.json'
-    let expanded = $agent_env
-        | items {|k v| {$k: ($v | str replace '$HOME' $nu.home-dir)} }
-        | reduce --fold {} {|it acc| $acc | merge $it }
+    let expanded = $agent_env | update cells { str replace '$HOME' $nu.home-dir }
     let current = if ($settings | path exists) { open $settings } else { {} }
     mkdir ($settings | path dirname)
     $current | upsert env (($current.env? | default {}) | merge $expanded) | save --force $settings
@@ -335,17 +324,9 @@ def check-no-clobber []: nothing -> nothing {
     if ($stamp | path exists) { return }
 
     let xdg_config = $env.XDG_CONFIG_HOME? | default ($nu.home-dir | path join '.config')
-    let candidates = [
-        ($xdg_config | path join 'nushell')
-        ($xdg_config | path join 'helix')
-        ($xdg_config | path join 'zellij')
-        ($xdg_config | path join 'lazygit')
-        ($xdg_config | path join 'broot')
-        ($xdg_config | path join 'jj')
-        ($xdg_config | path join 'git')
-        ($nu.home-dir | path join '.claude')
-        ($nu.home-dir | path join 'repos')
-    ]
+    let candidates = [nushell helix zellij lazygit broot jj git]
+        | each {|d| $xdg_config | path join $d }
+        | append ([.claude repos] | each {|d| $nu.home-dir | path join $d })
     let existing = $candidates
         | where {|p|
             ($p | path exists) and (
@@ -378,10 +359,7 @@ def setup-docker-system []: nothing -> nothing {
     # live in the same dir and are user state, not collidable config. The
     # whole-dir wipe destroyed shell history every re-run.
     let nu_config = $nu.home-dir | path join '.config' 'nushell'
-    for f in ['config.nu' 'env.nu'] {
-        let p = $nu_config | path join $f
-        if ($p | path exists) { rm $p }
-    }
+    rm --force ($nu_config | path join 'config.nu') ($nu_config | path join 'env.nu')
     # Autoload dir wipe is in main (runs on host too) — see step before
     # the autoload copy. Not duplicated here.
 
@@ -413,8 +391,8 @@ def setup-docker-system []: nothing -> nothing {
     # included) — apt packages install without theirs, because the slim base
     # keeps a dpkg `path-exclude /usr/share/man/*`.
     ^sudo apt-get update
-    ^sudo apt-get install -y --no-install-recommends procps file gcc libc6-dev xxd man-db
-    ^sudo rm -rf /var/lib/apt/lists/*
+    ^sudo apt-get install --yes --no-install-recommends procps file gcc libc6-dev xxd man-db
+    ^sudo rm --recursive --force /var/lib/apt/lists/*
 
     # Runtime env exports (the sandbox shell sources this file on each login).
     # Plain `save`, no sudo: the file is agent-owned while bootstrap runs —
@@ -440,23 +418,31 @@ export LANG="C.UTF-8"
 # No apostrophe anywhere in this block: it is a single-quoted nushell string, and one would close it early — the parse then fails far below, pointing at innocent lines.
 case $- in *i*) [ -t 1 ] && [ -z "$COZY_MOTD_SHOWN" ] && { export COZY_MOTD_SHOWN=1; [ -f "$HOME/repos/cozy/docker-files/logo.ans" ] && cat "$HOME/repos/cozy/docker-files/logo.ans"; echo "cozy ready — run nu to start"; } ;; esac
 '
-    # Wrap with markers so re-runs replace the block in place instead of
-    # `save --append`-ing a duplicate copy on every bootstrap invocation.
-    let block = $"# >>> cozy env >>>\n($env_exports)# <<< cozy env <<<\n"
-    let target = '/etc/sandbox-persistent.sh'
-    let existing = if ($target | path exists) { open --raw $target } else { '' }
-    let marker_re = '(?ms)# >>> cozy env >>>.*?# <<< cozy env <<<\n?'
+    upsert-marked-block '/etc/sandbox-persistent.sh' 'cozy env' $env_exports
+}
+
+# Replace the `# >>> name >>>` … `# <<< name <<<` block in `file`, or append it
+# when absent, so a re-run updates the block in place instead of
+# `save --append`-ing a duplicate copy on every bootstrap invocation.
+def upsert-marked-block [
+    file: path
+    name: string
+    body: string # Text between the markers, ending in a newline
+    --separator: string = '' # Put before the block when it is appended
+]: nothing -> nothing {
+    let block = $"# >>> ($name) >>>\n($body)# <<< ($name) <<<\n"
+    let existing = if ($file | path exists) { open --raw $file } else { '' }
+    let marker_re = '(?ms)# >>> ' + $name + ' >>>.*?# <<< ' + $name + ' <<<\n?'
     let updated = if ($existing =~ $marker_re) {
         # Why: str replace --regex treats `$name` in the replacement as a
         # capture-group backref (regex crate convention), which would eat
         # the literal `$HOME` in our exports. Escape `$` -> `$$` so the
         # replacement keeps `$HOME` etc. intact.
-        let escaped = $block | str replace --all '$' '$$'
-        $existing | str replace --regex $marker_re $escaped
+        $existing | str replace --regex $marker_re ($block | str replace --all '$' '$$')
     } else {
-        $existing + $block
+        $existing + $separator + $block
     }
-    $updated | save --force $target
+    $updated | save --force $file
 }
 
 # Place vendored modules under ~/repos/<repo>/<module>/.
@@ -478,21 +464,21 @@ def populate-repos []: nothing -> nothing {
         mkdir $cozy_dst
         for sub in [cozy-module docker-files] {
             let dst = $cozy_dst | path join $sub
-            if ($dst | path exists) { rm --recursive --force $dst }
+            rm --recursive --force $dst
             ^cp -r ($cozy_root | path join $sub) $dst
         }
     }
 
     let vendor_src = if ('/tmp/vendor' | path exists) { '/tmp/vendor' } else { $cozy_root | path join 'vendor' }
-    if (glob ($vendor_src | path join '*') | is-empty) {
+    let entries = glob ($vendor_src | path join '*')
+    if ($entries | is-empty) {
         # Why: vendor/ is committed and ships with every checkout; run-install.sh
         # only runs from inside one. Empty here can only mean a corrupt checkout —
         # surface it, don't silently re-fetch (that masks the corruption).
         error make {msg: $"vendor source is empty: ($vendor_src) — corrupt checkout; run toolkit/vendor.nu to repopulate vendor/"}
     }
-    for entry in (glob ($vendor_src | path join '*')) {
-        let dst = $repos_dir | path join ($entry | path basename)
-        if ($dst | path exists) { rm --recursive --force $dst }
+    for entry in $entries {
+        rm --recursive --force ($repos_dir | path join ($entry | path basename))
         ^cp -r $entry $repos_dir
     }
 }

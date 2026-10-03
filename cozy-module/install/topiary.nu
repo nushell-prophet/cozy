@@ -37,12 +37,11 @@ export def install []: nothing -> nothing {
 
     # 3. Copy languages.ncl (with the indent override), symlink queries/nu.scm
     let config_dir = $nu.home-dir | path join .config topiary
-    mkdir $config_dir
     mkdir ($config_dir | path join queries)
 
     # Copy languages.ncl and override indent to 4 spaces
     let lang_ncl = $config_dir | path join languages.ncl
-    let lang_src = [$repo_dir languages.ncl] | path join
+    let lang_src = $repo_dir | path join languages.ncl
     if ($lang_ncl | path exists) {
         print $"  (ansi green)languages.ncl(ansi reset): exists"
     } else {
@@ -55,7 +54,7 @@ export def install []: nothing -> nothing {
 
     # Symlink query file
     let scm_link = $config_dir | path join queries nu.scm
-    let scm_target = [$repo_dir queries nu.scm] | path join
+    let scm_target = $repo_dir | path join queries nu.scm
     if ($scm_link | path type) == "symlink" {
         print $"  (ansi green)queries/nu.scm(ansi reset): symlink exists"
     } else {
@@ -67,7 +66,7 @@ export def install []: nothing -> nothing {
     # 4. Build tree-sitter grammar for topiary cache.
     #    topiary prefetch uses its own HTTP client which may fail behind proxies,
     #    so we clone via git and compile the .so ourselves.
-    let rev = open ($repo_dir | path join languages.ncl)
+    let rev = open --raw $lang_src
         | parse --regex 'rev\s*=\s*"(?P<rev>[0-9a-f]+)"'
         | get rev.0
     let cache_dir = $nu.home-dir | path join .cache topiary nu
@@ -80,7 +79,7 @@ export def install []: nothing -> nothing {
                 "linux" => {
                     print "  Installing gcc (needed to compile tree-sitter grammar)..."
                     ^sudo apt-get update
-                    ^sudo apt-get install -y gcc libc6-dev
+                    ^sudo apt-get install --yes gcc libc6-dev
                 }
                 "macos" => {
                     error make {msg: "gcc not found — install Xcode Command Line Tools: xcode-select --install"}

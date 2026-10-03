@@ -1,3 +1,5 @@
+use paths.nu *
+
 const history_db = '~/.config/nushell/history.sqlite3'
 # The columns nushell itself surfaces (`history --long`), minus the ids.
 # Why: session_id groups the commands of one shell sitting, and hostname says
@@ -8,19 +10,13 @@ const history_db = '~/.config/nushell/history.sqlite3'
 const history_columns = "command_line, cwd, start_timestamp, duration_ms, exit_status, session_id, hostname"
 const seed_file = path self | path dirname | path join .. history-seed.nuon
 
-# The sandbox-state directory inside the mounted workspace; errors when no workspace is mounted.
-def sandbox-state-dir []: nothing -> path {
-    if $env.WORKSPACE_DIR? == null {
-        error make --unspanned {msg: "WORKSPACE_DIR not set — sandbox-state requires a mounted workspace"}
+# The nushell history database; errors when it does not exist.
+def history-db []: nothing -> path {
+    let db = $history_db | path expand
+    if not ($db | path exists) {
+        error make --unspanned {msg: $"history database not found: ($db)"}
     }
-    $env.WORKSPACE_DIR | path join sandbox-state
-}
-
-# Path of a file under sandbox-state, creating the directory when missing.
-def sandbox-state-path [filename: string]: nothing -> path {
-    let dir = sandbox-state-dir
-    mkdir $dir
-    $dir | path join $filename
+    $db
 }
 
 # Seed nushell history with useful commands from the bundled seed file.
@@ -47,10 +43,7 @@ export def snapshot [
 ]: nothing -> nothing {
     # A closure, so the workspace is needed only when no path is given.
     let out = $path | default { sandbox-state-path $"history-(date now | format date '%Y%m%d-%H%M%S').nuon" }
-    let db = $history_db | path expand
-    if not ($db | path exists) {
-        error make --unspanned {msg: $"history database not found: ($db)"}
-    }
+    let db = history-db
     let items = open $db | query db $"SELECT ($history_columns) FROM history ORDER BY id"
     if ($items | is-empty) {
         print 'No history items to snapshot'
@@ -73,21 +66,18 @@ export def snapshot [
 export def restore [
     path?: path # Input file (default: latest history-*.nuon in $env.WORKSPACE_DIR/sandbox-state/)
 ]: nothing -> nothing {
-    let src = if $path != null { $path } else {
-        let dir = sandbox-state-dir
-        let files = glob ($dir | path join 'history-*.nuon') | sort
-        if ($files | is-empty) {
-            error make --unspanned {msg: $"no history snapshots found in ($dir)"}
+    let src = $path | default {
+            let dir = sandbox-state-dir
+            let files = glob ($dir | path join 'history-*.nuon') | sort
+            if ($files | is-empty) {
+                error make --unspanned {msg: $"no history snapshots found in ($dir)"}
+            }
+            $files | last
         }
-        $files | last
-    }
     if not ($src | path exists) {
         error make --unspanned {msg: $"file not found: ($src)"}
     }
-    let db = $history_db | path expand
-    if not ($db | path exists) {
-        error make --unspanned {msg: $"history database not found: ($db)"}
-    }
+    let db = history-db
     let items = open $src
     if ($items | is-empty) {
         print 'No history items to restore'
@@ -130,10 +120,7 @@ export def restore [
     # instead of once per row. Chunk size 100 keeps the bound-parameter count
     # (7 per row, so 700) under SQLite's limit on every build (999 before 3.32,
     # 32766 after).
-    $new_items
-    | sort-by start_timestamp
-    | chunks 100
-    | each {|batch|
+    for batch in ($new_items | sort-by start_timestamp | chunks 100) {
         let placeholders = $batch | each { "(?, ?, ?, ?, ?, ?, ?)" } | str join ', '
         let params = $batch
             | each {|row|
@@ -153,7 +140,6 @@ export def restore [
             | flatten
         open $db | query db $"INSERT INTO history \(($history_columns)\) VALUES ($placeholders)" --params $params
     }
-    | ignore
 
     let total = open $db | query db "SELECT count(*) AS n FROM history" | get 0.n
     let skipped = ($items | length) - ($new_items | length)

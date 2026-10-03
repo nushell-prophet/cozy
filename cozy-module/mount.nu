@@ -1,17 +1,3 @@
-# Immediate subdirectories that are git repos.
-def git-subdirs []: nothing -> list<string> {
-    ls | where type == dir
-    | where ($it.name | path join .git | path exists)
-    | get name
-}
-
-# Immediate subdirectories that are not git repos.
-def non-git-subdirs []: nothing -> list<string> {
-    ls | where type == dir
-    | where not ($it.name | path join .git | path exists)
-    | get name
-}
-
 # Idempotent git init for multi-repo workspaces.
 # Registers git subdirs as submodules, ignores non-git subdirs.
 # Safe to re-run after adding new dirs.
@@ -23,7 +9,8 @@ export def init []: nothing -> nothing {
     # sandbox create narrows it). Edit one, check the other two.
     ^git config --global safe.directory '*'
 
-    let repos = git-subdirs
+    let dirs = ls | where type == dir | get name
+    let repos = $dirs | where ($it | path join .git | path exists)
     if ($repos | is-empty) {
         error make --unspanned {msg: 'no git repos found in subdirectories'}
     }
@@ -59,27 +46,26 @@ export def init []: nothing -> nothing {
     | save --force .gitmodules
 
     # register new submodules
-    $new_repos | each {|name|
-        ^git config -f .git/config $'submodule.($name).url' $'./($name)'
-        ^git config -f .git/config $'submodule.($name).active' true
+    for name in $new_repos {
+        ^git config --file .git/config $'submodule.($name).url' $'./($name)'
+        ^git config --file .git/config $'submodule.($name).active' true
         let commit = ^git -C $name rev-parse HEAD | str trim
         ^git update-index --add --cacheinfo 160000 $commit $name
     }
 
     # .gitignore
-    [.DS_Store ...(non-git-subdirs)]
+    [.DS_Store ...($dirs | where $it not-in $repos)]
     | str join (char nl)
     | save --force .gitignore
 
-    ^git add .gitmodules .gitignore
-    glob *.md | each { ^git add $in }
+    ^git add .gitmodules .gitignore ...(glob *.md)
 
     let msg = if $fresh {
         'Init workspace'
     } else {
         $'Register submodules: ($new_repos | str join ", ")'
     }
-    ^git commit -m $msg
+    ^git commit --message $msg
 
     print $'Registered ($new_repos | length) submodules: ($new_repos | str join ", ")'
 }

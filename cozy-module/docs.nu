@@ -12,7 +12,7 @@ const NUSHELL_DOCS_REPO = 'https://github.com/nushell/nushell.github.io.git'
 const NUSHELL_DOCS_FOLDERS = ['blog' 'book' 'cookbook']
 
 # Fetch reference docs into local folders for offline, in-sandbox use; see the subcommands.
-export def main [] { }
+export def main []: nothing -> nothing { }
 
 # Download Claude Code documentation pages listed in the sitemap, in parallel.
 @category cozy-docs
@@ -20,7 +20,7 @@ export def main [] { }
 export def claude [
     --output-dir: path = $CLAUDE_DOCS_DIR # Where to write the .md pages
 ]: nothing -> record {
-    let sitemap = ^curl -sfL https://code.claude.com/docs/sitemap.xml | complete
+    let sitemap = ^curl --silent --fail --location https://code.claude.com/docs/sitemap.xml | complete
     if $sitemap.exit_code != 0 {
         error make {msg: $"failed to fetch sitemap.xml \(curl exit ($sitemap.exit_code)\)"}
     }
@@ -37,8 +37,8 @@ export def claude [
     let results = $urls
         | par-each --threads 4 {|url|
             let filename = $url | path split | skip 4 | str join '_'
-            let dest = [$output_dir $filename] | path join
-            let r = ^curl -sfL $url | complete
+            let dest = $output_dir | path join $filename
+            let r = ^curl --silent --fail --location $url | complete
             if $r.exit_code == 0 {
                 $r.stdout | save --force $dest
                 {url: $url status: ok}

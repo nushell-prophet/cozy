@@ -19,7 +19,7 @@ export def install [
     --no-mcp # Build without MCP support
     --github # Download the latest release binary instead of building
 ]: nothing -> nothing {
-    let cargo_bin = $nu.home-dir | path join .cargo bin
+    let dest = $rust.cargo_bin | path join nu
 
     if $github {
         # Why refuse instead of ignoring: main has no release, and the release
@@ -28,16 +28,12 @@ export def install [
             error make {msg: "--github downloads the latest release build; it cannot honor --dev or --no-mcp"}
         }
         let tag = http get https://api.github.com/repos/nushell/nushell/releases/latest | get tag_name
-        _nu-release $tag nu ($cargo_bin | path join nu)
-        report ($cargo_bin | path join nu)
+        _nu-release $tag nu $dest
+        report $dest
         return
     }
 
-    # Ensure Rust is installed
     rust install
-    if $cargo_bin not-in $env.PATH {
-        $env.PATH = ($env.PATH | prepend $cargo_bin)
-    }
 
     let repo_dir = $nu.home-dir | path join git nushell
     if not ($repo_dir | path exists) {
@@ -58,7 +54,7 @@ export def install [
         ^git fetch --tags
         # Why: upstream has legacy tags like 0_5_0 and v0.96.0; version sort ranks
         # '_' above '.', so 0_5_0 would win. Keep only dot-separated version tags.
-        let tag = ^git tag -l --sort='-v:refname'
+        let tag = ^git tag --list '--sort=-v:refname'
             | lines
             | where $it =~ '^\d+(\.\d+)+$'
             | first
@@ -67,27 +63,19 @@ export def install [
     }
 
     print $"  Building nushell ($label) — this may take a while..."
-    # -j 1 + lto=false to avoid OOM in sandbox VMs (limited RAM).
-    if $no_mcp {
+    let features = if $no_mcp {
         let defaults = open Cargo.toml | get features.default
         if "mcp" in $defaults {
-            let features = $defaults | where $it != "mcp" | str join ","
-            ^cargo build --release --locked -j 1 --config 'profile.release.lto=false' --no-default-features --features $features
+            [--no-default-features --features ($defaults | where $it != "mcp" | str join ",")]
         } else {
             print $"  (ansi yellow)Warning(ansi reset): 'mcp' not in default features — building with all defaults"
-            ^cargo build --release --locked -j 1 --config 'profile.release.lto=false'
+            []
         }
-    } else {
-        ^cargo build --release --locked -j 1 --config 'profile.release.lto=false'
-    }
+    } else { [] }
+    # --jobs 1 + lto=false to avoid OOM in sandbox VMs (limited RAM).
+    ^cargo build --release --locked --jobs 1 --config 'profile.release.lto=false' ...$features
 
-    let bin = $repo_dir | path join target release nu
-    let dest = $cargo_bin | path join nu
-    _install-binary $bin $dest
-
-    if $cargo_bin not-in $env.PATH {
-        $env.PATH = ($env.PATH | prepend $cargo_bin)
-    }
+    _install-binary ($repo_dir | path join target release nu) $dest
 
     report $dest
 }

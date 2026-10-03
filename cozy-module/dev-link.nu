@@ -29,24 +29,13 @@ export def main [
     | each {|repo_path|
         let name = $repo_path | path basename
         let target = $ws | path join $name
+        let linked = try { (^readlink $repo_path | str trim) == ($target | path expand) } catch { false }
 
-        if not ($target | path exists) {
-            {name: $name status: skipped}
-        } else {
-            let already = try {
-                let existing = ^readlink $repo_path | str trim
-                $existing == ($target | path expand)
-            } catch {
-                false
-            }
-
-            if $already {
-                {name: $name status: ok}
-            } else {
-                rm --recursive --force $repo_path
-                ^ln -s $target $repo_path
-                {name: $name status: linked}
-            }
+        let status = if not ($target | path exists) { 'skipped' } else if $linked { 'ok' } else {
+            rm --recursive --force $repo_path
+            ^ln -s $target $repo_path
+            'linked'
         }
+        {name: $name status: $status}
     }
 }

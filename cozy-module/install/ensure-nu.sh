@@ -27,11 +27,12 @@ if ! command -v nu >/dev/null; then
 fi
 
 # Compatibility gate: can this nu load bootstrap.nu? `use` parses it and
-# evaluates its top-level declarations (consts + nested `use topiary.nu`/
-# `use claude.nu`) — the whole surface bootstrap.nu exposes before main runs.
+# evaluates its top-level declarations (consts + nested `use rust.nu`/
+# `use topiary.nu`/`use claude.nu`) — the whole surface bootstrap.nu exposes
+# before main runs.
 #
 # That surface and nothing more. The autoload scripts, the dotfiles
-# config.nu/env.nu and the lazy install modules (rust.nu, zellij.nu, …) are
+# config.nu/env.nu and the lazy install modules (zellij.nu, nushell.nu, …) are
 # NOT parsed here, so a nu syntax drift in one of those still installs
 # cleanly and breaks the interactive shell afterwards. Deliberate: this gate
 # only picks between latest and pinned nu, and falling back to the pinned one

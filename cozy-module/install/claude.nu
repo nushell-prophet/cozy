@@ -20,7 +20,7 @@ export def install []: nothing -> nothing {
     # as a command-not-found for `claude mcp add`. Downloading to a file first
     # makes curl's own exit status the one that counts.
     let script = mktemp --tmpdir --suffix .sh
-    curl -fsSL https://claude.ai/install.sh -o $script
+    curl --fail --silent --show-error --location https://claude.ai/install.sh --output $script
     bash $script
     rm --force $script
 

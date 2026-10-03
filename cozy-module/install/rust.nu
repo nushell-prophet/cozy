@@ -1,3 +1,6 @@
+# Where rustup and `cargo install` put binaries; the installers here place theirs too.
+export const cargo_bin = $nu.home-dir | path join .cargo bin
+
 # Show the help of this module; `install` runs the rustup install.
 export def main [] { help rust }
 
@@ -29,6 +32,12 @@ export def --env install []: nothing -> nothing {
         } | save $cargo_config
     }
 
+    # Why here: every caller builds with cargo right after, and `--env` carries
+    # this to them — on a fresh install and on an existing one alike.
+    if $cargo_bin not-in $env.PATH {
+        $env.PATH = ($env.PATH | prepend $cargo_bin)
+    }
+
     if (which rustc | is-not-empty) {
         print $"  (ansi green)rust(ansi reset): already installed"
         return
@@ -37,12 +46,11 @@ export def --env install []: nothing -> nothing {
     if (which cc | is-empty) {
         print "  Installing build-essential (C linker)..."
         ^sudo apt-get update -qq
-        ^sudo apt-get install -y -qq build-essential
+        ^sudo apt-get install --yes -qq build-essential
     }
 
     print "  Installing Rust via rustup..."
-    ^sh -c "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
-    $env.PATH = ($env.PATH | prepend ($nu.home-dir | path join .cargo bin))
+    ^sh -c "curl --proto '=https' --tlsv1.2 --silent --show-error --fail https://sh.rustup.rs | sh -s -- -y"
 
     # rustup adds `source $"($nu.home-path)/.cargo/env.nu"` to config.nu,
     # which breaks nushell — `home-path` doesn't exist (it's `home-dir`).
