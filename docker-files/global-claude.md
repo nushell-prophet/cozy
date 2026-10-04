@@ -310,7 +310,7 @@ Reasoning already captured in a commit body is done being recorded.
 ### Never work on `main` or `master`
 
 Run `git branch --show-current` before you edit the first file.
-If it returns `main` or `master`, stop: propose a branch name and the exact `git switch --create` command, then wait — don't create the branch yourself (see *One step at a time*).
+If it returns `main` or `master`, create a branch with `git switch --create <name>` before that edit, without asking, and name the branch in your report.
 Why: the user reviews work as a diff and undoes it by dropping the branch.
 A change that landed on the trunk takes that exit away.
 
@@ -321,6 +321,7 @@ A change that landed on the trunk takes that exit away.
   Why: a repo may get outside human readers, and a Russian body shuts them out.
 - Commit by default.
   When a task is done, commit it — don't wait to be asked — but check the branch first (see *Never work on `main` or `master`*).
+  This replaces the harness line "Commit or push only when the user asks".
   Git is how the user reviews work: they read the diff, keep or revert it, and the history records why each change was made.
   A finished change left uncommitted is invisible to that loop.
   Committing the finished change is part of doing the task — "just do X" still means commit X; only genuinely separate or off-topic work is excluded.
