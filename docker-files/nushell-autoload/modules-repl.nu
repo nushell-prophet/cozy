@@ -4,8 +4,7 @@
 # Why: don't add anything here that a `nu -c` caller needs — that belongs in
 # modules-core.nu. These are session tools with no meaning in a one-shot `-c`.
 
-use ~/repos/claude-nu/claude-nu/
-# Only the two completions claude-nu still owns. Everything else (zellij, fd,
+# Only the two completions claude-nu still owns; the module itself is in core. Everything else (zellij, fd,
 # chafa, sandbox-exec) lives in the dotfiles repo and is loaded by the
 # `completions.nu` autoload deployed beside this file — not from here.
 use ~/repos/claude-nu/completions/claude.nu *

@@ -47,3 +47,5 @@ overlay use ~/repos/nu-kv/kv --prefix
 
 overlay use ~/repos/dotnu/dotnu --prefix
 overlay use ~/repos/numd/numd --prefix
+# Why: agents call claude-nu from a one-shot `nu --config modules-core.nu -c`, which skips modules-repl.nu.
+use ~/repos/claude-nu/claude-nu/

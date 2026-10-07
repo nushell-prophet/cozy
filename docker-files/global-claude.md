@@ -41,7 +41,7 @@ Autoload scripts in `~/.config/nushell/autoload/` load the modules above (except
 The nushell MCP `evaluate` tool runs such a session, so the modules are ready there too.
 A one-shot `nu -c '…'` (e.g. run from Bash) is not interactive and skips autoloads, so `cozy`, `nu-goodies`, `kv` and the rest are absent — you'll get `command not found`.
 The MCP `evaluate` tool is good for interactive exploration (autoloads fire, structured output) — but read its caveats under *Nushell MCP Server* below before relying on it.
-If you use `nu -c`, load the modules with `--config`: `nu --config ~/.config/nushell/autoload/modules-core.nu --commands '…'` — `--config` runs even in `-c` mode (unlike autoload), so the full core module set (`cozy`, `nu-goodies`, `kv`, `dotnu`, `numd`) is available.
+If you use `nu -c`, load the modules with `--config`: `nu --config ~/.config/nushell/autoload/modules-core.nu --commands '…'` — `--config` runs even in `-c` mode (unlike autoload), so the full core module set (`cozy`, `nu-goodies`, `kv`, `dotnu`, `numd`, `claude-nu`) is available.
 
 **End every nu pipeline you are going to read with `| to nuon --pretty`.** A one-shot `nu` loads no config, so it renders with stock defaults — an 80-column box table built for a terminal, not for a reader.
 Read as text it loses data and never says so: identifiers wrap mid-word, a whole column collapses into a bare `...`, a nested value becomes `[list 3 items]`.
