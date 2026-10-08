@@ -60,9 +60,9 @@ def "install refuses a different hook and replaces it with force" [] {
     assert str contains $err 'a different commit-msg hook already exists'
     assert equal (open --raw $dest) "#!/bin/sh\nexit 0\n"
 
-    assert equal (git install-change-id-hook $repo --force | get status) ['replaced' 'installed']
+    assert equal (git install-change-id-hook $repo --force | get status) ['replaced' 'installed' 'installed']
     assert equal (open --raw $dest) (open --raw $HOOK)
-    assert equal (git install-change-id-hook $repo | get status) ['already installed' 'already installed']
+    assert equal (git install-change-id-hook $repo | get status) ['already installed' 'already installed' 'already installed']
 }
 
 @test
@@ -142,12 +142,58 @@ def "git am stops when the commit-msg hook is missing" [] {
 }
 
 @test
+def "a revert names the reverted change-id and gets its own" [] {
+    let repo = $in.repo
+    git install-change-id-hook $repo
+    commit-file $repo a.txt a (with-id $ID)
+
+    ^git -C $repo revert --no-edit HEAD | ignore
+    let body = ^git -C $repo log -1 --format=%b
+    assert str contains $body $"This reverts change ($ID)."
+    let own = ^git -C $repo log -1 --format='%(trailers:key=Change-Id,valueonly)' | str trim
+    assert ($own =~ '^[k-z]{32}$') $"no change-id stamped: ($own)"
+}
+
+@test
+def "a revert of a merge names the change-id and gets its own" [] {
+    let repo = $in.repo
+    git install-change-id-hook $repo
+    commit-file $repo base.txt base "base"
+    ^git -C $repo switch --quiet --create side
+    commit-file $repo a.txt a (with-id $ID)
+    ^git -C $repo switch --quiet "@{-1}"
+    ^git -C $repo merge --quiet --no-ff --no-edit side
+    let merge_id = ^git -C $repo log -1 --format='%(trailers:key=Change-Id,valueonly)' | str trim
+
+    ^git -C $repo revert --no-edit --mainline 1 HEAD | ignore
+    assert str contains (^git -C $repo log -1 --format=%b) $"This reverts change ($merge_id), reversing"
+    let own = ^git -C $repo log -1 --format='%(trailers:key=Change-Id,valueonly)' | str trim
+    assert ($own =~ '^[k-z]{32}$') $"no change-id stamped: ($own)"
+}
+
+@test
+def "a rebase replays an old revert unchanged" [] {
+    let repo = $in.repo
+    commit-file $repo base.txt base "base"
+    commit-file $repo a.txt a (with-id $ID)
+    ^git -C $repo revert --no-edit HEAD | ignore
+    ^git -C $repo branch side HEAD~2
+    git install-change-id-hook $repo
+    let before = ^git -C $repo log -1 --format=%B
+
+    ^git -C $repo switch --quiet side
+    commit-file $repo side.txt side "side"
+    ^git -C $repo rebase --quiet side "@{-1}"
+    assert equal (^git -C $repo log -1 --format=%B) $before
+}
+
+@test
 def "install updates an older copy of its own hook without force" [] {
     let repo = $in.repo
     let dest = $repo | path join .git hooks commit-msg
     open --raw $HOOK | lines | first 2 | append 'exit 0' | str join "\n" | save --force $dest
 
-    assert equal (git install-change-id-hook $repo | get status) ['updated' 'installed']
+    assert equal (git install-change-id-hook $repo | get status) ['updated' 'installed' 'installed']
     assert equal (open --raw $dest) (open --raw $HOOK)
     assert equal (open --raw ($repo | path join .git hooks applypatch-msg)) (open --raw $APPLYPATCH_HOOK)
 }

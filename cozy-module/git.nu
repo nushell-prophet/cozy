@@ -5,11 +5,12 @@
 # `hooks/commit-msg` beside this file: it fires on host commits too (lazygit on macOS), where `nu`
 # is not on the PATH, so it stays `#!/bin/sh`. Its contract — add an id, never replace one; leave a
 # comment-only message alone — is documented in the "Change-Id" section of the mono-repo-tooling-spec
-# specification. `hooks/applypatch-msg` forwards to it, because `git am` never runs commit-msg.
+# specification. `hooks/applypatch-msg` forwards to it, because `git am` never runs commit-msg;
+# `hooks/prepare-commit-msg` does the same for `git revert`, and names the reverted change by its id.
 # Why here and not in that repo's toolkit: a cross-repo reference needs the id on both sides, and
 # not every repo on the machine lives in the monorepo.
 const hooks_src = path self hooks
-const hook_names = [commit-msg applypatch-msg]
+const hook_names = [commit-msg applypatch-msg prepare-commit-msg]
 
 # Run git in a directory and return its stdout, or fail with git's own stderr as the message.
 # Why not a bare `^git …` at each call: that raises too, but its message is Nushell's generic one
@@ -56,7 +57,7 @@ def install-status [src: path dest: path force: bool]: nothing -> string {
 @category cozy
 export def install-change-id-hook [
     path: path = '.' # the repo, or any directory inside it
-    --force # replace a different commit-msg or applypatch-msg hook instead of refusing
+    --force # replace a different commit-msg, applypatch-msg or prepare-commit-msg hook instead of refusing
 ]: nothing -> table<repo: string, hook: string, status: string> {
     let common = git-in $path [rev-parse --path-format=absolute --git-common-dir] | str trim
     let dest_dir = $common | path join hooks
@@ -66,11 +67,11 @@ export def install-change-id-hook [
     if $live != $dest_dir {
         error make --unspanned {
             msg: $"core.hooksPath sends git to ($live), so a hook in ($dest_dir) would never run"
-            help: "copy the tracked hooks/commit-msg and hooks/applypatch-msg into that directory by hand, or unset core.hooksPath"
+            help: "copy the tracked hooks/commit-msg, hooks/applypatch-msg and hooks/prepare-commit-msg into that directory by hand, or unset core.hooksPath"
         }
     }
     # Why every status is decided before any copy: a refusal must leave the repo as it was. Half an
-    # install is an applypatch-msg forwarding into someone else's commit-msg.
+    # install is a forwarding hook that calls someone else's commit-msg.
     # Not `each`: an error raised inside its closure reaches the user as "Eval block failed with
     # pipeline input", and the refusal is the message they must read.
     mut plan = []

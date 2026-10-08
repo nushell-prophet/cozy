@@ -77,7 +77,9 @@ Its first 24 letters are random and its last 8 are the unix time it was minted, 
 The hook adds an id and never replaces one, and leaves a comment-only message alone so an empty commit still aborts, `commit --verbose` included, whatever the comment character.
 An older copy of this hook is replaced and reported as `updated`: a copy is recognised as this hook by its header comment on line 2, which every version carries.
 It also installs `hooks/applypatch-msg`, which hands each message `git am` applies to that same hook, since `am` never runs `commit-msg` itself.
-Any other `commit-msg` or `applypatch-msg` hook already in place is an error, not overwritten, and then neither hook is installed; `--force` replaces it.
+`git revert` does not run `commit-msg` either, so `hooks/prepare-commit-msg` forwards a revert to it, and it rewrites "This reverts commit <sha>." to "This reverts change <change-id>.", which still names the reverted commit after a rebase.
+A rebase or a cherry-pick that replays an old revert leaves its message unchanged.
+Any other `commit-msg`, `applypatch-msg` or `prepare-commit-msg` hook already in place is an error, not overwritten, and then no hook is installed; `--force` replaces it.
 
 ```nushell
 cozy git install-change-id-hook              # the repo in the current dir
