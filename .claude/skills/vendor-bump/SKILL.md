@@ -40,8 +40,8 @@ Without a `<repo>` arg, `vendor.nu` deletes and rewrites all of `vendor/` from s
 Each top-level `vendor/<repo>/` dir with any change is one commit unit.
 
 ```nu
-git status -s vendor/ | lines | each { split column ' ' status path }
-| flatten | get path | split row '/' | get 0..1 | str join '/' | uniq
+git status --porcelain vendor/ | lines
+| each { str substring 3.. | split row '/' | first 2 | str join '/' } | uniq
 ```
 
 The `dotfiles` repo is an exception worth noting: it contains many per-app modules (`broot/`, `claude/`, `helix/`, `lazygit/`, `nushell/`, `zellij/`, `wezterm/`, ...).
