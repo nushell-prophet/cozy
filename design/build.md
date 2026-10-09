@@ -7,7 +7,7 @@ covers:                # source paths update-design reconciles this file against
   - cozy-module/install/ensure-nu.sh
   - cozy-module/install/.nushell-version
   - cozy-module/install/bootstrap.nu
-reconciled-at: mzxsrtwkwnskuypxowpvxoowtpoqnrnw
+reconciled-at: txlvkxkvywuzyympzwnkwyuktpnrwkry
 ---
 
 # build — the boot sequence (the spine)
@@ -132,6 +132,7 @@ Last, `~/.cargo/bin` is created empty: cargo-built binaries (`cozy install nushe
 ### Step 1 — brew installs
 `brew install nushell git fzf lazygit helix zellij broot git-delta visidata bat topiary fd jj git-lfs`, then `brew cleanup --prune=all`.
 Errors if brew is missing.
+`git` is here although layer 2 of the Dockerfile already installs it from apt: that one exists for the Homebrew installer and is frozen at Debian stable, too old for `git fast-export --signed-commits` in `mono.nu`; brew's sits earlier on `PATH` and tracks upstream.
 
 ### Step 2 — XDG git config
 Writes `~/.config/git/{config,ignore}`: identity `Agent <agent@sandbox>` (so Step 4 can commit), `safe.directory=*`, `gc.auto=0`, `core.fsync=all` + `core.fsyncMethod=fsync`, and `core.pager = delta` + `interactive.diffFilter = delta --color-only` (git-delta is a Step 1 brew install, so every `git diff`/`git show` and `git add -p` reads through it by default).

@@ -11,7 +11,7 @@ covers:
   - toolkit/sbxw.nu
   - toolkit/wezterm.nu
   - cozy-module/vendored-repos.nuon
-reconciled-at: mzxsrtwkwnskuypxowpvxoowtpoqnrnw
+reconciled-at: txlvkxkvywuzyympzwnkwyuktpnrwkry
 ---
 
 # toolkit — host-side vendor tooling

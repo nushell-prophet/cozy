@@ -12,7 +12,7 @@ covers:                # source paths update-design reconciles this file against
   - cozy-module/install/_clone-or-fail.nu
   - cozy-module/install/_install-binary.nu
   - cozy-module/install/_nu-release.nu
-reconciled-at: mzxsrtwkwnskuypxowpvxoowtpoqnrnw
+reconciled-at: txlvkxkvywuzyympzwnkwyuktpnrwkry
 ---
 
 # cozy install — why these compile from source
