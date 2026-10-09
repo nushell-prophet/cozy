@@ -71,7 +71,7 @@ The path is `$nu.current-exe` and not `which nu` because `which` answers about a
 **Code:** [`docker-files/nushell-autoload/mcp-server.nu`](../docker-files/nushell-autoload/mcp-server.nu)
 
 ### modules-core.nu
-Resolve `$env.WORKSPACE_DIR` to the in-VM mount path, then overlay the vendored `~/repos/` modules that must work in any context: nu-goodies, cozy, nu-kv, dotnu, numd.
+Resolve `$env.WORKSPACE_DIR` to the in-VM mount path, then overlay the vendored `~/repos/` modules that must work in any context: nu-goodies, cozy, nu-kv, dotnu, numd, and claude-nu (plain `use`, since agents call it from a one-shot `nu -c`).
 Sets `$env.kv.path` under the workspace sandbox-state dir when mounted.
 Windows hosts get `C:\Users\…` → `/c/Users/…` rewritten here.
 **Also loaded outside autoload:** non-interactive `nu --config ~/.config/nushell/autoload/modules-core.nu -c …` runs it (Helix's `shell`, agent `nu -c` from the Bash tool), because a one-shot `-c` skips autoload but honours `--config`.
@@ -79,9 +79,9 @@ Everything here must stay safe in a one-shot `-c` — no prompt hooks, no REPL s
 **Code:** [`docker-files/nushell-autoload/modules-core.nu`](../docker-files/nushell-autoload/modules-core.nu) → `def resolve-workspace-mount`
 
 ### modules-repl.nu
-Interactive-only module additions, `use`d on every interactive shell start: claude-nu, the two completions claude-nu still ships (claude/nu), zellij's todo.nu, nu-cmd-stack (followed by `cmd-stack init`, which registers its keybindings — a bare `use` binds no keys).
+Interactive-only module additions, `use`d on every interactive shell start: the two completions claude-nu still ships (claude/nu), zellij's todo.nu, nu-cmd-stack (followed by `cmd-stack init`, which registers its keybindings — a bare `use` binds no keys).
 Split out from the core set so non-interactive `-c` consumers don't load session tools that have no meaning there.
-The completions for tools claude-nu has nothing to do with (zellij, fd, chafa, sandbox-exec) moved to the dotfiles repo and arrive via its own `completions.nu` autoload; `claude.nu` and `nu.nu` stayed because the first imports four internals of `sessions.nu` for the live session picker and the second is the only one claude-nu's test suite covers.
+The completions for tools claude-nu has nothing to do with (zellij, fd, chafa, sandbox-exec) moved to the dotfiles repo and arrive via its own `completions.nu` autoload; `claude.nu` and `nu.nu` stayed because the first imports `sessions.nu`'s session completer for the live session picker and the second is the only one claude-nu's test suite covers.
 **Code:** [`docker-files/nushell-autoload/modules-repl.nu`](../docker-files/nushell-autoload/modules-repl.nu)
 
 ## global-claude.md
