@@ -11,7 +11,8 @@
 #                      The naming is all it adds; everything after it is the
 #                      launch below.
 #   gi import          writes one canvas, from a session's dialogue — the one it
-#                      runs inside, or any session named on the line. The only
+#                      runs inside, or any session named on the line — and names
+#                      it from a slug, as `gi new` does. The only
 #                      verb that can capture the session running it, since it
 #                      launches nothing: `open` cannot be reached from the
 #                      session being imported.
@@ -253,6 +254,21 @@ export def gi-canvas-folder [dir: path]: nothing -> string {
     }
 }
 
+# The canvases already in the run directory, relative to it: every `.md` in
+# `gi-canvas/` and in `gi/` (its older name), and those in `todo/` that carry a
+# `session:` in their frontmatter.
+# Why the filter only in `todo/`: that folder holds plain task notes too, and
+# one of them listed here would read as a canvas to reopen.
+export def gi-canvases [dir: path]: nothing -> list<string> {
+    [gi-canvas gi todo]
+    | each {|folder| $dir | path join $folder }
+    | where { path exists }
+    | each { ls $in | where type == file and name ends-with ".md" | get name }
+    | flatten
+    | where {|f| ($f | path dirname | path basename) != "todo" or (gi-frontmatter-session $f) != null }
+    | each { path relative-to $dir }
+}
+
 # The canvas path minted when the user names none: the canvas folder, then the
 # day-prefixed name every new canvas gets. A def and not a const: the date has
 # to be read when the command runs, not when the module parses.
@@ -383,11 +399,21 @@ def gi-session-key [session: string]: nothing -> string {
 # nushell shows the contiguous comment block, so keep the rationale above the
 # blank line.
 
-# Where the gi protocol comes from, and the canvas this session is bound to.
+# Where the gi protocol comes from, the canvas this session is bound to, and
+# the canvases already where you stand.
 # The verbs: `gi new`, `gi import`, `gi open`.
 @category claude-nu
 export def main []: nothing -> record {
+    let dir = gi-run-dir
+
+    # Not a `ls gi-canvas/*.md todo/*.md gi/*.md` in the 40-gi-canvas skill
+    # because: a repo rarely has all three, and `ls` exits non-zero on any
+    # missing one, so the call reads as a failure.
+    # Why here and not in gi-status: `gi import` returns gi-status too, and
+    # these would be read from the cwd, not from where the import writes.
     gi-status
+    | insert folder (gi-canvas-folder $dir)
+    | insert canvases (gi-canvases $dir)
 }
 
 # The file name a slug gets: the day, then the slug. The date is a parameter
@@ -407,10 +433,12 @@ export def gi-new-text [date: string]: nothing -> string {
     [
         "---"
         "status: draft #draft | in_progress | completed | rejected"
+        "agents-mode: co-editing #read-only | grammar-fixes | co-editing"
         $"updated: '($date)' #yyyyMMdd"
         "---"
         ""
         (open --raw $GI_HEADER_SRC)
+        "" # a real empty line for gi-edit to open on, see there
     ]
     | str join "\n"
 }
@@ -441,7 +469,9 @@ def gi-editor []: nothing -> string {
 # write-then-launch sequence, but the pane holding the canvas closes exactly
 # when the session starts — the one moment the canvas has to be visible.
 # The cursor lands past the header, on the first line the user writes on — as
-# `cmd+e` already does with its `hx +N`. `+N` is the line-number syntax of hx,
+# `cmd+e` already does with its `hx +N`. That is the last line, the empty one
+# gi-new-text ends with, and not one past it: past the final newline is a phantom
+# line where helix computes no indent, so list continuation lines start at column 0. `+N` is the line-number syntax of hx,
 # vim and nano; an $env.EDITOR that spells it another way opens the file at the
 # top, which is a wrong cursor and not a failure.
 # Not `zellij edit` because: it opens the file with zellij's `scrollback_editor`
@@ -449,7 +479,7 @@ def gi-editor []: nothing -> string {
 # with soft-wrap off and the cursor forced to the end. `zellij run` starts the
 # user's own editor, as `cmd+e` does.
 def gi-edit [doc: path editor: string]: nothing -> nothing {
-    let line = (open --raw $doc | lines | length) + 1
+    let line = open --raw $doc | lines | length
 
     if ($env.ZELLIJ? | is-not-empty) {
         ^zellij run --close-on-exit -- $editor $"+($line)" $doc
@@ -478,6 +508,7 @@ export def --wrapped "gi new" [
     --no-editor # Write the canvas without opening it for editing
     --no-claude-launch # Write the canvas and hand back its path; launch nothing
     --no-hook # Launch with the Canvas style but without the Stop-hook floor
+    --execute # Start the session on a first prompt, `@<canvas> go`, so it works on the canvas without waiting
     --dangerously-skip-permissions # Pass claude's flag of the same name through
     ...rest: string # Any other flags go straight to `claude`
 ]: nothing -> any {
@@ -523,7 +554,7 @@ export def --wrapped "gi new" [
         # thing with. A launch returns nothing — `claude` has the terminal.
         return ($paths_doc.abs | cwd-relative)
     }
-    gi-launch --root $root --doc $doc --hook=(not $no_hook) --extra $extra
+    gi-launch --root $root --doc $doc --hook=(not $no_hook) --execute=$execute --extra $extra
 }
 
 # Open a canvas: launch a session bound to it, creating the canvas from the
@@ -536,6 +567,7 @@ export def --wrapped "gi open" [
     --no-hook # Launch with the Canvas style but without the Stop-hook floor
     --new-session # Start a fresh session on this canvas, overwriting the id it records
     --fork # Copy the named canvas to its next `_n` sibling and open that, on a session of its own
+    --execute # Start the session on a first prompt, `@<canvas> go`, so it works on the canvas without waiting
     --dangerously-skip-permissions # Pass claude's flag of the same name through
     ...rest: string # Any other flags go straight to `claude`
 ]: nothing -> nothing {
@@ -580,7 +612,7 @@ export def --wrapped "gi open" [
             label: {text: "flags for `claude` go after the canvas: gi open <doc> <flags>" span: (metadata $doc).span}
         }
     }
-    gi-launch --root $root --doc $doc --hook=(not $no_hook) --new-session=$new_session --fork=$fork --extra $extra
+    gi-launch --root $root --doc $doc --hook=(not $no_hook) --new-session=$new_session --fork=$fork --execute=$execute --extra $extra
 }
 
 # Why a verb of its own and not a flag on `gi enable` (which is what this
@@ -596,9 +628,10 @@ export def --wrapped "gi open" [
 # session, so `gi open <doc>` resumes it instead of minting a new one.
 @category claude-nu
 export def "gi import" [
+    slug: string # What the canvas is about; the file is <date>-<slug>.md, as gi new names one
     session?: string@"nu-complete claude sessions" # Session UUID, /rename name, or .jsonl path (default: the session this runs inside)
-    --to: path # Where the canvas lands, relative to where you are (default: <canvas folder>/<date>-session-<key>.md, the folder as for gi new)
-    --root: path # Run gi in this directory instead of here: --to is read there (default: your cwd)
+    --folder: path # Where the canvas lands, relative to where you are (default: as for gi new)
+    --root: path # Run gi in this directory instead of here: --folder is read there (default: your cwd)
     --tools # Keep tool calls instead of dropping them: each input in full, each result as a char count
     --commit # Commit the imported doc
     --gitignore # Keep the imported doc out of git
@@ -619,20 +652,25 @@ export def "gi import" [
     # Read the run directory off the flag before the next line shadows it.
     let dir = gi-run-dir $root
     let root = $root | default (gi-repo-root) | path expand
-    # Default is session-keyed, so re-running it for one session on one day
-    # names one file and leaves the repo's other canvases alone.
-    # Why --to and not a second positional: the common in-session call names a
-    # path but no session, and a positional cannot be skipped.
-    let default_doc = gi-canvas-folder $dir
-        | path join (gi-new-name $"session-(gi-session-key $file)" (date now | format date '%J'))
-    let paths_doc = gi-doc-path $dir ($to | default $default_doc)
+    # Why the slug is required: a canvas named after its session id says
+    # nothing about what it holds, and the agent running the import has just
+    # read the whole chat, so it can name it in a few words.
+    # Not a whole-path option beside it because: every other way to name the
+    # canvas is one more variant for an agent to pick wrong; only the folder
+    # moves, as in gi new.
+    # Why the slug comes before the session: the in-session call names a slug
+    # but no session, and a positional cannot be skipped.
+    let doc = $folder
+        | default (gi-canvas-folder $dir)
+        | path join (gi-new-name $slug (date now | format date '%J'))
+    let paths_doc = gi-doc-path $dir $doc
 
     # Check before reading the session: a doc that already holds work must not
     # be reported as a near-miss after a long export.
     if ($paths_doc.abs | path exists) {
         error make --unspanned {
             msg: $"canvas already exists: ($paths_doc.abs)"
-            help: "the import is the doc's starting content and won't overwrite work already in it — delete the file to re-import, or name another doc: gi import --to <doc>"
+            help: "the import is the doc's starting content and won't overwrite work already in it — delete the file to re-import, or pick another slug: gi import <slug>"
         }
     }
     # Build the import before anything is written: a session that can't be read
@@ -813,11 +851,19 @@ export def gi-reject-owned-flags [extra: list<string>]: nothing -> nothing {
 # reads it.
 # `extra` is the caller's own `claude` flags, appended last and untouched — gi
 # has no opinion on them beyond the one rule gi-reject-owned-flags states.
-export def gi-launch-args [sid: string doc: string --resume ...extra: string]: nothing -> list<string> {
+# --execute adds the first user message as claude's positional prompt, so the
+# session starts working instead of waiting to be told to read the canvas.
+# Why only `@<canvas> go`: the style already says how to work a canvas and
+# where the answer goes, and the system-prompt line says to read it; the one
+# thing neither gives is the order to act, and `go` is the protocol's word for it.
+# Why `--` in front of it: `extra` may end in a variadic flag (`--add-dir a b`),
+# which would take the prompt as one more of its values.
+export def gi-launch-args [sid: string doc: string --resume --execute ...extra: string]: nothing -> list<string> {
     if $resume { ["--resume" $sid] } else { ["--session-id" $sid] }
     | append ["--name" $doc]
     | append ["--append-system-prompt" $"This session's canvas is `($doc)` — the one file the Canvas output style is about. Read it before your first answer; do not search for it."]
     | append $extra
+    | if $execute { append ["--" $"@($doc) go"] } else { }
 }
 
 # Launch Claude Code bound to one canvas — the only thing that turns gi on.
@@ -835,6 +881,7 @@ def gi-launch [
     --hook # Carry the Stop-hook floor into the session
     --new-session # Mint a fresh session id, overwriting the one the canvas records
     --fork # Open a copy of the named canvas instead, on a session of its own
+    --execute # Start the session on a first prompt that runs the canvas's task
     --extra: list<string> = [] # Flags forwarded to `claude` untouched
 ]: nothing -> nothing {
     gi-reject-owned-flags $extra
@@ -887,7 +934,7 @@ def gi-launch [
     if $hook and ($branch in $GI_PROTECTED_BRANCHES) {
         print $"note: this repo is on ($branch) — gi commits belong on a work branch; the Stop hook will block turns until you switch."
     }
-    let args = gi-launch-args $plan.sid $doc_rel --resume=$plan.resume ...$extra
+    let args = gi-launch-args $plan.sid $doc_rel --resume=$plan.resume --execute=$execute ...$extra
 
     print $"canvas ($doc_rel), session (gi-session-key $plan.sid)(if $hook { '' } else { ', no Stop hook' })"
     # cd only matters when --root sent the launch elsewhere; without it this is
