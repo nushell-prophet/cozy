@@ -1,11 +1,11 @@
 # E2E for the PWD env_change tab-rename + ·N dedup hook
-# (vendor/dotfiles/nushell/autoload/hooks-config.nu, lines ~19-48).
+# (the env_change PWD hook in vendor/dotfiles/nushell/autoload/hooks-config.nu).
 # Target #5, and the cleanest Layer 2 target (no TUI): spawn a nu pane, cd,
 # assert the tab name via query-tab-names.
 #
-# Uses nutest description-tag attributes (`# [test]`) not `@test`: the vendored
-# nutest predates nu 0.113's `attr`-command requirement, so `@test` fails to
-# parse but the `[tag]` form still discovers correctly.
+# Uses nutest description-tag attributes (`# [test]`) not `@test`: `@test`
+# parses only in a file that runs `use std/testing *`, while the `[tag]` form
+# needs no import.
 
 use std/assert
 use ../harness.nu *

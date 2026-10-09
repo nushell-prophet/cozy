@@ -1,4 +1,4 @@
-# E2E for lstd (vendor/dotfiles/zellij/todo-nu/todo.nu:4-23).
+# E2E for lstd (`lstd` in vendor/dotfiles/zellij/todo-nu/todo.nu).
 # Target #2.
 #
 # lstd lists active todo/*.md (hiding completed/rejected) into an fzf picker with

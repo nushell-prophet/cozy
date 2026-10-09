@@ -31,7 +31,7 @@ const shared_env_keys = [XDG_CONFIG_HOME XDG_DATA_HOME XDG_CACHE_HOME HELIX_RUNT
 #
 # Not HOME, though the audit that prompted this listed it: the Dockerfile omits
 # it on purpose (an ENV is image-wide, so `ENV HOME=/home/agent` would hand a
-# root exec the agent's home — see the comment at Dockerfile:101). Both sides
+# root exec the agent's home — see the `Not ENV HOME` comment in the Dockerfile). Both sides
 # derive it from the passwd entry instead, and only the kit has to spell it out.
 const paired_env_keys = [TERM COLORTERM TERM_PROGRAM HOMEBREW_NO_ASK HOMEBREW_NO_AUTO_UPDATE]
 
@@ -184,7 +184,7 @@ def "main egress-image" []: nothing -> record {
 }
 
 # A pin that cannot be found reads as '(missing)' rather than erroring here, so
-# the drift message below names which file lost its literal instead of dying on
+# the drift message above names which file lost its literal instead of dying on
 # a cell path.
 def pinned-ref [file: path pattern: string]: nothing -> string {
     let m = open --raw $file | parse --regex $pattern

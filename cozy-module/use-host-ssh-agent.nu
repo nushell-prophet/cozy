@@ -1,5 +1,5 @@
 # The runtime's fixed guest path — the same constant `container.nu` documents
-# next to its `--ssh` flag.
+# next to its `--ssh-agent` flag.
 const SOCK = "/var/host-services/ssh-auth.sock"
 
 # Show or switch whether this shell can reach the host ssh-agent that

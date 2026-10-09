@@ -157,7 +157,7 @@ export def new-tab [ctx: record]: nothing -> nothing {
 
 # Poll a pane's running command (clientless) until it matches `pattern` (regex).
 # `pane_command` reflects the foreground child (e.g. "hx +7 ..." while helix runs,
-# back to "nu" once it exits) — a reliable, render-free readiness signal.
+# back to "nu --no-history" once it exits) — a reliable, render-free readiness signal.
 export def wait-pane-command [
     ctx: record
     pane: string
