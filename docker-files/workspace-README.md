@@ -42,7 +42,7 @@ Its module (`cozy-module/`) is autoloaded, so `cozy` is a command:
 | `cozy swap-zellij-super` | Rewrite Zellij's Super-key bindings (→ Alt/Ctrl) for Windows hosts and macOS Terminal.app |
 | `cozy git harden` | Apply safer git defaults |
 | `cozy git link <file>` / `cozy git resolve <link>` | Write a `<repo>@<change-id>:<path>` reference to a file as last committed; print the file that reference names |
-| `cozy git install-change-id-hook` | Install the `commit-msg` and `applypatch-msg` hooks that stamp a `Change-Id` trailer on every new commit of a repo, `git am` included, so a reference to it survives rebase and squash |
+| `cozy git install-change-id-hook` | Install the `commit-msg`, `applypatch-msg` and `prepare-commit-msg` hooks that stamp a `Change-Id` trailer on every new commit of a repo, `git am` and `git revert` included, so a reference to it survives rebase and squash |
 | `cozy use-host-ssh-agent` | Show or switch (`--enable` / `--disable`) whether this shell reaches the forwarded host ssh-agent; off by default |
 | `cozy verify` | Run the post-build check suite against this environment |
 | `cozy docs claude` / `cozy docs nushell` | Fetch Claude Code / Nushell reference docs into a local folder for offline use |
@@ -87,4 +87,5 @@ Edit them freely.
 **Home & Claude**
 
 - `~/.claude/CLAUDE.md` — cozy's tool catalog and working rules are appended here
+- `~/.claude/settings.json`, `keybindings.json`, `agents/`, `commands/`, `output-styles/`, `mods/` — Claude Code settings from dotfiles; bootstrap merges the agent's git identity and `JJ_CONFIG` into `settings.json`'s `env`
 - `~/.claude.json` — Nushell's built-in MCP server (`nu --mcp`) is registered (gives the agent `evaluate` / `list_commands` / `command_help`)

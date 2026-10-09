@@ -231,6 +231,7 @@ cozy nu-demo-instance --here
 ### `cozy install ...`
 
 Installer subcommands used during image build or inside a running sandbox: `bootstrap`, `claude`, `topiary`, `nushell`, `polars`, `rust`, `zellij`, `nu-plugin-image`.
+`nushell`, `zellij` and `polars` build from source by default; `--github` downloads the release binary instead.
 
 `bootstrap` is the single entry point that sets up the sandbox (or host) end-to-end — brew tools, XDG git config, vendored modules, dotfiles, Claude skills, broot, topiary, and Claude Code with the nushell MCP.
 Every install path reaches it through the shared `install/run-install.sh`.
