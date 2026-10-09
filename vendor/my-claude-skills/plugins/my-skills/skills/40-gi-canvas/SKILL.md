@@ -2,7 +2,7 @@
 name: 40-gi-canvas
 description: Turn the current chat into a gi canvas, or open an existing one. Use when the user says "gi canvas", "start a canvas", "переведи в канвас", "продолжим в канвасе", "open the canvas", or asks to move this conversation into a canvas document.
 argument-hint: [canvas path]
-allowed-tools: Bash(nu -c *), Bash(ls *), Bash(grep *), Read
+allowed-tools: Bash(nu -c *), Bash(grep *), Read
 ---
 
 The user wants a canvas session but is inside a chat session, where typing nushell into Bash is awkward.
@@ -17,8 +17,10 @@ So this skill always ends the same way — the user runs one command themselves,
 So every command **you** run has to import it first:
 
 ```nushell
-nu -c 'use ~/repos/claude-nu/claude-nu/; claude-nu gi'
+nu -c 'use ~/repos/claude-nu/claude-nu/; claude-nu gi | to nuon --pretty'
 ```
+
+End it with `| to nuon --pretty`: a one-shot `nu` renders a list inside a record as `[list 2 items]`, and `canvases` is the list you need.
 
 That path is the common one, not a guarantee.
 When it is missing, don't guess a second one — read where the REPL itself imports from: `grep -h claude-nu ~/.config/nushell/autoload/*.nu`.
@@ -31,15 +33,14 @@ The commands **the user** runs go into their REPL, where the module is already l
 First check you are not already there.
 `gi` on its own reports which plugin carries the protocol and whether the asking session is bound to a canvas; a non-null `canvas` means this **is** a canvas session — say so and stop, there is nothing to launch.
 Doing this first matters because the alternative is importing a session that is already a canvas into a second file, which splits one conversation across two documents.
-New canvases land in `gi-canvas/`, or in `todo/` when the repo has that folder and no `gi-canvas/`.
-A few repos still keep canvases in `gi/`, the older name of the folder.
-`ls gi-canvas/*.md todo/*.md gi/*.md` lists the repo's existing canvases; a folder that does not exist is an error for that pattern only.
+The same call answers the rest: `canvases` lists the canvases already here, and `folder` names where a new one lands.
+Do not list the canvas folders yourself — a repo rarely has all of them, and `ls` exits non-zero on any missing one, so the call reads as a failure.
 
 Then read `$ARGUMENTS` and the conversation:
 
 - **No canvas yet, and this chat is worth keeping** (the usual case) → import this session.
 - **No canvas yet, nothing here worth keeping** → a blank canvas.
-- **A canvas path is given, or one exists in `gi-canvas/`, `todo/` or `gi/`** → open it.
+- **A canvas path is given, or `canvases` is not empty** → open it.
 
 A canvas keeps one session for life, and `gi open` handles both halves of that: a canvas with no `session:` in its frontmatter gets one minted and written in, one that has it is resumed.
 You do not have to tell them apart.
@@ -47,15 +48,17 @@ You do not have to tell them apart.
 ## Import this session
 
 ```nushell
-nu -c 'use ~/repos/claude-nu/claude-nu/; claude-nu gi import'                     # → gi-canvas/<date>-session-<id>.md
-nu -c 'use ~/repos/claude-nu/claude-nu/; claude-nu gi import --tools'             # ...keeping tool calls, each input rendered whole
-nu -c 'use ~/repos/claude-nu/claude-nu/; claude-nu gi import --to notes/x.md'     # ...at a chosen path
+nu -c 'use ~/repos/claude-nu/claude-nu/; claude-nu gi import canvas-naming'         # → <folder>/<date>-canvas-naming.md
+nu -c 'use ~/repos/claude-nu/claude-nu/; claude-nu gi import canvas-naming --tools' # ...keeping tool calls, each input rendered whole
 ```
 
-Named with no session, `gi import` takes the one it runs inside — which is this one, since you are running it.
-The first positional names another session, and only the user needs that (they get a completer for it in the REPL).
+The slug is required: two to four lowercase words, joined by hyphens, that say what this chat is about.
+You have just read the whole conversation, so name it for its subject, not for the session.
 
-It refuses to overwrite an existing doc — that is deliberate, do not delete the old one to get past it; name another path instead.
+Named with no session, `gi import` takes the one it runs inside — which is this one, since you are running it.
+The second positional names another session, and only the user needs that (they get a completer for it in the REPL).
+
+It refuses to overwrite an existing doc — that is deliberate, do not delete the old one to get past it; pick another slug instead.
 
 Nothing has to be in the repo beforehand: the style and the skills ride the launch as a plugin, so there is no seeding step and nothing the import can find missing.
 

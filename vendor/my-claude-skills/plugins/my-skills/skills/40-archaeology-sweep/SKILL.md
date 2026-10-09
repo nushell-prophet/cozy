@@ -79,9 +79,9 @@ One repo per run.
 Tracked files only.
 Do not crawl sibling repos, even when a comment points at one.
 
-**The branch is the only stop in this skill.** Run `git branch --show-current` before the first grep.
-On `main` or `master`, stop: propose `git switch --create archaeology-sweep` and wait — do not create it yourself.
-On any other branch, the run goes through to the commits without asking again — step 5 is why that is safe.
+Run `git branch --show-current` before the first grep.
+On `main` or `master`, run `git switch --create archaeology-sweep` without asking.
+The run then goes through to the commits without a stop — step 5 is why that is safe.
 
 List the exempt paths for this repo from the classes above — typically `CHANGELOG.md`, `design/`, `todo/`, `gi-canvas/`, `gi/`, `vendor/`, any `*/migration.md`.
 

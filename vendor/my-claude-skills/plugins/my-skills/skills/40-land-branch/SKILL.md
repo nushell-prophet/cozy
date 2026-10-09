@@ -114,7 +114,7 @@ Nothing is changed until the user confirms.
 
 6. **Read the history for the message.**
    `git log <base>..HEAD` with full bodies.
-   This is the part that must not be lost: why this approach, why an alternative was rejected, what the user said.
+   This is the part that must not be lost: why this approach, why an alternative was rejected, why the user wanted it.
    Drop only the mechanics — not just `wip` or a typo fix, but any commit whose whole job is correcting or completing an earlier commit's own subject, however cleanly that correction itself is written: a bug review found and its atomic fix, an attempt and the commit that reverts it.
    None of these earns a line, even a summarized one; the message describes the approach that survived, not the road to it.
    If the branch has a canvas in `gi-canvas/` or `gi/` or the current session holds reasoning that never reached a commit body, pull it in here — the tag preserves the old bodies, but only this commit is read on the trunk.
@@ -139,7 +139,7 @@ Nothing is changed until the user confirms.
    The trunk is not the last stop.
    A published repo gets cloned; a monorepo exports each subdirectory to the recipient it was imported from, and that export copies the message byte for byte — `mono check` verifies exactly that equality — so nothing downstream can repair a body.
    This is the only moment, and the test is one question: can a reader who has nothing but the receiving repo follow every pointer in this body?
-   Four shapes fail it, measured on a real export where 62 of 141 patches failed the question while the prose itself was fine everywhere:
+   These shapes fail it; the first four were measured on a real export where 62 of 141 patches failed the question while the prose itself was fine everywhere:
 
    - **A `todo/`, `gi-canvas/` or `gi/` path.**
      Step 11 drops those files from the trunk, and in a monorepo, where they do land, they still never cross: `mono.yml` excludes `todo/` from the export, and a `gi-canvas/` or `gi/` at the monorepo root sits outside every exported subdirectory — one inside a subdirectory crosses unless `mono.yml` excludes it, so check where it sits.
@@ -155,6 +155,10 @@ Nothing is changed until the user confirms.
      The rule above bans the hashes of `base..HEAD`; this one bans the rest.
      An export rewrites every commit it crosses, so a sha that resolves here resolves nowhere on the other side — and a rebase kills it on this side too.
      Name the commit by its short `Change-Id` where the repo stamps one, and where it stamps none, say what that commit did instead of pointing at it.
+   - **A quoted command.**
+     A repo may keep the user's commands verbatim in branch bodies, for an audit — "ok go ahead", "fix point 3".
+     Each one answered a question the recipient never saw.
+     Carry the reason the command gave into the body; the archive tag keeps the words.
 
 7. **Find the working material.**
    `git diff --name-status <base>..HEAD -- todo/ gi-canvas/ gi/`.
@@ -244,8 +248,9 @@ Nothing is changed until the user confirms.
 
 8. **Judgement, then STOP.**
    Two calls to make first:
-   - Already one clean commit with a good body?
+   - Already one clean commit whose body passes step 6's outside-reader test?
      Then there is nothing to rewrite — skip straight to the merge (step 13).
+     A body that quotes the user's commands fails that test, so it takes the squash path, and the tag keeps the quotes.
      No `reset --soft`, no new commit, no `Archive:` trailer, and **no archive tag**.
    - Otherwise, read the history from step 6 as a story, not a diff.
      The commits step 6 drops as corrections are not chapters either — the same test decides both, and it folds each one into whatever it corrects.
