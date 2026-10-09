@@ -6,7 +6,7 @@ covers:                # source paths update-design reconciles this file against
   - firewall/allowed-domains.txt
   - toolkit/container.nu
   - toolkit/container.zsh
-reconciled-at: mzxsrtwkwnskuypxowpvxoowtpoqnrnw
+reconciled-at: txlvkxkvywuzyympzwnkwyuktpnrwkry
 ---
 
 # firewall — human-managed egress for the Debian image
