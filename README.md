@@ -46,12 +46,12 @@ Everything else about this path — several folders, `--ssh-agent`, editing the 
 
 ## Technologies
 
-**Installed everywhere** (container and host alike): [Nushell](#nushell), [Helix](#helix-editor), [Zellij](#zellij), [Lazygit](#lazygit), [Broot](#broot), [FZF](#fzf), git-delta, [VisiData](#visidata), bat, topiary, fd, jj, git-lfs — one `brew install` line.
+**Installed everywhere** (container and host alike): [Nushell](#nushell), [Helix](#helix-editor), [Zellij](#zellij), [Lazygit](#lazygit), [Broot](#broot), [FZF](#fzf), git-delta, [VisiData](#visidata), bat, topiary, fd, jj, git, git-lfs — one `brew install` line.
 Claude Code lands here too, but from its own official installer.
 
 **Containers only** (apt; a host install skips them): procps, file, gcc, libc6-dev, xxd, man-db
 
-**From the image, not from the installer**: the Debian `Dockerfile` apt-installs git, curl, rsync, ripgrep, jq, less and openssh-client; the `sbx` base image ships git, curl, Node.js, Go, ripgrep, jq and gh.
+**From the image, not from the installer**: the Debian `Dockerfile` apt-installs git (brew's newer git shadows it on `PATH`), curl, rsync, ripgrep, jq, less and openssh-client; the `sbx` base image ships git, curl, Node.js, Go, ripgrep, jq and gh.
 A host install adds none of these — install what you want yourself.
 Python 3 is on every path anyway: brew pulls it in for VisiData.
 
@@ -221,16 +221,18 @@ A Nushell toolbox for working with Claude Code sessions.
 Main commands:
 
 - `claude-nu projects` — list projects under `~/.claude/projects`, most recent first
-- `claude-nu messages 'regex'` — search user messages; scope is whatever is piped in (`claude-nu sessions --all-projects | claude-nu messages 'regex'` widens to every project), and with no input it reads the whole current project
+- `claude-nu messages 'regex'` — search user messages; scope is whatever is piped in (`claude-nu projects | claude-nu messages 'regex'` widens to every project), and with no input it reads the whole current project
 - `claude-nu tool-calls 'regex'` — the same search over what the agent actually ran, not what was said; `messages`, `tool-calls` and `sessions` all take `--since`/`--until` (a duration means ago: `--since 1wk`)
+- `claude-nu timeline` — one row per content block (text, thinking, tool calls and results) in file order
 - `claude-nu slash-commands` — one row per slash command you invoked, scoped and windowed like `messages`; `| histogram command` ranks them (built-ins are skipped unless `--all`)
 - `claude-nu sessions` — parse session files into structured summaries, with selectable columns (`--columns`/`--all-columns`: file ops, tool stats, agents, etc.); this is where session selection lives (`--last`, `--session` by UUID or `/rename` name, `--all-projects`)
+- `claude-nu workflows` — the Workflow tool runs of a session: status, duration, error, agents
 - `claude-nu export-session` — export session dialogue as markdown; it returns the text, so saving is the shell's job (`| save session.md`)
 - `claude-nu project-move` — retarget Claude's stored state after a project directory moves
 - `claude-nu gi` — status of the git-intent protocol in the current repo; nothing is installed into the repo — `gi open` loads the Canvas style and skills as a plugin for that launch only, `gi new <slug>` makes a canvas named from the slug and opens it in your editor, `gi import <slug>` turns a session's dialogue into a canvas named the same way, `gi open <doc>` launches a session bound to that canvas, and `gi open --fork <doc>` copies the canvas to the next name in its series (`plan.md` → `plan_1.md`) and opens the copy in a fresh session
 - `claude-nu example` — pick one of the module's own example pipelines and paste it into the command line, ready to edit and run
 
-The environment also includes Claude Code skills for building Nushell completions, writing opinionated Nushell code, practicing literate programming with numd and dotnu, and inspecting or rewriting the Nushell user REPL command history.
+The environment also includes Claude Code skills for building Nushell completions, writing opinionated Nushell code, practicing literate programming with numd and dotnu, inspecting or rewriting the Nushell user REPL command history, and reading Claude Code sessions with claude-nu.
 
 ### nutest
 
@@ -353,6 +355,7 @@ A folder containing this repo is refused unless it is `:ro`, for the reason abov
 
 `--ssh-agent` forwards your host's ssh-agent into the container, so it can sign with your keys without ever holding them.
 While it runs, anything inside can sign with them — prefer a key dedicated to this over your personal one.
+Every new shell hides the forwarded agent; `cozy use-host-ssh-agent --enable` turns it on for the current shell.
 It can only be set at creation, so turning it on for an existing container means recreating it.
 Inside the cage it buys **signing, not networking**: ssh still cannot cross the proxy.
 

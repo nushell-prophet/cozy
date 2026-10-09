@@ -1,4 +1,4 @@
-# E2E for create-todo / todo-hx (vendor/dotfiles/zellij/todo-nu/todo.nu:25-63).
+# E2E for create-todo / todo-hx (`create-todo` in vendor/dotfiles/zellij/todo-nu/todo.nu).
 # Target #1.
 #
 # create-todo writes todo/<ts>.md with frontmatter, opens it in helix at line 7,
@@ -8,7 +8,7 @@
 #
 # Layer 2: we invoke create-todo directly in a spawned nu pane (not via its
 # Super-chord keybind). Readiness/exit is gated on `pane_command` (clientless):
-# "hx ..." while helix runs, back to "nu" once it quits.
+# "hx ..." while helix runs, back to "nu --no-history" once it quits.
 #
 # nutest description-tag attributes (`# [test]`) — see tab-rename_test.nu header.
 

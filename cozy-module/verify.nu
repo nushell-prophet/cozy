@@ -83,7 +83,7 @@ def expected-files []: nothing -> list {
 }
 
 # Every vendored repo lands at ~/repos/<name> — the manifest already includes
-# cozy — plus cozy's module dir and broot's config dir.
+# cozy — plus cozy's module dir, its docker-files dir and broot's config dir.
 def expected-dirs []: nothing -> list<string> {
     open $manifest | get name
     | each {|r| $repos | path join $r }
@@ -130,7 +130,7 @@ def expected-agent-env []: nothing -> record {
 
 # The suite asserts no row count, and `glob` on a missing directory returns []
 # without erroring — so a build that never deposited docker-files/ would drop 7
-# `file:` rows and report "All 53 checks passed". Guard the derivation itself:
+# `file:` rows and report all of a smaller suite as passed. Guard the derivation itself:
 # an empty glob is a failure, not a smaller suite.
 def check-autoload-source []: nothing -> record {
     let found = glob ($autoload_src | path join '*.nu') | length

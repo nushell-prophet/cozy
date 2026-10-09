@@ -39,12 +39,13 @@ Two files carry these.
 - **numd** — literate programming for `.md` files.
   Prefix `numd`.
   Repo `nushell-prophet/numd`.
+- **claude-nu** — toolbox for Claude Code sessions.
+  `claude-nu` namespace; core because agents call it from a one-shot `nu -c`.
+  Its two completion files (`claude.nu`, `nu.nu`) load from `modules-repl.nu`.
+  Repo `nushell-prophet/claude-nu`.
 
 **Interactive-only (`modules-repl.nu`):**
 
-- **claude-nu** — toolbox for Claude Code sessions.
-  `claude-nu` namespace.
-  Repo `nushell-prophet/claude-nu`.
 - **nu-cmd-stack** — command-history stacking.
   Prefix `cmd-stack`.
   The autoload runs `cmd-stack init` right after the `use` — that's what registers the keybindings (ctrl+s push, ctrl+alt+j/k scroll); a bare `use` binds no keys.

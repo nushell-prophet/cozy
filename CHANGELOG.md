@@ -9,9 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- `cozy git install-change-id-hook` also installs `prepare-commit-msg`: a `git revert` gets its own `Change-Id`, and its "This reverts commit <sha>." names the reverted change by its id, which survives a rebase.
-- Nushell's MCP server (`nu --mcp`) is registered in Claude Code again and checked by `cozy verify` (`mcp: nushell`), undoing its removal in 0.5.0.
-- `git log` and `git show` print a commit's git note under its message, indented 8 spaces, and notes follow their commit through amend and rebase (`notes.rewriteRef`); `git notes edit <sha>` corrects an old message, `git log -p refs/notes/commits` shows the edits.
+- `cozy git install-change-id-hook` also installs `prepare-commit-msg`: a `git revert` gets its own `Change-Id`, and its "This reverts commit <sha>." names the reverted change by its id, which survives a rebase. (40f6a48)
+- Nushell's MCP server (`nu --mcp`) is registered in Claude Code again and checked by `cozy verify` (`mcp: nushell`), undoing its removal in 0.5.0. (0d66d72)
+- `git log` and `git show` print a commit's git note under its message, indented 8 spaces, and notes follow their commit through amend and rebase (`notes.rewriteRef`); `git notes edit <sha>` corrects an old message, `git log -p refs/notes/commits` shows the edits. (1bd7b69, ead7cdd)
 
 ## [0.5.0] - 2026-09-28
 

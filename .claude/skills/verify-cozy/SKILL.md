@@ -24,7 +24,7 @@ The checks cover: that each expected binary *launches* (not merely resolves on P
 `cozy` is a Nushell overlay (loaded by the `modules-core.nu` autoload), not a PATH binary.
 Autoloads fire in an interactive shell and the MCP `evaluate` tool but **not** under `nu -c`, so there load the overlay yourself: `nu -c 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'`.
 
-The env checks read a bare `bash -c` with each expected key stripped from the child's environment first (`env -u`), so they report what the sandbox itself supplies, however verify was launched.
+The env checks read a bare `bash -c` with each expected key stripped from the child's environment first (`env --unset`), so they report what the sandbox itself supplies, however verify was launched.
 On a base image that bakes no `ENV` those keys live only in `/etc/sandbox-persistent.sh`, and a non-interactive non-login shell reads neither `/etc/profile` nor `/etc/bash.bashrc` — so something must carry them there, or the rows false-fail.
 `BASH_ENV` is what carries them — set in the `Dockerfile` for the Debian image, and supplied by the sbx base itself (confirmed on a live sandbox 2026-07).
 
@@ -52,7 +52,7 @@ docker run --rm cozy:verify \
   The Dockerfile already uses https apt sources, so builds work in restricted networks.
 - **The two `egress:` rows fail on this target, by design.**
   A bare `docker run` has no allowlist in front of it — the cage comes from `compose.yaml`, not the image.
-  Expect 2 failures here and read the other 58; to see all 60 pass, bring the container up with `docker compose up -d` and verify through `docker compose exec cozy`.
+  Expect 2 failures here and read the other 60; to see all 62 pass, bring the container up with `docker compose up -d` and verify through `docker compose exec cozy`.
 - **Boundary:** this validates the shared install logic, NOT sbx-specific wiring (the kit spec, sbx's git-config rewrites, the microVM).
   It is a fast pre-check — the final smoke test is the Apple `container` path, the one in daily use (target `container <name>` below).
   Add an `sbx run` only when the change touches the kit or other sbx wiring.
