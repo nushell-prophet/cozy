@@ -7,11 +7,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-09
+
+### Added
+
+- `cozy install nushell --github`, `cozy install polars --github` and `cozy install zellij --github` download the release binary instead of compiling it — no Rust, no long build.
+  The polars plugin matches the running `nu` version; zellij takes the build without web sharing unless `--web-server` is given. (ee3fd01, c790fe0, 45fde92)
+- claude-nu: `gi new --execute` / `gi open --execute` start the session on the canvas at once; `gi import` now requires a slug and names the canvas `<date>-<slug>.md`, with `--folder` in place of `--to`. (0779406)
+
 ### Changed
 
 - `cozy git install-change-id-hook` also installs `prepare-commit-msg`: a `git revert` gets its own `Change-Id`, and its "This reverts commit <sha>." names the reverted change by its id, which survives a rebase. (40f6a48)
 - Nushell's MCP server (`nu --mcp`) is registered in Claude Code again and checked by `cozy verify` (`mcp: nushell`), undoing its removal in 0.5.0. (0d66d72)
 - `git log` and `git show` print a commit's git note under its message, indented 8 spaces, and notes follow their commit through amend and rebase (`notes.rewriteRef`); `git notes edit <sha>` corrects an old message, `git log -p refs/notes/commits` shows the edits. (1bd7b69, ead7cdd)
+- Git in the sandbox comes from brew and tracks upstream, instead of Debian stable's 2.47, so commands that need a newer git (`fast-export --signed-commits`) work. (eb22af4)
+- Homebrew analytics are turned off before the first package install. (f473bc7)
+- `claude-nu` also loads in a one-shot `nu --config modules-core.nu --commands '…'`, not only in the interactive REPL. (cabf8b2)
+- The cozy catalog in `~/.claude/CLAUDE.md` carries general working rules for agents (collaboration, one step at a time, verification, commits and branches, conciseness); dotfiles no longer ships its own global CLAUDE.md. (6203487, 9b44946, a7c73f2)
+- Nushell completion matches by prefix instead of fuzzy. (a7c73f2)
+- The rustup, apt and Claude Code downloads during install show their output again. (94a7d7c)
+
+### Fixed
+
+- `cozy sandbox-state history snapshot <path>` and `projects snapshot|restore <path>` no longer need `WORKSPACE_DIR` or create `sandbox-state/` when a path is given. (22b33af)
 
 ## [0.5.0] - 2026-09-28
 
@@ -812,7 +830,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.5.0...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.5.1...HEAD
+[0.5.1]: https://github.com/nushell-prophet/cozy/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/nushell-prophet/cozy/compare/0.4.3...0.5.0
 [0.4.3]: https://github.com/nushell-prophet/cozy/compare/0.4.2...0.4.3
 [0.4.2]: https://github.com/nushell-prophet/cozy/compare/0.4.1...0.4.2
