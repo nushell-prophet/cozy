@@ -99,7 +99,7 @@ The one thing never to write is `| table` — it forces the box back.
 - **In `where`, parentheses turn a column name into a command.** `where (a == 1 and b == 2)` fails with ``Command `a` not found``.
   Without the parens the same line works: `where a == 1 and b == 2`.
   For anything more complex use a closure: `where {|r| $r.a == 1 and $r.b > 2 }`.
-- **Stale names.** `$nu.temp-path` → `$nu.temp-dir`, `$nu.home-path` → `$nu.home-dir`, `$nu.scope` → the `scope` commands; `range` → `slice`; `str upcase` → `str uppercase` (`str downcase` is not renamed); `std` is a module (`use std` first), and `std/testing` holds only the attribute aliases (`@test`, `@before-each` and the like) — the test runner is `nutest`.
+- **Stale names.** `$nu.temp-path` → `$nu.temp-dir`, `$nu.home-path` → `$nu.home-dir`, `$nu.scope` → the `scope` commands; `range` → `slice`; `str upcase` → `str uppercase`, `str downcase` → `str lowercase`; `std` is a module (`use std` first), and `std/testing` holds only the attribute aliases (`@test`, `@before-each` and the like) — the test runner is `nutest`.
   A wrong `$nu` field fails at runtime, not parse time, and `dotnu diagnose` calls the file clean — so the check above misses it.
   `$nu | columns` prints the current set.
 - **An external argument that starts with `{` is a record or closure since 0.116.** `^find . -exec cat {} ';'` fails with `Can't convert to string.`; quote it: `^find . -exec cat '{}' ';'`.
