@@ -167,6 +167,8 @@ export def main [
     # `* text=auto eol=lf` in ~/.config/git/attributes: one key in a file this
     # step already writes, and on the host the user reproduces it with a single
     # `git config --global core.autocrlf input` instead of hand-writing a file.
+    # delta.hunk-header-style: the user wants the file path in the header of
+    # every hunk, not only once above the first one.
     '[user]
 	name = Agent
 	email = agent@sandbox
@@ -183,6 +185,7 @@ export def main [
 	diffFilter = delta --color-only
 [delta]
 	keep-plus-minus-markers = true
+	hunk-header-style = file line-number syntax
 [format]
 	pretty = format:commit %C(auto)%H%d%n%C(bold blue)%ar%C(reset)  %C(green)%an <%ae>%C(reset)%n%n%w(0,4,4)%B%w(0,8,8)%+N
 [notes]
