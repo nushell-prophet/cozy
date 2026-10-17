@@ -1,14 +1,14 @@
 ---
 name: 40-gi-canvas
 description: Turn the current chat into a gi canvas, or open an existing one. Use when the user says "gi canvas", "start a canvas", "переведи в канвас", "продолжим в канвасе", "open the canvas", or asks to move this conversation into a canvas document.
-argument-hint: [canvas path]
-allowed-tools: Bash(nu -c *), Bash(grep *), Read
+argument-hint: [canvas path] [--last-exchange] [--distill] [--no-commit]
+allowed-tools: Bash(nu -c *), Bash(grep *), Bash(git *), Read, Edit
 ---
 
 The user wants a canvas session but is inside a chat session, where typing nushell into Bash is awkward.
 Run the module command for them and hand back one line to paste into a terminal.
 
-A canvas session cannot be started from within a session: the gi plugin (the Canvas style and the gi skills), the Stop hook, the canvas path in the new session's own instructions, and `$env.GI_CANVAS` for the hook all arrive with `claude` at launch.
+A canvas session cannot be started from within a session: the gi plugin (the Canvas style, the gi skills, and the hooks that name the canvas to the agent, hold the Stop-hook floor and refuse a commit on the trunk) and `$env.GI_CANVAS`, which those hooks read, all arrive with `claude` at launch.
 So this skill always ends the same way — the user runs one command themselves, in their terminal, and that new session is the canvas one.
 
 ## How to call the module
@@ -31,7 +31,7 @@ The commands **the user** runs go into their REPL, where the module is already l
 ## Which case
 
 First check you are not already there.
-`gi` on its own reports which plugin carries the protocol and whether the asking session is bound to a canvas; a non-null `canvas` means this **is** a canvas session — say so and stop, there is nothing to launch.
+`gi` on its own reports whether the asking session is bound to a canvas; a non-null `canvas` means this **is** a canvas session — say so and stop, there is nothing to launch.
 Doing this first matters because the alternative is importing a session that is already a canvas into a second file, which splits one conversation across two documents.
 The same call answers the rest: `canvases` lists the canvases already here, and `folder` names where a new one lands.
 Do not list the canvas folders yourself — a repo rarely has all of them, and `ls` exits non-zero on any missing one, so the call reads as a failure.
@@ -39,7 +39,7 @@ Do not list the canvas folders yourself — a repo rarely has all of them, and `
 Then read `$ARGUMENTS` and the conversation:
 
 - **No canvas yet, and this chat is worth keeping** (the usual case) → import this session.
-- **No canvas yet, nothing here worth keeping** → a blank canvas.
+- **No canvas yet, nothing here worth keeping** → a new canvas.
 - **A canvas path is given, or `canvases` is not empty** → open it.
 
 A canvas keeps one session for life, and `gi open` handles both halves of that: a canvas with no `session:` in its frontmatter gets one minted and written in, one that has it is resumed.
@@ -62,19 +62,46 @@ It refuses to overwrite an existing doc — that is deliberate, do not delete th
 
 Nothing has to be in the repo beforehand: the style and the skills ride the launch as a plugin, so there is no seeding step and nothing the import can find missing.
 
+### Flags
+
+`$ARGUMENTS` may carry these flags; they apply to the import only.
+
+- `--last-exchange` → pass it to `gi import`: the canvas gets only the user's last question and the answer to it.
+- `--no-commit` → do not pass `--commit`.
+  Without it, always pass `--commit`: the import is committed by default.
+- `--distill` → after the import, distill the canvas (see *Distill* below).
+
+Before a committed import, run `git branch --show-current`.
+If it is `main` or `master`, run `git switch --create <slug>` first, with the slug of the import.
+A plain chat has no gi commit guard, so this is the only thing that keeps the import off the trunk.
+
+### Distill
+
+The gi plugin is not loaded in this chat, so `gi:git-intent-distill` cannot be called as a skill.
+Read `distill.md` next to this file and follow it on the imported canvas.
+
+- With commits: the import commit is the pre-distill version.
+  Scope the clean-tree check of `distill.md` to the canvas, `git status --porcelain -- <doc>`: other untracked notes in the repo do not touch its history.
+  Commit the distilled canvas as a second commit.
+- With `--no-commit`: distill the untracked file in place and commit nothing.
+  Skip the clean-tree check: the full dialogue stays in the session log, at the `.jsonl` path the import note names.
+
 Then tell the user, in one line: exit this session and run `claude-nu gi open <doc>`.
 The import wrote this session's id into the canvas, so that reopens **this same session** (same id, full context) with the canvas bound, and the missing tail — the turns after the import, which the session log cannot contain yet — is still in context and can be appended there.
 
-## Blank canvas, or an existing one
+## A new canvas, or an existing one
 
-`gi open` launches Claude Code itself, so the user runs it — not you.
+`gi new` and `gi open` launch Claude Code themselves, so the user runs them — not you.
 Hand over one of these, as is:
 
 ```nushell
-claude-nu gi open                 # today's canvas, gi-canvas/<date>-canvas.md, then launch; a second run that day resumes it
-claude-nu gi open gi-canvas/plan.md # a named one; created if new, resumed if it holds a session
-claude-nu gi open <doc> --no-hook # style only, no Stop-hook floor
+claude-nu gi new <slug>            # <folder>/<date>-<slug>.md, opened in $EDITOR for the task, then launch; leaves main/master first
+claude-nu gi open <doc>            # an existing canvas; resumed if it holds a session
+claude-nu gi open <doc> --fork     # a copy, <doc>_1.md, on a session of its own
+claude-nu gi open <doc> --no-hook  # no Stop-hook floor; the commit guard stays
 ```
+
+For `gi new`, pick the slug as for an import: two to four words on what the canvas is for.
 
 ## What to report
 
