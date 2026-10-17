@@ -79,9 +79,9 @@ export def projects []: nothing -> table {
         if ($files | is-empty) { return null }
         # Why: the dir name is lossy (`/` and `-` both encode to `-`), so
         # recover the real path from a session's `cwd` for true segments.
-        # Scan newest-first until a file records one — summary-only files
-        # (e.g. legacy sidechain summaries) carry no cwd and must not hide
-        # the whole project.
+        # Scan newest-first until a file records one — a file whose first
+        # lines carry no cwd (e.g. one opening with file-history-snapshot
+        # records) must not hide the whole project.
         let cwd = $files
             | sort-by modified --reverse
             | reduce --fold null {|file found|
@@ -126,12 +126,12 @@ export def "nu-complete claude sessions" []: nothing -> record {
         | each {|file|
             let uuid = $file.name | session-id-from-path
             let raw_lines = try { open --raw $file.name | lines } catch { [] }
-            # Why: the title lives in custom-title/summary/ai-title records
+            # Why: the title lives in custom-title/ai-title records
             # anywhere in the file. String-match first so a Tab press never JSON-parses whole
             # session files; extract-summary then filters false-positive lines
             # (e.g. messages quoting the pattern) by record type.
             let summary = $raw_lines
-                | where $it =~ '"type":"(custom-title|summary|ai-title)"'
+                | where $it =~ '"type":"(custom-title|ai-title)"'
                 | each { try { from json } catch { {} } }
                 | extract-summary
                 | if ($in | is-empty) { "No summary" } else { }
@@ -187,8 +187,10 @@ export def "nu-complete claude sessions" []: nothing -> record {
 # is what gets filtered, and here a row is one message with a timestamp of its
 # own — so `messages --since 1wk` returns last week's messages, not every
 # message of a session that happens to have been open last week.
-# Every row carries a `kind`: `typed`, `bash-input`, `bash-output`, `system`
-# (only with --include-system) or `response` (only with --include-responses).
+# Every row carries a `kind`: `typed`, `bash-input`, `bash-output`, `file` (a
+# file attached with `@`, or a file changed on disk outside the agent's Edit and
+# Write tools during the session; its role is `attachment`), `system` (only with
+# --include-system) or `response` (only with --include-responses).
 # Why a column and not a flag per kind: the user's own words are
 # `where kind == typed`, and the pasted output of a `!` command stays one
 # `where` away instead of being guessed from the text.
@@ -276,15 +278,19 @@ export def messages [
         # JSONL for the user-type marker before decoding — assistant turns, tool
         # results, and summaries (the ~70% bulk) never reach the JSON parser. The
         # `where type? == "user"` below still runs, so the prefilter only narrows.
+        # Not `"type":"attachment"` for the file rows because: most attachment
+        # records are reminders Claude Code writes every turn, and the marker
+        # would parse them all to keep a few.
         let records = if $include_responses {
             $session_file | read-session-records
         } else {
-            $session_file | read-session-records --contains '"type":"user"'
+            $session_file | read-session-records --contains ['"type":"user"' '"type":"file"' '"type":"edited_text_file"']
         }
         let dialogue = $records
             | if $include_responses { } else { where type? == "user" }
             | extract-dialogue $extract_text --keep-system=$include_system
             | insert kind { message-kind }
+            | append ($records | attached-files)
 
         # Why: sorting the ISO-8601 timestamp strings sorts chronologically,
         # so one sort here serves both the --raw and rendered branches.
@@ -420,7 +426,7 @@ export def tool-calls [
         # Why --results reads the user records too: a result is a tool_result
         # block on the user record that follows the call, joined by the call's id.
         let records = $session_file
-            | if $results { read-session-records } else { read-session-records --contains '"type":"assistant"' }
+            | if $results { read-session-records } else { read-session-records --contains ['"type":"assistant"'] }
         let outcomes = if $results {
             $records
             | where type? == "user"
@@ -596,7 +602,7 @@ export def slash-commands [
         # and every one of them carries the tag — a file with no match never
         # reaches the JSON parser. `extract-slash-command` re-reads the tag, so
         # this only narrows.
-        let records = $session_file | read-session-records --contains "<command-name>"
+        let records = $session_file | read-session-records --contains ["<command-name>"]
 
         $records
         | each {|record|
@@ -1151,6 +1157,45 @@ export def main [
     }
 }
 
+# The records of the last finished exchange: the user's last prompt that got
+# a reply, and every record up to the next prompt. A prompt is a message the
+# user typed or a slash command they ran — a `!` command or a tool result does
+# not open an exchange.
+# Why a slash command counts: `/40-gi-canvas --last-exchange` is itself the
+# prompt of the turn that asks for the export, and its wrapper is all the log
+# has of it.
+# Why "that got a reply": a built-in such as `/exit` is a prompt the model
+# never answers, and the exchange the user means is the one before it.
+# Why --running: in the session this runs inside, the last prompt opens the
+# turn still running, so the exchange before it is the last finished one.
+def last-exchange [--running]: table -> table {
+    let records = $in
+    let starts = $records
+        | enumerate
+        | where {|r|
+            $r.item.type? == "user" and (
+                ($r.item | extract-slash-command) != null
+                or (($r.item | message-kind) == "typed" and ($r.item | extract-text-content | str trim | is-not-empty))
+            )
+        }
+        | get index
+    let ends = $starts | skip 1 | append ($records | length)
+    let finished = $starts
+        | zip $ends
+        | if $running { drop } else { }
+        | where {|span| $records | slice $span.0..<$span.1 | any { $in.type? == "assistant" } }
+
+    if ($finished | is-empty) {
+        error make --unspanned {
+            msg: "no finished exchange in this session"
+            help: "the session holds no prompt with a reply yet — export it whole"
+        }
+    }
+    let span = $finished | last
+
+    $records | slice $span.0..<$span.1
+}
+
 # Export session dialogue to markdown.
 # Scope by piping session rows in — `sessions --session <uuid> | export-session`
 # for one, `sessions | export-session` for the whole project. With no input it
@@ -1164,6 +1209,7 @@ export def main [
 export def export-session [
     title?: string # Title for the exported doc, used as given (default: session summary)
     --tools # Keep tool calls: each tool_use input in full as a fenced NUON block, each result as a char count (default: drop)
+    --last-exchange # Keep only the last finished exchange: the user's last prompt and the reply to it
 ]: [nothing -> string record -> any table -> list<string> list<string> -> list<string>] {
     let input = $in
     let piped_files = piped-session-files $input
@@ -1191,6 +1237,7 @@ export def export-session [
         }
 
         let summary = $records | extract-summary
+        let session_id = $session_file | session-id-from-path
 
         # Title: the argument as given; the summary fallback gets title-cased.
         # Why no slug pass anymore: lowercasing and hyphens served the filename,
@@ -1209,6 +1256,7 @@ export def export-session [
 
         # Extract dialogue: user messages and assistant responses
         let dialogue = $records
+            | if $last_exchange { last-exchange --running=($session_id == $env.CLAUDE_CODE_SESSION_ID?) } else { }
             | extract-dialogue {|r| if $tools { $r | render-content --tools } else { $r | extract-text-content }}
             # Why: a tool result rides on a user record, but nobody typed it —
             # it continues the assistant's turn. Left as `user`, --tools gave
@@ -1228,8 +1276,6 @@ export def export-session [
             | each {|chunk| {role: $chunk.0.role content: ($chunk.content | str join "\n\n")} }
 
         # Format as markdown
-        let session_id = $session_file | session-id-from-path
-
         let frontmatter = {
             date: ($first_timestamp | format date '%Y-%m-%d')
             session: $session_id

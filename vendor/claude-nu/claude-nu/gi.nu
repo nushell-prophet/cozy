@@ -18,11 +18,12 @@
 #                      session being imported.
 #   gi open            launches Claude Code bound to one canvas. `--plugin-dir`
 #                      hands `claude` the gi plugin — the Canvas output style
-#                      and the skills that work a canvas — for that launch only;
-#                      `--settings` carries the style's name and the Stop hook;
-#                      `--append-system-prompt` names the canvas to the agent;
-#                      and $env.GI_CANVAS names it to the hook, which runs as a
-#                      child of that session. A canvas holds one session for
+#                      and the skills that work a canvas, and the hooks module
+#                      that names the canvas to the agent, refuses a commit
+#                      on main/master and holds the Stop floor — for that
+#                      launch only; `--settings` carries the style's name; and
+#                      $env.GI_CANVAS names the canvas to every one of those
+#                      hooks, which run inside that session. A canvas holds one session for
 #                      life — a canvas with no session gets one minted and
 #                      written in, one that has it is resumed. Which case it is,
 #                      the file says; there is no second verb.
@@ -34,8 +35,8 @@
 #                      conversation can be carried on in a fresh context while
 #                      the conversation that planned it stays readable.
 #
-# Bare `gi` is the third name and does no work: it reports which plugin supplies
-# the protocol and which canvas the asking session is bound to.
+# Bare `gi` is the third name and does no work: it reports which canvas the
+# asking session is bound to, and the canvases where you stand.
 #
 # Why a plugin and not files copied into each repo, which is what this replaced:
 # `--plugin-dir` loads a directory for one session, reading it in place. Copying
@@ -59,18 +60,19 @@
 # plain `claude` in any repo is a plain session, always.
 #
 # The style is proactive shaping only — it rests on prose, and the agent drifts
-# back to long chat answers. The Stop hook is the structural floor under it: it
-# blocks the turn when the final chat message is more than one short line, and
-# blocks turns ending on main/master (gi commits are internal
-# working history — they reach a public branch only squash-merged, after
-# finalization). It comes with every `gi open`; `--no-hook` opens a canvas with
-# the style alone.
+# back to long chat answers. The Stop hook in the plugin's hooks module is the
+# structural floor under it: it blocks the turn when the final chat message is
+# more than one short line. It comes with every `gi open`; `--no-hook` sets
+# $env.GI_NO_HOOK, and the hook stands down. The same module refuses a
+# `git commit` on main/master at the Bash call, with or without the floor (gi
+# commits are internal working history — they reach a public branch only
+# squash-merged, after finalization).
 #
 # There is no `gi disable` and no migration path: gi writes to no settings file,
 # so there is nothing to switch off. A repo set up by the older, repo-wide gi
 # keeps working from its own settings until those keys are deleted by hand.
 
-use sessions.nu [ export-session resolve-session-file read-session-records user-message-texts "nu-complete claude sessions" ]
+use sessions.nu [ export-session resolve-session-file "nu-complete claude sessions" ]
 
 # The output-style name gi passes to `claude --settings` at launch: the plugin's
 # name, a colon, then the `name:` frontmatter of the style file it ships.
@@ -79,13 +81,13 @@ use sessions.nu [ export-session resolve-session-file read-session-records user-
 const GI_STYLE = "gi:Canvas"
 
 # Absolute path to this module's directory, resolved at parse time. Why a const:
-# `path self` only runs at parse time, and the hook needs an absolute `use`
-# target — relative paths are not resolved when Claude Code runs the hook.
+# `path self` only runs at parse time, and `--plugin-dir` needs an absolute
+# path — the launch may `cd` elsewhere first.
 # Deliberately NOT symlink-resolved: `path self` keeps the path as imported,
 # and under cozy that is `~/repos/claude-nu` — the stable module path across
 # machine states (vendored snapshot, sync-repos clone, dev-link symlink to the
-# workspace). Resolving would pin the hook to one physical checkout and break
-# the moment the settings file is used where that checkout does not exist;
+# workspace). Resolving would pin the plugin to one physical checkout and break
+# where that checkout does not exist;
 # following the symlink at run time is exactly the dev-link contract.
 const GI_MODULE_DIR = (path self | path dirname)
 
@@ -102,18 +104,6 @@ const GI_HEADER_SRC = ($GI_MODULE_DIR | path join "gi-md-src" "canvas-header.md"
 # Claude Code may try to read as one.
 const GI_PLUGIN_DIR = ($GI_MODULE_DIR | path join "gi-md-src" "plugin")
 
-# The shell command Claude Code runs for the Stop event. `--stdin` feeds the
-# event JSON to the script as `$in`. The absolute path is required — relative
-# paths are not resolved at hook time — and quoted, for a module dir with a
-# space in it.
-# Why a script and not `-c 'use ...; $in | gi check'`: the hook body then lives
-# in a checked file (see gi-hook.nu) rather than in a string literal nesting
-# quotes through JSON and a shell. Why gi-hook.nu imports gi.nu rather than the
-# `claude-nu` umbrella: `gi check` is the hook's body, not a verb anyone types,
-# so mod.nu does not re-export it and `claude-nu gi <TAB>` stays the verbs a
-# user has a reason to run.
-const GI_COMMAND = $"nu --stdin \"($GI_MODULE_DIR | path join 'gi-hook.nu')\""
-
 # The settings gi hands to `claude` at launch. Verified against the CLI:
 # --settings takes a JSON string as well as a path, its keys MERGE with the
 # project's settings files rather than replace them (a repo's permissions
@@ -121,22 +111,21 @@ const GI_COMMAND = $"nu --stdin \"($GI_MODULE_DIR | path join 'gi-hook.nu')\""
 # same launch's --plugin-dir supplies. So the two flags carry the whole
 # activation for one session, and the repo keeps no record of it. Exported for tests: this payload IS the protocol's
 # on-switch, so it is worth pinning down on its own.
-export def gi-launch-settings [--hook]: nothing -> string {
-    {outputStyle: $GI_STYLE}
-    | if $hook { insert hooks {Stop: [{hooks: [{type: "command" command: $GI_COMMAND}]}]} } else { }
-    | to json --raw
+export def gi-launch-settings []: nothing -> string {
+    {outputStyle: $GI_STYLE} | to json --raw
 }
 
-# Branches gi commits must never end a turn on. Why: gi history is internal
+# Branches gi commits must never land on. Why: gi history is internal
 # working material — on a branch external users read, it would put them off.
 # It reaches these branches only squash-merged, after finalization (see the
 # git-intent-squash-archive skill).
+# Copied as PROTECTED_BRANCHES in gi-md-src/plugin/hooks/register.ts, which
+# enforces it: change both. Here it drives the launch note alone.
 const GI_PROTECTED_BRANCHES = ["main" "master"]
 
 # Repo root (git top-level) of dir — default PWD — falling back to dir itself
 # outside a repo. Both branches yield a physical (symlink-resolved) path — git
-# canonicalizes --show-toplevel itself. Callers expand a user-given --root to
-# match, so every path comparison downstream stays within one path family.
+# canonicalizes --show-toplevel itself.
 def gi-repo-root [dir?: path]: nothing -> path {
     let dir = $dir | default $env.PWD
     let top = ^git -C $dir rev-parse --show-toplevel | complete
@@ -167,10 +156,10 @@ def gi-leave-trunk [dir: path name: string]: nothing -> nothing {
     ^git -C $dir switch --create $name
 }
 
-# The directory gi runs in: --root when the user names one, otherwise where
-# they are standing. Everything a gi command does happens here — the launch
-# cd's to it, a relative canvas is read against it, and the short form printed
-# and handed to the agent is relative to it.
+# The directory gi runs in: where the user is standing. Everything a gi command
+# does happens here — the session starts in it, a relative canvas is read
+# against it, and the short form printed and handed to the agent is relative
+# to it.
 # `root` (the repo) is a different question and stays a different value: it is
 # the branch the guard reads. That is repo-scoped; the canvas is not.
 # Why not the repo root for both: a path typed on a
@@ -179,8 +168,8 @@ def gi-leave-trunk [dir: path name: string]: nothing -> nothing {
 # Run from `mono/sub`, `gi open todo/x.md` would silently make and bind
 # `mono/todo/x.md`, a second file with the same basename as the one the user
 # meant, and the session would write its whole answer into it.
-def gi-run-dir [root?: path]: nothing -> path {
-    $root | default $env.PWD | path expand
+def gi-run-dir []: nothing -> path {
+    $env.PWD | path expand
 }
 
 # A canvas path in both forms: absolute (what GI_CANVAS carries and what the
@@ -242,8 +231,6 @@ def copy-file [src: path dst: path]: nothing -> nothing {
 # Why `todo/` before creating a folder: a repo that already keeps its working
 # notes in `todo/` gets its canvases there too, beside them, instead of a second
 # folder of working material.
-# Why read against the run directory and not the cwd: `--root` moves where the
-# canvas lands, so it moves where the folder is looked for.
 export def gi-canvas-folder [dir: path]: nothing -> string {
     if ($dir | path join "gi-canvas" | path exists) {
         "gi-canvas"
@@ -361,6 +348,7 @@ export def gi-import-text [
     session_id: string # UUID, /rename name, or a .jsonl path (what the tests pass)
     --tools # Keep tool calls instead of dropping them: each input in full, each result as a char count
     --live # This is the session running the import: its log cannot hold the current turn
+    --last-exchange # Keep only the last finished exchange: the user's last prompt and the reply to it
 ]: nothing -> string {
     let file = resolve-session-file $session_id
     let left_out = if $tools { "Thinking is dropped here; tool results are a char count" } else { "Tool calls, results, and thinking are dropped here" }
@@ -370,12 +358,13 @@ export def gi-import-text [
         $"Imported from session (gi-session-key $file)"
     }
     let gap = if $live { " The turn that ran the import is missing — Claude Code writes the session log as the turn runs." }
-    let note = $"> ($source) on (date now | format date '%Y-%m-%d %H:%M').($gap | default '') ($left_out); the full record is `($file)`."
+    let only = if $last_exchange { " Only the last exchange is kept." }
+    let note = $"> ($source) on (date now | format date '%Y-%m-%d %H:%M').($gap | default '')($only | default '') ($left_out); the full record is `($file)`."
 
     # Replace the H1 rather than prepend the header: export-session titles the
     # doc from the session summary, and two H1s in a committed doc is noise.
     # First match only (no --all) — later `# ` lines belong to the dialogue.
-    {path: $file} | export-session --tools=$tools
+    {path: $file} | export-session --tools=$tools --last-exchange=$last_exchange
     | str replace --multiline --no-expand '^# .+' ([(open --raw $GI_HEADER_SRC) $note] | str join "\n")
 }
 
@@ -409,8 +398,6 @@ export def main []: nothing -> record {
     # Not a `ls gi-canvas/*.md todo/*.md gi/*.md` in the 40-gi-canvas skill
     # because: a repo rarely has all three, and `ls` exits non-zero on any
     # missing one, so the call reads as a failure.
-    # Why here and not in gi-status: `gi import` returns gi-status too, and
-    # these would be read from the cwd, not from where the import writes.
     gi-status
     | insert folder (gi-canvas-folder $dir)
     | insert canvases (gi-canvases $dir)
@@ -504,10 +491,9 @@ def gi-edit [doc: path editor: string]: nothing -> nothing {
 export def --wrapped "gi new" [
     slug: string # What the canvas is about; the file is <date>-<slug>.md
     --folder: path # Where the canvas lands, relative to where you are (default: gi-canvas/ if present, else todo/ if present, else gi-canvas/, created)
-    --root: path # Run gi in this directory instead of here: the canvas is written there and the session starts there (default: your cwd)
     --no-editor # Write the canvas without opening it for editing
     --no-claude-launch # Write the canvas and hand back its path; launch nothing
-    --no-hook # Launch with the Canvas style but without the Stop-hook floor
+    --no-hook # Launch with the Canvas style but without the Stop-hook floor (the commit guard stays)
     --execute # Start the session on a first prompt, `@<canvas> go`, so it works on the canvas without waiting
     --dangerously-skip-permissions # Pass claude's flag of the same name through
     ...rest: string # Any other flags go straight to `claude`
@@ -526,7 +512,7 @@ export def --wrapped "gi new" [
         | append $rest
     # Before the canvas is written, not when it is opened: see gi-editor.
     let editor = if $no_editor { null } else { gi-editor }
-    let dir = gi-run-dir $root
+    let dir = gi-run-dir
     # Read once: a run that crosses midnight between the two uses would name the
     # file for one day and stamp `updated:` with the next.
     let today = date now | format date '%J'
@@ -554,7 +540,7 @@ export def --wrapped "gi new" [
         # thing with. A launch returns nothing — `claude` has the terminal.
         return ($paths_doc.abs | cwd-relative)
     }
-    gi-launch --root $root --doc $doc --hook=(not $no_hook) --execute=$execute --extra $extra
+    gi-launch --doc $doc --hook=(not $no_hook) --execute=$execute --extra $extra
 }
 
 # Open a canvas: launch a session bound to it, creating the canvas from the
@@ -563,8 +549,7 @@ export def --wrapped "gi new" [
 @category claude-nu
 export def --wrapped "gi open" [
     doc?: path # The canvas, relative to where you are (default: <canvas folder>/<date>-canvas.md, the folder as for gi new); with --fork, the canvas to fork FROM
-    --root: path # Run gi in this directory instead of here: the canvas is read there and the session starts there (default: your cwd)
-    --no-hook # Launch with the Canvas style but without the Stop-hook floor
+    --no-hook # Launch with the Canvas style but without the Stop-hook floor (the commit guard stays)
     --new-session # Start a fresh session on this canvas, overwriting the id it records
     --fork # Copy the named canvas to its next `_n` sibling and open that, on a session of its own
     --execute # Start the session on a first prompt, `@<canvas> go`, so it works on the canvas without waiting
@@ -612,7 +597,7 @@ export def --wrapped "gi open" [
             label: {text: "flags for `claude` go after the canvas: gi open <doc> <flags>" span: (metadata $doc).span}
         }
     }
-    gi-launch --root $root --doc $doc --hook=(not $no_hook) --new-session=$new_session --fork=$fork --execute=$execute --extra $extra
+    gi-launch --doc $doc --hook=(not $no_hook) --new-session=$new_session --fork=$fork --execute=$execute --extra $extra
 }
 
 # Why a verb of its own and not a flag on `gi enable` (which is what this
@@ -631,8 +616,8 @@ export def "gi import" [
     slug: string # What the canvas is about; the file is <date>-<slug>.md, as gi new names one
     session?: string@"nu-complete claude sessions" # Session UUID, /rename name, or .jsonl path (default: the session this runs inside)
     --folder: path # Where the canvas lands, relative to where you are (default: as for gi new)
-    --root: path # Run gi in this directory instead of here: --folder is read there (default: your cwd)
     --tools # Keep tool calls instead of dropping them: each input in full, each result as a char count
+    --last-exchange # Keep only the last finished exchange: the user's last prompt and the reply to it
     --commit # Commit the imported doc
     --gitignore # Keep the imported doc out of git
 ]: nothing -> record {
@@ -649,9 +634,8 @@ export def "gi import" [
     # commit subject must come from the session file, not from the argument —
     # keyed on the name they would read `session-<first 8 chars of the name>`.
     let file = resolve-session-file $sid
-    # Read the run directory off the flag before the next line shadows it.
-    let dir = gi-run-dir $root
-    let root = $root | default (gi-repo-root) | path expand
+    let dir = gi-run-dir
+    let root = gi-repo-root
     # Why the slug is required: a canvas named after its session id says
     # nothing about what it holds, and the agent running the import has just
     # read the whole chat, so it can name it in a few words.
@@ -675,7 +659,7 @@ export def "gi import" [
     }
     # Build the import before anything is written: a session that can't be read
     # must leave no half-written canvas behind.
-    let imported = gi-import-text $file --tools=$tools --live=($session == null)
+    let imported = gi-import-text $file --tools=$tools --live=($session == null) --last-exchange=$last_exchange
 
     mkdir ($paths_doc.abs | path dirname)
     $imported | save --force $paths_doc.abs
@@ -803,20 +787,18 @@ export def gi-session-plan [recorded: any --new-session]: nothing -> record {
     }
 }
 
-# The `claude` flags a canvas launch owns: the session it binds, the settings
-# that carry the style and the hook, and the system-prompt line that names the
-# canvas. Short forms included — `-c` and `-r` pick a session as surely as their
+# The `claude` flags a canvas launch owns: the session it binds, the name it
+# shows, and the settings that carry the style. Short forms included — `-c` and `-r` pick a session as surely as their
 # long spellings.
-const GI_OWNED_FLAGS = ["--settings" "--session-id" "--resume" "-r" "--continue" "-c" "--fork-session" "--name" "--append-system-prompt"]
+const GI_OWNED_FLAGS = ["--settings" "--session-id" "--resume" "-r" "--continue" "-c" "--fork-session" "--name"]
 
 # The pass-through's one rule: it may not carry a flag gi sets itself. Why it has
 # to fail and not just lose: `claude` takes the LAST --settings, so a forwarded
-# one wins and takes the style's name and the Stop hook with it — gi silently
-# half on. A forwarded --resume/--session-id likewise unbinds the launch from
-# the canvas that named it. --append-system-prompt is the same failure again and
-# measured: given two, `claude` keeps only the last, so a forwarded one drops
-# the line that names the canvas and the session is back to guessing. `=` split
-# so `--settings={...}` is caught too.
+# one wins and takes the style's name with it — gi silently half on. A forwarded --resume/--session-id likewise unbinds the launch from
+# the canvas that named it. `=` split so `--settings={...}` is caught too.
+# Not --append-system-prompt: gi names the canvas through a `prompt.compose`
+# hook in the plugin (gi-md-src/plugin/hooks/register.ts), a section of its own,
+# so the caller's flag adds to the prompt without displacing that line.
 # --plugin-dir is deliberately NOT on the list, though gi sets it: `claude`
 # documents it as repeatable, so a forwarded one loads a second plugin
 # ALONGSIDE gi's rather than displacing it. Last-wins is the hazard this guard
@@ -829,7 +811,7 @@ export def gi-reject-owned-flags [extra: list<string>]: nothing -> nothing {
     if ($owned | is-not-empty) {
         error make --unspanned {
             msg: $"gi sets ($owned | str join ', ') itself — a canvas launch cannot pass it through"
-            help: "the canvas binds the session (--session-id/--resume/--name) and carries the style name and the hook (--settings); to work in another session, open another canvas"
+            help: "the canvas binds the session (--session-id/--resume/--name) and carries the style name (--settings); to work in another session, open another canvas"
         }
     }
 }
@@ -840,15 +822,8 @@ export def gi-reject-owned-flags [extra: list<string>]: nothing -> nothing {
 # records it, so the canvas can be reopened); --resume returns to one the canvas
 # already carried. --name puts the canvas in the prompt box, the /resume picker,
 # and the terminal title, so the session says which canvas it belongs to.
-# --append-system-prompt says the same thing to the agent, and is the only one of
-# the three it can actually read. Why not leave that to $env.GI_CANVAS, which the
-# launch also sets: an environment variable is not in the model's context. The
-# style pointed at it, so every session opened by spending a shell call to
-# resolve it — and observed repeatedly, the agent guessed the variable's name
-# wrong, read an empty string, and fell back to listing directories hunting for a
-# canvas. The path is known here and text costs nothing. GI_CANVAS stays for the
-# Stop hook and `gi status`: those are processes, and that is where a process
-# reads it.
+# The agent reads none of the three: the plugin's `prompt.compose` hook tells it
+# the canvas, in a system-prompt section read off $env.GI_CANVAS.
 # `extra` is the caller's own `claude` flags, appended last and untouched — gi
 # has no opinion on them beyond the one rule gi-reject-owned-flags states.
 # --execute adds the first user message as claude's positional prompt, so the
@@ -861,33 +836,30 @@ export def gi-reject-owned-flags [extra: list<string>]: nothing -> nothing {
 export def gi-launch-args [sid: string doc: string --resume --execute ...extra: string]: nothing -> list<string> {
     if $resume { ["--resume" $sid] } else { ["--session-id" $sid] }
     | append ["--name" $doc]
-    | append ["--append-system-prompt" $"This session's canvas is `($doc)` — the one file the Canvas output style is about. Read it before your first answer; do not search for it."]
     | append $extra
     | if $execute { append ["--" $"@($doc) go"] } else { }
 }
 
 # Launch Claude Code bound to one canvas — the only thing that turns gi on.
 # Everything travels with the launch and nothing is left in the repo:
-# `--settings` carries the Canvas style and (unless --no-hook) the Stop hook for
-# this process only, and $env.GI_CANVAS names the canvas for the agent and for
-# the hook, which inherits it as a child process.
+# `--settings` carries the Canvas style for this process only, and
+# $env.GI_CANVAS names the canvas to the plugin's hooks module; $env.GI_NO_HOOK
+# (--no-hook) tells its Stop hook to stand down.
 # One canvas holds one session for life: a canvas with no `session:` in its
 # frontmatter gets one minted here (`--session-id`) and written in; one that has
 # it is resumed. Why `--resume` and not `--fork-session`: the id must keep
 # matching the frontmatter, or the canvas can't be reopened a third time.
 def gi-launch [
     --doc: path # The canvas; created from the template when new
-    --root: path # Run gi in this directory instead of here (default: your cwd)
-    --hook # Carry the Stop-hook floor into the session
+    --hook # Keep the Stop-hook floor up in the session
     --new-session # Mint a fresh session id, overwriting the one the canvas records
     --fork # Open a copy of the named canvas instead, on a session of its own
     --execute # Start the session on a first prompt that runs the canvas's task
     --extra: list<string> = [] # Flags forwarded to `claude` untouched
 ]: nothing -> nothing {
     gi-reject-owned-flags $extra
-    # Read the run directory off the flag before the next line shadows it.
-    let dir = gi-run-dir $root
-    let root = $root | default (gi-repo-root) | path expand
+    let dir = gi-run-dir
+    let root = gi-repo-root
     let doc = $doc | default (gi-default-doc $dir)
     # The copy is made here and not in `gi open` so everything below — the
     # session plan, the stamp, GI_CANVAS, --name — sees only the file being
@@ -927,180 +899,29 @@ def gi-launch [
         }
         gi-stamp-session $doc_abs $plan.sid
     }
-    # Same guard the hook enforces, surfaced before the session starts — a
-    # branch switch now beats being blocked mid-session with commits already made.
+    # Same guard the plugin enforces at the commit, surfaced before the session
+    # starts — a branch switch now beats a refused commit mid-task.
     let branch = gi-branch $root
 
-    if $hook and ($branch in $GI_PROTECTED_BRANCHES) {
-        print $"note: this repo is on ($branch) — gi commits belong on a work branch; the Stop hook will block turns until you switch."
+    if $branch in $GI_PROTECTED_BRANCHES {
+        print $"note: this repo is on ($branch) — gi commits belong on a work branch; a `git commit` is refused until you switch."
     }
     let args = gi-launch-args $plan.sid $doc_rel --resume=$plan.resume --execute=$execute ...$extra
 
     print $"canvas ($doc_rel), session (gi-session-key $plan.sid)(if $hook { '' } else { ', no Stop hook' })"
-    # cd only matters when --root sent the launch elsewhere; without it this is
-    # already where the user stands. It is not needed to find the style or the
-    # skills: --plugin-dir names them by absolute path, so no directory the
-    # launch stands in can change what loads.
-    do {
-        cd $dir
-        with-env {GI_CANVAS: $doc_abs} {
-            ^claude --plugin-dir $GI_PLUGIN_DIR --settings (gi-launch-settings --hook=$hook) ...$args
-        }
+    with-env ({GI_CANVAS: $doc_abs} | if $hook { } else { insert GI_NO_HOOK "1" }) {
+        ^claude --plugin-dir $GI_PLUGIN_DIR --settings (gi-launch-settings) ...$args
     }
 }
 
-# Where the protocol comes from, plus whether the session asking is bound to a
-# canvas. Pipeline-friendly record.
-# Why `style` and `skills` and `stale` are gone: gi seeds nothing into a repo
-# now, so there is no per-repo state to report and nothing that can drift from
-# the module. `plugin` replaces all three — it is the one directory every
-# launch reads, in place.
+# Whether the session asking is bound to a canvas. Pipeline-friendly record.
+# Not the plugin directory, the style and the skills beside it because: they
+# were there to show a per-repo copy that could drift, and the plugin is read
+# in place, so there is nothing left to show.
 def gi-status []: nothing -> record {
     {
         # Read from the environment, not from a file: activation is per session,
         # so "is gi on" is a property of who is asking, not of the repo.
         canvas: ($env.GI_CANVAS? | if ($in | is-not-empty) { cwd-relative } else { })
-        plugin: ($GI_PLUGIN_DIR | cwd-relative)
-        style: $GI_STYLE
-        skills: (ls ($GI_PLUGIN_DIR | path join "skills") | get name | each {|d| $"gi:($d | path basename)" })
     }
-}
-
-# Stop-hook body. Reads the event JSON on stdin and returns either nothing
-# (allow the turn to end) or the block-decision JSON string. `nu -c` renders
-# the return value to stdout, which is the Stop hook's control channel; the
-# command always exits 0, per the contract. Returning (not printing) keeps it
-# unit-testable. The single `to json` lives here, next to the contract it
-# serves — the rules deal in records only. Also accepts nothing: run by hand
-# with no stdin, the normalization below treats it as an empty event.
-# Exported so the hook can import it, but kept out of mod.nu: nobody types this.
-export def "gi check" []: [string -> any nothing -> any] {
-    let payload = try { default "" | from json } catch { {} }
-    # Valid JSON need not be an object ("hi", 123, null, [1]) — normalize to a
-    # record: anything else would throw in the guard below or entering the
-    # rules, above/outside the contract boundary.
-    let payload = if ($payload | describe | str starts-with "record") { $payload } else { {} }
-
-    # Already continuing from a prior block — let it end to avoid a loop.
-    if ($payload.stop_hook_active? | default false) { return }
-
-    # Contract boundary: an internal error (hand-broken settings file, git not
-    # on PATH, a typo in GI_HOOK_MAX_LEN) must not become a non-zero exit —
-    # Claude Code treats that as a non-blocking error and enforcement silently
-    # vanishes. Convert it to a block whose reason carries the error: loud,
-    # in front of the agent, and the loop guard above still lets the turn end
-    # on the retry. Not a fail-fast violation — this IS the failure surface.
-    let decision = try { $payload | gi-check-rules } catch {|err|
-        {decision: "block" reason: $"gi check failed internally — fix this before continuing: ($err.msg)"}
-    }
-
-    if $decision != null { $decision | to json --raw }
-}
-
-# The actual gi rules, free to throw; `gi check` owns the exit-0 contract.
-def gi-check-rules []: record -> any {
-    let payload = $in
-    # $env.GI_CANVAS is the activation itself: `gi open` set it on
-    # the session they launch, and the hook inherits it as a child process. It is
-    # also the only thing that makes a block actionable — the reason has to name
-    # the canvas to move the answer into. Unset, there is no canvas, no gi
-    # session, and nothing to enforce; the turn ends. No second source to consult.
-    let canvas = $env.GI_CANVAS? | default ""
-
-    if ($canvas | is-empty) { return }
-
-    # The chat aside, before every rule: the user asked something in chat and
-    # said the answer stays there, so this turn is not canvas work at all. It
-    # writes no file and makes no commit, which is also why it clears the branch
-    # guard below — that guard protects the trunk from commits, and there are
-    # none here.
-    if (gi-off-canvas ($payload.transcript_path? | default "")) { return }
-
-    # Two questions, two values, the same split as in the commands: the session's
-    # own directory is what a path is shortened against (that is where the agent
-    # stands), and the repo around it is what the branch guard reads.
-    let dir = $payload.cwd? | default $env.PWD | path expand
-    let root = gi-repo-root $dir
-
-    # Branch guard, before the message rule: even a perfect `done` may not end
-    # a turn on a protected branch — gi commits are internal working history,
-    # and the sooner the agent hears it, the fewer commits there are to move.
-    let branch = gi-branch $root
-
-    if $branch in $GI_PROTECTED_BRANCHES {
-        let reason = $"You are on `($branch)` — gi commits are internal working history and must not land here. Switch to a work branch \(`git switch -c <topic>`, moving any commits already made); it gets squash-merged into `($branch)` after finalization."
-
-        return {decision: "block" reason: $reason}
-    }
-
-    let message = $payload.last_assistant_message? | default ""
-
-    if (gi-allowed $message) { return }
-
-    # Name the canvas the short way when it is under the session's directory —
-    # the agent reads this path in a message, and the absolute form is noise
-    # there. Relative to that directory and not to the repo root, or the agent
-    # is handed a path that does not resolve from where it is standing.
-    let doc = if ($canvas | str starts-with $"($dir)/") { $canvas | path relative-to $dir } else { $canvas }
-    # The escape hatch is safe by construction: the blocked message is already
-    # on the user's screen, and the stop_hook_active guard ends the turn on the
-    # follow-up whatever it says — a misfire can redirect one reply, never trap
-    # the agent.
-    let reason = $"Chat may carry only one short line — `done`, a status note, or a pointer to where the answer landed. Move the full answer into `($doc)` and commit it; leave only that one line in chat. If this block looks like a misfire — wrong canvas, no gi work in this session — don't move anything: reply with one short line telling the user to read your previous message above in the chat and to check the session's canvas \(`claude-nu gi`)."
-
-    {decision: "block" reason: $reason}
-}
-
-# The marker that takes one exchange off the canvas, written by the user at the
-# start of their message: `chat: what does this flag do?`.
-const GI_CHAT_MARKER = "chat:"
-
-# True when the user's last message opens with the marker — the exchange is an
-# aside: answer in chat, write nothing to the canvas, commit nothing.
-# Why the user's message and never the agent's: a marker the agent could write
-# is the agent lifting its own floor, which is the one thing this hook exists to
-# prevent. The user's words reach the hook only through the transcript, so the
-# event's `transcript_path` is where the marker is read from.
-# Why the LAST authored user message: it is the one that opened this turn.
-# Tool-result records are user-type too, so the filter that `messages` uses
-# decides what counts as a human turn — one definition, not a second one here.
-# No path (a hand-run `gi check`, an event without the field) leaves the floor
-# up: the aside is something the user asks for, not a state we assume. A path
-# that exists but cannot be read is not caught — `gi check` turns it into a
-# loud block.
-export def gi-off-canvas [transcript: string]: nothing -> bool {
-    if ($transcript | is-empty) or not ($transcript | path exists) { return false }
-    # --contains screens the raw lines before decoding: only user records can
-    # carry the marker, and this parse runs at every turn end.
-    $transcript
-    | read-session-records --contains '"type":"user"'
-    | user-message-texts
-    | last 1 | get 0? | default ""
-    | str trim | str lowercase | str starts-with $GI_CHAT_MARKER
-}
-
-# Line breaks allowed in a chat message, alongside the character budget.
-const GI_HOOK_MAX_BREAKS = 3
-
-# The allow-rule: what may stand alone in chat. True (allowed) when, after trim,
-# the message is empty, or fits the budget: at most 3 line breaks and
-# GI_HOOK_MAX_LEN characters. Size is the whole floor — a real answer exceeds it.
-# Why not one line: a status note plus a pointer is two lines, and a floor that
-# forbids the second one is not measuring the thing it cares about.
-# Not a link signal (backtick, `→`, filename) because: it made a path the price
-# of every chat line, so a short honest status note ("waiting on the background
-# agent") was blocked even though it hid nothing from the canvas. Demanding a
-# path where there is none teaches the agent to invent one, which is worse than
-# the sentence it was meant to prevent.
-# Why a budget env-var: "short" is fuzzy; GI_HOOK_MAX_LEN makes the threshold
-# tunable without editing the hook (legacy prefix kept — deployed sessions
-# already use it).
-export def gi-allowed [message: string]: nothing -> bool {
-    let text = $message | str trim
-
-    if ($text | is-empty) { return true }
-
-    let max = $env.GI_HOOK_MAX_LEN? | default 480 | into int
-
-    (($text | lines | length) <= ($GI_HOOK_MAX_BREAKS + 1)) and (($text | str length) <= $max)
 }

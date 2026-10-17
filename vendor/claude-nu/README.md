@@ -72,7 +72,7 @@ A resumed or forked session repeats its parent's records under the same `uuid`; 
 - `message` — User message content
 - `timestamp` — When message was sent
 - `uuid` — The record's own id: its address inside the session
-- `kind` — What the row is: `typed`, `bash-input` (a `!` command), `bash-output` (what it printed), `system` (only with `--include-system`) or `response` (only with `--include-responses`)
+- `kind` — What the row is: `typed`, `bash-input` (a `!` command), `bash-output` (what it printed), `file` (a file attached with `@`, or the part of a file that changed on disk outside the agent's Edit and Write tools during the session), `system` (only with `--include-system`) or `response` (only with `--include-responses`)
 - `session` — Session UUID, the selector to pipe onward
 - `project` — Project directory the session belongs to, encoded (`/` turned into `-`) — a display name, not a real path
 - `project_name` — The same project, readable: its `cwd`'s last two path segments, same form as `projects.name`. `""` when the session carries no `cwd`
@@ -83,6 +83,9 @@ A resumed or forked session repeats its parent's records under the same `uuid`; 
 The rendered text cannot tell a `!git log` from a `git log` output the user pasted: both become the same fenced block.
 So the kind is read from the raw record — `isMeta`, `isCompactSummary` and the wrapper tags — and the user's own words are `where kind == typed`.
 An editor selection stays `typed`, because most such messages also carry the user's own words.
+A `file` row is there because a task is often written in a file, such as a gi canvas or a todo note.
+The prompt is then only `@<file> go`, so the user's words are in the file and `where kind == typed` leaves them out.
+A changed file is not always the user's work: the agent's own shell edits, a formatter and git also change files on disk.
 
 **The turns around a hit.**
 `--context N` needs a regex.
@@ -201,8 +204,16 @@ claude-nu sessions --subagents --columns agent_id,agent_type,agent_label | where
 
 **Default (overview) columns:**
 - `summary` — AI-generated session summary
-- `first_timestamp` — Session start time
 - `last_timestamp` — Last activity
+- `user_messages` — List of user message texts
+- `path` — Session file path
+- `parent_session_id` — Parent UUID for subagent transcripts
+
+**Additional columns:** request via `--columns name1,name2` (or `--all-columns` for everything).
+Any `--columns` selection narrows output to `path`/`parent_session_id` plus the requested columns.
+
+- `session_id` — UUID
+- `first_timestamp` — Session start time
 - `user_msg_count` — Number of user messages
 - `user_msg_length` — Total chars typed by user
 - `response_length` — Total chars of assistant text
@@ -211,14 +222,6 @@ claude-nu sessions --subagents --columns agent_id,agent_type,agent_label | where
 - `mentioned_files` — @-mentions in user messages
 - `read_files` — Files read
 - `edited_files` — Files modified by Edit/Write
-- `path` — Session file path
-- `parent_session_id` — Parent UUID for subagent transcripts
-
-**Additional columns:** request via `--columns name1,name2` (or `--all-columns` for everything).
-Any `--columns` selection narrows output to `path`/`parent_session_id` plus the requested columns.
-
-- `user_messages` — List of user message texts
-- `session_id` — UUID
 - `version` — Claude Code version
 - `cwd` — Working directory
 - `git_branch` — Branch at session start
@@ -289,7 +292,7 @@ The one thing it uniquely holds is the built-in commands that never reach the mo
 
 ### The time window
 
-`--since` and `--until` are on `sessions`, `messages`, `tool-calls` and `slash-commands`.
+`--since` and `--until` are on `sessions`, `messages`, `tool-calls`, `slash-commands` and `timeline`.
 Each takes a duration meaning *ago* (`--since 1wk`, `--until 3day`), a date (`2026-08-01`), or a `datetime` value — so "what did I do last week" is a flag, not a filter you write afterwards.
 
 What the window is measured against is the row you are asking for.
@@ -347,6 +350,7 @@ claude-nu export-session "Auth refactor"    # Custom title, used as given
 claude-nu sessions --session <uuid|name> | claude-nu export-session # Specific session
 claude-nu export-session | save session.md  # Saving is the shell's job
 claude-nu export-session --tools            # ...keeping tool calls, each input rendered whole
+claude-nu export-session --last-exchange    # ...only the last prompt that got a reply, and that reply; inside the live session the running turn is skipped
 ```
 
 The output is the markdown itself — one string per session, with the session id and date in the YAML frontmatter.
@@ -435,32 +439,37 @@ claude-nu gi import plan       # a canvas from the dialogue of the session this 
 claude-nu gi import plan <TAB> # ...or of any session: the picker shows age, size, summary
 claude-nu gi import plan --folder notes # ...in another folder
 claude-nu gi import plan --tools # ...keeping tool calls, each input rendered whole
+claude-nu gi import plan --last-exchange # ...only the last question and its answer
 claude-nu gi import plan --commit # ...and commit it
 claude-nu gi import plan --gitignore # ...or keep it out of git
 claude-nu gi open              # today's canvas (gi-canvas/<date>-canvas.md) + a session bound to it; a second run that day resumes it
 claude-nu gi open gi-canvas/plan.md   # ...a named one: created from the template if new, resumed if it already holds a session
-claude-nu gi open gi-canvas/plan.md --no-hook # style only, without the Stop-hook floor
+claude-nu gi open gi-canvas/plan.md --no-hook # style only, without the Stop-hook floor; the commit guard stays
 claude-nu gi open gi-canvas/plan.md --new-session # start over on it: mint a fresh id, overwrite the recorded one
 claude-nu gi open gi-canvas/plan.md --fork # ...or keep it as it is and open a copy (gi-canvas/plan_1.md) on a session of its own
 claude-nu gi open gi-canvas/plan.md --execute # start on a first prompt, `@<canvas> go`: the session works the canvas without waiting
 claude-nu gi open gi-canvas/plan.md --dangerously-skip-permissions --model opus # ...any other flag goes straight to `claude`
-claude-nu gi                   # { canvas, plugin, style, skills, folder, canvases }
+claude-nu gi                   # { canvas, folder, canvases }
 ```
 
-**The Stop hook** is the hard floor that comes with every bound session: the agent's final chat message must stay small — `done`, a status note, a pointer to where the answer landed — at most 3 line breaks and 480 characters; anything bigger blocks the turn with an instruction to move the answer into the canvas and commit it — the block message names the exact file.
+**The Stop hook** in the plugin's hooks module is the hard floor that comes with every bound session: the agent's final chat message must stay small — `done`, a status note, a pointer to where the answer landed — at most 3 line breaks and 480 bytes of UTF-8 (about 240 Cyrillic letters); anything bigger blocks the turn with an instruction to move the answer into the canvas and commit it — the block message names the exact file.
 Size is the whole rule: no path is required, because demanding one made a short honest status note ("waiting on the background agent") a violation, which taught the agent to invent a path rather than to write less.
-It also blocks any turn ending on `main`/`master`: gi commits are internal working history; they reach a public branch only squash-merged, after finalization.
-The character budget is tunable via `GI_HOOK_MAX_LEN`.
+The same hooks module refuses a `git commit` on `main`/`master` at the Bash call, with or without the floor: gi commits are internal working history; they reach a public branch only squash-merged, after finalization.
+A turn may still end there, so landing a branch onto the trunk is not blocked.
+The byte budget is tunable via `GI_HOOK_MAX_LEN`.
 
 **`chat:` is the way out.**
-Open your message with `chat:` and that one exchange is off the canvas: the hook lets the turn end with any answer, on any branch, and the style tells the agent to answer in chat and write nothing — no document, no commit.
+Open your message with `chat:` and that one exchange is off the canvas: the hook lets the turn end with any answer, and the style tells the agent to answer in chat and write nothing — no document, no commit.
 It is for the questions you ask *about* the work rather than as part of it.
-The marker is read from the transcript, from your last authored message, so only you can spend one: a marker the agent could write would be the agent lifting its own floor, which is what the hook exists to prevent.
+The marker is read from the prompt that opened the turn, and only from one you typed, so only you can spend one: a marker the agent could write would be the agent lifting its own floor, which is what the hook exists to prevent.
 It covers one turn — the next unmarked message is canvas work again.
+A slash command you run counts as an aside too: a skill carries its own rules for the chat — `/40-land-branch` shows its plan there and waits — so the floor stands down for that turn and the agent answers as the skill says.
+A skill the agent calls on its own never lifts the floor.
 
 **Why activation lives at launch.**
-`gi open` hands the gi plugin — the Canvas style and the skills — to `claude --plugin-dir`, passes the style's name and the hook to `claude --settings` (which takes inline JSON, merges with the project's settings rather than replacing them), names the canvas to the agent with `--append-system-prompt`, and sets `$env.GI_CANVAS` in the launch environment, which the hook inherits as a child process.
-The path goes to the agent as text and to the hook as an environment variable because an environment variable is not in the model's context: pointing the agent at `$env.GI_CANVAS` cost a shell call per session, and when the agent misremembered the variable's name it read an empty string and started listing directories to find a canvas.
+`gi open` hands the gi plugin — the Canvas style and the skills — to `claude --plugin-dir`, passes the style's name to `claude --settings` (which takes inline JSON, merges with the project's settings rather than replacing them), and sets `$env.GI_CANVAS` in the launch environment.
+The plugin's own hooks module reads it and adds a section to the system prompt that names the canvas to the agent.
+The path goes to the agent as prompt text and to the hooks as an environment variable because an environment variable is not in the model's context: pointing the agent at `$env.GI_CANVAS` cost a shell call per session, and when the agent misremembered the variable's name it read an empty string and started listing directories to find a canvas.
 So gi writes nothing at all — no settings file, and nothing inside the repo but the canvas — and there is nothing to switch off afterwards: a plain `claude` in any repo is a plain session, always.
 The earlier design put `outputStyle`, the hook, and the canvas path into `.claude/settings.local.json` — repo-wide keys that loaded into *every* session opened there, so a canvas from last week kept shaping unrelated work until you remembered to disable it.
 `$env.GI_CANVAS` is also the hook's on/off switch: with no canvas bound it has nothing to enforce and stands down.
@@ -469,7 +478,6 @@ A repo can hold as many canvases as you like — each `gi open` binds one sessio
 
 **One directory.**
 gi runs where you are standing: a relative canvas path is read against your cwd, the session starts there, and the path gi prints, hands to the agent, and quotes in a hook message is relative to the same place — so what you read is what you can paste back.
-`--root <dir>` moves the whole run there instead.
 One thing stays repo-scoped, because it is a property of the repo and not of the canvas: the branch guard reads the repo's branch.
 Anchoring the canvas at the git root as well would, inside a monorepo, silently write to the wrong file: run from `mono/sub`, `gi open todo/x.md` would make and bind `mono/todo/x.md` — a second file with the same name as the one you meant.
 One consequence to know: a canvas opened from a subdirectory gets its own session store, so `claude-nu sessions` at the repo root needs `--all-projects` to list it.
@@ -477,7 +485,7 @@ One consequence to know: a canvas opened from a subdirectory gets its own sessio
 **Your own `claude` flags.**
 `gi open` is `--wrapped`: anything it does not define is forwarded to `claude` untouched, so `--dangerously-skip-permissions`, `--model`, `--append-system-prompt` and the rest work as usual.
 Two rules keep the binding honest.
-Flags gi sets itself — `--settings`, `--session-id`, `--resume`/`-r`, `--continue`/`-c`, `--fork-session`, `--name`, short forms included — are refused, because a second `--settings` wins over gi's and would carry off the style and the Stop hook, leaving gi silently half on.
+Flags gi sets itself — `--settings`, `--session-id`, `--resume`/`-r`, `--continue`/`-c`, `--fork-session`, `--name`, short forms included — are refused, because a second `--settings` wins over gi's and would carry off the style, leaving gi silently half on.
 And a flag typed where the canvas goes (`gi open --model opus`) is refused too: nushell hands an undeclared leading flag to the positional, so it would otherwise create a canvas named `--model`.
 `--dangerously-skip-permissions` is in the signature for that reason — it is the flag most often typed with no canvas named, and being declared it parses in either position.
 
@@ -496,10 +504,10 @@ Numbering is max+1 over the series, never the first free gap: the canvas folder 
 `--fork` needs a canvas to fork from (the positional names the source, not the file being created), and cannot be combined with `--new-session` — both mint an id, but on different files.
 
 **Starting a canvas from a slug.**
-`gi new <slug>` is the naming half of `gi open`: the canvas is `<folder>/<date>-<slug>.md` (`--folder`; by default `gi-canvas/` when the directory has one, else `todo/` when it has that, else a new `gi-canvas/` — the same folder `gi open` and `gi import` pick when given no path), it starts with the todo frontmatter — `status` and `updated`, the creation date being in the file name already — and the same header a canvas gets from `gi open`, and the command ends in that launch.
+`gi new <slug>` is the naming half of `gi open`: the canvas is `<folder>/<date>-<slug>.md` (`--folder`; by default `gi-canvas/` when the directory has one, else `todo/` when it has that, else a new `gi-canvas/` — the same folder `gi open` and `gi import` pick when given no path), it starts with the todo frontmatter — `status`, `updated` and `agents-mode`, the creation date being in the file name already — and the same header a canvas gets from `gi open`, and the command ends in that launch.
 On `main` or `master` with nothing staged, it first switches to a new branch named after the slug, so the canvas and its commits start off the trunk.
 It then puts the file in front of you, in `$env.EDITOR`, to write the task in: inside zellij in a pane of its own, so the document stays in view while the session runs beside it; outside zellij in the terminal you are in, and the launch follows when the editor exits — with no `$env.EDITOR` set that is an error naming `--no-editor`, never a guess at which editor you have.
-`--no-editor` skips that, `--no-claude-launch` skips the launch and hands back the path instead, and the flags `gi open` defines — `--root`, `--no-hook`, `--dangerously-skip-permissions`, anything else straight to `claude` — work here too.
+`--no-editor` skips that, `--no-claude-launch` skips the launch and hands back the path instead, and the flags `gi open` defines — `--no-hook`, `--execute`, `--dangerously-skip-permissions`, anything else straight to `claude` — work here too.
 `--fork` and `--new-session` are the two it does not take: both act on a canvas that exists and already records a session.
 The same slug on the same day is an error naming the canvas already there, not a second file — a slug is typed on purpose, unlike zellij's `cmd+e` note, which is named after the day alone and numbers a repeat.
 
@@ -515,8 +523,10 @@ An imported canvas records the session it came from, so `gi open <doc>` reopens 
 The `40-gi-canvas` skill drives the whole flow from inside a chat session, so you don't type nushell into Bash: it runs the import and hands you the one line to run.
 
 **The protocol rides a plugin, and the repo keeps nothing.**
-`gi open` hands `claude --plugin-dir` the directory `claude-nu/gi-md-src/plugin/`, which holds the Canvas output style and the gi skills.
+`gi open` hands `claude --plugin-dir` the directory `claude-nu/gi-md-src/plugin/`, which holds the Canvas output style, the gi skills and the hooks module that names the canvas.
 `--plugin-dir` loads a plugin for one session, reading it where it lies — nothing installed, nothing copied, no trace in `~/.claude.json` beyond a usage counter.
+The one write is Claude Code's own: an interactive load of the hooks module puts editor types (`tsconfig.json`, `.claude-plugin/types/`) into the plugin folder, inside this module, never into your repo.
+Both are gitignored, and a read-only plugin folder still loads.
 So a canvas launch writes exactly one thing into your repo: the canvas.
 There is no `.claude/` from gi, no `.gitignore` block explaining it, and no `gi enable` verb — nothing is seeded, so nothing has to be refreshed.
 
