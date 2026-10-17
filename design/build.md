@@ -153,7 +153,7 @@ Wipes `~/.config/nushell/autoload/` (cozy owns it; stale files from removed-upst
 See [`autoload.md`](autoload.md).
 
 ### Step 4 — dotfiles
-From `~/repos/dotfiles`, spawns nu to run `toolkit push-to-machine --force --create-dirs --docker --commit-existing --commit-changes` (deploys helix/zellij/lazygit/broot/nushell/jj/wezterm configs; `--commit-existing` snapshots pre-existing destination files before the forced overwrite, so a re-run can't silently lose in-sandbox config edits).
+From `~/repos/dotfiles`, spawns nu to run `toolkit push-to-machine --all --create-dirs --docker` (deploys helix/zellij/lazygit/broot/nushell/jj/wezterm configs and commits them in `~/.config`; a first run commits what is already there before overwriting it, and a re-run stops on a machine edit that dotfiles does not hold, before Claude Code is installed in Step 9).
 Always `--docker` because cozy only vendors the docker paths file.
 Config sources live in the `dotfiles` repo — see [`modules.md`](modules.md).
 Dotfiles owns only `~/.config`.

@@ -136,7 +136,7 @@ export def main [
 
     # Step 2 — minimal XDG git config with an agent identity.
     # user.name/email is written here so `toolkit
-    # push-to-machine --commit-changes` (step 4) can commit; writing to XDG
+    # push-to-machine` (step 4) can commit in ~/.config; writing to XDG
     # rather than /etc/gitconfig avoids sudo and works for both apt-git
     # (build) and brew-git (runtime). It's also safe on a real host: git
     # precedence has ~/.gitconfig (global) overriding XDG, so a user's
@@ -222,11 +222,11 @@ export def main [
     # dotfiles repo root. Always pass `--docker` because cozy only vendors
     # paths-docker.csv (see toolkit/vendor.yml) — host install is feature
     # parity and uses the same paths file as the docker install.
-    # --commit-existing snapshots pre-existing destination files before the
-    # overwrite; without it a re-run silently loses in-sandbox config edits
-    # (--force skips the dirty check that would otherwise stop the copy).
+    # A first run commits what ~/.config already holds before overwriting it; a
+    # re-run stops here on a machine edit dotfiles does not hold, so it is
+    # looked at instead of lost.
     cd ($nu.home-dir | path join 'repos' 'dotfiles')
-    ^nu --no-config-file --commands 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker --commit-existing --commit-changes'
+    ^nu --no-config-file --commands 'use toolkit.nu; toolkit push-to-machine --all --create-dirs --docker'
 
     # Step 5 — Claude Code settings, skills, agents, output styles and mods into ~/.claude.
     claude-home $cozy_root
@@ -318,7 +318,7 @@ export def main [
 # other deploy targets already contain user files — without this, a Mac
 # user with their own helix/zellij/nushell configs would silently lose them
 # at step 3.5 (autoload wipe) or step 4 (push-to-machine, which writes
-# config.nu/env.nu/config.toml/etc. with --force). Skipped on re-runs via
+# config.nu/env.nu/config.toml/etc.). Skipped on re-runs via
 # ~/.cozy-installed stamp, and entirely with --force.
 #
 # Conservative by design: checks dirs (not individual files in
