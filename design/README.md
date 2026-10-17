@@ -28,7 +28,7 @@ The build sequence, in order:
 - [`modules.md`](modules.md) — why the Nushell modules are vendored and how they load.
   Pointers only; what each command does lives in the module's own repo and in [`../README.md`](../README.md).
 
-- [`autoload.md`](autoload.md) — the [`docker-files/`](../docker-files/) shipped into the sandbox and why each one is needed (self-healing config, the `pbcopy` shim, the global CLAUDE.md tool catalog).
+- [`autoload.md`](autoload.md) — the [`docker-files/`](../docker-files/) shipped into the sandbox and why each one is needed (self-healing config, Claude Code settings, the `pbcopy` shim, the global CLAUDE.md tool catalog).
 
 Wrapped around the finished build, not part of it:
 

@@ -6,13 +6,14 @@ covers:                # source paths update-design reconciles this file against
   - docker-files/pbcopy
   - docker-files/logo.ans
   - docker-files/workspace-README.md
-reconciled-at: txlvkxkvywuzyympzwnkwyuktpnrwkry
+  - docker-files/claude/
+reconciled-at: uxzxuzryzpqxkoqsosxpunmttpmwkynl
 ---
 
 # cozy autoload & shipped docker-files
 
 The [`docker-files/`](../docker-files/) bits that land in the running sandbox.
-`bootstrap.nu` Step 3.5 copies `docker-files/nushell-autoload/*.nu` → `~/.config/nushell/autoload/` (loaded on every shell start), Step 6 appends `global-claude.md` to `~/.claude/CLAUDE.md`, and the `pbcopy` shim is installed to `~/.local/bin` (on every Linux, just before Step 1).
+`bootstrap.nu` Step 3.5 copies `docker-files/nushell-autoload/*.nu` → `~/.config/nushell/autoload/` (loaded on every shell start), Step 5 deploys `claude/` into `~/.claude/`, Step 6 appends `global-claude.md` to `~/.claude/CLAUDE.md`, and the `pbcopy` shim is installed to `~/.local/bin` (on every Linux, just before Step 1).
 The [`Dockerfile`](../Dockerfile)'s final `COPY` places `workspace-README.md` at `~/workspace/README.md`.
 `logo.ans` stays in place and is read by `cozy logo` and the build MOTD.
 
@@ -93,6 +94,12 @@ An instruction cannot rot; its weakness is that it fires only when the agent rem
 Below the catalog, a `# Working Rules` half carries the rules that hold for any cozy user — collaboration, one step at a time, long flags, fail-fast, verification, commits and branches, comments, git-friendly prose, conciseness.
 It is the neutral part of the maintainer's own global `CLAUDE.md`, kept in sync with it by hand; dotfiles ships no `CLAUDE.md`, so a user's personal instructions sit above the marked block and Step 6 leaves them alone.
 **Code:** [`docker-files/global-claude.md`](../docker-files/global-claude.md)
+
+## claude/
+Claude Code's `settings.json` and `keybindings.json`, deployed into `~/.claude/` by `claude-home` (`bootstrap.nu` Step 5, see [`build.md`](build.md)).
+They ship from cozy and not from dotfiles because dotfiles owns only `~/.config`, where every file comes from the repo, so an uncommitted change there is always a reason to investigate; `~/.claude` also holds what Claude Code and bootstrap write themselves.
+For the same reason `settings.json` is deep-merged, not copied: the shipped keys win, and the keys Claude Code wrote (`/config`, plugins) survive a re-run.
+**Code:** [`docker-files/claude/`](../docker-files/claude/), [`cozy-module/install/claude-home.nu`](../cozy-module/install/claude-home.nu)
 
 ## pbcopy
 Clipboard shim installed to `~/.local/bin/pbcopy` on every Linux, container or host, just before Step 1 — the dotfiles deployed in Step 4 call `pbcopy` and Linux has no native one; a user's own non-cozy `pbcopy` on PATH is never shadowed.
