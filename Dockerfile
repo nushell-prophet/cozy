@@ -23,7 +23,7 @@ FROM debian:13-slim
 # Deps the build needs before bootstrap runs: sudo (build-only, revoked below),
 # ca-certificates+curl+git for the Homebrew installer and its fetches,
 # build-essential+procps+file because Homebrew on Linux requires a working
-# toolchain, rsync for `toolkit install-skills` (Step 5). bootstrap's Step 0
+# toolchain, rsync for `claude-home` (Step 5). bootstrap's Step 0
 # apt-installs gcc/libc6-dev/procps/file again (harmless re-install) for the
 # tree-sitter-nu compile in `topiary install`. All of these ship in the
 # docker/sandbox-templates base but not in debian:13-slim.

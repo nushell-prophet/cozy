@@ -34,6 +34,7 @@
 use rust.nu
 use topiary.nu
 use claude.nu
+use claude-home.nu
 
 # Cozy repo root, derived from this file's location:
 # cozy-module/install/bootstrap.nu  →  three dirnames up
@@ -216,7 +217,7 @@ export def main [
         ^cp $f $autoload_dst
     }
 
-    # Steps 4 & 5 — deploy dotfiles and Claude skills from ~/repos/dotfiles.
+    # Step 4 — deploy the ~/.config dotfiles from ~/repos/dotfiles.
     # Spawn nu so toolkit.nu's `use`/cwd-relative paths resolve from the
     # dotfiles repo root. Always pass `--docker` because cozy only vendors
     # paths-docker.csv (see toolkit/vendor.yml) — host install is feature
@@ -226,7 +227,9 @@ export def main [
     # (--force skips the dirty check that would otherwise stop the copy).
     cd ($nu.home-dir | path join 'repos' 'dotfiles')
     ^nu --no-config-file --commands 'use toolkit.nu; toolkit push-to-machine --force --create-dirs --docker --commit-existing --commit-changes'
-    ^nu --no-config-file --commands 'use toolkit.nu; toolkit install-skills --all'
+
+    # Step 5 — Claude Code settings, skills, agents, output styles and mods into ~/.claude.
+    claude-home $cozy_root
 
     # Step 6 — append global Claude instructions to ~/.claude/CLAUDE.md
     #
@@ -282,8 +285,8 @@ export def main [
     $existing | upsert externalEditorContext true | save --force $claude_json
 
     # Give Claude Code its own identity (see $agent_env above). Merged into the
-    # `env` field rather than written over the file: Step 4 already deployed the
-    # dotfiles settings.json here, and merging into the existing `env` leaves any
+    # `env` field rather than written over the file: Step 5 already deployed
+    # cozy's settings.json here, and merging into the existing `env` leaves any
     # variable cozy does not own alone.
     let settings = $nu.home-dir | path join '.claude' 'settings.json'
     let expanded = $agent_env | update cells { str replace '$HOME' $nu.home-dir }

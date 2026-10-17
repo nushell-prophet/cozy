@@ -39,7 +39,6 @@
   github: nushell-prophet/my-dotfiles
   modules:
   - broot
-  - claude
   - helix
   - jj
   - lazygit

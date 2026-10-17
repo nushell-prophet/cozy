@@ -40,7 +40,7 @@ Its layers, in order:
 
 1. `FROM debian:13-slim`.
 2. **Root build layer** — rewrite apt sources `http://` → `https://` (the VM allows :443, not :80; TLS peer-verify is off for this first apt because the CA bundle isn't installed yet — apt still verifies packages via gpg), then `apt-get install` sudo, ca-certificates, curl, git, build-essential, procps, file, rsync, ripgrep, jq, less, openssh-client.
-   build-essential/procps/file back Homebrew's Linux toolchain requirement; rsync backs `install-skills` (Step 5); rg + jq + less replace agent tools the template bundled (kept on apt so the shared brew list stays untouched) — less because git, git-delta and nu-goodies' `L` all page through it and slim has no pager; openssh-client because slim ships no ssh client at all, so `ssh-keygen` and git-over-ssh are simply missing.
+   build-essential/procps/file back Homebrew's Linux toolchain requirement; rsync backs `claude-home` (Step 5); rg + jq + less replace agent tools the template bundled (kept on apt so the shared brew list stays untouched) — less because git, git-delta and nu-goodies' `L` all page through it and slim has no pager; openssh-client because slim ships no ssh client at all, so `ssh-keygen` and git-over-ssh are simply missing.
    Recommends are left on (no `--no-install-recommends`) — the recommended set is what a Debian user gets by default and what these packages assume is around, and the size it costs buys a workspace that behaves like a normal machine.
    The same layer deletes the slim base's `path-exclude /usr/share/man/*` before the first apt, so every package installed from here on keeps its man pages (`git <cmd> --help` shells out to `man`, and man-db in Step 0 has nothing to show without them); only that one line goes — `/usr/share/locale` and `/usr/share/doc` stay excluded, and dpkg applies the change to future unpacks only, so packages already in the base image stay pageless.
    Both are Dockerfile-only: Step 0's apt line, which the sbx path runs, still passes `--no-install-recommends`.
@@ -152,10 +152,14 @@ See [`modules.md`](modules.md).
 Wipes `~/.config/nushell/autoload/` (cozy owns it; stale files from removed-upstream scripts must not accumulate), then copies `docker-files/nushell-autoload/*.nu` into it.
 See [`autoload.md`](autoload.md).
 
-### Steps 4 & 5 — dotfiles + skills
-From `~/repos/dotfiles`, spawns nu to run `toolkit push-to-machine --force --create-dirs --docker --commit-existing --commit-changes` (deploys helix/zellij/lazygit/broot/nushell/jj/wezterm configs; `--commit-existing` snapshots pre-existing destination files before the forced overwrite, so a re-run can't silently lose in-sandbox config edits) then `toolkit install-skills --all`.
+### Step 4 — dotfiles
+From `~/repos/dotfiles`, spawns nu to run `toolkit push-to-machine --force --create-dirs --docker --commit-existing --commit-changes` (deploys helix/zellij/lazygit/broot/nushell/jj/wezterm configs; `--commit-existing` snapshots pre-existing destination files before the forced overwrite, so a re-run can't silently lose in-sandbox config edits).
 Always `--docker` because cozy only vendors the docker paths file.
 Config sources live in the `dotfiles` repo — see [`modules.md`](modules.md).
+Dotfiles owns only `~/.config`.
+
+### Step 5 — `~/.claude`
+`claude-home` (`cozy-module/install/claude-home.nu`) merges `docker-files/claude/settings.json` into `~/.claude/settings.json` (the shipped keys win, the keys Claude Code wrote itself stay), copies `keybindings.json`, and installs every skill, agent, output style and mod from `~/repos/my-claude-skills/plugins` and `~/repos/nushell-skills/plugins`; nushell-skills wins a name both ship.
 
 ### Step 6 — global Claude instructions
 Appends [`docker-files/global-claude.md`](../docker-files/global-claude.md) (the tool catalog and the working rules) to `~/.claude/CLAUDE.md`, marker-wrapped (`# >>> cozy catalog >>>`) and replaced in place on a re-run — the same idiom as Step 0's env block.
@@ -176,7 +180,7 @@ See [`install.md`](install.md) for what `topiary install` does.
 Remove-then-add because `mcp add` exits 1 on an existing entry and has no `--force`, so a re-run died right here, before the merges and the stamp below — which then made the *next* host run trip `check-no-clobber` on cozy's own files.
 `remove`'s own status is the one thing ignored: it exits 1 when nothing is registered yet.
 Then merges `externalEditorContext: true` into `~/.claude.json`, and the agent's identity (`GIT_AUTHOR_*`, `GIT_COMMITTER_*`, `JJ_CONFIG` — the `agent_env` record at the top of `bootstrap.nu`) into the `env` field of `~/.claude/settings.json`.
-Merged, not written over: step 4 already deployed the dotfiles `settings.json` there.
+Merged, not written over: step 5 already deployed cozy's `settings.json` there.
 That field is the whole git-attribution mechanism — Claude Code exports it into its own process, so the Bash tool, the nushell MCP and subagents all inherit it, while the human's shells do not.
 It was a shell export until 2026-07-27, which had it backwards on both ends: the human's shells got the agent's name, and the MCP `nu` — no shell's child — never got it.
 Finally writes the `~/.cozy-installed` stamp (last, so a partial failure leaves no stamp and forces `--force` to recover) and, if env exports were just written but the current shell predates them, prints a "run `exec bash -l`" note.
