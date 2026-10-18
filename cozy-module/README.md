@@ -30,6 +30,7 @@ cozy mount init
 ### `cozy dev-link`
 
 Replaces vendored `~/repos/` copies with symlinks to the mounted workspace.
+A repo imported into the mono links to `mono/<name>`, any other to the sibling `<name>`.
 Enables edit-and-test without rebuild.
 
 ```nushell

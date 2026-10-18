@@ -1,4 +1,5 @@
-# Replace vendored ~/repos/ copies with symlinks to the mounted workspace.
+# Replace vendored ~/repos/ copies with symlinks to the mounted workspace:
+# to mono/<name> when the mono holds the repo, else to the sibling <name>.
 # Enables edit-and-test without rebuild: changes in the workspace are
 # immediately visible to autoloaded modules.
 #
@@ -28,7 +29,10 @@ export def main [
     | get name
     | each {|repo_path|
         let name = $repo_path | path basename
-        let target = $ws | path join $name
+        # Why: a repo imported into the mono is edited there, and its sibling clone only receives exports.
+        # The type check skips the mono's own `nutest` symlink, which points back at the sibling.
+        let in_mono = $ws | path join mono $name
+        let target = if ($in_mono | path type) == dir { $in_mono } else { $ws | path join $name }
         let linked = try { (^readlink $repo_path | str trim) == ($target | path expand) } catch { false }
 
         let status = if not ($target | path exists) { 'skipped' } else if $linked { 'ok' } else {
