@@ -3,7 +3,7 @@
 # before pushing — the sbx kit clones cozy from GitHub on every run.
 #
 # Default: download tarballs from GitHub (no git clone, no auth needed)
-# --local: rsync from the sibling repos next to cozy/ (original rsync behavior)
+# --local: copy from mono/<repo> when the mono holds the repo, else from the sibling <repo> next to cozy/
 
 const cozy_root = (path self | path dirname | path dirname)
 const vendor_yml = (path self | path dirname | path join vendor.yml)
@@ -186,8 +186,11 @@ export def main [
     if $local {
         let git_dir = $cozy_root | path dirname
         for group in $groups {
+            # Why: a repo imported into the mono is edited there, as in cozy dev-link.
+            let in_mono = $git_dir | path join mono $group.repo
+            let repo_dir = if ($in_mono | path type) == dir { $in_mono } else { $git_dir | path join $group.repo }
             for module in $group.modules {
-                let src = $git_dir | path join $group.repo $module
+                let src = $repo_dir | path join $module
                 let dst = $vendor_dir | path join $group.repo $module
                 copy-module $src $dst
                 print $"  (ansi green)Copied:(ansi reset) ($group.repo)/($module)"
