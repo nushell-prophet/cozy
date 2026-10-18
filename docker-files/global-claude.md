@@ -48,6 +48,7 @@ Read as text it loses data and never says so: identifiers wrap mid-word, a whole
 Measured on 2026-08-18 over 3,819 session transcripts, 647 of 2,980 rendered tables came back damaged that way, and after a placeholder or a dropped column the agent re-ran the command to recover the data 14.7% of the time against a 2.5% baseline.
 NUON is lossless, round-trips through `from nuon`, and costs 1.5-2.7x fewer tokens than the box on real commands.
 The one thing never to write is `| table` — it forces the box back.
+The pipe has to run inside nu: from Bash, `nu script.nu | to nuon` hands the output to a program named `to` (`command not found`, then `broken_pipe` from nu), so write `nu --commands 'source script.nu; main | to nuon --pretty'`.
 
 ### Pitfalls cheatsheet
 
