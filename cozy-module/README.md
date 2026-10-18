@@ -142,6 +142,10 @@ Seeds history from the bundled `history-seed.nuon` file.
 Copies Claude Code project sessions (`~/.claude/projects/`) to/from `$env.WORKSPACE_DIR/sandbox-state/projects/`.
 The workspace directory survives sandbox recreation.
 
+`snapshot` mirrors: a file the snapshot holds and `~/.claude/projects/` no longer does — a store renamed by `claude-nu project-move`, a session removed by hand — is moved to `sandbox-state/projects-deleted/<timestamp>/`, not deleted.
+`restore` leaves a marker in `~/.claude`, and `snapshot` refuses a non-empty snapshot until that marker exists: on a new machine, before the restore, every session would look removed.
+Two machines on one `sandbox-state` each need a `restore` before every `snapshot`; `snapshot` prints a warning when another machine wrote the snapshot after the last restore here.
+
 ### `cozy sandbox-state global-claude snapshot` / `restore`
 
 Keeps the global `~/.claude/CLAUDE.md` as git history in `$env.WORKSPACE_DIR/sandbox-state/global-claude-history`, so the agent's persistent instructions survive sandbox recreation and every version can be diffed against the one before it.
