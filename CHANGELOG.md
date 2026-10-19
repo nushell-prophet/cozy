@@ -7,14 +7,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-10-19
+
 ### Changed
 
-- The branch rules of the global instructions (never work on `main`, keep `todo/` off the trunk) moved to `~/.claude/rules/branching.md`, so a repo can turn them off with `claudeMdExcludes` and state its own.
-- `cozy sandbox-state projects snapshot` mirrors `~/.claude/projects/`: a session gone from it (a project moved with `claude-nu project-move`) leaves the snapshot for `sandbox-state/projects-deleted/<timestamp>/`, so `restore` no longer brings the old store back. It refuses to run before `projects restore` has run on the machine, and warns when another machine wrote the snapshot after the last restore.
+- The branch rules of the global instructions (never work on `main`, keep `todo/` off the trunk) moved to `~/.claude/rules/branching.md`, so a repo can turn them off with `claudeMdExcludes` and state its own. (db75f84)
+- `cozy sandbox-state projects snapshot` mirrors `~/.claude/projects/`: a session gone from it (a project moved with `claude-nu project-move`) leaves the snapshot for `sandbox-state/projects-deleted/<timestamp>/`, so `restore` no longer brings the old store back. It refuses to run before `projects restore` has run on the machine, and warns when another machine wrote the snapshot after the last restore. (d1b46c9)
+- A bootstrap re-run merges `~/.claude/settings.json` deeply, so the keys that Claude Code wrote itself stay; it installs skills, agents, output styles and mods from the vendored skill plugins, and dotfiles now keeps only `~/.config`. (c704aa8)
+- A bootstrap re-run stops at Step 4 when `~/.config` holds an edit that dotfiles does not have. (0b2d939)
+- `delta` shows the file path in every hunk header, not only above the first one. (c7a1e09)
+- The fallback for Nushell is pinned to 0.116.1. (1000ec1)
+- claude-nu: `messages` returns attached files as rows of kind `file`, `timeline` gets `--since`/`--until`, and gi refuses `git commit` on `main`/`master`. (9f5b754)
 
 ### Fixed
 
-- The `Change-Id` commit-msg hook gives an `amend! <sha>` commit the id of the commit it names, so `rebase --autosquash` no longer replaces the target's id; an empty `Change-Id:` trailer counts as missing. Rerun `cozy git install-change-id-hook` to update an installed copy.
+- The `Change-Id` commit-msg hook gives an `amend! <sha>` commit the id of the commit it names, so `rebase --autosquash` no longer replaces the target's id; an empty `Change-Id:` trailer counts as missing. Rerun `cozy git install-change-id-hook` to update an installed copy. (c4fb7a9)
+- nu-goodies `in-vd`: tables with nullable nested columns go to VisiData as JSON, and the table comes back after ctrl+q on VisiData 3.4. (cc36174, a1f28b8)
+- claude-nu: completers no longer print `nu::shell::deprecated` on Nushell 0.116, and `project-move` finds a project path that contains a dot, such as a worktree under `.claude/worktrees/`. (be23636)
 
 ## [0.5.1] - 2026-10-09
 
@@ -839,7 +848,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.5.1...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.5.2...HEAD
+[0.5.2]: https://github.com/nushell-prophet/cozy/compare/0.5.1...0.5.2
 [0.5.1]: https://github.com/nushell-prophet/cozy/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/nushell-prophet/cozy/compare/0.4.3...0.5.0
 [0.4.3]: https://github.com/nushell-prophet/cozy/compare/0.4.2...0.4.3
