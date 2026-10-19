@@ -10,6 +10,13 @@
 set -e
 msg="$1"
 
+# Why: an amend that carries the old id with `--trailer "Change-Id: $(git log -1 ...)"` writes an
+# empty trailer when HEAD has no id, and that empty trailer would pass the id check below.
+# Why before the empty check: a message that is only that trailer is empty, and git must abort it.
+# Not `sed -i`: BSD sed on a macOS host reads its next argument as the backup suffix.
+sed '/^Change-Id:[[:space:]]*$/d' "$msg" >"$msg.tmp"
+mv "$msg.tmp" "$msg"
+
 # An empty message aborts the commit. Adding a trailer would make it non-empty and let an abort
 # through as a commit with no subject, so a message that is only comments and blanks is left alone.
 # Why the cut at the scissors line: `commit --verbose` puts the diff below it without comment
@@ -24,6 +31,25 @@ if git interpret-trailers --parse <"$msg" | grep -q '^Change-Id:'; then
     exit 0
 fi
 
+# Why: `rebase --autosquash` puts the whole message of an `amend!` commit onto its target, so a
+# fresh id here would replace the target's id. The target is resolved only when it is a commit
+# name, `amend! <sha>`. Why one id only: a commit that carries two names no single change, as in
+# prepare-commit-msg.
+# Not by subject, as autosquash also matches: the hook cannot see the rebase range, so with two
+# commits of one subject it can copy the id of the other one, and one id names two changes.
+# A subject only costs a fresh id.
+id=
+subject=$(git stripspace --strip-comments <"$msg" | sed -n '1p')
+case "$subject" in
+'amend! '*)
+    sha=$(git rev-parse --verify --quiet "${subject#amend! }^{commit}" 2>/dev/null || true)
+    if [ -n "$sha" ]; then
+        id=$(git log -1 --format='%(trailers:key=Change-Id,valueonly,separator=%x2C)' "$sha")
+    fi
+    case "$id" in *,*) id= ;; esac
+    ;;
+esac
+
 # jj's reverse-hex alphabet: 12 random bytes and the unix time, written as 32 letters from z to k.
 # Letters can never read as a git sha. The tr -d in the middle is not optional: tr translates only
 # what it is given, so od's spaces would survive.
@@ -31,9 +57,11 @@ fi
 # those stay random only while the random part leads. Why the time at all: the hook never replaces
 # an id, so the tail records when the change was first committed, and a rebase or cherry-pick
 # carries that date along with the id. %08x keeps the width until 2106.
-random=$(dd if=/dev/urandom bs=12 count=1 2>/dev/null | od -An -v -tx1 | tr -d ' \n')
-stamp=$(printf '%08x' "$(date +%s)")
-id=$(printf '%s%s' "$random" "$stamp" | tr '0123456789abcdef' 'zyxwvutsrqponmlk')
+if [ -z "$id" ]; then
+    random=$(dd if=/dev/urandom bs=12 count=1 2>/dev/null | od -An -v -tx1 | tr -d ' \n')
+    stamp=$(printf '%08x' "$(date +%s)")
+    id=$(printf '%s%s' "$random" "$stamp" | tr '0123456789abcdef' 'zyxwvutsrqponmlk')
+fi
 
 # Why: interpret-trailers needs the last line terminated. `git merge --no-edit` writes its message
 # without a final newline, and then the trailer lands on the subject line instead of in a block:

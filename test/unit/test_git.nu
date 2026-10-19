@@ -306,3 +306,61 @@ def "resolve refuses a string that is not a link" [] {
     let err = error-of { git resolve 'just/a/path.txt' }
     assert str contains $err 'not a link'
 }
+
+# The editor-less reword recipe: an `amend!` commit, then `rebase --autosquash` puts its message
+# onto the target.
+def reword-with-amend-bang [repo: path, target: string]: nothing -> nothing {
+    ^git -C $repo commit --quiet --allow-empty --message $"amend! ($target)" --message "reworded"
+    with-env {GIT_SEQUENCE_EDITOR: true} { ^git -C $repo rebase --quiet --interactive --autosquash HEAD~3 }
+}
+
+@test
+def "an amend commit named by subject gets a fresh change-id" [] {
+    let repo = $in.repo
+    commit-file $repo base.txt base "base"
+    git install-change-id-hook $repo
+    commit-file $repo a.txt a (with-id $ID)
+    commit-file $repo b.txt b "later"
+
+    reword-with-amend-bang $repo add
+    let reworded = ^git -C $repo log --format='%s %(trailers:key=Change-Id,valueonly)' HEAD~1 -1 | str trim
+    assert ($reworded =~ '^reworded [k-z]{32}$') $"unexpected: ($reworded)"
+    assert not equal $reworded $"reworded ($ID)"
+}
+
+# Why two commits of one subject: autosquash picks one of them, and an id copied from the other
+# would name two changes. A sha names one.
+@test
+def "an amend commit named by sha keeps the change-id of its target" [] {
+    let repo = $in.repo
+    commit-file $repo base.txt base "base"
+    git install-change-id-hook $repo
+    let sha = commit-file $repo a.txt a (with-id $ID)
+    commit-file $repo b.txt b "add"
+
+    reword-with-amend-bang $repo ($sha | str substring 0..11)
+    assert equal (^git -C $repo log --format='%s %(trailers:key=Change-Id,valueonly)' HEAD~1 -1 | str trim) $"reworded ($ID)"
+    assert not equal (^git -C $repo log -1 --format='%(trailers:key=Change-Id,valueonly)' | str trim) $ID
+}
+
+@test
+def "an amend that carries an empty change-id gets a fresh one" [] {
+    let repo = $in.repo
+    commit-file $repo base.txt base "base"
+    git install-change-id-hook $repo
+
+    ^git -C $repo commit --quiet --allow-empty --amend --message "new" --trailer "Change-Id: "
+    let msg = ^git -C $repo log -1 --format=%B | str trim
+    assert ($msg =~ '^new\n\nChange-Id: [k-z]{32}$') $"unexpected message: ($msg)"
+}
+
+@test
+def "a message that is only an empty change-id aborts the commit" [] {
+    let repo = $in.repo
+    commit-file $repo base.txt base "base"
+    git install-change-id-hook $repo
+
+    let result = "Change-Id:\n" | ^git -C $repo commit --quiet --allow-empty --file - | complete
+    assert not equal $result.exit_code 0
+    assert equal (^git -C $repo log -1 --format=%s | str trim) "base"
+}

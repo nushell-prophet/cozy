@@ -176,7 +176,8 @@ Two caveats:
   A commit that is only on a local branch, with nothing naming its sha, is rewritten instead — `commit --amend`, or a `rebase` fixup when later commits sit on it — after the user's go, like any history rewrite; its `Change-Id` survives.
   Why: a note on such a commit keeps a false sentence in the history for no reader who relies on it.
   The user: "if the commit was recent and nothing relies on this sha, we can amend, if that is better."
-  Without an editor: `git commit --allow-empty --message 'amend! <subject>' --message '<new message>'`, then `GIT_SEQUENCE_EDITOR=true git rebase --interactive --autosquash <sha>~1`; `--fixup=reword:` refuses `--message` and opens an editor.
+  Without an editor: `git commit --allow-empty --message 'amend! <sha>' --message '<new message>'`, then `GIT_SEQUENCE_EDITOR=true git rebase --interactive --autosquash <sha>~1`; `--fixup=reword:` refuses `--message` and opens an editor.
+  Name the target by its sha, not its subject: the `commit-msg` hook copies the `Change-Id` only from a commit named by sha, and `amend! <subject>` gets a fresh id that the rebase puts on the target.
 
 ## Constraints
 

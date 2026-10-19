@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The branch rules of the global instructions (never work on `main`, keep `todo/` off the trunk) moved to `~/.claude/rules/branching.md`, so a repo can turn them off with `claudeMdExcludes` and state its own.
 - `cozy sandbox-state projects snapshot` mirrors `~/.claude/projects/`: a session gone from it (a project moved with `claude-nu project-move`) leaves the snapshot for `sandbox-state/projects-deleted/<timestamp>/`, so `restore` no longer brings the old store back. It refuses to run before `projects restore` has run on the machine, and warns when another machine wrote the snapshot after the last restore.
 
+### Fixed
+
+- The `Change-Id` commit-msg hook gives an `amend! <sha>` commit the id of the commit it names, so `rebase --autosquash` no longer replaces the target's id; an empty `Change-Id:` trailer counts as missing. Rerun `cozy git install-change-id-hook` to update an installed copy.
+
 ## [0.5.1] - 2026-10-09
 
 ### Added

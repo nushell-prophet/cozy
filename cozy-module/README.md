@@ -80,6 +80,8 @@ An older copy of this hook is replaced and reported as `updated`: a copy is reco
 It also installs `hooks/applypatch-msg`, which hands each message `git am` applies to that same hook, since `am` never runs `commit-msg` itself.
 `git revert` does not run `commit-msg` either, so `hooks/prepare-commit-msg` forwards a revert to it, and it rewrites "This reverts commit <sha>." to "This reverts change <change-id>.", which still names the reverted commit after a rebase.
 A rebase or a cherry-pick that replays an old revert leaves its message unchanged.
+An `amend! <sha>` commit takes the id of the commit it names, so the reword that `rebase --autosquash` makes keeps the target's id; an `amend! <subject>` gets a fresh id, because two commits can share a subject.
+`commit --amend` with a new message (`--message`, `--file`) loses the id, and the hook cannot see that it is an amend: carry it with `--trailer "Change-Id: <id>"`.
 Any other `commit-msg`, `applypatch-msg` or `prepare-commit-msg` hook already in place is an error, not overwritten, and then no hook is installed; `--force` replaces it.
 
 ```nushell
