@@ -23,7 +23,8 @@ export def main [
     --no-job # don't create background job for the proces
     --zellij-session: string = '' # zellij session name to use instead of sandbox name
     --record: path # save the session as an asciicast into this directory, one new file per call
+    --size: string@"nu-complete wezterm size" # window size as COLSxROWS, e.g. 140x40
 ]: nothing -> any {
     # the window's job id, so `job kill` can reach it; nothing with --no-job
-    attach-window [sbx exec -it $sandbox_name] ($zellij_session | default --empty $sandbox_name) --config-file $config_file --background $background --no-job=$no_job --record=$record
+    attach-window [sbx exec -it $sandbox_name] ($zellij_session | default --empty $sandbox_name) --config-file $config_file --background $background --no-job=$no_job --record=$record --size=$size
 }

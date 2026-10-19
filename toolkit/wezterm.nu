@@ -19,6 +19,16 @@ export def "nu-complete wezterm background" []: nothing -> table<value: string, 
     ]
 }
 
+export def "nu-complete wezterm size" []: nothing -> table<value: string, description: string> {
+    [
+        {value: "100x30" description: "small"}
+        {value: "120x30" description: "laptop"}
+        {value: "140x40" description: "medium"}
+        {value: "180x44" description: "large"}
+        {value: "80x24" description: "classic terminal, good for a recording"}
+    ]
+}
+
 export def attach-window [
     exec_argv: list<string> # how to get a shell inside, e.g. [sbx exec -it my-box]
     session: string # zellij session to attach to, created if missing
@@ -26,10 +36,34 @@ export def attach-window [
     --background: string@"nu-complete wezterm background" = "000000" # hex without '#'
     --no-job # don't create a background job for the process
     --record: path # save the session as an asciicast into this directory, one new file per call; don't resize the window, the recorder keeps its start size
+    --size: string@"nu-complete wezterm size" # window size as COLSxROWS, e.g. 140x40; default: the config file's initial_cols/initial_rows
 ]: nothing -> any {
     # the spawned job's id, so `job kill` can reach it; nothing with --no-job
     let conf = $config_file
         | default ($script_path | path dirname | path join ../vendor/dotfiles/wezterm/wezterm.lua)
+
+    let size_config = if $size != null {
+        let dims = $size | parse --regex '^(?<cols>[1-9]\d*)x(?<rows>[1-9]\d*)$'
+        if ($dims | is-empty) {
+            error make --unspanned {
+                msg: $"--size ($size) is not COLSxROWS"
+                help: "give columns and rows joined by an x, e.g. --size 140x40"
+            }
+        }
+        [--config $'initial_cols=($dims.0.cols)' --config $'initial_rows=($dims.0.rows)']
+    }
+
+    # Why: set the background via --config at window creation rather than the
+    # OSC user-var trick, which applies it only after the shell starts and
+    # briefly flashes the config-file default first.
+    # Why `wezterm record` gets the same flags: it is a process of its own that
+    # reads the host config otherwise, and writes that config's colors into the
+    # cast header, so a player shows the cast on the wrong background.
+    let wezterm_config = [
+        --config-file $conf
+        --config $'colors={background="#($background)"}'
+        ...$size_config
+    ]
 
     # Why `wezterm record` around the exec: it wraps the very command the window
     # already runs, so the cast is written on the host and needs no recorder
@@ -47,7 +81,7 @@ export def attach-window [
     if $cast != null { print $'recording to ($cast)' }
 
     let launch = [
-        ...(if $cast != null { [wezterm record -o $cast --] })
+        ...(if $cast != null { [wezterm ...$wezterm_config record -o $cast --] })
         ...$exec_argv
         nu --login --execute $'zellij attach --create ($session)'
     ]
@@ -64,10 +98,7 @@ export def attach-window [
     }
 
     let closure = {
-        # Why: set the background via --config at window creation rather than the
-        # OSC user-var trick, which applies it only after the shell starts and
-        # briefly flashes the config-file default first.
-        ^wezterm --config-file $conf --config $'colors={background="#($background)"}' start --always-new-process -- ...$launch
+        ^wezterm ...$wezterm_config start --always-new-process -- ...$launch
     }
 
     if $no_job { do $closure } else { job spawn $closure }
