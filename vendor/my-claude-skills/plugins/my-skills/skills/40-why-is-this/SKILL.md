@@ -127,7 +127,7 @@ Then, with the tag name or that hash as `<tip>`:
 
 ```
 git log <tip>                         # the road, including reverted attempts
-git log main..<tip>                   # only what the landing dropped
+git log <trunk>..<tip>                # only what the landing dropped
 ```
 
 For search-shaped questions, `--all` reaches tags directly, so one command covers the trunk and every archive at once: `git log --all -S '<string>'`.
@@ -168,7 +168,7 @@ git show -s --format='%h %ad%n%B' <sha>
 `# Why:` and `# Not <alternative> because:` comments sit at the decision point in the code.
 `todo/` notes carry a known-but-unfixed problem and an `origin_session:` UUID — that UUID is a direct address into the transcripts, and following it is the hand-off described above, not an optional extra.
 `gi-canvas/` holds the canvas discussion, and so does `gi/`, its older name, in a few repos.
-`todo/`, `gi-canvas/` and `gi/` are deliberately kept off the trunk, so they exist only on branches and inside archive tags — reachable through step 3, invisible from `main`.
+`git log --all -- ':(glob)**/todo/**' ':(glob)**/gi-canvas/**' ':(glob)**/gi/**'` reaches them wherever they are, a subdirectory's own included: on the trunk, on branches, in archive tags.
 
 **8. Anchor a sentence to its birth commit.**
 When the target is a line of prose — a comment, a README sentence, a flag description — find the commit that introduced it before going anywhere near the transcripts:

@@ -226,9 +226,9 @@ Nothing is changed until the user confirms.
 
    ```sh
    git diff --unified=0 <base>..HEAD | awk '
-     /^\+\+\+ b\// { f = substr($0, 7); next }
+     /^\+\+\+ b\// { f = substr(\$0, 7); next }
      /^\+/ && !/^\+\+\+/ {
-       line = substr($0, 2)
+       line = substr(\$0, 2)
        if (tolower(line) ~ /instead of|no longer|previously|used to|formerly|rather than|unlike the|not as a/ &&
            tolower(line) !~ /(^|[^a-z])(is|are|was|were|be|been|being) used to/)
          print f ": " line
