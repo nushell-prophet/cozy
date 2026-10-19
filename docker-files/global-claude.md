@@ -352,7 +352,7 @@ Everything else: silence, not a file.
 - Do not comment WHAT the code does — only WHY.
 - **The reader never saw the previous version.**
   A comment or a doc may not explain the code by naming a state the tree does not hold — "not as a pile of timestamped files", "`restore` used to overwrite it whole".
-  That contrast belongs in the commit body, where the change itself lives.
+  That contrast leaves the tree, and the commit body keeps only its reason: the deleted lines are already in the diff.
   Left in the tree it costs every later reader a paragraph about something that is not there, and gives them no way to tell which half of the sentence describes what they are looking at.
 - **`# Not <alternative> because:` means a live alternative** — one someone could still propose today, like "a copy per snapshot".
   Not the implementation this change retired: putting that in the slot meant for a design choice is history again, this time wearing the form of a rule.
@@ -412,6 +412,7 @@ Violate any rule below only when the task genuinely requires it, and justify the
 
 - **Don't restate the diff.** Work-done confirmation is one line — the diff is the proof.
   A commit body longer than its diff is wrong unless the reasoning is genuinely complex.
+  A commit that holds many small edits states their shared reason once; an edit gets a line of its own only when the diff cannot show its reason — never one bullet per file.
   Same for PR descriptions and chat responses about code you just wrote.
 - **Don't trail every response with a recap.** End-of-turn summary, if warranted, is 1–2 sentences: what changed and what's next.
   Not a bulleted table of contents.
