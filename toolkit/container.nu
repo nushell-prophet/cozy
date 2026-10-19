@@ -914,6 +914,7 @@ def "main attach" [
     --zellij-session: string = '' # zellij session name to use instead of the container name
     --workdir: path # start directory inside the container
     --policy: path # firewall policy directory, read only if the pair has to be restarted and the proxy is gone (default: ~/.config/cozy/firewall)
+    --record: path # save the session as an asciicast into this directory, one new file per call
 ]: nothing -> any {
     # the window's job id — `job kill` it to close the window
 
@@ -941,7 +942,7 @@ def "main attach" [
         | append (if ($workdir | is-not-empty) { [--cwd $workdir] } else { [] })
         | append $name
 
-    attach-window $exec_argv ($zellij_session | default --empty $name) --config-file $config_file --background $background --no-job=$no_job
+    attach-window $exec_argv ($zellij_session | default --empty $name) --config-file $config_file --background $background --no-job=$no_job --record=$record
 }
 
 # Upstream's newest image in the maintained tag family. Errors rather than

@@ -25,12 +25,32 @@ export def attach-window [
     --config-file: path
     --background: string@"nu-complete wezterm background" = "000000" # hex without '#'
     --no-job # don't create a background job for the process
+    --record: path # save the session as an asciicast into this directory, one new file per call; don't resize the window, the recorder keeps its start size
 ]: nothing -> any {
     # the spawned job's id, so `job kill` can reach it; nothing with --no-job
     let conf = $config_file
         | default ($script_path | path dirname | path join ../vendor/dotfiles/wezterm/wezterm.lua)
 
-    let launch = $exec_argv ++ [nu --login --execute $'zellij attach --create ($session)']
+    # Why `wezterm record` around the exec: it wraps the very command the window
+    # already runs, so the cast is written on the host and needs no recorder
+    # installed anywhere. It reads the tty size once and never handles SIGWINCH
+    # (upstream wezterm/src/asciicast.rs), so a resize leaves zellij at the old size.
+    # `-o` has no long form; `--` keeps `-it` of the exec from parsing as its flags.
+    # Why a directory, not a file: `-o` truncates an existing file, so a name
+    # made per call keeps every recording.
+    let cast = if $record != null {
+        mkdir $record
+        $record
+        | path expand
+        | path join $'($session)-(date now | format date "%Y%m%d-%H%M%S").cast'
+    }
+    if $cast != null { print $'recording to ($cast)' }
+
+    let launch = [
+        ...(if $cast != null { [wezterm record -o $cast --] })
+        ...$exec_argv
+        nu --login --execute $'zellij attach --create ($session)'
+    ]
 
     # Why: a `job spawn`ed process dies with the nu that spawned it, so a
     # one-shot `nu toolkit/container.nu attach NAME` exits before the window is
