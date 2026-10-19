@@ -19,6 +19,13 @@ export def main [cozy_root: path]: nothing -> nothing {
     $current | merge deep $shipped | save --force $settings
     cp ($cozy_root | path join 'docker-files' 'claude' 'keybindings.json') $claude_dir
 
+    # Why file by file and not the folder: ~/.claude/rules may also hold the user's own rules.
+    let rules = $claude_dir | path join 'rules'
+    mkdir $rules
+    for f in (glob ($cozy_root | path join 'docker-files' 'claude' 'rules' '*.md')) {
+        cp $f $rules
+    }
+
     let plugins = $skill_repos | each {|repo| $nu.home-dir | path join 'repos' $repo 'plugins' }
     let items = $plugins | each {|src|
         if not ($src | path exists) {

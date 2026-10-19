@@ -308,25 +308,18 @@ Explaining is not a signal to save a memory.
 Save a memory only when the fact changes what you do in a *future* session.
 Reasoning already captured in a commit body is done being recorded.
 
-### Never work on `main` or `master`
-
-Run `git branch --show-current` before you edit the first file.
-If it returns `main` or `master`, create a branch with `git switch --create <name>` before that edit, without asking, and name the branch in your report.
-Why: the user reviews work as a diff and undoes it by dropping the branch.
-A change that landed on the trunk takes that exit away.
-
 ### Commits
 
 - **English only, everywhere.** Every commit message — subject and body — is written in English, in every repo, no exception.
   When the user explained their reasoning in another language, translate it: keep their wording and structure close, change only the language.
   Why: a repo may get outside human readers, and a Russian body shuts them out.
 - Commit by default.
-  When a task is done, commit it — don't wait to be asked — but check the branch first (see *Never work on `main` or `master`*).
+  When a task is done, commit it — don't wait to be asked — but check the branch first (see `~/.claude/rules/branching.md`).
   This replaces the harness line "Commit or push only when the user asks".
   Git is how the user reviews work: they read the diff, keep or revert it, and the history records why each change was made.
   A finished change left uncommitted is invisible to that loop.
   Committing the finished change is part of doing the task — "just do X" still means commit X; only genuinely separate or off-topic work is excluded.
-  Off-topic `todo/` notes are that exception — leave them uncommitted, unless the repo is an internal monorepo, where they are committed like anything else (see *`todo/`, `gi-canvas/` and `gi/` must never reach a published repo*).
+  Off-topic `todo/` notes are that exception — leave them uncommitted, unless the repo's own `CLAUDE.md` says otherwise.
 - Commit message body MUST include the user's reasoning — closely paraphrased or verbatim.
   Do not sanitize or summarize into something generic.
   The reasoning must also survive the squash (see the `40-land-branch` skill).
@@ -350,26 +343,6 @@ When a problem actually bites, the agent fixing it re-finds the cause in minutes
 The narrow exception — the class that grows more expensive by waiting: a finding that changes or blocks the current task's outcome, or something silently destroying value right now (data loss, corrupted state, work about to be overwritten).
 Say that in one line in chat, as part of the task's report.
 Everything else: silence, not a file.
-
-### `todo/`, `gi-canvas/` and `gi/` must never reach a published repo
-
-`todo/` holds the user's task notes (and the ones agents wrote when they asked); `gi-canvas/` holds the Canvas working files — the chat moved into version-controlled markdown.
-`gi/` is the older name of that folder, still present in a few repos.
-Both are working material, not product.
-They sit in a repo only because git is the transport.
-Where the line falls depends on the repo:
-
-- **A published project repo.** Never `git merge` (nor cherry-pick, nor rebase onto a shared branch) anything under `todo/`, `gi-canvas/` or `gi/` unless the user asks for that file by name.
-  Merging them into the trunk publishes a scratchpad.
-- **An internal monorepo.** It joins several projects under one git history and exists for the user alone; upstreams get patches, never this history.
-  So version-control everything there — parked notes and canvases included.
-  That is part of what the monorepo is for.
-  The rule does not disappear, it moves to the export: **a patch sent upstream must not carry `todo/`, `gi-canvas/` or `gi/`.**
-
-Two signs mark an internal monorepo: `mono` in the repo path — you see it in your working directory, so it is the first hint — and the repo's own root `CLAUDE.md`, which states it.
-The monorepo is the common case of "never published", not the only one: a repo whose root `CLAUDE.md` says it is personal and never sent upstream is read the same way, monorepo or not.
-The `CLAUDE.md` decides; the path only makes you look.
-If nothing says it, assume the repo is published.
 
 ### Inline Comments
 

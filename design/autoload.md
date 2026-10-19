@@ -91,7 +91,7 @@ A markdown brief that tells the agent what cozy built around it: available tools
 Its most load-bearing line is not a fact but an instruction: end any nu pipeline you are going to read with `| to nuon --pretty`, because a stock one-shot `nu` renders an 80-column box table that drops columns and truncates names without saying so.
 That it is an instruction and not a mechanism is a decision, not an omission — a `nu` wrapper injecting a display config was built and reverted, since `--config` is an opt-out (and the documented `nu --config …/modules-core.nu -c …` form was exactly the one it could not reach), while a pipeline ending in `| table` renders to a string before any config is consulted.
 An instruction cannot rot; its weakness is that it fires only when the agent remembers.
-Below the catalog, a `# Working Rules` half carries the rules that hold for any cozy user — collaboration, one step at a time, long flags, fail-fast, verification, commits and branches, comments, git-friendly prose, conciseness.
+Below the catalog, a `# Working Rules` half carries the rules that hold for any cozy user — collaboration, one step at a time, long flags, fail-fast, verification, commits, comments, git-friendly prose, conciseness; the branch rules are in `claude/rules/branching.md` instead.
 It is the neutral part of the maintainer's own global `CLAUDE.md`, kept in sync with it by hand; dotfiles ships no `CLAUDE.md`, so a user's personal instructions sit above the marked block and Step 6 leaves them alone.
 **Code:** [`docker-files/global-claude.md`](../docker-files/global-claude.md)
 
@@ -99,6 +99,7 @@ It is the neutral part of the maintainer's own global `CLAUDE.md`, kept in sync 
 Claude Code's `settings.json` and `keybindings.json`, deployed into `~/.claude/` by `claude-home` (`bootstrap.nu` Step 5, see [`build.md`](build.md)).
 They ship from cozy and not from dotfiles because dotfiles owns only `~/.config`, where every file comes from the repo, so an uncommitted change there is always a reason to investigate; `~/.claude` also holds what Claude Code and bootstrap write themselves.
 For the same reason `settings.json` is deep-merged, not copied: the shipped keys win, and the keys Claude Code wrote (`/config`, plugins) survive a re-run.
+`rules/branching.md` goes to `~/.claude/rules/`, which Claude Code loads like the user `CLAUDE.md`; it is a file of its own so that a repo can turn it off with `claudeMdExcludes`, which excludes whole files only.
 **Code:** [`docker-files/claude/`](../docker-files/claude/), [`cozy-module/install/claude-home.nu`](../cozy-module/install/claude-home.nu)
 
 ## pbcopy
