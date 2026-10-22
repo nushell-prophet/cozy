@@ -91,16 +91,23 @@ Body includes a brief summary of what's in this release (2–4 lines, not the fu
 
 ### 6. Tag
 
+cozy lives in the mono, so a tag here would tag the mono.
+The tag goes into the recipient `public/cozy-public` instead, until the user decides otherwise: the sbx kit clones from its GitHub remote.
+Land the release commit on the mono `master` with `/mono-land`, run `nu toolkit/mono.nu export cozy` from the mono root, then tag the exported commit, found by its `Mono-Commit` trailer.
+`<release sha>` is the sha on `master` after the landing: `/mono-land` rewrites the branch, so the sha from the branch names nothing there.
+Stop if the search finds nothing — an empty `$sha` would make `git tag` tag the recipient's `HEAD`:
+
 ```sh
-git tag X.Y.Z
+sha=$(git -C ../public/cozy-public log --format=%H --grep '^Mono-Commit: <release sha>')
+test -n "$sha" && git -C ../public/cozy-public tag X.Y.Z "$sha"
 ```
 
 No `v` prefix.
 Lightweight tag (no `-a`), matching existing convention.
 
 Treat the release commit as final once tagged.
-If the user asks to tweak the changelog after this point, ask whether to **amend + retag** (clean history, safe while the tag is unpushed) or **add a follow-up commit** (preserves the tag but leaves it pointing at the pre-tweak version).
-Default to follow-up commit if they don't have a preference.
+If the user asks to tweak the changelog after this point, add a follow-up commit: it preserves the tag but leaves it pointing at the pre-tweak version.
+Not amend + retag because: the release commit is already on the mono `master` and exported, and a rewrite there breaks the `Mono-Commit` trailers.
 
 ### 7. Report
 
@@ -108,5 +115,5 @@ After completing, tell the user:
 
 - The new version number and date
 - Summary of what was released
-- Remind them to push: `git push && git push --tags` — that publishes the release, and it is what the sbx kit clones on every `sbx run`
+- Remind them to push from the host, in `public/cozy-public`: `git push && git push --tags` — that publishes the release, and it is what the sbx kit clones on every `sbx run`
 - For the main Apple `container` path, pushing changes nothing locally: rebuild the image with `container build -t cozy:latest .` (`up` defaults to `cozy:latest`), and recreate the container to pick it up (`container stop <name>; container delete <name>`, then `nu toolkit/container.nu up`)

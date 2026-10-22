@@ -30,7 +30,7 @@ Each alias repeats its command's first doc line, because an alias with no commen
 `toolkit vendor` refreshes [`vendor/`](../vendor/) — the packaging step that pulls module source into the repo, from where every install path copies it.
 [`../toolkit/vendor.yml`](../toolkit/vendor.yml) is the source of truth: each entry is `{repo, github, modules}`, where `modules` lists the subdirs (or files) copied out of the upstream repo into `vendor/<repo>/`.
 
-- Default pulls GitHub tarballs; `--local` rsyncs from the sibling repos next to `cozy/` instead — the edit-locally-then-vendor loop.
+- Default pulls GitHub tarballs; `--local` copies from `mono/<repo>` instead, or from the sibling next to `mono/` for a third-party repo — the edit-locally-then-vendor loop.
 - Refreshing all wipes the whole `vendor/`; naming one repo wipes just that dir.
   Auto-commits unless `--no-commit`.
 - `toolkit vendor check` lists `nushell-prophet` repos not yet in `vendor.yml`.

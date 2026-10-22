@@ -3,7 +3,7 @@
 # before pushing — the sbx kit clones cozy from GitHub on every run.
 #
 # Default: download tarballs from GitHub (no git clone, no auth needed)
-# --local: copy from mono/<repo> when the mono holds the repo, else from the sibling <repo> next to cozy/
+# --local: copy from mono/<repo> when the mono holds the repo, else from the sibling <repo> next to mono/
 
 const cozy_root = (path self | path dirname | path dirname)
 const vendor_yml = (path self | path dirname | path join vendor.yml)
@@ -184,11 +184,14 @@ export def main [
     }
 
     if $local {
-        let git_dir = $cozy_root | path dirname
+        # Why the main checkout of the mono, and not the one cozy_root sits in: a worktree in wtr/ is
+        # sparse and on a task branch, while vendoring copies what landed on master.
+        let mono_dir = ^git -C $cozy_root rev-parse --path-format=absolute --git-common-dir | path dirname
+        let workspace = $mono_dir | path dirname
         for group in $groups {
             # Why: a repo imported into the mono is edited there, as in cozy dev-link.
-            let in_mono = $git_dir | path join mono $group.repo
-            let repo_dir = if ($in_mono | path type) == dir { $in_mono } else { $git_dir | path join $group.repo }
+            let in_mono = $mono_dir | path join $group.repo
+            let repo_dir = if ($in_mono | path type) == dir { $in_mono } else { $workspace | path join $group.repo }
             for module in $group.modules {
                 let src = $repo_dir | path join $module
                 let dst = $vendor_dir | path join $group.repo $module

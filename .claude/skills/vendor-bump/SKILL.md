@@ -14,7 +14,7 @@ The user has repeatedly asked for this split-by-repo grouping ("commit by groups
 
 ## Preflight
 
-- `cd` to the cozy repo root (the dir with `toolkit/vendor.nu` and `vendor/`)
+- `cd` to `wtr/cozy/cozy` (the dir with `toolkit/vendor.nu` and `vendor/`), on a task branch, never on the mono `master`
 - `git status` is clean under `vendor/`.
   If there are pending vendor changes from a previous run, stop and ask the user whether to commit, stash, or discard them before re-vendoring
 
@@ -22,7 +22,7 @@ The user has repeatedly asked for this split-by-repo grouping ("commit by groups
 
 ```sh
 nu toolkit/vendor.nu --no-commit            # all repos, github tarballs (anonymous unless GH_TOKEN set)
-nu toolkit/vendor.nu --local --no-commit    # all repos, rsync from sibling ../<repo>/ dirs (dev workflow)
+nu toolkit/vendor.nu --local --no-commit    # all repos, from the main mono checkout mono/<repo> (dev workflow)
 nu toolkit/vendor.nu <repo> --no-commit     # just one repo from vendor.yml
 ```
 
@@ -31,7 +31,7 @@ nu toolkit/vendor.nu <repo> --no-commit     # just one repo from vendor.yml
 `--no-commit` leaves the changes unstaged so steps 2–4 below can compose richer per-repo commits.
 
 Default fetch is tarballs.
-Use `--local` only when the user has unpushed work in sibling clones they want to vendor before pushing — confirm with them if unclear.
+Use `--local` only when the user wants to vendor work that is on the mono `master` and not yet exported — confirm with them if unclear.
 Without a `<repo>` arg, `vendor.nu` deletes and rewrites all of `vendor/` from scratch; with one, it wipes and rewrites only that repo's dir.
 
 ## 2. Group the diff by repo
@@ -57,12 +57,13 @@ Subject conventions (verified against `git log --oneline -- vendor/`):
 - Specific behavior change worth naming: `vendor: <repo> <short description>` (e.g. `vendor: dotfiles XDG_CONFIG_HOME fallback in env.nu`)
 
 **Body MUST paraphrase what changed upstream.**
-Get it by reading the sibling repo's git log between the previously-vendored revision and now:
+Get it by reading the mono log of the repo's subdir between the previously-vendored revision and now:
 
 ```sh
-git -C ../<repo> fetch
-git -C ../<repo> log --oneline <last-vendored-sha>..HEAD
+git log --oneline <last-vendored-sha>..master -- ../<repo>/
 ```
+
+For a third-party repo (`nutest`, `topiary-nushell`), read the sibling clone next to `mono/` instead: `git -C <workspace>/<repo> log --oneline <last-vendored-sha>..HEAD`.
 
 If the user knows the previously-vendored revision, ask.
 Otherwise diff the just-rewritten `vendor/<repo>/` against the index (`git diff --staged vendor/<repo>/`) and describe the substance — what behavior changed for the user, not which lines moved.

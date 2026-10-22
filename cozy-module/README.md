@@ -102,8 +102,8 @@ A change-id is found by searching every ref (`git log --all --grep`), a sha by l
 
 ```nushell
 cozy git link cozy-module/hooks/commit-msg
-# => /Users/user/git/ai-sandbox-dev-container/cozy@oqmkkvpwwususytokkwpmsyvtpoqnwlz:cozy-module/hooks/commit-msg
-cozy git resolve /Users/user/git/ai-sandbox-dev-container/cozy@oqmkkvpw:cozy-module/hooks/commit-msg | lines | first 3
+# => /Users/user/git/ai-sandbox-dev-container/mono@nolsokmyytmskqlstkvsrqlktpmurrwt:cozy/cozy-module/hooks/commit-msg
+cozy git resolve /Users/user/git/ai-sandbox-dev-container/mono@nolsokmy:cozy/cozy-module/hooks/commit-msg | lines | first 3
 # => [
 # =>   "#!/bin/sh",
 # =>   "# Stamp a Change-Id trailer on a commit that does not already carry one.",
