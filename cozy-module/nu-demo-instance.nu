@@ -16,6 +16,7 @@ export def main [
 ]: nothing -> nothing {
     let config_home = if $here {
         let dir = $env.PWD | path join nushell
+
         mkdir $dir
         [config.nu env.nu]
         | each {|f| $dir | path join $f }
@@ -23,12 +24,12 @@ export def main [
         | each {|f| touch $f }
         '$env.PWD'
     } else {
-        '(mktemp -d)'
+        '(mktemp --directory)'
     }
 
     # XDG_DATA_HOME is a temp dir, not '' because: empty XDG vars are treated
     # as unset (dirs crate falls back to ~/.local/share), which would load the
     # real vendor autoloads and write history into the real data dir.
-    $"with-env { XDG_CONFIG_HOME: ($config_home), XDG_DATA_HOME: \(mktemp -d) } { nu }"
+    $"with-env { XDG_CONFIG_HOME: ($config_home), XDG_DATA_HOME: \(mktemp --directory) } { nu }"
     | commandline edit --replace $in
 }

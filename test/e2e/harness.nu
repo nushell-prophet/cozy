@@ -15,17 +15,18 @@
 export def start [
     name: string  # unique session name; the test owns it exclusively
     --rows: int = 40  # pin terminal size so renders are deterministic (headless default 50x49 is not)
-    --cols: int = 120
-    --timeout: duration = 10sec
+    --cols: int = 120  # terminal width, pinned like --rows
+    --timeout: duration = 10sec  # how long to wait for the PTY client to attach
 ]: nothing -> record<session: string, job: int> {
     zellij attach --create-background $name | ignore
 
-    # Why script -qec ... /dev/null: a real PTY client is the only thing that
+    # Why script --quiet --return --command ... /dev/null: a real PTY client is the only thing that
     # makes the session render; util-linux `script` gives us one headlessly.
-    let job = job spawn { ^script -qec $"stty rows ($rows) cols ($cols); zellij attach ($name)" /dev/null }
+    let job = job spawn { ^script --quiet --return --command $"stty rows ($rows) cols ($cols); zellij attach ($name)" /dev/null }
 
     let deadline = (date now) + $timeout
     mut attached = false
+
     while (date now) < $deadline {
         # >1 line means a client row exists past the header
         if (zellij --session $name action list-clients | lines | length) > 1 {
@@ -58,6 +59,7 @@ export def run-cmd [
     --cwd: string
 ]: nothing -> string {
     mut args = [--session $ctx.session run]
+
     if $floating { $args = ($args | append "--floating") }
     if $cwd != null { $args = ($args | append [--cwd $cwd]) }
     zellij ...$args -- ...$cmd | str trim
@@ -74,6 +76,7 @@ export def run-cmd [
 # The flag is quoted: bare `--no-history` would be parsed as a flag OF `run-cmd`.
 export def run-nu [ctx: record, --cwd: string]: nothing -> string {
     let pane = if $cwd != null { run-cmd $ctx nu "--no-history" --cwd $cwd } else { run-cmd $ctx nu "--no-history" }
+
     # nu's default prompt ends with a '>' on the prompt line; wait for it.
     wait-text $ctx '>' --pane $pane | ignore
     $pane
@@ -82,6 +85,7 @@ export def run-nu [ctx: record, --cwd: string]: nothing -> string {
 # Type literal characters into a pane (no submit). Targets focused pane unless --pane.
 export def type [ctx: record, text: string, --pane: string]: nothing -> nothing {
     mut args = [--session $ctx.session action write-chars $text]
+
     if $pane != null { $args = ($args | append [--pane-id $pane]) }
     zellij ...$args | ignore
 }
@@ -89,6 +93,7 @@ export def type [ctx: record, text: string, --pane: string]: nothing -> nothing 
 # Send a named key chord (e.g. "Enter", "Esc", "Ctrl c", "Up") to a pane.
 export def key [ctx: record, key: string, --pane: string]: nothing -> nothing {
     mut args = [--session $ctx.session action send-keys $key]
+
     if $pane != null { $args = ($args | append [--pane-id $pane]) }
     zellij ...$args | ignore
 }
@@ -103,6 +108,7 @@ export def focus [ctx: record, pane: string]: nothing -> nothing {
 export def screen [ctx: record, --pane: string, --full]: nothing -> string {
     if $pane != null { focus $ctx $pane }
     mut args = [--session $ctx.session action dump-screen]
+
     if $full { $args = ($args | append "--full") }
     zellij ...$args
 }
@@ -118,6 +124,7 @@ export def wait-text [
 ]: nothing -> any {
     let deadline = (date now) + $timeout
     mut last = ""
+
     while (date now) < $deadline {
         $last = (screen $ctx --pane $pane)
         if $last =~ $pattern { return $last }
@@ -142,6 +149,7 @@ export def wait-tab [
 ]: nothing -> any {
     let deadline = (date now) + $timeout
     mut last = []
+
     while (date now) < $deadline {
         $last = (tab-names $ctx)
         if $name in $last { return $last }
@@ -168,6 +176,7 @@ export def wait-pane-command [
     let id = $pane | str replace 'terminal_' '' | into int
     let deadline = (date now) + $timeout
     mut last = ""
+
     while (date now) < $deadline {
         $last = (panes $ctx | where id == $id | get 0?.pane_command | default "")
         if $last =~ $pattern { return $last }

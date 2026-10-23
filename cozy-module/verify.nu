@@ -8,7 +8,7 @@
 # (vendored-repos.nuon, docker-files/nushell-autoload/, install/bootstrap.nu),
 # so the checklist can't drift from the build the way a hand-kept list does.
 
-const cozy_module = path self | path dirname
+const cozy_module = path self .
 const manifest = $cozy_module | path join vendored-repos.nuon
 const autoload_src = $cozy_module | path join .. docker-files nushell-autoload
 const bootstrap = $cozy_module | path join install bootstrap.nu
@@ -58,12 +58,12 @@ const egress_canary = 'http://example.com'
 const egress_direct_probe = 'https://1.1.1.1'
 
 # A passing check row.
-def ok [label: string detail?: string]: nothing -> record {
+export def ok [label: string detail?: string]: nothing -> record {
     {label: $label pass: true detail: ($detail | default "")}
 }
 
 # A failing check row; detail says what to fix.
-def fail [label: string detail: string]: nothing -> record {
+export def fail [label: string detail: string]: nothing -> record {
     {label: $label pass: false detail: $detail}
 }
 
@@ -71,9 +71,10 @@ def fail [label: string detail: string]: nothing -> record {
 # new script is verified automatically), plus the two non-autoload files cozy
 # installs and the one autoload script that ships from the dotfiles repo, not
 # this glob. Each row carries the owning repo so a failure names where to fix it.
-def expected-files []: nothing -> list {
+export def expected-files []: nothing -> list {
     let cozy_autoload = glob ($autoload_src | path join '*.nu')
         | each {|f| {owner: cozy path: ($autoload_dir | path join ($f | path basename))} }
+
     [
         {owner: cozy path: ($home | path join .local bin pbcopy)}
         ...$cozy_autoload
@@ -84,7 +85,7 @@ def expected-files []: nothing -> list {
 
 # Every vendored repo lands at ~/repos/<name> — the manifest already includes
 # cozy — plus cozy's module dir, its docker-files dir and broot's config dir.
-def expected-dirs []: nothing -> list<string> {
+export def expected-dirs []: nothing -> list<string> {
     open $manifest | get name
     | each {|r| $repos | path join $r }
     | append [
@@ -100,7 +101,7 @@ def expected-dirs []: nothing -> list<string> {
 # Dockerfile and kit. No `^` anchor: the first export shares its line with the
 # `let env_exports = '...` that opens the block. $HOME is expanded the way the
 # sandbox resolves it.
-def expected-envs []: nothing -> record {
+export def expected-envs []: nothing -> record {
     open --raw $bootstrap
     | parse --regex '(?m)export[ \t]+(?<k>\w+)="(?<v>[^"]*)"'
     | update v { str replace --all '$HOME' $home }
@@ -110,7 +111,7 @@ def expected-envs []: nothing -> record {
 # `k`/`v` rows to a record. Not `transpose --as-record` because: `insert` raises
 # on a duplicate key where transpose keeps the first one silently, and an empty
 # input stays a record instead of turning into a list.
-def rows-to-record []: table -> record {
+export def rows-to-record []: table -> record {
     reduce --fold {} {|row acc| $acc | insert $row.k $row.v }
 }
 
@@ -118,7 +119,7 @@ def rows-to-record []: table -> record {
 # cozy value that is deliberately *not* in any shell env, so check-envs above
 # would never see it. Bounded to the record's own lines so the regex can't drift
 # onto some later `key: "value"` in the file.
-def expected-agent-env []: nothing -> record {
+export def expected-agent-env []: nothing -> record {
     open --raw $bootstrap
     | parse --regex '(?s)const agent_env = \{(?<body>.*?)\n\}'
     | get --optional body.0
@@ -132,8 +133,9 @@ def expected-agent-env []: nothing -> record {
 # without erroring — so a build that never deposited docker-files/ would drop 7
 # `file:` rows and report all of a smaller suite as passed. Guard the derivation itself:
 # an empty glob is a failure, not a smaller suite.
-def check-autoload-source []: nothing -> record {
+export def check-autoload-source []: nothing -> record {
     let found = glob ($autoload_src | path join '*.nu') | length
+
     if $found > 0 {
         ok 'autoload source' $"($found) scripts to check"
     } else {
@@ -142,26 +144,29 @@ def check-autoload-source []: nothing -> record {
 }
 
 # One row per tool in `$tools`: does it launch and print a version.
-def check-tools [run: closure]: nothing -> list {
+export def check-tools [run: closure]: nothing -> list {
     $tools | each {|t|
         let r = do $run $t
+
         if $r.exit == 0 { ok $"bin: ($t.0)" ($r.stdout | lines | first | default '') } else { fail $"bin: ($t.0)" 'launch failed' }
     }
 }
 
 # One row per file cozy or dotfiles installs: is it present.
-def check-files [run: closure]: nothing -> list {
+export def check-files [run: closure]: nothing -> list {
     expected-files | each {|f|
         let name = $f.path | path basename
         let r = do $run [test -f $f.path]
+
         if $r.exit == 0 { ok $"file: ($name)" $"[($f.owner)]" } else { fail $"file: ($name)" $"missing — fix in ($f.owner): ($f.path)" }
     }
 }
 
 # One row per expected directory: is it present.
-def check-dirs [run: closure]: nothing -> list {
+export def check-dirs [run: closure]: nothing -> list {
     expected-dirs | each {|d|
         let r = do $run [test -d $d]
+
         if $r.exit == 0 { ok $"dir: ($d | path basename)" } else { fail $"dir: ($d | path basename)" $d }
     }
 }
@@ -186,15 +191,17 @@ def check-dirs [run: closure]: nothing -> list {
 # What comes back now is what the sandbox itself supplies, not what verify was
 # launched with. BASH_ENV is deliberately not scrubbed: it is the wiring under
 # test, not a value under test.
-def check-envs [run: closure]: nothing -> list {
+export def check-envs [run: closure]: nothing -> list {
     let want = expected-envs
     let scrub = $want | columns | each {|k| [--unset $k] } | flatten
     let actual = (do $run ([env] ++ $scrub ++ [bash -c printenv])).stdout
         | lines
         | parse '{k}={v}'
         | rows-to-record
+
     $want | items {|name expected|
         let got = $actual | get --optional $name
+
         if $got == null {
             fail $"env: ($name)" 'not set in a bare `bash -c` (BASH_ENV not wired?)'
         } else if $got == $expected {
@@ -209,7 +216,7 @@ def check-envs [run: closure]: nothing -> list {
 # may not have patched ~/.claude.json yet. Run it explicitly first (idempotent
 # self-heal), then list. Registered-but-not-connected is a real fault, not a
 # cold-start artifact — `claude mcp list` actively probes the server.
-def check-mcp [run: closure]: nothing -> record {
+export def check-mcp [run: closure]: nothing -> record {
     do $run [nu ($autoload_dir | path join mcp-server.nu)] | ignore
     let r = do $run [claude mcp list]
     # Assert on the nushell row alone. Matching 'Connected' anywhere in the
@@ -217,6 +224,7 @@ def check-mcp [run: closure]: nothing -> record {
     # `sandbox-state restore`) supplies the word while nushell itself shows
     # "✗ Failed to connect" — and the row still passes.
     let row = $r.stdout | lines | where $it =~ '^nushell:' | get --optional 0
+
     if $row == null {
         fail 'mcp: nushell' 'not registered'
     } else if ($row | str contains 'Connected') {
@@ -236,17 +244,19 @@ def check-mcp [run: closure]: nothing -> record {
 # model call per row. The gap this leaves is a Claude Code that stops honouring
 # the setting; the gap it closes is the one that actually happened — the
 # identity silently not being deployed.
-def check-claude-env [run: closure]: nothing -> list {
+export def check-claude-env [run: closure]: nothing -> list {
     let want = expected-agent-env
     let path = $home | path join .claude settings.json
     let got = try {
         (do $run [cat $path]).stdout | from json | get --optional env | default {}
     } catch { null }
+
     if $got == null {
         return [(fail 'claude env' $"($path) missing or not JSON — bootstrap step 9 did not run")]
     }
     $want | items {|name expected|
         let actual = $got | get --optional $name
+
         if $actual == $expected {
             ok $"claude env: ($name)" $actual
         } else {
@@ -256,13 +266,14 @@ def check-claude-env [run: closure]: nothing -> list {
 }
 
 # The pbcopy shim is installed and executable.
-def check-pbcopy [run: closure]: nothing -> record {
+export def check-pbcopy [run: closure]: nothing -> record {
     let r = do $run [test -x ($home | path join .local bin pbcopy)]
+
     if $r.exit == 0 { ok 'pbcopy: executable' } else { fail 'pbcopy: executable' 'not executable' }
 }
 
 # The shipped bootstrap.nu parses under the sandbox nushell.
-def check-bootstrap-parses [run: closure]: nothing -> record {
+export def check-bootstrap-parses [run: closure]: nothing -> record {
     let path = $repos | path join cozy cozy-module install bootstrap.nu
     # Why 100 and not 0: --ide-check's argument is the *maximum number of
     # diagnostics to emit*, so `0` printed nothing at all and the row could
@@ -275,26 +286,30 @@ def check-bootstrap-parses [run: closure]: nothing -> record {
         | lines
         | each { from json }
         | where severity? == 'Error'
+
     # Narrower than ensure-nu.sh's gate: --ide-check parses only, where `use`
     # also evaluates the top level. A file that passes here can still fail there.
     if ($errs | is-empty) { ok 'bootstrap.nu parses' } else { fail 'bootstrap.nu parses' $"($errs | length) parse error\(s) on the shipped nu" }
 }
 
 # The tool catalog (bootstrap step 6) was appended to the global CLAUDE.md.
-def check-catalog [run: closure]: nothing -> record {
+export def check-catalog [run: closure]: nothing -> record {
     let r = do $run [grep --count fd ($home | path join .claude CLAUDE.md)]
+
     if $r.exit == 0 { ok 'CLAUDE.md catalog' } else { fail 'CLAUDE.md catalog' 'tool catalog (step 6) not appended' }
 }
 
 # topiary formats a .nu file, so the grammar and query symlink are in place.
-def check-topiary [run: closure]: nothing -> record {
+export def check-topiary [run: closure]: nothing -> record {
     let r = do $run [nu --commands "'def main [] { 1 }' | save --force /tmp/cozy-verify.nu; topiary format /tmp/cozy-verify.nu"]
+
     if $r.exit == 0 { ok 'topiary formats .nu' } else { fail 'topiary formats .nu' 'grammar/symlink missing (bootstrap step 8)' }
 }
 
 # Runtime git reads its config from the XDG path cozy writes.
-def check-git-xdg [run: closure]: nothing -> record {
+export def check-git-xdg [run: closure]: nothing -> record {
     let r = do $run [git config --list --show-origin]
+
     if ($r.stdout | str contains '.config/git/config') { ok 'git config: XDG' } else { fail 'git config: XDG' 'runtime git config not from ~/.config/git/config' }
 }
 
@@ -307,15 +322,18 @@ def check-git-xdg [run: closure]: nothing -> record {
 # excludesFile applies in any repo, so init a throwaway in /tmp — don't depend
 # on ~/repos/cozy being a repo: it's a real clone under the sbx kit, a symlink
 # in a cozy-dev sandbox, and plain COPYs (no .git) under the Dockerfile.
-def check-git-ignore [run: closure]: nothing -> record {
+export def check-git-ignore [run: closure]: nothing -> record {
     do $run [nu ($autoload_dir | path join git-global-ignore.nu)] | ignore
     let want = (do $run [cat ($home | path join .config git ignore)]).stdout | lines | where $it =~ '\S'
+
     if ($want | is-empty) { return (fail 'git ignore: patterns' 'canonical ~/.config/git/ignore missing or empty') }
     let tmp = '/tmp/cozy-verify-ignore'
+
     do $run [git init --quiet $tmp] | ignore
     let r = do $run ([git -C $tmp check-ignore] | append $want)
     let got = $r.stdout | lines
     let unignored = $want | where $it not-in $got
+
     if ($unignored | is-empty) { ok 'git ignore: patterns' ($want | str join ' ') } else { fail 'git ignore: patterns' $"not ignored: ($unignored | str join ', ') — sbx excludesFile shadowing XDG default" }
 }
 
@@ -327,7 +345,7 @@ def check-git-ignore [run: closure]: nothing -> record {
 # for the hosts that carry our secrets: the presented cert must not be issued by
 # the proxy CA. Expected value is the CA's own CN, read from PROXY_CA_CERT_B64,
 # so a renamed or rotated CA can't slip past. Only check here that needs network.
-def check-tls-passthrough [run: closure]: nothing -> list {
+export def check-tls-passthrough [run: closure]: nothing -> list {
     # Null when no proxy CA exists at all (the compose path has none — squid
     # refuses the CONNECT instead of forging a cert). Nothing to compare against
     # then, but the handshake still runs: it is this suite's only positive
@@ -335,6 +353,7 @@ def check-tls-passthrough [run: closure]: nothing -> list {
     let ca_cn = (do $run [bash --login -c 'printenv PROXY_CA_CERT_B64 | base64 --decode | openssl x509 -noout -subject -nameopt RFC2253']).stdout
         | parse --regex 'CN=(?<cn>[^,]+)'
         | get --optional cn.0
+
     $tls_passthrough_hosts | each {|h|
         let r = do $run [bash --login -c $"curl --silent --show-error --output /dev/null --verbose https://($h) 2>&1"]
         let issuer = $r.stdout
@@ -344,6 +363,7 @@ def check-tls-passthrough [run: closure]: nothing -> list {
             | default ''
             | parse --regex 'CN=(?<cn>.+)$'
             | get --optional cn.0
+
         if $issuer == null {
             fail $"tls: ($h)" 'no TLS handshake — unreachable through the proxy'
         } else if $ca_cn != null and $issuer == $ca_cn {
@@ -358,7 +378,7 @@ def check-tls-passthrough [run: closure]: nothing -> list {
 # (missing binary, or the transport lost stdout). '000' is curl's own marker for
 # "never got an answer" and is returned as-is — the callers below read those two
 # cases very differently, so they must not collapse into one.
-def http-code [run: closure cmd: string]: nothing -> any {
+export def http-code [run: closure cmd: string]: nothing -> oneof<string, nothing> {
     (do $run [bash --login -c $cmd]).stdout
     | str trim
     | parse --regex '^(?<n>\d{3})$'
@@ -376,7 +396,7 @@ def http-code [run: closure cmd: string]: nothing -> any {
 #   - the policy: the proxy defaults to deny. Probed over plain http so that a
 #     refusal (403 block page) stays distinguishable from a proxy that is simply
 #     down (no status). A broken firewall must fail, never pass.
-def check-egress-cage [run: closure]: nothing -> list {
+export def check-egress-cage [run: closure]: nothing -> list {
     let direct = http-code $run $"curl --silent --show-error --noproxy '*' --max-time 10 --output /dev/null --write-out '%{http_code}' ($egress_direct_probe)"
     let route = match $direct {
         null => (fail 'egress: no direct route' 'could not probe — no usable curl')
@@ -396,6 +416,7 @@ def check-egress-cage [run: closure]: nothing -> list {
         fail 'egress: default deny' 'no *_PROXY set — there is no filtered exit at all'
     } else {
         let canary = http-code $run $"curl --silent --show-error --proxy ($proxy) --max-time 20 --output /dev/null --write-out '%{http_code}' ($egress_canary)"
+
         match $canary {
             null => (fail 'egress: default deny' 'could not probe — no usable curl')
             '000' => (fail 'egress: default deny' $"no answer for ($egress_canary) — a refusal would be a 403; ($proxy) looks down")
@@ -440,6 +461,7 @@ export def run-checks [run: closure]: nothing -> table {
 export def local-runner []: nothing -> closure {
     {|argv|
         let r = try { run-external ...$argv | complete } catch { {stdout: '' exit_code: 127} }
+
         {stdout: ($r.stdout | str trim) exit: $r.exit_code}
     }
 }
@@ -451,7 +473,8 @@ export def local-runner []: nothing -> closure {
 # returned value's auto-view; only the summary line needs an explicit print.
 @category cozy-verify
 export def report [results: table]: nothing -> table {
-    let failed = $results | where not pass
+    let failed = $results | where not $it.pass
+
     if ($failed | is-not-empty) {
         print $"(ansi red)($failed | length)/($results | length) checks failed(ansi reset)"
         print ($failed | select label detail)

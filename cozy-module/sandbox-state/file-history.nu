@@ -20,8 +20,9 @@ use paths.nu *
 const repo_name = 'file-history'
 
 # Creates the repo on first use.
-def file-history-repo []: nothing -> path {
+export def file-history-repo []: nothing -> path {
     let repo = sandbox-state-path $repo_name
+
     if not ($repo | path join .git | path exists) {
         git init --quiet $repo
     }
@@ -29,12 +30,13 @@ def file-history-repo []: nothing -> path {
 }
 
 # Returns whether a commit was made.
-def commit-file [repo: path src: path]: nothing -> bool {
+export def commit-file [repo: path src: path]: nothing -> bool {
     let rel = $src | str replace --regex '^/+' ''
     let dst = $repo | path join $rel
     # Why --raw: a plain `open` on a .md path runs `from md` and would save the
     # parsed AST instead of the file — silently, with no error.
     let text = open --raw $src
+
     if ($dst | path exists) and (open --raw $dst) == $text {
         return false
     }
@@ -42,6 +44,7 @@ def commit-file [repo: path src: path]: nothing -> bool {
     $text | save --force $dst
     git -C $repo add $rel
     let when = date now | format date '%Y-%m-%d %H:%M:%S'
+
     git -C $repo commit --quiet --message $src --message $"snapshotted from (sys host | get hostname) at ($when)"
     true
 }
@@ -75,8 +78,10 @@ export def snapshot [
         # message. Collecting first also names every bad path, not just one.
         let expanded = $paths | path expand
         let missing = $expanded | where not ($it | path exists)
+
         if ($missing | is-not-empty) {
             let names = $missing | each { $"  ($in)" } | str join (char newline)
+
             error make {
                 msg: $"file not found:(char newline)($names)"
                 label: {text: "checked these paths" span: (metadata $paths).span}
@@ -97,6 +102,7 @@ export def snapshot [
     let absent = $sources | where not ($it | path exists)
     mut committed = 0
     mut unchanged = 0
+
     for src in ($sources | where $it not-in $absent) {
         if (commit-file $repo $src) {
             $committed += 1

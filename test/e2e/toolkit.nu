@@ -11,7 +11,7 @@
 
 use ~/repos/nutest/nutest
 
-const SUITES = (path self | path dirname | path join suites)
+const SUITES = path self suites
 
 export def "main test" [
     --suite: string = ".*"   # regex over suite names (file stem without _test)
@@ -19,6 +19,7 @@ export def "main test" [
     --fail                   # exit non-zero if any test fails (CI)
 ]: nothing -> any {
     let dir = $SUITES
+
     if $fail {
         nutest run-tests --path $dir --strategy { threads: 1 } --match-suites $suite --match-tests $match --fail
     } else {

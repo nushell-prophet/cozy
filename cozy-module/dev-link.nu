@@ -9,6 +9,7 @@ export def main [
     --workspace (-w): path # workspace path (default: $env.WORKSPACE_DIR)
 ]: nothing -> table {
     let ws = $workspace | default $env.WORKSPACE_DIR?
+
     if $ws == null {
         error make --unspanned {
             msg: "workspace path not given and WORKSPACE_DIR not set"
@@ -40,6 +41,7 @@ export def main [
             ^ln -s $target $repo_path
             'linked'
         }
+
         {name: $name status: $status}
     }
 }

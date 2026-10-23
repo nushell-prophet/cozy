@@ -17,8 +17,9 @@ const hook_names = [commit-msg applypatch-msg prepare-commit-msg]
 # and git's line is streamed to the terminal, not captured; this captures it so callers and tests
 # can read it. It serves the commands that must fail on a failed git call; `git-config-get` keeps
 # its own `complete` because null is its answer there.
-def git-in [dir: path args: list<string>]: nothing -> string {
+export def git-in [dir: path args: list<string>]: nothing -> string {
     let res = ^git -C $dir ...$args | complete
+
     if $res.exit_code != 0 {
         error make --unspanned {msg: ($res.stderr | str trim)}
     }
@@ -32,10 +33,11 @@ def git-in [dir: path args: list<string>]: nothing -> string {
 # otherwise, and nothing reports a stale copy — it keeps working the old way. The header comment on
 # line 2 is what marks a copy as ours; it has been the same in every version, so changing it would
 # turn every installed copy into a foreign hook.
-def install-status [src: path dest: path force: bool]: nothing -> string {
+export def install-status [src: path dest: path force: bool]: nothing -> string {
     if not ($dest | path exists) { return 'installed' }
     let current = open --raw $src
     let installed = open --raw $dest
+
     if $installed == $current {
         'already installed'
     } else if ($installed | lines | get 1?) == ($current | lines | get 1) {
@@ -64,6 +66,7 @@ export def install-change-id-hook [
     # Why refuse under core.hooksPath: git then never looks in the common dir, so an install there
     # would report success for hooks that never fire. `--git-path hooks` is where git looks.
     let live = git-in $path [rev-parse --path-format=absolute --git-path hooks] | str trim
+
     if $live != $dest_dir {
         error make --unspanned {
             msg: $"core.hooksPath sends git to ($live), so a hook in ($dest_dir) would never run"
@@ -75,9 +78,11 @@ export def install-change-id-hook [
     # Not `each`: an error raised inside its closure reaches the user as "Eval block failed with
     # pipeline input", and the refusal is the message they must read.
     mut plan = []
+
     for name in $hook_names {
         let src = $hooks_src | path join $name
         let dest = $dest_dir | path join $name
+
         $plan ++= [{src: $src dest: $dest status: (install-status $src $dest $force)}]
     }
     mkdir $dest_dir
@@ -124,9 +129,10 @@ export def link [
     # commit's body says why the file is the way it is.
     # Why --literal-pathspecs: a pathspec expands glob characters, so `a[1].txt` also matched
     # `a1.txt` and the link named that file's commit.
-    let log = git-in $dir [--literal-pathspecs log -1 '--format=%H%n%(trailers:key=Change-Id,valueonly)' -- $abs]
+    let log = git-in $dir [--literal-pathspecs log --max-count 1 '--format=%H%n%(trailers:key=Change-Id,valueonly)' -- $abs]
         | lines
         | compact --empty
+
     if ($log | is-empty) {
         error make {
             msg: $"($path) is not tracked by git"
@@ -161,6 +167,7 @@ export def link [
             }
         }
     }
+
     $"($repo)@($rev):($path)"
 }
 
@@ -172,6 +179,7 @@ export def resolve [
     link: string # `<repo>@<rev>:<path in repo>`, as printed by `cozy git link`
 ]: nothing -> string {
     let parts = $link | parse --regex '^(?<repo>.+?)@(?<rev>[0-9a-f]+|[k-z]+):(?<path>.+)$'
+
     if ($parts | is-empty) {
         error make {
             msg: $"not a link: ($link)"
@@ -182,6 +190,7 @@ export def resolve [
     let p = $parts.0
     let sha = if $p.rev =~ '^[k-z]' {
         let hits = git-in $p.repo [log --all --format=%H --grep $"^Change-Id: ($p.rev)"] | lines
+
         match ($hits | length) {
             0 => {
                 error make {
@@ -199,12 +208,14 @@ export def resolve [
             }
         }
     } else { $p.rev }
+
     git-in $p.repo [show $"($sha):($p.path)"]
 }
 
 # A repo-local git config value, or null when the key is unset.
-def git-config-get [repo: path key: string]: nothing -> any {
+export def git-config-get [repo: path key: string]: nothing -> oneof<string, nothing> {
     let r = ^git -C $repo config --get $key | complete
+
     if $r.exit_code == 0 { $r.stdout | str trim } else { null }
 }
 
@@ -244,6 +255,7 @@ export def harden [
     $targets | each {|p|
         let before_gc = git-config-get $p 'gc.auto'
         let before_recv = git-config-get $p 'receive.autoGc'
+
         ^git -C $p config gc.auto 0
         ^git -C $p config receive.autoGc false
         {

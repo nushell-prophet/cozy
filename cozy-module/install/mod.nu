@@ -3,7 +3,7 @@
 # Container vs. host is auto-detected via filesystem markers (see bootstrap.nu).
 # The installer consumes the committed vendor/ snapshot as-is; refreshing it is
 # `toolkit/vendor.nu`'s job, run on the host before a build.
-export use bootstrap.nu
+export use bootstrap.nu [ main ]
 
 # Install claude code using official installer script
 @category cozy-install

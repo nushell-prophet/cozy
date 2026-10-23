@@ -18,6 +18,7 @@ export def install []: nothing -> nothing {
     rust install
 
     let repo_dir = $nu.home-dir | path join git nu_plugin_image
+
     if not ($repo_dir | path exists) {
         print "  Cloning nu_plugin_image..."
         _clone-or-fail $repo_url $repo_dir
@@ -30,6 +31,7 @@ export def install []: nothing -> nothing {
 
     # Plugin versions track Nushell versions — build the matching tag.
     let tag = $"v(version | get version)"
+
     print $"  Checking out ($tag)..."
     ^git checkout $tag
 
@@ -40,6 +42,7 @@ export def install []: nothing -> nothing {
 
     let bin = $repo_dir | path join target release nu_plugin_image
     let dest = $rust.cargo_bin | path join nu_plugin_image
+
     _install-binary $bin $dest
 
     print "  Registering plugin..."

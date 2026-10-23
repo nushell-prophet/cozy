@@ -21,6 +21,7 @@ export def main [
 
     print $"  Downloading ($member) ($version) from ($url)..."
     let response = http get --raw --full --allow-errors $url
+
     if $response.status != 200 {
         error make {
             msg: $"no nushell release asset for ($version) on ($target): HTTP ($response.status)"
@@ -29,6 +30,7 @@ export def main [
     }
 
     let tmp = mktemp --directory
+
     $response.body | save ($tmp | path join archive.tar.gz)
     ^tar --extract --gzip --file ($tmp | path join archive.tar.gz) --directory $tmp $"($archive)/($member)"
     mkdir ($dest | path dirname)

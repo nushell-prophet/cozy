@@ -8,11 +8,12 @@ const history_db = '~/.config/nushell/history.sqlite3'
 # row number computed at display time; and `more_info`, a reedline slot for
 # embedders that nushell never writes and never shows.
 const history_columns = "command_line, cwd, start_timestamp, duration_ms, exit_status, session_id, hostname"
-const seed_file = path self | path dirname | path join .. history-seed.nuon
+const seed_file = path self ../history-seed.nuon
 
 # The nushell history database; errors when it does not exist.
-def history-db []: nothing -> path {
+export def history-db []: nothing -> path {
     let db = $history_db | path expand
+
     if not ($db | path exists) {
         error make --unspanned {msg: $"history database not found: ($db)"}
     }
@@ -45,6 +46,7 @@ export def snapshot [
     let out = $path | default { sandbox-state-path $"history-(date now | format date '%Y%m%d-%H%M%S').nuon" }
     let db = history-db
     let items = open $db | query db $"SELECT ($history_columns) FROM history ORDER BY id"
+
     if ($items | is-empty) {
         print 'No history items to snapshot'
         return
@@ -69,16 +71,19 @@ export def restore [
     let src = $path | default {
             let dir = sandbox-state-dir
             let files = glob ($dir | path join 'history-*.nuon') | sort
+
             if ($files | is-empty) {
                 error make --unspanned {msg: $"no history snapshots found in ($dir)"}
             }
             $files | last
         }
+
     if not ($src | path exists) {
         error make --unspanned {msg: $"file not found: ($src)"}
     }
     let db = history-db
     let items = open $src
+
     if ($items | is-empty) {
         print 'No history items to restore'
         return
@@ -138,10 +143,12 @@ export def restore [
                 ]
             }
             | flatten
+
         open $db | query db $"INSERT INTO history \(($history_columns)\) VALUES ($placeholders)" --params $params
     }
 
     let total = open $db | query db "SELECT count(*) AS n FROM history" | get 0.n
     let skipped = ($items | length) - ($new_items | length)
+
     print $"Restored ($new_items | length) new entries, ($skipped) duplicates skipped. History: ($total) total"
 }

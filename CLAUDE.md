@@ -107,6 +107,8 @@ Each entry should answer: "would this matter to someone deciding whether to adop
   `toolkit/vendor.nu` also projects it into `cozy-module/vendored-repos.nuon` — the manifest that ships into the sandbox, read by `cozy sync-repos` and `cozy-module/verify.nu`.
   `toolkit check` guards the manifest against `vendor.yml`; never hardcode the list
 - `cozy` command surface: `cozy-module/mod.nu` exports
+  Every submodule file exports every command, helpers included; each `mod.nu` names the public ones.
+  A named list flattens the namespace, so a file's subcommands go through an inline module of the same name (`module git { export use git.nu [ link ] }`, then `export use git`), and the file's `main` is imported outside it (`export use verify.nu [ main ]`)
 - Egress policy for the Debian image: `firewall/allowed-domains.txt` (what may be reached) and `firewall/squid.conf` (how it's enforced), wired up by `compose.yaml` for docker and by `toolkit/container.nu` (or `toolkit/container.zsh` on a host without Nushell) for Apple `container` (macOS 26+; same policy directory, same pinned squid, addressed by the name `cozy-egress` pinned in `/etc/hosts` because a host-only network has no DNS).
   The repo copy is a template; the live one is `~/.config/cozy/firewall/`.
   Not the image — the Dockerfile deliberately carries no proxy address, so it stays runnable standalone.

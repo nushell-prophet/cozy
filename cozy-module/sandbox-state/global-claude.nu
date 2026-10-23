@@ -19,20 +19,20 @@ const tracked_file = 'CLAUDE.md'
 const own_branch = 'global-claude'
 
 # The history repo inside the mounted workspace; errors when no workspace is mounted.
-def history-repo []: nothing -> path {
+export def history-repo []: nothing -> path {
     sandbox-state-dir | path join global-claude-history
 }
 
 # Whether a git command in `dir` succeeds, with its output discarded.
 # The arguments come as a list, not as rest args, because: nushell reads any `-x`/`--x` among rest
 # args as a flag of this command and refuses to parse it as data for git.
-def git-ok [dir: path args: list<string>]: nothing -> bool {
+export def git-ok [dir: path args: list<string>]: nothing -> bool {
     (^git -C $dir ...$args | complete).exit_code == 0
 }
 
 # Remote-tracking branches of the history repo that already contain the checked-out commit.
 # Empty for an unborn HEAD, which is the fresh-machine case.
-def remote-branches-with-head [dir: path]: nothing -> string {
+export def remote-branches-with-head [dir: path]: nothing -> string {
     if not (git-ok $dir ['rev-parse' '--verify' '--quiet' 'HEAD']) { return '' }
     ^git -C $dir branch --remotes --list $"($remote_name)/*" --contains HEAD | str trim
 }
@@ -49,21 +49,23 @@ export def snapshot []: nothing -> nothing {
     # without this check a snapshot taken before bootstrap wrote CLAUDE.md pushes a commit that
     # drops it from the history tip, for every machine that restores next.
     let file = $dir | path join $tracked_file
+
     if not ($file | path exists) {
-        error make --unspanned {msg: $"global CLAUDE.md not found: ($file) — run `cozy install bootstrap` first"}
+        error make --unspanned {msg: $"global CLAUDE.md not found: ($file)" help: "run `cozy install bootstrap` first"}
     }
     # Not `git init` here because: on a wrong or missing mount that would silently start an empty
     # history and report success, which is the one failure nobody would notice.
     if not (git-ok $dir ['rev-parse' '--git-dir']) {
-        error make --unspanned {msg: $"($dir) is not a git repository — run `cozy sandbox-state global-claude restore` first"}
+        error make --unspanned {msg: $"($dir) is not a git repository" help: "run `cozy sandbox-state global-claude restore` first"}
     }
     if not (git-ok $dir ['remote' 'get-url' $remote_name]) {
-        error make --unspanned {msg: $"($dir) has no `($remote_name)` remote — run `cozy sandbox-state global-claude restore` first"}
+        error make --unspanned {msg: $"($dir) has no `($remote_name)` remote" help: "run `cozy sandbox-state global-claude restore` first"}
     }
 
     ^git -C $dir add $tracked_file
     if not (git-ok $dir ['diff' '--cached' '--quiet' '--' $tracked_file]) {
         let stamp = date now | format date '%Y%m%d-%H%M%S'
+
         # The pathspec, so a change someone left staged in ~/.claude cannot ride along in a commit
         # whose message says it holds one file.
         ^git -C $dir commit --quiet --message $stamp --message $"snapshot of ($file)" -- $tracked_file
@@ -84,11 +86,13 @@ export def snapshot []: nothing -> nothing {
     # to its own branch: the push must never fail and must never rewrite what another machine pushed.
     let upstream = $"($remote_name)/master"
     let ff = (not (git-ok $dir ['rev-parse' '--verify' '--quiet' $upstream])) or (git-ok $dir ['merge-base' '--is-ancestor' $upstream 'HEAD'])
+
     if $ff {
         ^git -C $dir push --quiet $remote_name HEAD:master
         print $"Pushed to ($remote_name)/master"
     } else {
         let branch = date now | format date '%Y%m%d-%H%M%S'
+
         ^git -C $dir push --quiet $remote_name $"HEAD:refs/heads/($branch)"
         print $"($upstream) has diverged, so it went to branch ($branch) — merge it by hand"
     }
@@ -106,13 +110,15 @@ export def snapshot []: nothing -> nothing {
 @category cozy-sandbox-state
 export def restore []: nothing -> nothing {
     let repo = history-repo
+
     # `rev-parse` and not a `.git` directory test because: the history repo may be bare, and a bare
     # repo has no `.git` entry at all.
     if not (git-ok $repo ['rev-parse' '--git-dir']) {
-        error make --unspanned {msg: $"no CLAUDE.md history repo at ($repo) — start one with `git init --bare ($repo)`"}
+        error make --unspanned {msg: $"no CLAUDE.md history repo at ($repo)" help: $"start one with `git init --bare ($repo)`"}
     }
 
     let dir = $global_claude_dir | path expand
+
     mkdir $dir
     if not (git-ok $dir ['rev-parse' '--git-dir']) {
         ^git -C $dir init --quiet
@@ -124,17 +130,19 @@ export def restore []: nothing -> nothing {
 
     # Say which branch is missing, rather than letting `reset` fail with git's "ambiguous argument".
     let upstream = $"($remote_name)/master"
+
     if not (git-ok $dir ['rev-parse' '--verify' '--quiet' $upstream]) {
         error make --unspanned {msg: $"($repo) has no `master` branch — nothing to restore from"}
     }
 
     let head = git-ok $dir ['rev-parse' '--verify' '--quiet' 'HEAD']
     let related = $head and (git-ok $dir ['merge-base' 'HEAD' $upstream])
+
     # Refuse to rewind a branch holding versions the history has never seen. `reset` moves the
     # current branch, so without this, restore on a machine that never managed to push would undo
     # exactly the CLAUDE.md edits it is supposed to protect.
     if $related and (remote-branches-with-head $dir | is-empty) {
-        error make --unspanned {msg: $"($dir) has commits the history repo does not — run `cozy sandbox-state global-claude snapshot` first"}
+        error make --unspanned {msg: $"($dir) has commits the history repo does not" help: "run `cozy sandbox-state global-claude snapshot` first"}
     }
     # A history with no common ancestor is someone else's repo — dotfiles' `push-to-machine`
     # git-inits ~/.claude and commits there during bootstrap. Leave its branch alone and put the
@@ -143,8 +151,9 @@ export def restore []: nothing -> nothing {
     # decision.
     if $head and not $related {
         let branch = $"refs/heads/($own_branch)"
+
         if (git-ok $dir ['rev-parse' '--verify' '--quiet' $branch]) {
-            error make --unspanned {msg: $"($dir) is not on its `($own_branch)` branch — check it out first: `git -C ($dir) symbolic-ref HEAD ($branch)`"}
+            error make --unspanned {msg: $"($dir) is not on its `($own_branch)` branch" help: $"check it out first: `git -C ($dir) symbolic-ref HEAD ($branch)`"}
         }
         ^git -C $dir symbolic-ref HEAD $branch
         print $"($dir) holds an unrelated history — the ($tracked_file) history goes to branch ($own_branch)"
@@ -160,6 +169,7 @@ export def restore []: nothing -> nothing {
     # must never be committable. It is the one file restore writes: without it on disk the very first
     # `git status` here lists every session file, and staging all of them is one keystroke in lazygit.
     let ignore = $dir | path join '.gitignore'
+
     if not (git-ok $dir ['ls-files' '--error-unmatch' '.gitignore']) {
         print $"warning: the history has no .gitignore — everything in ($dir) is committable, including .credentials.json"
     } else if not ($ignore | path exists) {
@@ -168,6 +178,7 @@ export def restore []: nothing -> nothing {
 
     print $"Restored the ($tracked_file) history into ($dir) — no files were overwritten"
     let state = ^git -C $dir status --short -- $tracked_file | str trim
+
     if ($state | is-empty) {
         print $"($tracked_file) already matches the newest version in the history"
     } else if ($state | str starts-with 'D') {

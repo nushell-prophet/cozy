@@ -24,6 +24,7 @@ use ../harness.nu *
 def setup [] {
     let session = $"e2e_lstd_(random chars --length 8)"
     let tmp = mktemp --directory --suffix _e2e_lstd
+
     mkdir ($tmp | path join todo)
     # two active todos + one completed (which lstd is supposed to hide)
     "---\nstatus: 'draft'\n---\n\nalpha task\n" | save ($tmp | path join todo "20260101-000001.md")
@@ -31,17 +32,19 @@ def setup [] {
     "---\nstatus: 'completed'\n---\n\ngamma done\n" | save ($tmp | path join todo "20260101-000003.md")
     let ctx = start $session
     let pane = run-nu $ctx --cwd $tmp
+
     { ctx: $ctx, tmp: $tmp, pane: $pane }
 }
 
 # [after-each]
 def teardown [] {
     let it = $in
+
     stop $it.ctx
     rm --recursive --force $it.tmp
 }
 
-def launch-lstd [it] {
+def launch-lstd [it: record]: nothing -> string {
     type $it.ctx "use ~/.config/zellij/todo-nu/todo.nu lstd; lstd" --pane $it.pane
     key $it.ctx "Enter" --pane $it.pane
     wait-pane-command $it.ctx $it.pane 'fzf' | ignore
@@ -53,6 +56,7 @@ def launch-lstd [it] {
 def "lstd launches the fzf picker rendering the todo list" [] {
     let it = $in
     let rendered = launch-lstd $it
+
     assert ($rendered =~ '\d+/\d+') "fzf should render its item counter"
     # fzf is the foreground program in the pane
     assert (panes $it.ctx | where id == 1 | get 0.pane_command | str contains "fzf")
@@ -61,6 +65,7 @@ def "lstd launches the fzf picker rendering the todo list" [] {
 # [test]
 def "ctrl-e spawns a zellij edit pane for the highlighted file" [] {
     let it = $in
+
     launch-lstd $it
     let before = panes $it.ctx | length
 
@@ -84,6 +89,7 @@ def "lstd hides completed todos - intended contract" [] {
     let it = $in
     let rendered = launch-lstd $it
     let counter = $rendered | lines | where $it =~ '\d+/\d+' | first
+
     # 2 active todos → fzf should show "2/2", not "3/3"
     assert ($counter =~ '2/2') $"expected 2 active items, got: ($counter)"
 }

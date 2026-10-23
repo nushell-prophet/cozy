@@ -10,12 +10,14 @@
 # Guarded so the normal path writes nothing.
 let canonical = $nu.home-dir | path join .config git ignore
 let active = do { git config --get core.excludesFile } | complete
+
 # excludesFile unset -> git already reads ~/.config/git/ignore as its default.
 # Nothing to mirror. This is the plain-host path; the sbx path takes the branch.
 if $active.exit_code == 0 and ($active.stdout | str trim | is-not-empty) and ($canonical | path exists) {
     let target = $active.stdout | str trim | path expand
     let have = if ($target | path exists) { open $target | lines } else { [] }
-    let missing = open $canonical | lines | where {|p| $p not-in $have }
+    let missing = open $canonical | lines | where $it not-in $have
+
     if ($missing | is-not-empty) {
         ($missing | str join (char newline)) + (char newline) | save --append $target
     }

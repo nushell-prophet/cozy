@@ -21,6 +21,7 @@ export def claude [
     --output-dir: path = $CLAUDE_DOCS_DIR # Where to write the .md pages
 ]: nothing -> record {
     let sitemap = ^curl --silent --fail --location https://code.claude.com/docs/sitemap.xml | complete
+
     if $sitemap.exit_code != 0 {
         error make {msg: $"failed to fetch sitemap.xml \(curl exit ($sitemap.exit_code)\)"}
     }
@@ -39,6 +40,7 @@ export def claude [
             let filename = $url | path split | skip 4 | str join '_'
             let dest = $output_dir | path join $filename
             let r = ^curl --silent --fail --location $url | complete
+
             if $r.exit_code == 0 {
                 $r.stdout | save --force $dest
                 {url: $url status: ok}
@@ -49,6 +51,7 @@ export def claude [
         | sort-by url
 
     let failed = $results | where status == failed | get url
+
     {
         dir: $output_dir
         ok: ($results | where status == ok | length)
@@ -72,5 +75,6 @@ export def nushell [
 
     let folders = $NUSHELL_DOCS_FOLDERS
         | each {|f| {folder: $f size: (du ($output_dir | path join $f) | get apparent | first)} }
+
     {dir: $output_dir folders: $folders}
 }

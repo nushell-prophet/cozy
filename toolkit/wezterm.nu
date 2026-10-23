@@ -1,7 +1,8 @@
 # Open a new WezTerm window and attach it to a zellij session inside a sandbox.
 #
 # The only thing that differs between the two run paths is how you get a shell
-# inside — `sbx exec -it NAME` vs `container exec -it [--cwd W] NAME` — so the
+# inside — `sbx exec --interactive --tty NAME` vs
+# `container exec --interactive --tty [--cwd W] NAME` — so the
 # caller passes that prefix and everything else lives here once. Used by
 # toolkit/sbxw.nu (sbx) and toolkit/container.nu (Apple `container`).
 #
@@ -9,7 +10,7 @@
 # like its own module, and `attach-window` is the name worth keeping at the
 # call sites.
 
-const script_path = path self
+const default_conf = path self ../vendor/dotfiles/wezterm/wezterm.lua
 
 export def "nu-complete wezterm background" []: nothing -> table<value: string, description: string> {
     [
@@ -30,9 +31,9 @@ export def "nu-complete wezterm size" []: nothing -> table<value: string, descri
 }
 
 export def attach-window [
-    exec_argv: list<string> # how to get a shell inside, e.g. [sbx exec -it my-box]
+    exec_argv: list<string> # how to get a shell inside, e.g. [sbx exec --interactive --tty my-box]
     session: string # zellij session to attach to, created if missing
-    --config-file: path
+    --config-file: path # WezTerm config (default: the vendored dotfiles wezterm.lua)
     --background: string@"nu-complete wezterm background" = "000000" # hex without '#'
     --no-job # don't create a background job for the process
     --record: path # save the session as an asciicast into this directory, one new file per call; don't resize the window, the recorder keeps its start size
@@ -40,10 +41,11 @@ export def attach-window [
 ]: nothing -> any {
     # the spawned job's id, so `job kill` can reach it; nothing with --no-job
     let conf = $config_file
-        | default ($script_path | path dirname | path join ../vendor/dotfiles/wezterm/wezterm.lua)
+        | default $default_conf
 
     let size_config = if $size != null {
         let dims = $size | parse --regex '^(?<cols>[1-9]\d*)x(?<rows>[1-9]\d*)$'
+
         if ($dims | is-empty) {
             error make --unspanned {
                 msg: $"--size ($size) is not COLSxROWS"
@@ -69,7 +71,7 @@ export def attach-window [
     # already runs, so the cast is written on the host and needs no recorder
     # installed anywhere. It reads the tty size once and never handles SIGWINCH
     # (upstream wezterm/src/asciicast.rs), so a resize leaves zellij at the old size.
-    # `-o` has no long form; `--` keeps `-it` of the exec from parsing as its flags.
+    # `-o` has no long form; `--` keeps `--interactive --tty` of the exec from parsing as its flags.
     # Why a directory, not a file: `-o` truncates an existing file, so a name
     # made per call keeps every recording.
     let cast = if $record != null {
@@ -78,6 +80,7 @@ export def attach-window [
         | path expand
         | path join $'($session)-(date now | format date "%Y%m%d-%H%M%S").cast'
     }
+
     if $cast != null { print $'recording to ($cast)' }
 
     let launch = [

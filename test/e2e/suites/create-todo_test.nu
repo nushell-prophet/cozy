@@ -22,17 +22,19 @@ def setup [] {
     let ctx = start $session
     # one nu pane per test, rooted in the temp workspace where todo/ will live
     let pane = run-nu $ctx --cwd $tmp
+
     { ctx: $ctx, tmp: $tmp, pane: $pane }
 }
 
 # [after-each]
 def teardown [] {
     let it = $in
+
     stop $it.ctx
     rm --recursive --force $it.tmp
 }
 
-def launch-create-todo [it] {
+def launch-create-todo [it: record]: nothing -> nothing {
     type $it.ctx "use ~/.config/zellij/todo-nu/todo.nu create-todo; create-todo" --pane $it.pane
     key $it.ctx "Enter" --pane $it.pane
     # Gate on helix's RENDERED status line, not pane_command: pane_command flips
@@ -53,6 +55,7 @@ def wait-helix-gone [it] {
 
 def todo-md-files [tmp: string]: nothing -> list<string> {
     let dir = $tmp | path join todo
+
     if ($dir | path exists) {
         ls $dir | where name =~ '\d{8}-\d{6}\.md$' | get name | path basename
     } else {
@@ -63,6 +66,7 @@ def todo-md-files [tmp: string]: nothing -> list<string> {
 # [test]
 def "quitting unmodified deletes the file and the new todo folder" [] {
     let it = $in
+
     launch-create-todo $it
     # exactly one new todo md exists while helix is open
     assert equal (todo-md-files $it.tmp | length) 1
@@ -80,6 +84,7 @@ def "quitting unmodified deletes the file and the new todo folder" [] {
 # [test]
 def "editing then saving persists the file" [] {
     let it = $in
+
     launch-create-todo $it
 
     # insert a body, escape, write-quit
@@ -91,8 +96,10 @@ def "editing then saving persists the file" [] {
     wait-helix-gone $it
 
     let files = todo-md-files $it.tmp
+
     assert equal ($files | length) 1
     let body = open --raw ($it.tmp | path join todo $files.0)
+
     assert ($body =~ 'real task body') "edited body should be persisted"
     assert ($body =~ 'status:') "frontmatter should be intact"
 }

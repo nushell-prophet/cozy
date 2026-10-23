@@ -17,6 +17,7 @@ export def main [
     # Not a plain rename of $src because: the build directory may sit on another
     # filesystem, where rename(2) fails. Copying beside $dest keeps it one FS.
     let staged = $dest + ".new"
+
     ^cp $src $staged
     mv --force $staged $dest
 }

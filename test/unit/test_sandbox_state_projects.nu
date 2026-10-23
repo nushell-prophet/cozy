@@ -8,9 +8,11 @@ def setup []: nothing -> record {
     let root = mktemp --directory --tmpdir cozy-projects-test-XXXXXX
     let home = $root | path join home
     let live = $home | path join .claude projects
+
     mkdir ($live | path join '-proj')
     'one' | save ($live | path join '-proj' a.jsonl)
     let snap = $root | path join state projects
+
     mkdir $snap
     {root: $root home: $home live: $live snap: $snap}
 }
@@ -28,6 +30,7 @@ def error-of [call: closure]: nothing -> string {
 @test
 def "snapshot refuses a filled snapshot before restore has run" [] {
     let t = $in
+
     'old' | save ($t.snap | path join stale.jsonl)
 
     let err = with-env {HOME: $t.home} { error-of { projects snapshot $t.snap } }
@@ -48,6 +51,7 @@ def "snapshot runs on an empty snapshot without restore" [] {
 @test
 def "snapshot moves a file gone from live into projects-deleted" [] {
     let t = $in
+
     with-env {HOME: $t.home} { projects restore $t.snap | ignore }
     mkdir ($t.snap | path join '-moved')
     'kept' | save ($t.snap | path join '-moved' b.jsonl)
@@ -63,6 +67,7 @@ def "snapshot moves a file gone from live into projects-deleted" [] {
 @test
 def "snapshot backs up no file it only updates" [] {
     let t = $in
+
     with-env {HOME: $t.home} { projects restore $t.snap | ignore }
     with-env {HOME: $t.home} { projects snapshot $t.snap | ignore }
     'one two' | save --force ($t.live | path join '-proj' a.jsonl)
@@ -85,6 +90,7 @@ def snapshot-as [home: path snap: path]: nothing -> record {
 # A second HOME on the same snapshot: the second machine.
 def second-home [t: record]: nothing -> path {
     let home = $t.root | path join home-b
+
     mkdir ($home | path join .claude projects '-other')
     'b' | save ($home | path join .claude projects '-other' c.jsonl)
     $home
@@ -94,6 +100,7 @@ def second-home [t: record]: nothing -> path {
 def "snapshot warns when another machine wrote it after the last restore here" [] {
     let t = $in
     let b = second-home $t
+
     with-env {HOME: $t.home} { projects restore $t.snap | ignore }
     with-env {HOME: $b} { projects restore $t.snap | ignore }
     snapshot-as $b $t.snap | ignore
@@ -108,6 +115,7 @@ def "snapshot warns when another machine wrote it after the last restore here" [
 def "snapshot stays quiet after a restore that follows the other machine" [] {
     let t = $in
     let b = second-home $t
+
     with-env {HOME: $t.home} { projects restore $t.snap | ignore }
     with-env {HOME: $b} { projects restore $t.snap | ignore }
     snapshot-as $b $t.snap | ignore

@@ -11,6 +11,7 @@ export def init []: nothing -> nothing {
 
     let dirs = ls | where type == dir | get name
     let repos = $dirs | where ($it | path join .git | path exists)
+
     if ($repos | is-empty) {
         error make --unspanned {msg: 'no git repos found in subdirectories'}
     }
@@ -50,6 +51,7 @@ export def init []: nothing -> nothing {
         ^git config --file .git/config $'submodule.($name).url' $'./($name)'
         ^git config --file .git/config $'submodule.($name).active' true
         let commit = ^git -C $name rev-parse HEAD | str trim
+
         ^git update-index --add --cacheinfo 160000 $commit $name
     }
 
@@ -65,6 +67,7 @@ export def init []: nothing -> nothing {
     } else {
         $'Register submodules: ($new_repos | str join ", ")'
     }
+
     ^git commit --message $msg
 
     print $'Registered ($new_repos | length) submodules: ($new_repos | str join ", ")'

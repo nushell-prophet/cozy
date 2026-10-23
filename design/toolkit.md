@@ -21,7 +21,9 @@ The commands themselves are self-documenting (`help toolkit ...`); this file rec
 [`toolkit/mod.nu`](../toolkit/mod.nu) is the wiring: it re-exports `vendor`, `docs`, `check`, `container` and `sbxw`.
 
 **One name per command.** `container.nu` and `vendor.nu` dispatch on `main <sub>` so the script form works (`nu toolkit/container.nu up …`), but a module import leaves that `main` in the middle — nushell collapses only a bare `main` into the module name, so the import would read `container main up`.
-Each subcommand therefore gets an `export alias` without it, and the `def` behind the alias is deliberately **not** exported: exporting both listed every command twice, once under each name.
+Each subcommand therefore gets an `export alias` without it.
+The `def` behind the alias is exported, as is every helper, so that tests can `use` it.
+`toolkit/mod.nu` re-exports only the aliases, through an inline wrapper module (`module container { export use container.nu [ up ... ] }`), so each command is listed under one name.
 Script dispatch finds `main <sub>` in the file's own scope either way, and `help toolkit container up` still reaches the real flags through the alias.
 Each alias repeats its command's first doc line, because an alias with no comment of its own describes itself as an alias.
 

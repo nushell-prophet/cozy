@@ -38,7 +38,7 @@ use claude-home.nu
 
 # Cozy repo root, derived from this file's location:
 # cozy-module/install/bootstrap.nu  →  three dirnames up
-const cozy_root = path self | path dirname | path dirname | path dirname
+const cozy_root = path self ../..
 
 # The agent's own identity. Step 9 writes it into Claude Code's `env` setting,
 # so it lives in the *agent process*, not in a shell rc — Claude Code exports it
@@ -80,6 +80,7 @@ export def main [
     # branch — no apt deps, no env exports — while still stamping itself
     # installed at the end.
     let in_container = ('/etc/sandbox-persistent.sh' | path exists) or ('/.dockerenv' | path exists)
+
     if $in_container {
         setup-docker-system
     } else if not $force {
@@ -94,7 +95,7 @@ export def main [
     # of surfacing a sudo prompt at step 8. macOS is covered: brew requires
     # the Xcode CLT, which provides gcc.
     if not $in_container and $nu.os-info.name == 'linux' and (which gcc | is-empty) {
-        error make {msg: "gcc not found — install build deps first (sudo apt-get install gcc libc6-dev), then re-run"}
+        error make {msg: "gcc not found" help: "install build deps first (sudo apt-get install gcc libc6-dev), then re-run"}
     }
 
     # pbcopy shim — OSC 52 escape sequences push copied text to the host
@@ -108,6 +109,7 @@ export def main [
         let local_bin = $nu.home-dir | path join '.local' 'bin'
         let shim = $local_bin | path join 'pbcopy'
         let existing = which pbcopy | get --optional path.0
+
         if $existing in [null $shim] {
             mkdir $local_bin
             ^install --mode=755 ($cozy_root | path join 'docker-files' 'pbcopy') $shim
@@ -126,7 +128,7 @@ export def main [
 
     # Step 1 — brew installs
     if (which brew | is-empty) {
-        error make {msg: "brew not found — install Homebrew first: https://brew.sh"}
+        error make {msg: "brew not found" help: "install Homebrew first: https://brew.sh"}
     }
     # Why git: the apt git the Dockerfile installs for the Homebrew installer is
     # frozen at Debian stable (2.47), too old for `git fast-export
@@ -142,6 +144,7 @@ export def main [
     # precedence has ~/.gitconfig (global) overriding XDG, so a user's
     # personal email wins; XDG only kicks in when nothing else is set.
     let git_xdg = $nu.home-dir | path join '.config' 'git'
+
     mkdir $git_xdg
     # safe.directory='*' is asserted in three places: here, mount.nu's `init`,
     # and the git-safe-directory.nu autoload (self-heals after sandbox create
@@ -211,6 +214,7 @@ export def main [
     # the current run is stale (e.g. an entry removed upstream). Without
     # this, re-runs accumulated removed-upstream autoload files indefinitely.
     let autoload_dst = $nu.home-dir | path join '.config' 'nushell' 'autoload'
+
     rm --recursive --force $autoload_dst
     mkdir $autoload_dst
     for f in (glob ($cozy_root | path join 'docker-files' 'nushell-autoload' '*.nu')) {
@@ -240,12 +244,15 @@ export def main [
     # re-run would stack one more copy, and verify.nu's `check-catalog` — a grep for
     # one tool name — would go on passing.
     let claude_md = $nu.home-dir | path join '.claude' 'CLAUDE.md'
+
     mkdir ($claude_md | path dirname)
     let catalog = open --raw ($cozy_root | path join 'docker-files' 'global-claude.md')
+
     upsert-marked-block $claude_md 'cozy catalog' $"($catalog)\n" --separator "\n"
 
     # Step 7 — broot init (so host gets it too)
     let xdg_config = $env.XDG_CONFIG_HOME? | default ($nu.home-dir | path join '.config')
+
     ^broot --write-default-conf ($xdg_config | path join 'broot')
     ^broot --set-install-state installed
 
@@ -257,8 +264,9 @@ export def main [
     # a broken vendor flow — instead of an absent ~/git/ path.
     let vendored = $nu.home-dir | path join 'repos' 'topiary-nushell'
     let link = $nu.home-dir | path join 'git' 'topiary-nushell'
+
     if not ($vendored | path exists) {
-        error make {msg: $"Step 8: vendored topiary-nushell missing at ($vendored) — Step 3 should have populated it from vendor/. Refresh it on the host with `nu toolkit/vendor.nu topiary-nushell` and rebuild."}
+        error make {msg: $"Step 8: vendored topiary-nushell missing at ($vendored) — Step 3 should have populated it from vendor/" help: "refresh it on the host with `nu toolkit/vendor.nu topiary-nushell` and rebuild"}
     }
     if ($link | path type) != 'symlink' {
         mkdir ($link | path dirname)
@@ -282,6 +290,7 @@ export def main [
     # file `claude mcp add --scope user` just wrote.
     let claude_json = $nu.home-dir | path join '.claude.json'
     let existing = if ($claude_json | path exists) { open $claude_json } else { {} }
+
     $existing | upsert externalEditorContext true | save --force $claude_json
 
     # Give Claude Code its own identity (see $agent_env above). Merged into the
@@ -291,6 +300,7 @@ export def main [
     let settings = $nu.home-dir | path join '.claude' 'settings.json'
     let expanded = $agent_env | update cells { str replace '$HOME' $nu.home-dir }
     let current = if ($settings | path exists) { open $settings } else { {} }
+
     mkdir ($settings | path dirname)
     $current | upsert env (($current.env? | default {}) | merge $expanded) | save --force $settings
 
@@ -324,8 +334,9 @@ export def main [
 # Conservative by design: checks dirs (not individual files in
 # paths-docker.csv) so the user is asked even when their custom files
 # wouldn't actually conflict. --force is the escape hatch.
-def check-no-clobber []: nothing -> nothing {
+export def check-no-clobber []: nothing -> nothing {
     let stamp = $nu.home-dir | path join '.cozy-installed'
+
     if ($stamp | path exists) { return }
 
     let xdg_config = $env.XDG_CONFIG_HOME? | default ($nu.home-dir | path join '.config')
@@ -338,6 +349,7 @@ def check-no-clobber []: nothing -> nothing {
                 ($p | path type) != 'dir' or (ls --all $p | is-not-empty)
             )
         }
+
     if ($existing | is-empty) { return }
 
     print "cozy host install would clobber existing entries:"
@@ -352,7 +364,7 @@ def check-no-clobber []: nothing -> nothing {
 # Sudo is kept only for genuinely root-owned paths: apt itself and the apt
 # sources files under /etc/apt/. Agent has passwordless sudo at build time,
 # same assumption already made by topiary.nu and rust.nu.
-def setup-docker-system []: nothing -> nothing {
+export def setup-docker-system []: nothing -> nothing {
     # Wipe only the colliding artifacts in ~/.config/nushell — `nu`
     # auto-creates default config.nu/env.nu on first launch, and on a
     # re-run those defaults can collide with the dotfiles deploy in step 4
@@ -364,6 +376,7 @@ def setup-docker-system []: nothing -> nothing {
     # live in the same dir and are user state, not collidable config. The
     # whole-dir wipe destroyed shell history every re-run.
     let nu_config = $nu.home-dir | path join '.config' 'nushell'
+
     rm --force ($nu_config | path join 'config.nu') ($nu_config | path join 'env.nu')
     # Autoload dir wipe is in main (runs on host too) — see step before
     # the autoload copy. Not duplicated here.
@@ -377,9 +390,11 @@ def setup-docker-system []: nothing -> nothing {
     let apt_sources_files = ['/etc/apt/sources.list']
         | append (ls /etc/apt/sources.list.d/ | get name)
         | where ($it | path exists)
+
     for f in $apt_sources_files {
         let content = open --raw $f
         let updated = $content | str replace --all --regex 'http://(ports|archive|security)\.ubuntu\.com' 'https://$1.ubuntu.com'
+
         if $updated != $content {
             $updated | ^sudo tee $f | ignore
         }
@@ -423,13 +438,14 @@ export LANG="C.UTF-8"
 # No apostrophe anywhere in this block: it is a single-quoted nushell string, and one would close it early — the parse then fails far below, pointing at innocent lines.
 case $- in *i*) [ -t 1 ] && [ -z "$COZY_MOTD_SHOWN" ] && { export COZY_MOTD_SHOWN=1; [ -f "$HOME/repos/cozy/docker-files/logo.ans" ] && cat "$HOME/repos/cozy/docker-files/logo.ans"; echo "cozy ready — run nu to start"; } ;; esac
 '
+
     upsert-marked-block '/etc/sandbox-persistent.sh' 'cozy env' $env_exports
 }
 
 # Replace the `# >>> name >>>` … `# <<< name <<<` block in `file`, or append it
 # when absent, so a re-run updates the block in place instead of
 # `save --append`-ing a duplicate copy on every bootstrap invocation.
-def upsert-marked-block [
+export def upsert-marked-block [
     file: path
     name: string
     body: string # Text between the markers, ending in a newline
@@ -447,6 +463,7 @@ def upsert-marked-block [
     } else {
         $existing + $separator + $block
     }
+
     $updated | save --force $file
 }
 
@@ -455,8 +472,9 @@ def upsert-marked-block [
 # committed cozy_root/vendor/. Both are the vendored snapshot, used as-is —
 # the installer never fetches. Refreshing the snapshot is toolkit/vendor.nu's
 # job (run before a build). An empty source means a corrupt checkout: fail fast.
-def populate-repos []: nothing -> nothing {
+export def populate-repos []: nothing -> nothing {
     let repos_dir = $nu.home-dir | path join 'repos'
+
     mkdir $repos_dir
 
     # Deposit cozy/cozy-module/ and cozy/docker-files/ at ~/repos/cozy/.
@@ -465,10 +483,12 @@ def populate-repos []: nothing -> nothing {
     # points at the workspace mount, so we mirror just those two subdirs
     # (avoiding vendor/, docs.docker.com/, .git/, etc.).
     let cozy_dst = $repos_dir | path join 'cozy'
+
     if ($cozy_root | path expand) != ($cozy_dst | path expand) {
         mkdir $cozy_dst
         for sub in [cozy-module docker-files] {
             let dst = $cozy_dst | path join $sub
+
             rm --recursive --force $dst
             ^cp -r ($cozy_root | path join $sub) $dst
         }
@@ -476,11 +496,12 @@ def populate-repos []: nothing -> nothing {
 
     let vendor_src = if ('/tmp/vendor' | path exists) { '/tmp/vendor' } else { $cozy_root | path join 'vendor' }
     let entries = glob ($vendor_src | path join '*')
+
     if ($entries | is-empty) {
         # Why: vendor/ is committed and ships with every checkout; run-install.sh
         # only runs from inside one. Empty here can only mean a corrupt checkout —
         # surface it, don't silently re-fetch (that masks the corruption).
-        error make {msg: $"vendor source is empty: ($vendor_src) — corrupt checkout; run toolkit/vendor.nu to repopulate vendor/"}
+        error make {msg: $"vendor source is empty: ($vendor_src) — corrupt checkout" help: "run toolkit/vendor.nu to repopulate vendor/"}
     }
     for entry in $entries {
         rm --recursive --force ($repos_dir | path join ($entry | path basename))

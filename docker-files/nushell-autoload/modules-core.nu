@@ -12,14 +12,16 @@
 # "C:\Users\..." (or "C:/Users/...") while the actual mount lives at
 # "/c/Users/...". Rewrite $env.WORKSPACE_DIR to the in-VM path once here so
 # every downstream consumer can read it directly — no symlink intermediary.
-def resolve-workspace-mount [host: string] {
+def resolve-workspace-mount [host: string]: nothing -> string {
     if ($host | path exists) { return $host }
-    let normalized = $host | str replace -ra '\\' '/'
-    let m = $normalized | parse -r '^(?<drive>[A-Za-z]):/(?<rest>.*)$'
+    let normalized = $host | str replace --regex --all '\\' '/'
+    let m = $normalized | parse --regex '^(?<drive>[A-Za-z]):/(?<rest>.*)$'
+
     if ($m | is-empty) {
         error make {msg: $"WORKSPACE_DIR ($host) not resolvable inside VM"}
     }
     let candidate = $"/($m.drive.0 | str lowercase)/($m.rest.0)"
+
     if not ($candidate | path exists) {
         error make {msg: $"WORKSPACE_DIR ($host): translated to ($candidate) but path doesn't exist"}
     }

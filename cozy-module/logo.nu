@@ -1,4 +1,4 @@
-const logo_path = path self | path dirname | path dirname | path join docker-files logo.ans
+const logo_path = path self ../docker-files/logo.ans
 
 # Print the cozy logo banner.
 @category cozy

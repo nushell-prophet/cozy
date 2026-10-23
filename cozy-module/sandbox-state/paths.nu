@@ -11,6 +11,7 @@ export def sandbox-state-dir []: nothing -> path {
 # Path of a file under sandbox-state, creating the directory when missing.
 export def sandbox-state-path [filename: string]: nothing -> path {
     let dir = sandbox-state-dir
+
     mkdir $dir
     $dir | path join $filename
 }

@@ -22,6 +22,7 @@
 @category cozy
 export def main []: nothing -> nothing {
     let path = "~/.config/zellij/config.kdl" | path expand
+
     if not ($path | path exists) {
         error make --unspanned {msg: $"zellij config not found at ($path)"}
     }

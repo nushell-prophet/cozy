@@ -8,7 +8,7 @@ export def main [
 ]: nothing -> nothing {
     with-env {GIT_TERMINAL_PROMPT: "0"} {
         try { ^git clone $url $dest ...$args } catch {
-            error make {msg: $"git clone failed: ($url)\n  Repo may be missing, renamed, or private. Verify the URL and update this install script if upstream moved."}
+            error make {msg: $"git clone failed: ($url)\n  Repo may be missing, renamed, or private." help: "verify the URL, and update this install script if upstream moved"}
         }
     }
 }

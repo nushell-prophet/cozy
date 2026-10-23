@@ -45,7 +45,7 @@
 
 use ./wezterm.nu *
 
-const cozy_root = (path self | path dirname | path dirname)
+const cozy_root = path self ..
 
 const caged_network = 'cozy-caged'
 # Why: a /24 so telling the proxy's two homes apart is a plain prefix test.
@@ -116,9 +116,10 @@ const rehearsal_name = 'cozy-egress-rehearsal'
 # a list literal against the parameter, and under `list<any>` (or behind `++`)
 # the `infinity` that `sleep` wants becomes the float `inf` and fails the type
 # check. The nesting is what carries that hint down to each group.
-def container-cli [args: list<list<string>>]: nothing -> string {
+export def container-cli [args: list<list<string>>]: nothing -> string {
     let argv = $args | flatten
     let r = ^container ...$argv | complete
+
     if $r.exit_code != 0 {
         error make {msg: $"`container ($argv | str join ' ')` failed:\n($r.stderr | str trim)"}
     }
@@ -128,12 +129,13 @@ def container-cli [args: list<list<string>>]: nothing -> string {
 # `container ls --format json` keys the name under configuration.id and the run
 # state under status.state — `status` is a record (state, networks,
 # startedDate), not a string.
-def container-status [name: string]: nothing -> string {
+export def container-status [name: string]: nothing -> string {
     let rows = container-cli [[ls --all --format json]] | from json | where configuration.id == $name
+
     if ($rows | is-empty) { 'absent' } else { $rows | first | get status.state }
 }
 
-def "nu-complete container names" []: nothing -> table<value: string, description: string> {
+export def "nu-complete container names" []: nothing -> table<value: string, description: string> {
     # Why --all: stopped containers are the ones `restart` is for, and without it
     # every description reads `running`. `complete` because a completer that
     # errors when the runtime is down turns tab into a stack trace — no names is
@@ -141,6 +143,7 @@ def "nu-complete container names" []: nothing -> table<value: string, descriptio
     # cozy container, and running them against the proxy is refused anyway
     # (reject-proxy-name).
     let r = ^container ls --all --format json | complete
+
     if $r.exit_code != 0 { return [] }
     $r.stdout | from json
     | where configuration.id != $egress_name
@@ -152,9 +155,9 @@ def "nu-complete container names" []: nothing -> table<value: string, descriptio
 # inside the dual-homed proxy, reaches the internet by design, so restart would
 # stop the proxy over that "leak" and cut the exit of the running cozy
 # container, with a diagnosis blaming the network. Refused by name instead.
-def reject-proxy-name [name: string]: nothing -> nothing {
+export def reject-proxy-name [name: string]: nothing -> nothing {
     if $name == $egress_name {
-        error make --unspanned {msg: $"($egress_name) is the egress proxy, not a cozy container. It is managed for you: `up` and `restart` start or recreate it, and `reload-egress <container>` applies an edited allowlist to it."}
+        error make --unspanned {msg: $"($egress_name) is the egress proxy, not a cozy container" help: "it is managed for you: use `up` or `restart` to start or recreate it, and `reload-egress <container>` to apply an edited allowlist to it"}
     }
 }
 
@@ -163,8 +166,9 @@ def reject-proxy-name [name: string]: nothing -> nothing {
 # ours. `network ls --format json` would be exact, but Apple's ls/inspect schema
 # is undocumented (see egress-address), so compare whitespace-separated tokens —
 # that needs no column layout and no key names.
-def caged-network-exists []: nothing -> bool {
+export def caged-network-exists []: nothing -> bool {
     let names = container-cli [[network list]] | split row --regex '\s+'
+
     $caged_network in $names
 }
 
@@ -177,7 +181,7 @@ def caged-network-exists []: nothing -> bool {
 # function prints green and the run continues to success. That is why
 # assert-caged probes the finished cage from the container itself; the property
 # is checked where it can be seen, not assumed here.
-def ensure-network []: nothing -> nothing {
+export def ensure-network []: nothing -> nothing {
     if (caged-network-exists) {
         print $"  (ansi green)Network:(ansi reset) ($caged_network) already up — cage probed after the container starts"
         return
@@ -200,16 +204,17 @@ const direct_probe = 'https://1.1.1.1'
 # `mut` + `for 1..15` + `sleep 1sec` shape, and each of them also slept once more
 # after the attempt it was never going to retry. `null` from the closure means
 # "not ready yet"; the first non-null answer is the result.
-def poll [attempts: int action: closure]: nothing -> any {
+export def poll [attempts: int action: closure]: nothing -> any {
     for i in 1..$attempts {
         let r = do $action
+
         if $r != null { return $r }
         if $i != $attempts { sleep 1sec }
     }
     null
 }
 
-def assert-caged [name: string]: nothing -> nothing {
+export def assert-caged [name: string]: nothing -> nothing {
     # Retried for the same reason egress-address is: `run -d` and `start` return
     # before the container's VM has finished booting, so the first execs fail
     # with nothing on stdout. An empty stdout is "not ready yet"; curl always
@@ -224,9 +229,11 @@ def assert-caged [name: string]: nothing -> nothing {
     # nushell internal at exactly the moment the probe never answered.
     let probe = poll 15 {
         let r = ^container exec $name curl --silent --show-error --noproxy '*' --max-time 10 --output /dev/null --write-out '%{http_code}' $direct_probe | complete
+
         if ($r.stdout | str trim | is-empty) { null } else { $r }
     } | default {stdout: '' stderr: '' exit_code: 0}
     let code = $probe.stdout | str trim
+
     # curl prints 000 and exits non-zero when the connection never happens —
     # that is the pass. Any real status means traffic left unfiltered. Anything
     # else (no curl, garbage) is an unproven cage, which is a failure too: the
@@ -252,7 +259,7 @@ def assert-caged [name: string]: nothing -> nothing {
     }
 
     if ($code =~ '^\d{3}$') {
-        error make {msg: $"($name) reached ($direct_probe) directly \(HTTP ($code)) — the cage is open and traffic bypasses the allowlist. ($caged_network) was almost certainly created without --internal: `container delete ($name)`, `container network delete ($caged_network)`, then re-run `up` to rebuild both.($cleanup)"}
+        error make {msg: $"($name) reached ($direct_probe) directly \(HTTP ($code)) — the cage is open and traffic bypasses the allowlist. ($caged_network) was almost certainly created without --internal.($cleanup)" help: $"rebuild both: `container delete ($name)`, `container network delete ($caged_network)`, then re-run `up`"}
     } else {
         error make {msg: $"could not probe the cage from ($name): curl gave no status \(exit ($probe.exit_code))(if ($probe.stderr | is-not-empty) { $', stderr: ' + ($probe.stderr | str trim) }).($cleanup)"}
     }
@@ -279,13 +286,13 @@ def assert-caged [name: string]: nothing -> nothing {
 # What a running proxy will NOT pick up is a different `--policy` directory: the
 # mount is fixed at creation, so only a recreated proxy can change which host
 # folder it reads. Hence the message names the mount, not the host path.
-def reload-policy []: nothing -> nothing {
+export def reload-policy []: nothing -> nothing {
     container-cli [[exec $egress_name] [$squid_bin -k parse -f $policy_conf]]
     container-cli [[exec $egress_name] [$squid_bin -k reconfigure -f $policy_conf]]
     print $"  (ansi green)Proxy:(ansi reset) ($egress_name) re-read its policy mount in place — same address, no restart"
 }
 
-def ensure-egress [policy: path reload: bool]: nothing -> nothing {
+export def ensure-egress [policy: path reload: bool]: nothing -> nothing {
     # The pin this *loaded copy* of the module carries — not necessarily what is
     # running. Why print it at all: the failure it makes visible is a stale
     # module. A REPL that did `use toolkit` before the pin moved recreates the
@@ -296,6 +303,7 @@ def ensure-egress [policy: path reload: bool]: nothing -> nothing {
     print $"  (ansi green)Pin:(ansi reset) ($egress_image)"
 
     let status = container-status $egress_name
+
     if $status == 'running' {
         if $reload {
             reload-policy
@@ -355,9 +363,10 @@ def ensure-egress [policy: path reload: bool]: nothing -> nothing {
 # guessed from an address prefix, and the image needs to contain nothing at all.
 # Retried because the address appears when the container's VM finishes booting,
 # not when `run -d` returns.
-def egress-address []: nothing -> string {
+export def egress-address []: nothing -> string {
     let found = poll 15 {
         let r = ^container ls --all --format json | complete
+
         if $r.exit_code != 0 { return null }
         let addrs = $r.stdout
             | from json
@@ -367,18 +376,21 @@ def egress-address []: nothing -> string {
             | where network == $caged_network
             | get ipv4Address
             | each { split row '/' | first }
+
         if ($addrs | is-empty) { null } else { $addrs }
     }
+
     if $found == null {
-        error make {msg: $"($egress_name) never got an address on ($caged_network) — check `container logs ($egress_name)` and that it is attached to it"}
+        error make {msg: $"($egress_name) never got an address on ($caged_network)" help: $"check `container logs ($egress_name)` and that it is attached to ($caged_network)"}
     }
     let ip = $found | first
+
     # Printed here rather than at each call site.
     print $"  (ansi green)Exit:(ansi reset) (proxy-url $ip)"
     $ip
 }
 
-def proxy-url [host: string]: nothing -> string { $"http://($host):($proxy_port)" }
+export def proxy-url [host: string]: nothing -> string { $"http://($host):($proxy_port)" }
 
 # The only two rootful execs this script makes, funnelled through one door.
 # The image's ENV PATH leads with three agent-writable directories (see the
@@ -400,7 +412,7 @@ def proxy-url [host: string]: nothing -> string { $"http://($host):($proxy_port)
 # `--env PATH=…` on the exec: whether `container exec` honours it was not
 # checked, and a flag that silently isn't applied would reopen the hole.
 const root_path = '/usr/sbin:/usr/bin:/sbin:/bin'
-def root-sh [name: string script: string]: nothing -> nothing {
+export def root-sh [name: string script: string]: nothing -> nothing {
     container-cli [
         [exec --uid 0 $name]
         [/bin/sh -c $"PATH=($root_path); export PATH; ($script)"]
@@ -419,7 +431,7 @@ def root-sh [name: string script: string]: nothing -> nothing {
 # survive — but only starts made by this script write a fresh one. A bare
 # `container start` leaves the name unresolvable (loud: "could not resolve host
 # cozy-egress") until `restart` runs.
-def set-egress-hosts [name: string ip: string]: nothing -> nothing {
+export def set-egress-hosts [name: string ip: string]: nothing -> nothing {
     root-sh $name $"sed --in-place '/ ($egress_name)$/d' /etc/hosts; echo '($ip) ($egress_name)' >> /etc/hosts"
     print $"  (ansi green)Hosts:(ansi reset) ($egress_name) -> ($ip), mapped inside ($name)"
 }
@@ -442,7 +454,7 @@ def set-egress-hosts [name: string ip: string]: nothing -> nothing {
 # Unlike /etc/hosts the runtime does not regenerate this file, so one write lasts
 # the container's life. Re-asserted on every start anyway: that is what repairs a
 # container created before this existed.
-def clear-resolver [name: string]: nothing -> nothing {
+export def clear-resolver [name: string]: nothing -> nothing {
     root-sh $name $"echo '# cozy: no resolver — ($egress_name) resolves names' > /etc/resolv.conf"
     print $"  (ansi green)Resolver:(ansi reset) cleared in ($name) — the cage has none, and the image's 1.1.1.1 costs 20s a lookup"
 }
@@ -450,9 +462,10 @@ def clear-resolver [name: string]: nothing -> nothing {
 # Guard for containers created before the exit moved to a name: their env
 # carries a fixed address, which cannot be updated on an existing container, so
 # they cannot follow the proxy. A one-time recreation is the only fix.
-def assert-exit-by-name [name: string]: nothing -> nothing {
+export def assert-exit-by-name [name: string]: nothing -> nothing {
     let r = ^container exec $name printenv HTTPS_PROXY | complete
     let baked = $r.stdout | str trim
+
     # `printenv` on an unset var exits 1 with both streams empty; an exec that
     # failed outright also has empty stdout but says why on stderr. Tell them
     # apart, or a broken exec reads as "not created by up". Checked only on the
@@ -465,7 +478,7 @@ def assert-exit-by-name [name: string]: nothing -> nothing {
         error make --unspanned {msg: $"($name) has no HTTPS_PROXY — it was not created by `container.nu up`, so it has no exit at all \(a bare `container run` has no cage; `cozy verify`'s egress: rows fail on it by design)."}
     }
     if $baked != (proxy-url $egress_name) {
-        error make --unspanned {msg: $"($name) was built with the fixed exit ($baked) instead of the name (proxy-url $egress_name) — a baked address cannot be updated, so it cannot follow the proxy. Recreate it once: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>`."}
+        error make --unspanned {msg: $"($name) was built with the fixed exit ($baked) instead of the name (proxy-url $egress_name) — a baked address cannot be updated, so it cannot follow the proxy." help: $"recreate it once: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>`"}
     }
 }
 
@@ -474,7 +487,7 @@ def assert-exit-by-name [name: string]: nothing -> nothing {
 # stdout only — it cannot be piped, and the nushell MCP does not capture it, so
 # a caller gets an empty result. toolkit/docs.nu returns its summary for exactly
 # that reason. The prints stay; they narrate a slow build while it runs.
-def summary [name: string state: string ip: string]: nothing -> record {
+export def summary [name: string state: string ip: string]: nothing -> record {
     {
         container: $name
         state: $state
@@ -492,10 +505,11 @@ def summary [name: string state: string ip: string]: nothing -> record {
 # Read here rather than stored anywhere: this script runs on the host, where
 # `git config --global` already holds the right answer, so no personal name or
 # address has to live in the repo or the image.
-def host-git-identity []: nothing -> list<string> {
+export def host-git-identity []: nothing -> list<string> {
     let id = ['user.name' 'user.email']
         | each {|k|
             let r = ^git config --global --get $k | complete
+
             # Exit 1 is git's "key not set" — the expected miss. Anything else
             # is a broken config, which must not read as "no identity".
             if $r.exit_code not-in [0 1] {
@@ -503,6 +517,7 @@ def host-git-identity []: nothing -> list<string> {
             }
             $r.stdout | str trim
         }
+
     # All or nothing — the same rule git-identity.nu enforces on the writing
     # side. Half an identity is worse than none: the other half falls through to
     # the placeholder and commits land as `Someone <agent@sandbox>`, a name that
@@ -540,7 +555,7 @@ def host-git-identity []: nothing -> list<string> {
 # forwarded agent does buy is signing, which needs no network: with `git config
 # gpg.format ssh` the host's key signs commits made inside the container without
 # the key ever entering it.
-def ssh-agent-args [enabled: bool]: nothing -> list<string> {
+export def ssh-agent-args [enabled: bool]: nothing -> list<string> {
     if not $enabled { return [] }
 
     # Upstream only *logs a warning* when SSH_AUTH_SOCK is missing, then starts
@@ -548,11 +563,12 @@ def ssh-agent-args [enabled: bool]: nothing -> list<string> {
     # silently did not happen, discovered much later inside the container. Refused
     # here instead, where the cause is still in hand.
     let sock = $env.SSH_AUTH_SOCK? | default ''
+
     if ($sock | is-empty) {
-        error make --unspanned {msg: "--ssh-agent needs SSH_AUTH_SOCK and this shell has none. On macOS adding a key starts the system agent: `ssh-add --apple-use-keychain ~/.ssh/id_ed25519`."}
+        error make --unspanned {msg: "--ssh-agent needs SSH_AUTH_SOCK and this shell has none" help: "on macOS, add a key to start the system agent: `ssh-add --apple-use-keychain ~/.ssh/id_ed25519`"}
     }
     if not ($sock | path exists) {
-        error make --unspanned {msg: $"SSH_AUTH_SOCK names ($sock), which does not exist — the agent it points at is gone. Open a fresh login shell, or start one with `ssh-add --apple-use-keychain ~/.ssh/id_ed25519`."}
+        error make --unspanned {msg: $"SSH_AUTH_SOCK names ($sock), which does not exist — the agent it points at is gone" help: "open a fresh login shell, or start an agent with `ssh-add --apple-use-keychain ~/.ssh/id_ed25519`"}
     }
 
     # `ssh-add -l` exit 1 is "the agent answers but holds no keys" — a warning,
@@ -561,6 +577,7 @@ def ssh-agent-args [enabled: bool]: nothing -> list<string> {
     # "nothing answers at that socket", which is the same broken state as the
     # missing path above and is refused the same way.
     let r = ^ssh-add -l | complete
+
     if $r.exit_code == 2 {
         error make --unspanned {msg: $"SSH_AUTH_SOCK is ($sock) but no agent answers there: ($r.stderr | str trim)"}
     }
@@ -575,6 +592,7 @@ def ssh-agent-args [enabled: bool]: nothing -> list<string> {
         # parenthesis inside an interpolated string is this codebase's most
         # repeated mistake and is not worth risking for a plural.
         let word = if $n == 1 { 'key' } else { 'keys' }
+
         print $"  (ansi yellow)Agent:(ansi reset) forwarding the host ssh-agent, ($n) ($word) — a shell inside can sign with them after `cozy use-host-ssh-agent --enable`, though it can never read them. Prefer a key dedicated to this over your personal one."
     }
     [--ssh]
@@ -584,19 +602,21 @@ def ssh-agent-args [enabled: bool]: nothing -> list<string> {
 # that did not land must not read as success, and the socket is one `exec` away.
 # Exit 1 counts as reachable: an agent holding no keys still proves the socket
 # arrived, which is all this asserts.
-def assert-agent-reachable [name: string]: nothing -> nothing {
+export def assert-agent-reachable [name: string]: nothing -> nothing {
     let r = ^container exec $name ssh-add -l | complete
+
     if $r.exit_code not-in [0 1] {
-        error make --unspanned {msg: $"($name) started, but `ssh-add -l` inside it cannot reach the forwarded agent, exit ($r.exit_code): ($r.stderr | str trim). Recreate it without --ssh-agent, or check that the host agent is still alive. If the container's terminal is frozen too, `killall ssh-agent` here wakes it — parallel agent clients inside hang on live connections and the terminal can freeze with them; launchd restarts the agent on its next use."}
+        error make --unspanned {msg: $"($name) started, but `ssh-add -l` inside it cannot reach the forwarded agent, exit ($r.exit_code): ($r.stderr | str trim)" help: "recreate it without --ssh-agent, or check that the host agent is still alive. If the container's terminal is frozen too, run `killall ssh-agent` here to wake it — parallel agent clients inside hang on live connections and the terminal can freeze with them; launchd restarts the agent on its next use."}
     }
     print $"  (ansi green)Agent:(ansi reset) ($name) reaches the forwarded agent at /var/host-services/ssh-auth.sock"
 }
 
 # `path[:ro]` — the spelling `sbx run` uses for extra workspaces, kept identical
 # so the two run paths take the same arguments.
-def parse-workspace [entry: string]: nothing -> record<path: path, ro: bool> {
+export def parse-workspace [entry: string]: nothing -> record<path: path, ro: bool> {
     let ro = $entry | str ends-with ':ro'
     let p = $entry | str replace --regex ':ro$' '' | path expand
+
     if not ($p | path exists) {
         error make --unspanned {msg: $"workspace ($p) does not exist"}
     }
@@ -607,9 +627,10 @@ def parse-workspace [entry: string]: nothing -> record<path: path, ro: bool> {
 # `cozy`: a path above the target hands the target over wholesale, and a path
 # *inside* it hands over a piece — mounting cozy/toolkit is mounting this very
 # script.
-def paths-overlap [a: path b: path]: nothing -> bool {
+export def paths-overlap [a: path b: path]: nothing -> bool {
     let a = (($a | path expand | str trim --right --char '/') + '/')
     let b = (($b | path expand | str trim --right --char '/') + '/')
+
     ($a | str starts-with $b) or ($b | str starts-with $a)
 }
 
@@ -620,13 +641,13 @@ def paths-overlap [a: path b: path]: nothing -> bool {
 # only in a comment; it has already been stepped on, so here it is an error.
 # `:ro` is exempt because it removes exactly the ability the rule is about:
 # reading is fine, editing is not.
-def reject-writable [ws: record<path: path, ro: bool> policy: path]: nothing -> nothing {
+export def reject-writable [ws: record<path: path, ro: bool> policy: path]: nothing -> nothing {
     if $ws.ro { return }
     if (paths-overlap $ws.path $cozy_root) {
-        error make --unspanned {msg: $"workspace ($ws.path) overlaps the cozy repo — the agent would be able to edit this script and the firewall template, which are read fresh at the next launch. Pick a folder outside it, or mount it read-only as ($ws.path):ro."}
+        error make --unspanned {msg: $"workspace ($ws.path) overlaps the cozy repo — the agent would be able to edit this script and the firewall template, which are read fresh at the next launch" help: $"pick a folder outside it, or mount it read-only as ($ws.path):ro"}
     }
     if (paths-overlap $ws.path $policy) {
-        error make --unspanned {msg: $"workspace ($ws.path) overlaps the firewall policy ($policy) — the agent would be able to edit its own allowlist, which the proxy re-reads on the next reload. Pick a folder outside it, or mount it read-only as ($ws.path):ro."}
+        error make --unspanned {msg: $"workspace ($ws.path) overlaps the firewall policy ($policy) — the agent would be able to edit its own allowlist, which the proxy re-reads on the next reload" help: $"pick a folder outside it, or mount it read-only as ($ws.path):ro"}
     }
 }
 
@@ -637,16 +658,17 @@ export def main []: nothing -> nothing {
 
 # `oneof<path, nothing>` because an unset `--policy` flag is null, and a bare
 # `path` parameter refuses null before the body's `default` ever runs.
-def resolve-policy [policy: oneof<path, nothing>]: nothing -> path {
+export def resolve-policy [policy: oneof<path, nothing>]: nothing -> path {
     let dir = $policy | default ($nu.home-dir | path join .config cozy firewall) | path expand
+
     if not ($dir | path exists) {
-        error make --unspanned {msg: $"no policy at ($dir) — seed it once with `mkdir ~/.config/cozy; cp -r ($cozy_root)/firewall ~/.config/cozy/firewall`. Keeping it outside this repo is what makes the allowlist human-managed."}
+        error make --unspanned {msg: $"no policy at ($dir)" help: $"seed it once with `mkdir ~/.config/cozy; cp -r ($cozy_root)/firewall ~/.config/cozy/firewall`. Keeping it outside this repo is what makes the allowlist human-managed."}
     }
     $dir
 }
 
 # Start a cozy container behind a human-managed egress allowlist.
-def "main up" [
+export def "main up" [
     name: string # name for the cozy container
     ...workspaces: string # host folders to mount, each at its own absolute path; the first is WORKSPACE_DIR and the default start dir. Append `:ro` for read-only
     --image: string = 'cozy:latest' # image built by `container build --tag cozy:latest .`
@@ -658,7 +680,7 @@ def "main up" [
 ]: nothing -> record {
     reject-proxy-name $name
     if ($workspaces | is-empty) {
-        error make --unspanned {msg: "no workspace given — `container.nu up <name> <folder> [more:ro ...]`"}
+        error make --unspanned {msg: "no workspace given" help: "give at least one folder: `container.nu up <name> <folder> [more:ro ...]`"}
     }
     let ws_list = $workspaces | each {|e| parse-workspace $e }
     # Only the first one can be WORKSPACE_DIR: the variable is single-valued and
@@ -736,6 +758,7 @@ def "main up" [
     # `sleep` then refuses.
     let mounts = $ws_list | each {|w| [--volume $"($w.path):($w.path)(if $w.ro { ':ro' } else { '' })"] } | flatten
     let git_identity = host-git-identity
+
     container-cli [
         [run --detach]
         [--name $name]
@@ -756,6 +779,7 @@ def "main up" [
         [$image sleep infinity]
     ]
     let mounted = $ws_list | each {|w| $"($w.path)(if $w.ro { ' (ro)' } else { '' })" } | str join ', '
+
     print $"  (ansi green)Container:(ansi reset) ($name) on ($caged_network), workspace ($mounted)"
     # The cage first: assert-caged also carries the boot wait, so by the time it
     # returns the container can take the root exec the mapping needs.
@@ -782,13 +806,14 @@ def "main up" [
 # container's name, and it is needed for one thing only: if the reload had to
 # recreate the proxy on a new address, that container's hosts mapping is
 # rewritten here to follow it.
-def "main reload-egress" [
+export def "main reload-egress" [
     name: string@"nu-complete container names" # the cozy container whose exit mapping is refreshed
     --policy: path # firewall policy directory (default: ~/.config/cozy/firewall)
 ]: nothing -> record {
     reject-proxy-name $name
     let policy_dir = resolve-policy $policy
     let container_state = container-status $name
+
     if $container_state == 'absent' {
         error make {
             msg: $"no container named ($name) — nothing to reload for"
@@ -801,7 +826,7 @@ def "main reload-egress" [
     # container attached to nothing while this command prints "live" — the same
     # state restart refuses, refused the same way.
     if not (caged-network-exists) {
-        error make --unspanned {msg: $"($caged_network) is gone — ($name) has no cage, and a reload cannot re-attach it. Rebuild: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>` recreates the network."}
+        error make --unspanned {msg: $"($caged_network) is gone — ($name) has no cage, and a reload cannot re-attach it" help: $"rebuild: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>` recreates the network"}
     }
     # Checked before the reload touches anything: a legacy container (fixed
     # exit) cannot follow a proxy that a recreation may move, and an error
@@ -837,12 +862,13 @@ def "main reload-egress" [
 # containers existing *stopped rather than absent*: a plain `up` aborts on
 # "already exists". restart starts what exists — recreating the proxy if it is
 # gone — and re-maps the container's exit to wherever the proxy came up.
-def "main restart" [
+export def "main restart" [
     name: string@"nu-complete container names" # the cozy container to bring back
     --policy: path # firewall policy directory, read only if the proxy is gone and must be recreated (default: ~/.config/cozy/firewall)
 ]: nothing -> record {
     reject-proxy-name $name
     let container_state = container-status $name
+
     if $container_state == 'absent' {
         error make {
             msg: $"no container named ($name) — nothing to restart"
@@ -856,9 +882,10 @@ def "main restart" [
     # *recreated* network rather than around it — an unproven cage must not
     # come back quietly.
     if not (caged-network-exists) {
-        error make --unspanned {msg: $"($caged_network) is gone — ($name) has no cage to come back to. Rebuild both: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>` recreates the network."}
+        error make --unspanned {msg: $"($caged_network) is gone — ($name) has no cage to come back to" help: $"rebuild both: `container delete ($name)`, then `nu toolkit/container.nu up ($name) <folder>` recreates the network"}
     }
     let egress_state = container-status $egress_name
+
     if $egress_state == 'absent' {
         # The container points at the name, so a fresh proxy on a fresh address
         # is fine: it is mapped below like any other.
@@ -906,9 +933,9 @@ def "main restart" [
 #
 # Restarts the pair first when the container is not running, so this is also the
 # whole launch path after the runtime itself came back.
-def "main attach" [
+export def "main attach" [
     name: string@"nu-complete container names"
-    --config-file: path
+    --config-file: path # WezTerm config (default: the vendored dotfiles wezterm.lua)
     --background: string@"nu-complete wezterm background" = "000000" # hex without '#'
     --no-job # don't create background job for the proces
     --zellij-session: string = '' # zellij session name to use instead of the container name
@@ -949,7 +976,7 @@ def "main attach" [
 # Upstream's newest image in the maintained tag family. Errors rather than
 # returning nothing, because a refresh that quietly found nothing to do looks
 # exactly like one that could not reach the registry.
-def newest-egress-tag []: nothing -> record {
+export def newest-egress-tag []: nothing -> record {
     let body = try {
         http get $"https://hub.docker.com/v2/repositories/($egress_repo)/tags?page_size=100&ordering=last_updated"
     } catch {|e|
@@ -964,8 +991,9 @@ def newest-egress-tag []: nothing -> record {
         | where name =~ $egress_tag_pattern
         | where digest != null
         | sort-by last_updated --reverse
+
     if ($candidates | is-empty) {
-        error make {msg: $"no tag in ($egress_repo) matched ($egress_tag_pattern) with a digest. Upstream's tag naming has changed, so the search itself has to be re-read before its answer can be trusted — `http get https://hub.docker.com/v2/repositories/($egress_repo)/tags?page_size=100&ordering=last_updated | get results.name` prints the current list."}
+        error make {msg: $"no tag in ($egress_repo) matched ($egress_tag_pattern) with a digest. Upstream's tag naming has changed." help: $"re-read the search itself before trusting its answer — `http get https://hub.docker.com/v2/repositories/($egress_repo)/tags?page_size=100&ordering=last_updated | get results.name` prints the current list"}
     }
     $candidates | first
 }
@@ -980,7 +1008,7 @@ def newest-egress-tag []: nothing -> record {
 # contract — a rock, `pebble enter`, `squid-gnutls` — the invocation is what
 # broke, and this is where that must surface, rather than in a dead cage at a
 # moment nobody chose.
-def rehearse-egress [image: string policy: path]: nothing -> nothing {
+export def rehearse-egress [image: string policy: path]: nothing -> nothing {
     ^container stop $rehearsal_name | complete | ignore
     ^container delete $rehearsal_name | complete | ignore
 
@@ -996,6 +1024,7 @@ def rehearse-egress [image: string policy: path]: nothing -> nothing {
     let listening = (
         poll 15 {
             let r = ^container logs $rehearsal_name | complete
+
             if (($r.stdout + $r.stderr) | str contains 'listening port') { true } else { null }
         } | default false
     )
@@ -1008,7 +1037,7 @@ def rehearse-egress [image: string policy: path]: nothing -> nothing {
     ^container delete $rehearsal_name | complete | ignore
 
     if not $listening {
-        error make {msg: $"($image) never reported a listening port. The image's contract has probably changed again — check the launch arguments and the entrypoint before trusting it. The repo still pins ($egress_image), which is untouched.\n\nWhat it logged:\n($logs.stdout | str trim)\n($logs.stderr | str trim)"}
+        error make {msg: $"($image) never reported a listening port. The image's contract has probably changed again. The repo still pins ($egress_image), which is untouched.\n\nWhat it logged:\n($logs.stdout | str trim)\n($logs.stderr | str trim)" help: "check the launch arguments and the entrypoint before trusting the image"}
     }
     if $parse.exit_code != 0 {
         error make {msg: $"($image) came up but `($squid_bin) -k parse` failed, so the policy and this squid disagree. The repo still pins ($egress_image), which is untouched.\n\n($parse.stderr | str trim)"}
@@ -1018,12 +1047,14 @@ def rehearse-egress [image: string policy: path]: nothing -> nothing {
 # Every file is checked before any is written: a half-applied pin would
 # leave the run paths enforcing different proxies, which is the one thing
 # `toolkit/check.nu egress-image` exists to prevent.
-def write-egress-pin [digest: string]: nothing -> nothing {
+export def write-egress-pin [digest: string]: nothing -> nothing {
     let files = [$this_file $compose_yaml $container_zsh]
+
     for file in $files {
         let hits = open --raw $file | lines | where $it =~ $pin_pattern | length
+
         if $hits != 1 {
-            error make {msg: $"expected exactly one pinned digest in ($file), found ($hits) — nothing was rewritten. Every run path must carry the same single literal; fix the file by hand and re-run."}
+            error make {msg: $"expected exactly one pinned digest in ($file), found ($hits) — nothing was rewritten. Every run path must carry the same single literal." help: "fix the file by hand and re-run"}
         }
     }
     for file in $files {
@@ -1042,12 +1073,13 @@ def write-egress-pin [digest: string]: nothing -> nothing {
 # human is present. That last part is the point: the move to squid 7.2 failed to
 # start at all, and meeting that here is a different thing from meeting it when
 # the cage is needed.
-def "main refresh-egress" [
+export def "main refresh-egress" [
     --policy: path # firewall policy directory used for the rehearsal (default: ~/.config/cozy/firewall)
 ]: nothing -> record {
     let policy_dir = resolve-policy $policy
     let current = $egress_image | split row '@' | last
     let newest = newest-egress-tag
+
     print $"  (ansi green)Upstream:(ansi reset) newest is ($newest.name), updated ($newest.last_updated)"
 
     if $newest.digest == $current {
@@ -1073,13 +1105,13 @@ def "main refresh-egress" [
 # (`container main up`) — nushell collapses only the bare `main` into a module
 # name. These aliases are what a module user calls, so both forms read the same.
 #
-# The defs above are deliberately not exported, and that is the half that was
-# missing: exporting both put every command in the list twice, once as itself
-# and once as its alias. Script mode is unaffected — dispatch finds `main <sub>`
-# in the file's own scope whether it is exported or not (checked on nu 0.115),
-# and `help toolkit container up` still prints the real command's flags through
-# the alias expansion. Same shape as toolkit/check.nu, whose subcommands were
-# never exported.
+# The defs above are exported, like every helper, so tests can `use` them.
+# toolkit/mod.nu imports only the aliases (`module container { export use
+# container.nu [ attach refresh-egress reload-egress restart up ] }`), so each
+# command is listed once, not once as itself and once as its alias. Script mode
+# is unaffected — dispatch finds `main <sub>` in the file's own scope (checked
+# on nu 0.115), and `help toolkit container up` still prints the real command's
+# flags through the alias expansion.
 #
 # Each alias repeats its command's first doc line because an alias shows its own
 # comment as its description; with none, the list reads "Alias for `main up`".

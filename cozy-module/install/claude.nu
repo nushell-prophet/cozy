@@ -10,6 +10,7 @@ export def install []: nothing -> nothing {
     # returns only the first match — that custom command — so the external
     # filter was always empty and this skip could never fire.
     let external = which --all claude | where type == external
+
     if ($external | is-not-empty) {
         print $"claude already installed at ($external | get path.0) — skipping install"
         return
@@ -20,6 +21,7 @@ export def install []: nothing -> nothing {
     # as a command-not-found for `claude mcp add`. Downloading to a file first
     # makes curl's own exit status the one that counts.
     let script = mktemp --tmpdir --suffix .sh
+
     curl --fail --location https://claude.ai/install.sh --output $script
     bash $script
     rm --force $script

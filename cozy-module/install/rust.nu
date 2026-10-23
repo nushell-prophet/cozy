@@ -23,6 +23,7 @@ export def --env install []: nothing -> nothing {
     # 30s timeout with no retries fails on first hiccup. Idempotent — only
     # writes if missing.
     let cargo_config = $nu.home-dir | path join .cargo config.toml
+
     if not ($cargo_config | path exists) {
         mkdir ($cargo_config | path dirname)
         {
@@ -58,6 +59,7 @@ export def --env install []: nothing -> nothing {
     let config = $nu.config-path
     let content = open --raw $config
     let bad_line = 'source $"($nu.home-path)/.cargo/env.nu"'
+
     if $bad_line in $content {
         $content | str replace $"($bad_line)\n" '' | save --force $config
         print $"  (ansi yellow)rust(ansi reset): removed erroneous line from config.nu"

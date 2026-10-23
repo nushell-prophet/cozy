@@ -4,7 +4,7 @@
 #
 #   nu toolkit/check.nu        # run every check; non-zero exit on any drift
 
-const cozy_root = (path self | path dirname | path dirname)
+const cozy_root = path self ..
 const vendor_yml = ($cozy_root | path join toolkit vendor.yml)
 const manifest = ($cozy_root | path join cozy-module vendored-repos.nuon)
 const dockerfile = ($cozy_root | path join Dockerfile)
@@ -48,16 +48,18 @@ const path_prefix = '/home/agent/.local/bin:/home/agent/.cargo/bin:/home/linuxbr
 
 # Normalize a value for comparison: strip surrounding quotes and expand the
 # $HOME the shell/Docker forms use to the literal /home/agent the kit spells out.
-def norm-env [v: string]: nothing -> string {
+export def norm-env [v: string]: nothing -> string {
     $v | str trim | str trim --char '"'
     | str replace --all '${HOME}' '/home/agent'
     | str replace --all '$HOME' '/home/agent'
 }
 
-def dockerfile-env [keys: list<string>]: nothing -> record {
+export def dockerfile-env [keys: list<string>]: nothing -> record {
     let text = open --raw $dockerfile
+
     $keys | reduce --fold {} {|k acc|
         let m = $text | parse --regex ('(?m)^[ \t]*(?:ENV[ \t]+)?' + $k + '=(?<v>\S+)')
+
         if ($m | is-empty) { $acc } else { $acc | insert $k (norm-env $m.v.0) }
     }
 }
@@ -65,18 +67,22 @@ def dockerfile-env [keys: list<string>]: nothing -> record {
 # No `^` anchor: the first export shares its line with the `let env_exports = '`
 # that opens the block, so an anchored pattern silently drops whichever key
 # happens to be first — and a key missing from a source reads as "no drift".
-def bootstrap-env []: nothing -> record {
+export def bootstrap-env []: nothing -> record {
     let text = open --raw $bootstrap
+
     $shared_env_keys | reduce --fold {} {|k acc|
         let m = $text | parse --regex ('(?m)export[ \t]+' + $k + '="(?<v>[^"]*)"')
+
         if ($m | is-empty) { $acc } else { $acc | insert $k (norm-env $m.v.0) }
     }
 }
 
-def kit-env [keys: list<string>]: nothing -> record {
+export def kit-env [keys: list<string>]: nothing -> record {
     let vars = open $kit_spec | get environment.variables
+
     $keys | reduce --fold {} {|k acc|
         let v = $vars | get --optional $k
+
         # `into string`: YAML types unquoted values, so HOMEBREW_NO_ASK: 1 is an
         # int here while every other source spells it as text.
         if ($v == null) { $acc } else { $acc | insert $k (norm-env ($v | into string)) }
@@ -85,7 +91,7 @@ def kit-env [keys: list<string>]: nothing -> record {
 
 # Compare the shared env keys across the three sources. Returns rows so a
 # mismatch shows exactly which key and which source disagrees.
-def "main env" []: nothing -> table {
+export def "main env" []: nothing -> table {
     let d = dockerfile-env ($shared_env_keys ++ $paired_env_keys)
     let b = bootstrap-env
     let k = kit-env ($shared_env_keys ++ $paired_env_keys)
@@ -94,6 +100,7 @@ def "main env" []: nothing -> table {
         let bv = $b | get --optional $key
         let kv = $k | get --optional $key
         let vals = [$dv $bv $kv] | compact
+
         {
             key: $key
             dockerfile: ($dv | default '(missing)')
@@ -109,6 +116,7 @@ def "main env" []: nothing -> table {
     let paired_rows = $paired_env_keys | each {|key|
         let dv = $d | get --optional $key
         let kv = $k | get --optional $key
+
         {
             key: $key
             dockerfile: ($dv | default '(missing)')
@@ -129,7 +137,8 @@ def "main env" []: nothing -> table {
     }
 
     let all = $rows | append $paired_rows | append $path_row
-    let bad = $all | where not ok
+    let bad = $all | where not $it.ok
+
     if ($bad | is-not-empty) {
         print ($all | select key dockerfile bootstrap kit ok)
         error make {msg: $"env drift: ($bad | get key | str join ', ') disagree across Dockerfile / sbx-kit/spec.yaml / bootstrap.nu"}
@@ -137,25 +146,28 @@ def "main env" []: nothing -> table {
     $all | select key ok
 }
 
-def dockerfile-env-path []: nothing -> string {
+export def dockerfile-env-path []: nothing -> string {
     let m = open --raw $dockerfile | parse --regex '(?m)^[ \t]*(?:ENV[ \t]+)?PATH=(?<v>\S+)'
+
     if ($m | is-empty) { '' } else { norm-env $m.v.0 }
 }
 
-def kit-env-path []: nothing -> string {
+export def kit-env-path []: nothing -> string {
     norm-env (open $kit_spec | get environment.variables | get --optional PATH | default '')
 }
 
 # The generated manifest must list exactly vendor.yml's repos plus cozy. Names
 # only — vendor.nu is the sole writer of the URLs, so correct names imply
 # correct URLs by construction.
-def "main manifest" []: nothing -> record {
+export def "main manifest" []: nothing -> record {
     let want = open $vendor_yml | get repo | append cozy | sort
     let have = open $manifest | get name | sort
+
     if $want != $have {
         let missing = $want | where $it not-in $have
         let extra = $have | where $it not-in $want
-        error make {msg: $"vendored-repos.nuon is stale — run `nu toolkit/vendor.nu`. missing: ($missing | str join ', '); extra: ($extra | str join ', ')"}
+
+        error make {msg: $"vendored-repos.nuon is stale. missing: ($missing | str join ', '); extra: ($extra | str join ', ')" help: "run `nu toolkit/vendor.nu`"}
     }
     {check: manifest, repos: ($have | length), ok: true}
 }
@@ -167,16 +179,18 @@ def "main manifest" []: nothing -> record {
 # must agree, and nothing but this check makes them. The digest itself is also
 # asserted: replacing it with a floating tag silently un-pins the one container
 # that has internet, which no comparison of the copies would catch.
-def "main egress-image" []: nothing -> record {
+export def "main egress-image" []: nothing -> record {
     let refs = [
         {source: 'compose.yaml' ref: (open $compose | get services.egress.image)}
         {source: 'toolkit/container.nu' ref: (pinned-ref $container_nu "(?m)^const egress_image = '(?<v>[^']+)'")}
         {source: 'toolkit/container.zsh' ref: (pinned-ref $container_zsh "(?m)^typeset -r EGRESS_IMAGE='(?<v>[^']+)'")}
     ]
+
     if ($refs | get ref | uniq | length) != 1 {
         error make {msg: $"egress image drift: ($refs | each {|r| $'($r.source) has ($r.ref)'} | str join '; ')"}
     }
     let ref = $refs | first | get ref
+
     if not ($ref | str contains '@sha256:') {
         error make {msg: $"egress image ($ref) is not pinned by digest — the proxy that holds the policy must not float"}
     }
@@ -186,8 +200,9 @@ def "main egress-image" []: nothing -> record {
 # A pin that cannot be found reads as '(missing)' rather than erroring here, so
 # the drift message above names which file lost its literal instead of dying on
 # a cell path.
-def pinned-ref [file: path pattern: string]: nothing -> string {
+export def pinned-ref [file: path pattern: string]: nothing -> string {
     let m = open --raw $file | parse --regex $pattern
+
     if ($m | is-empty) { '(missing)' } else { $m.v.0 }
 }
 

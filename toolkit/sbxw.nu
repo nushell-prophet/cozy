@@ -10,7 +10,7 @@
 
 use ./wezterm.nu *
 
-def "nu-complete sandbox names" []: nothing -> table<value: string, description: string> {
+export def "nu-complete sandbox names" []: nothing -> table<value: string, description: string> {
     ^sbx ls --json | from json | get sandboxes
     | each {|x| {value: $x.name description: $"($x.status) ($x.workspaces | str join ' ')"} }
 }
@@ -18,7 +18,7 @@ def "nu-complete sandbox names" []: nothing -> table<value: string, description:
 @category cozy-toolkit
 export def main [
     sandbox_name: string@"nu-complete sandbox names"
-    --config-file: path
+    --config-file: path # WezTerm config (default: the vendored dotfiles wezterm.lua)
     --background: string@"nu-complete wezterm background" = "000000" # hex without '#'
     --no-job # don't create background job for the proces
     --zellij-session: string = '' # zellij session name to use instead of sandbox name
@@ -26,5 +26,5 @@ export def main [
     --size: string@"nu-complete wezterm size" # window size as COLSxROWS, e.g. 140x40
 ]: nothing -> any {
     # the window's job id, so `job kill` can reach it; nothing with --no-job
-    attach-window [sbx exec -it $sandbox_name] ($zellij_session | default --empty $sandbox_name) --config-file $config_file --background $background --no-job=$no_job --record=$record --size=$size
+    attach-window [sbx exec --interactive --tty $sandbox_name] ($zellij_session | default --empty $sandbox_name) --config-file $config_file --background $background --no-job=$no_job --record=$record --size=$size
 }

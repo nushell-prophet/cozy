@@ -9,6 +9,7 @@ export def --env claude-settings []: nothing -> nothing {
     if ($settings_path | path exists) {
         let current = open $settings_path
         let merged = $defaults | merge $current
+
         if $merged != $current {
             $merged | save --force $settings_path
         }

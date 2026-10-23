@@ -23,16 +23,19 @@ let identity = {
     'user.name': ($env.COZY_GIT_USER_NAME? | default '')
     'user.email': ($env.COZY_GIT_USER_EMAIL? | default '')
 }
+
 # All or nothing. Half an identity is worse than none: the missing half falls
 # through to the placeholder and commits land as `Someone <agent@sandbox>` — a
 # name that never existed. Enforced here, in the writer, so it holds for whoever
 # set the variables — a hand-passed `-e`, a future sbx path — and not only for
 # the host-side reader in toolkit/container.nu.
-if ($identity | values | all {|v| $v | is-not-empty }) {
-    $identity | items {|key value|
+if ($identity | values | all { is-not-empty }) {
+    for key in ($identity | columns) {
+        let value = $identity | get $key
         let current = do { git config --file $gitconfig --get $key } | complete | get stdout | str trim
+
         if $current != $value {
             git config --file $gitconfig $key $value
         }
-    } | ignore
+    }
 }

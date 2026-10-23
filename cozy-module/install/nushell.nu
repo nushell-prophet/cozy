@@ -28,6 +28,7 @@ export def install [
             error make {msg: "--github downloads the latest release build; it cannot honor --dev or --no-mcp"}
         }
         let tag = http get https://api.github.com/repos/nushell/nushell/releases/latest | get tag_name
+
         _nu-release $tag nu $dest
         report $dest
         return
@@ -36,6 +37,7 @@ export def install [
     rust install
 
     let repo_dir = $nu.home-dir | path join git nushell
+
     if not ($repo_dir | path exists) {
         print "  Cloning nushell..."
         _clone-or-fail https://github.com/nushell/nushell.git $repo_dir
@@ -49,6 +51,7 @@ export def install [
         ^git checkout main
         ^git pull --ff-only
         let rev = ^git rev-parse --short HEAD
+
         $"main \(($rev)\)"
     } else {
         ^git fetch --tags
@@ -58,6 +61,7 @@ export def install [
             | lines
             | where $it =~ '^\d+(\.\d+)+$'
             | first
+
         ^git checkout $tag
         $tag
     }
@@ -65,6 +69,7 @@ export def install [
     print $"  Building nushell ($label) — this may take a while..."
     let features = if $no_mcp {
         let defaults = open Cargo.toml | get features.default
+
         if "mcp" in $defaults {
             [--no-default-features --features ($defaults | where $it != "mcp" | str join ",")]
         } else {
@@ -72,6 +77,7 @@ export def install [
             []
         }
     } else { [] }
+
     # --jobs 1 + lto=false to avoid OOM in sandbox VMs (limited RAM).
     ^cargo build --release --locked --jobs 1 --config 'profile.release.lto=false' ...$features
 
@@ -80,8 +86,9 @@ export def install [
     report $dest
 }
 
-def report [dest: path]: nothing -> nothing {
+export def report [dest: path]: nothing -> nothing {
     let version = ^$dest --version | str trim
+
     print $"  (ansi green)nushell(ansi reset): ($version) installed to ($dest)"
     # Why: the shell you ran this from keeps executing the old binary until it
     # restarts, so the version above won't match what `version` reports here.

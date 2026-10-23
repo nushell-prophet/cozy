@@ -19,8 +19,10 @@ $env.NU_MCP_OUTPUT_LIMIT = 64kb
 let config_path = $nu.home-dir | path join .claude.json
 let nu_bin = $nu.current-exe
 let entry = {type: stdio command: $nu_bin args: ["--mcp"] env: {}}
+
 if ($config_path | path exists) {
     let config = open $config_path
+
     # Compare the command, not just presence. A wrong path already written is
     # exactly what needs healing, and a presence test never fires for it.
     if ($config | get --optional mcpServers.nushell.command) != $nu_bin {

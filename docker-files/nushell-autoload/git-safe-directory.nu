@@ -7,6 +7,7 @@
 # Same self-healing pattern as mcp-server.nu restoring the MCP entry.
 # Guarded so the normal path writes nothing.
 let current = do { git config --global --get-all safe.directory } | complete
+
 if $current.exit_code != 0 or ($current.stdout | lines | str trim) != ['*'] {
     git config --global --replace-all safe.directory '*'
 }

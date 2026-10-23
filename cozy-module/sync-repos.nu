@@ -3,12 +3,12 @@
 # vendored-repos.nuon ships next to this file under ~/repos/cozy/cozy-module/
 # (cozy-module is COPYed into the image), so this in-sandbox command resolves
 # it via `path self` — the host-only toolkit/vendor.yml is not reachable here.
-const manifest = path self | path dirname | path join vendored-repos.nuon
+const manifest = path self vendored-repos.nuon
 
 const base = $nu.home-dir | path join repos
 
 # The branch origin's HEAD points at, read from `git remote show`.
-def remote-head-branch []: nothing -> string {
+export def remote-head-branch []: nothing -> string {
     ^git remote show origin
     | lines
     | where $it =~ 'HEAD branch:'
@@ -73,6 +73,7 @@ export def main []: nothing -> nothing {
                 print $"  (ansi yellow)($name)(ansi reset): cannot detect remote HEAD branch, skipping"
                 continue
             }
+
             ^git reset --hard $"origin/($branch)"
             ^git branch --move --force $branch
             ^git branch --set-upstream-to $"origin/($branch)"

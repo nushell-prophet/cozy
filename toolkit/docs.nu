@@ -10,8 +10,9 @@ const prefixes = [ai/sandboxes reference/cli/sbx]
 # Why: llms-full.txt is the full page index (llms.txt is only a curated
 # top-level guide and lists sandboxes once). Parsing it means new sandbox / sbx
 # pages appear automatically -- no hardcoded list to keep in sync.
-def discover-pages []: nothing -> list<string> {
+export def discover-pages []: nothing -> list<string> {
     let index = ^curl --silent --fail --location $"($base_url)/llms-full.txt" | complete
+
     if $index.exit_code != 0 {
         error make {msg: $"failed to fetch llms-full.txt \(curl exit ($index.exit_code)\)"}
     }
@@ -32,20 +33,24 @@ def discover-pages []: nothing -> list<string> {
 @category cozy-toolkit
 export def main []: nothing -> record {
     let dir = pwd | path join docs.docker.com
+
     init $dir
 
     let pages = discover-pages
+
     print $"Discovered ($pages | length) pages from llms-full.txt"
 
     let results = $pages | par-each {|page|
             let url = $"($base_url)/($page).md"
             let file = $dir | path join $"($page).md"
+
             mkdir ($file | path dirname)
 
             # Why: curl + complete gives a per-page exit code, so one dead page
             # becomes a {status: failed} row instead of aborting the par-each.
             # Not http get because: it would need a try/catch to build the same row.
             let result = ^curl --silent --fail --location $url | complete
+
             if $result.exit_code == 0 {
                 $result.stdout | save --force $file
                 {page: $page status: ok}
@@ -66,7 +71,7 @@ export def main []: nothing -> record {
     }
 }
 
-def init [dir: path]: nothing -> nothing {
+export def init [dir: path]: nothing -> nothing {
     if not ($dir | path exists) {
         mkdir $dir
         ^git init $dir o+e>| ignore
@@ -81,19 +86,22 @@ def init [dir: path]: nothing -> nothing {
     let gitignore = $dir | path dirname | path join .gitignore
     let entry = "/docs.docker.com"
     let content = open $gitignore
+
     if $entry not-in $content {
         $"\n($entry)\n" | save --append $gitignore
         print $"Added ($entry) to .gitignore"
     }
 }
 
-def commit [dir: path]: nothing -> nothing {
+export def commit [dir: path]: nothing -> nothing {
     ^git -C $dir add --all
     let status = ^git -C $dir status --porcelain
+
     if ($status | str trim | is-empty) {
         print "No changes to commit"
     } else {
         let date = date now | format date "%Y-%m-%d"
+
         ^git -C $dir commit --message $"docs: sync sandbox documentation ($date)"
         print "Committed"
     }

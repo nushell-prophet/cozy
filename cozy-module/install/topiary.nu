@@ -30,18 +30,21 @@ export def install []: nothing -> nothing {
     # symlinks it here. Cloning from GitHub instead would paper over a broken
     # vendor flow and silently install an unpinned upstream revision.
     let repo_dir = $nu.home-dir | path join git topiary-nushell
+
     if not ($repo_dir | path exists) {
-        error make {msg: $"topiary-nushell not found at ($repo_dir) — it is vendored and linked by bootstrap.nu Step 8. Re-run `cozy install bootstrap`, or on the host refresh vendor/ with `nu toolkit/vendor.nu topiary-nushell`."}
+        error make {msg: $"topiary-nushell not found at ($repo_dir) — it is vendored and linked by bootstrap.nu Step 8" help: "re-run `cozy install bootstrap`, or on the host refresh vendor/ with `nu toolkit/vendor.nu topiary-nushell`"}
     }
     print $"  (ansi green)topiary-nushell(ansi reset): found at ($repo_dir)"
 
     # 3. Copy languages.ncl (with the indent override), symlink queries/nu.scm
     let config_dir = $nu.home-dir | path join .config topiary
+
     mkdir ($config_dir | path join queries)
 
     # Copy languages.ncl and override indent to 4 spaces
     let lang_ncl = $config_dir | path join languages.ncl
     let lang_src = $repo_dir | path join languages.ncl
+
     if ($lang_ncl | path exists) {
         print $"  (ansi green)languages.ncl(ansi reset): exists"
     } else {
@@ -55,6 +58,7 @@ export def install []: nothing -> nothing {
     # Symlink query file
     let scm_link = $config_dir | path join queries nu.scm
     let scm_target = $repo_dir | path join queries nu.scm
+
     if ($scm_link | path type) == "symlink" {
         print $"  (ansi green)queries/nu.scm(ansi reset): symlink exists"
     } else {
@@ -71,6 +75,7 @@ export def install []: nothing -> nothing {
         | get rev.0
     let cache_dir = $nu.home-dir | path join .cache topiary nu
     let so_path = $cache_dir | path join $"($rev).so"
+
     if ($so_path | path exists) {
         print $"  (ansi green)grammar(ansi reset): cached"
     } else {
@@ -82,15 +87,16 @@ export def install []: nothing -> nothing {
                     ^sudo apt-get install --yes gcc libc6-dev
                 }
                 "macos" => {
-                    error make {msg: "gcc not found — install Xcode Command Line Tools: xcode-select --install"}
+                    error make {msg: "gcc not found" help: "install Xcode Command Line Tools: xcode-select --install"}
                 }
                 $other => {
-                    error make {msg: $"gcc not found and no install path for OS ($other) — install gcc manually"}
+                    error make {msg: $"gcc not found and no install path for OS ($other)" help: "install gcc manually"}
                 }
             }
         }
         print "  Building tree-sitter-nu grammar..."
         let tmp = mktemp --directory
+
         _clone-or-fail https://github.com/nushell/tree-sitter-nu.git $tmp ...[--depth 1]
         ^gcc -shared -fPIC -o ($tmp | path join parser.so) ($tmp | path join src parser.c) ($tmp | path join src scanner.c) $"-I($tmp | path join src)"
         mkdir $cache_dir

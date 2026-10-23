@@ -23,6 +23,7 @@ export def install [
         # Why the running version, never the latest release: a plugin loads only
         # into the nu it was built for, so a newer one fails at `plugin add`.
         let version = version | get version
+
         _nu-release $version nu_plugin_polars $plugin_path
         print $"  (ansi green)nu_plugin_polars(ansi reset): installed ($version)"
     } else {

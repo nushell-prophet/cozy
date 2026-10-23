@@ -50,13 +50,14 @@ export def install [
 }
 
 # Builds the latest release tag from source into $dest; returns the tag.
-def build [
+export def build [
     dest: path
     --low-resource-compilation
 ]: nothing -> string {
     rust install
 
     let repo_dir = $nu.home-dir | path join git zellij
+
     if not ($repo_dir | path exists) {
         print "  Cloning zellij..."
         _clone-or-fail https://github.com/zellij-org/zellij.git $repo_dir
@@ -68,6 +69,7 @@ def build [
     ^git fetch --tags
 
     let tag = ^git tag --list 'v*' '--sort=-v:refname' | lines | first
+
     print $"  Checking out ($tag)..."
     ^git checkout $tag
 
@@ -81,6 +83,7 @@ def build [
     let low_resource_config = if $low_resource_compilation {
         [--config 'profile.release.codegen-units=256' --config 'profile.release.opt-level=0']
     } else { [] }
+
     ^cargo build --release --locked --jobs 1 --no-default-features --features plugins_from_target,vendored_curl --config 'profile.release.lto=false' ...$low_resource_config
 
     _install-binary ($repo_dir | path join target release zellij) $dest
@@ -88,7 +91,7 @@ def build [
 }
 
 # Puts the latest release binary at $dest; returns its tag.
-def download [
+export def download [
     dest: path
     --web-server
 ]: nothing -> string {
@@ -103,6 +106,7 @@ def download [
 
     print $"  Downloading zellij ($tag) from ($url)..."
     let response = http get --raw --full --allow-errors $url
+
     if $response.status != 200 {
         error make {
             msg: $"no zellij release asset at ($url): HTTP ($response.status)"
@@ -111,6 +115,7 @@ def download [
     }
 
     let tmp = mktemp --directory
+
     $response.body | save ($tmp | path join archive.tar.gz)
     ^tar --extract --gzip --file ($tmp | path join archive.tar.gz) --directory $tmp zellij
     mkdir ($dest | path dirname)
