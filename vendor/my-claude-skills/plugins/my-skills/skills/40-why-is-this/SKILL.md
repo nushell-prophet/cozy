@@ -234,8 +234,8 @@ In an interactive shell they are already loaded, prefixed.
    In both languages: he writes Russian and English, agents answer English.
    About half a minute across every project, and it answers the question that decides all the others.
 3. **Print the rows; never read the table.**
-   `each {|r| print $"--- ($r.timestamp | format date '%Y-%m-%d %H:%M') ($r.project)"; print $r.message }`.
-   The rendered table elides `message` — the one column you came for — and an elided hit looks exactly like no hit.
+   `each {|r| print $"--- ($r.timestamp | format date '%Y-%m-%d %H:%M') ($r.project)"; print $r.text }`.
+   The rendered table elides `text` — the one column you came for — and an elided hit looks exactly like no hit.
 4. **Read the exchange, not the line.**
    `sessions --session <uuid> | messages --include-responses` gives the dialogue with the tool noise gone; a working session is a few dozen turns, so read it whole.
    Add `--include-thinking` when the question is what an agent decided rather than what it announced.
