@@ -117,6 +117,9 @@ Nothing is changed until the user confirms.
    This is the part that must not be lost: why this approach, why an alternative was rejected, why the user wanted it.
    Drop only the mechanics — not just `wip` or a typo fix, but any commit whose whole job is correcting or completing an earlier commit's own subject, however cleanly that correction itself is written: a bug review found and its atomic fix, an attempt and the commit that reverts it.
    None of these earns a line, even a summarized one; the message describes the approach that survived, not the road to it.
+   When the folded bodies give one reason per file,
+   merge them into that one reason:
+   a line per file retells the diff.
    If the branch has a canvas in `gi-canvas/` or `gi/` or the current session holds reasoning that never reached a commit body, pull it in here — the tag preserves the old bodies, but only this commit is read on the trunk.
 
    **Strip every `Change-Id:` trailer from what you fold in.**
@@ -258,8 +261,19 @@ Nothing is changed until the user confirms.
      What is left after folding is the branch's real chapter count: usually one, occasionally a genuine few when the branch bundles more than one subject.
      Build exactly that many commits — never split further just because a correction happened along the way, never merge two subjects into one just because they happen to share a file (`references/grouped.md` decides that case).
      Say so plainly whenever the count comes out above one, whether or not `--grouped` was passed — the shape is the branch's own; `--grouped` only lets the user skip straight to it.
+     A chapter can also belong to another feature:
+     the branch was made from another branch that has not landed,
+     or it carries the work of another session.
+     Judge by subject, not by author
+     — agents often continue the work of another session.
+     Mark such a chapter in the plan, and let the user choose:
+     land it as its own commit,
+     or leave it out.
+     To leave it out, move its commits to a branch of their own after the tag of step 9,
+     and drop them from this branch with `git rebase --onto`;
+     when they are not all at the bottom of the branch, say that this rebase can conflict.
 
-   Show the user, in one block: the chapters found and which original commits fold into each, the generated message(s), the `todo/`/`gi-canvas/`/`gi/` paths being dropped, each hash from step 7a with the file citing it and whether it is dropped or repointed (step 11a), each contrast-framing line from step 7c with the words you propose to cut from it, the exported repos step 7b found and the per-repo lines the body carries for them, an overwrite warning if `git tag -l` already finds the tag step 9 will write, the rebase warning from step 5, the content fork-point from step 5a with its evidence if one was found, any branch step 13b will offer to re-base, the exact merge command, and the branch-delete command from step 13a.
+   Show the user, in one block: the chapters found and which original commits fold into each, each chapter of another feature with the choice it needs, the generated message(s), the `todo/`/`gi-canvas/`/`gi/` paths being dropped, each hash from step 7a with the file citing it and whether it is dropped or repointed (step 11a), each contrast-framing line from step 7c with the words you propose to cut from it, the exported repos step 7b found and the per-repo lines the body carries for them, an overwrite warning if `git tag -l` already finds the tag step 9 will write, the rebase warning from step 5, the content fork-point from step 5a with its evidence if one was found, any branch step 13b will offer to re-base, the exact merge command, and the branch-delete command from step 13a.
    **Wait for confirmation.**
 
 ## Landing
@@ -310,7 +324,10 @@ Nothing is changed until the user confirms.
     11b. **Cut the prose** — the step 7c hits the user confirmed at step 8 — in the working tree, then `git add` each file you touched.
     Cut the defect and change nothing else: take out the words that name the gone state and leave the rest of the sentence as it stands, so what survives says what the code does now and the constraint that makes it right.
     An edit that swaps the tense and keeps the line's length has removed nothing.
-    The contrast you are deleting is not lost, it goes into the body this landing writes.
+    The contrast you are deleting is not lost:
+    its reason goes into the body this landing writes,
+    if the diff cannot show that reason.
+    The deleted words stay in the diff, so the body does not retell them.
     Skip a file dropped at step 11, exactly as 11a does.
 
 12. **Commit** with the message from step 6, plus an `Archive:` trailer naming the archived tip.

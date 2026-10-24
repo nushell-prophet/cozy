@@ -1,7 +1,7 @@
 ---
 name: 40-gi-canvas
 description: Turn the current chat into a gi canvas, or open an existing one. Use when the user says "gi canvas", "start a canvas", "переведи в канвас", "продолжим в канвасе", "open the canvas", or asks to move this conversation into a canvas document.
-argument-hint: [canvas path] [--last-exchange] [--distill] [--no-commit]
+argument-hint: [canvas path] [--last-exchange] [--verbatim] [--no-commit]
 allowed-tools: Bash(nu -c *), Bash(grep *), Bash(git *), Read, Edit
 ---
 
@@ -69,25 +69,29 @@ Nothing has to be in the repo beforehand: the style and the skills ride the laun
 - `--last-exchange` → pass it to `gi import`: the canvas gets only the user's last question and the answer to it.
 - `--no-commit` → do not pass `--commit`.
   Without it, always pass `--commit`: the import is committed by default.
-- `--distill` → after the import, distill the canvas (see *Distill* below).
+- `--verbatim` → skip the tidy pass (see *Tidy* below):
+  the canvas stays the chat as imported.
+  Without it, always tidy:
+  the verbatim chat is the import commit,
+  so the canvas itself can be the tidy one.
 
 Before a committed import, run `git branch --show-current`.
 If it is `main` or `master`, run `git switch --create <slug>` first, with the slug of the import.
 A plain chat has no gi commit guard, so this is the only thing that keeps the import off the trunk.
 
-### Distill
+### Tidy
 
-The gi plugin is not loaded in this chat, so `gi:git-intent-distill` cannot be called as a skill.
-Read `distill.md` next to this file and follow it on the imported canvas.
+The gi plugin is not loaded in this chat, so `gi:canvas-tidy` cannot be called as a skill.
+Read `tidy.md` next to this file and follow it on the imported canvas.
 
-- With commits: the import commit is the pre-distill version.
-  Scope the clean-tree check of `distill.md` to the canvas, `git status --porcelain -- <doc>`: other untracked notes in the repo do not touch its history.
-  Commit the distilled canvas as a second commit.
-- With `--no-commit`: distill the untracked file in place and commit nothing.
+- With commits: the import commit is the pre-tidy version.
+  Scope the clean-tree check of `tidy.md` to the canvas, `git status --porcelain -- <doc>`: other untracked notes in the repo do not touch its history.
+  Commit the tidy canvas as a second commit.
+- With `--no-commit`: tidy the untracked file in place and commit nothing.
   Skip the clean-tree check: the full dialogue stays in the session log, at the `.jsonl` path the import note names.
 
 Then tell the user, in one line: exit this session and run `claude-nu gi open <doc>`.
-The import wrote this session's id into the canvas, so that reopens **this same session** (same id, full context) with the canvas bound, and the missing tail — the turns after the import, which the session log cannot contain yet — is still in context and can be appended there.
+The import wrote this session's id into the canvas, so that reopens **this same session** (same id, full context) with the canvas bound, and the missing tail — the turns after the import, which the session log cannot contain yet — is still in context: it goes into the canvas through the same tidy rules, under the points it answers, not appended as new turns.
 
 ## A new canvas, or an existing one
 
