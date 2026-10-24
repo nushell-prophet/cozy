@@ -233,6 +233,16 @@ def "link names the change-id of the commit that last touched the file" [] {
 }
 
 @test
+def "link names the last of two commits that touched the file" [] {
+    let repo = $in.repo
+
+    commit-file $repo a.txt one (with-id 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk')
+    commit-file $repo a.txt two (with-id $ID)
+
+    assert equal (git link ($repo | path join a.txt)) $"($repo)@($ID):a.txt"
+}
+
+@test
 def "link path is relative to the repo root" [] {
     let repo = $in.repo
 

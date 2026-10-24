@@ -49,6 +49,17 @@ def "snapshot runs on an empty snapshot without restore" [] {
 }
 
 @test
+def "restore keeps the machine id of an earlier restore" [] {
+    let t = $in
+    let marker = $t.home | path join .claude .cozy-projects-restored
+
+    'machine-a' | save $marker
+    with-env {HOME: $t.home} { projects restore $t.snap | ignore }
+
+    assert equal (open --raw $marker) 'machine-a'
+}
+
+@test
 def "snapshot moves a file gone from live into projects-deleted" [] {
     let t = $in
 
