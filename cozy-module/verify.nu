@@ -27,7 +27,7 @@ const tools = [
     [delta "--version"] [jj version] [vd "--version"]
     [hx "--version"] [lazygit "--version"] [zellij "--version"]
     [topiary "--version"] [claude "--version"] [broot "--version"]
-    [git-lfs "--version"] [git "--version"] [jq "--version"]
+    [git-lfs "--version"] [git "--version"] [jq "--version"] [fzf "--version"]
 ]
 
 # Hosts whose TLS must terminate at the origin, not at the sbx egress proxy.
