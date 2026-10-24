@@ -4,6 +4,7 @@ def create-left-prompt []: nothing -> string {
     # collapse $in to $mark when it sits under $base; unchanged otherwise
     let collapse = {|base mark|
         let path = $in
+
         do --ignore-errors { $path | path relative-to $base }
         | match $in {
             null => $path
@@ -14,7 +15,9 @@ def create-left-prompt []: nothing -> string {
 
     let dir = pwd | do $collapse $nu.home-dir '~'
 
-    let git_status = git status --branch --porcelain
+    # Why --untracked-files=no: only the `##` branch line is used, and the scan
+    # for untracked files never changes it.
+    let git_status = git status --branch --porcelain --untracked-files=no
         | complete
         | if $in.exit_code == 0 {
             $in.stdout
@@ -46,12 +49,45 @@ def create-left-prompt []: nothing -> string {
         | length
         | if $in == 0 { '' } else { $'jobs($in) ' }
 
+    # Claude Code sessions started in this directory.
+    # Why: Claude Code keeps one registry file per session in
+    # ~/.claude/sessions/<pid>.json, and its `cwd` is the start path.
+    # The file outlives a crashed session and the kernel reuses its pid, so on
+    # Linux a session counts only while /proc shows that pid, not a zombie, with
+    # the same start time — the check of mono .claude/hooks/worktree-guard.sh.
+    # macOS has no /proc: there the pid alone must be alive.
+    let proc_alive = {|s|
+        try { open --raw $'/proc/($s.pid)/stat' } catch { '' }
+        | str replace --regex '.*\) ' ''
+        | split row ' '
+        | $in.0? != null and $in.0 != 'Z' and $in.19? == $s.procStart?
+    }
+    let claude = $env.CLAUDE_CONFIG_DIR?
+        | default ($nu.home-dir | path join '.claude')
+        | path join 'sessions' '*.json'
+        | glob $in
+        # Why try: Claude Code rewrites the file on every status change, and a
+        # half-written file must not break the prompt.
+        | each {|f| try { open $f } catch { null } }
+        | compact
+        | where cwd? == (pwd)
+        # Why one `ps`, and only here: on macOS it lists every process, and
+        # the prompt runs on every Enter.
+        | if ($in | is-empty) or ('/proc' | path exists) { } else {
+            let pids = ps | get pid
+
+            $in | each {|s| $s | insert alive ($s.pid in $pids) }
+        }
+        | where {|s| if 'alive' in $s { $s.alive } else { do $proc_alive $s } }
+        | length
+        | if $in == 0 { '' } else { $'(ansi magenta)claude($in)(ansi reset) ' }
+
     # hide near-instant commands
     let duration = $env.CMD_DURATION_MS | into int | if $in < 90 { '' } else { $'($in)ms ' }
 
     # everything after the path — built once, so the width math below and the
     # rendered prompt can't drift apart
-    let tail = $'($git_status)($duration)($last_exit_code)($shlvl)($jobs)'
+    let tail = $'($git_status)($duration)($last_exit_code)($shlvl)($jobs)($claude)'
     let width = { ansi strip | str length --grapheme-clusters } # visible width
     let max_width = (term size).columns - 2 # the `┏ ` prefix takes 2 cells
 
@@ -69,6 +105,7 @@ def create-left-prompt []: nothing -> string {
                 null => $dir
                 $ws => ($dir | do $collapse $ws '~ws')
             }
+
         if (do $fits $dir) { $dir } else {
             $dir | split row (char path_sep)
             | drop 1
