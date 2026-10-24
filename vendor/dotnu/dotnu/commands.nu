@@ -49,6 +49,7 @@ export def 'dependencies' [
                 | join-next $callees_to_merge
                 | uniq-by caller callee
                 | where {|row| [$row.caller $row.callee] not-in $state.seen }
+
             {
                 out: $state.frontier
                 next: {
@@ -81,15 +82,16 @@ export def 'filter-commands-with-no-tests' [] {
     # result, so let it through.
     let required = [caller callee filename_of_caller step]
     let cols = try { $input | columns } catch { null }
+
     if $cols == null or (($input | is-not-empty) and ($required | any {|c| $c not-in $cols })) {
         error make --unspanned {
             msg: (
                 [
                     "`filter-commands-with-no-tests` expects the output of `dotnu dependencies`:"
                     $"a table with columns ($required | str join ', ')."
-                    "  dotnu dependencies ...(glob '*.nu') | dotnu filter-commands-with-no-tests"
                 ] | str join (char nl)
             )
+            help: "Pipe the output of `dotnu dependencies` into it: dotnu dependencies ...(glob '*.nu') | dotnu filter-commands-with-no-tests"
         }
     }
 
@@ -121,10 +123,11 @@ export def 'diagnose' [
     let content = open --raw $file # raw keeps byte positions aligned with --ide-check spans
     let source_lines = $content | lines
 
-    nu --ide-check 10 $file | lines | each { from json }
+    nu --ide-check 10 $file | from json --objects
     | where type == "diagnostic"
     | each {|d|
         let line_num = $content | str substring 0..<$d.span.start | split row "\n" | length
+
         {
             line: $line_num
             severity: $d.severity
@@ -161,7 +164,8 @@ export def 'style let-layout' [
         if not (nu-check ($file | path expand)) {
             error make {
                 msg: $"($file) does not parse"
-                label: {text: "run `dotnu diagnose` on it first" span: (metadata $file).span}
+                label: {text: "this file" span: (metadata $file).span}
+                help: "run `dotnu diagnose` on it first"
             }
         }
     }
@@ -314,7 +318,7 @@ export def find-let-gaps []: string -> table<kind: string, insert_at: any, start
 
 # The gap row for a statement starting at `start`, when `prev` is a let that runs
 # straight into it; an empty list otherwise, so the caller can always append.
-export def let-gap [prev: any start: int is_let: bool]: binary -> list<record<kind: string, insert_at: int, start: int, let_at: int>> {
+export def let-gap [prev: oneof<record, nothing> start: int is_let: bool]: binary -> list<record<kind: string, insert_at: int, start: int, let_at: int>> {
     if $prev == null or not $prev.is_let or $is_let { return [] }
 
     let between = $in | bytes at $prev.end..<$start
@@ -382,11 +386,10 @@ sleep 0.5sec
 "
 export def 'set-x' [
     file: path # path to `.nu` file
-    --regex: string # regex to split on blocks (default: '\n+\n' - blank lines)
+    --regex: string = '\n+\n' # regex to split on blocks; the default splits on blank lines
     --echo # output script to terminal
     --quiet # don't print any messages
 ] {
-    let regex = $regex | default "\n+\n"
     let out_file = $file | str replace --regex '(\.nu)?$' '_setx.nu'
 
     open $file
@@ -427,7 +430,7 @@ export def 'generate-numd' [] {
 
 # Extract a command with its dependency cascade from a module into one self-contained script.
 #
-# The module is imported into a clean `nu -n` process and command bodies are dumped via
+# The module is imported into a clean `nu --no-config-file` process and command bodies are dumped via
 # `view source`, so Nushell itself resolves `export use` chains, submodules and `main`
 # renaming. Private dependencies are embedded as plain `def`, in dependency order.
 #
@@ -464,6 +467,7 @@ export def extract-module-command [
     let scan = $module.files | each {|file| scan-module-file $file } | flatten
 
     let env_files = $scan | where kind == 'export-env' | get file | uniq
+
     if not $allow_export_env and ($env_files | is-not-empty) {
         error make {
             msg: (
@@ -479,6 +483,7 @@ export def extract-module-command [
     }
 
     let local_uses = $scan | where kind == 'use' and resolved_use != null
+
     if not $module.is_dir and ($local_uses | is-not-empty) {
         error make {
             msg: (
@@ -499,6 +504,7 @@ export def extract-module-command [
                 false
             } catch { true }
         }
+
     if ($escaping | is-not-empty) {
         error make --unspanned {
             msg: (
@@ -512,6 +518,7 @@ export def extract-module-command [
     let duplicated = $defs
         | group-by name --to-table
         | where {|group| ($group.items.file | uniq | length) > 1 }
+
     if ($duplicated | is-not-empty) {
         # after export-ification same-named commands from different files would
         # silently shadow each other (last import wins), extracting the wrong body
@@ -526,6 +533,7 @@ export def extract-module-command [
     # temp copy named after the module, so its `main` is exposed under the module name
     let tmp_dir = mktemp --directory
     let copy = $tmp_dir | path join (if $module.is_dir { $module.name } else { $module.name + '.nu' })
+
     if $module.is_dir {
         cp --recursive $module.source $copy
     } else {
@@ -545,14 +553,17 @@ export def extract-module-command [
         let copy_file = if $module.is_dir {
             $copy | path join ($file | path relative-to $module.source)
         } else { $copy }
+
         export-ify-file $copy_file $offsets
     }
 
     let sources = dump-module-commands $copy $module.name
+
     rm --recursive --force $tmp_dir
 
     let names = $sources | get name
     let target = $command_name | if $in == 'main' { $module.name } else { }
+
     if $target not-in $names {
         error make {
             msg: $"no command `($target)` in this module"
@@ -579,6 +590,7 @@ export def extract-module-command [
     # cascade: BFS from the target over the call graph
     mut reachable = [$target]
     mut frontier = [$target]
+
     while ($frontier | is-not-empty) {
         let front = $frontier
         let known = $reachable
@@ -588,6 +600,7 @@ export def extract-module-command [
             | flatten
             | uniq
             | where $it not-in $known
+
         $reachable = $reachable ++ $next
         $frontier = $next
     }
@@ -595,12 +608,14 @@ export def extract-module-command [
     # dependencies before dependents: the parser requires a def before its call site
     mut ordered = []
     mut remaining = $reachable
+
     while ($remaining | is-not-empty) {
         let rem = $remaining
         let ready = $edges
             | where name in $rem
             | where {|row| $row.calls | where $it in $rem | is-empty }
             | get name
+
         if ($ready | is-empty) {
             # unreachable: a call cycle between top-level defs can't parse in Nushell
             error make --unspanned {msg: 'internal error: call-graph cycle in topological sort'}
@@ -630,12 +645,13 @@ export def extract-module-command [
         | $in + (char nl)
 
     # fail fast on any exposure case the assembly can't map (see "Known limits" above).
-    # Checked on the def-form script: it only defines commands, so `nu -n` parses without
+    # Checked on the def-form script: it only defines commands, so `nu --no-config-file` parses without
     # running a body — unlike the --vars scaffold, whose top-level body would execute here.
-    let check = nu -n -c $defs_script | complete
+    let check = nu --no-config-file --commands $defs_script | complete
+
     if $check.exit_code != 0 {
         error make --unspanned {
-            msg: $"assembled script does not parse under `nu -n`:\n($check.stderr)"
+            msg: $"assembled script does not parse under `nu --no-config-file`:\n($check.stderr)"
         }
     }
 
@@ -668,6 +684,7 @@ export def extract-module-command [
             | reduce --fold {} {|p acc|
                 let name = $p.parameter_name | str replace --all '-' '_' | str replace '$' ''
                 let value = $p.parameter_default? | default (if $p.parameter_type == 'switch' { false })
+
                 $acc | upsert $name $value
             }
 
@@ -763,9 +780,9 @@ export def 'embeds-update' [
     # results that would otherwise be silently zipped onto — and misannotate — other lines.
     if ($results | length) != ($points | length) {
         error make --unspanned {
-            msg: (
-                $"got ($results | length) captured result\(s) for ($points | length) capture point\(s). "
-                + "Keep `| print $in` on top-level lines only — a capture point inside a command "
+            msg: $"got ($results | length) captured result\(s) for ($points | length) capture point\(s)."
+            help: (
+                "Keep `| print $in` on top-level lines only — a capture point inside a command "
                 + "executed more than once produces extra outputs and misaligns the annotations."
             )
         }
@@ -781,6 +798,7 @@ export def 'embeds-update' [
     | each {|it|
         let idx = $it.index # Why: `where` below rebinds `$it` to its own row, shadowing this one
         let match = $results | where index == $idx
+
         if ($match | is-empty) {
             [$it.item]
         } else {
@@ -884,7 +902,8 @@ export def 'expand-code' [
         | reduce --fold {out: [] skip_to: (-1)} {|it acc|
             let idx = $it.index # Why: `where` below rebinds `$it` to its own row, shadowing this one
             let directive = $expanded | where start == $idx
-            if not ($directive | is-empty) {
+
+            if ($directive | is-not-empty) {
                 {
                     out: ($acc.out | append $it.item | append $directive.0.output)
                     skip_to: ($directive.0.end - 1)
@@ -930,6 +949,7 @@ export def find-expand-directives []: list<string> -> table<start: int, end: int
                 }
 
                 let pipeline = $it.item | str replace --regex '^\s*#\*\*' '' | str trim
+
                 if ($pipeline | is-empty) {
                     error make {msg: $"`#**` directive on line ($it.index + 1) has no pipeline"}
                 }
@@ -1004,7 +1024,7 @@ export def find-examples []: string -> table<original: string, code: string> {
     # Find @example: an attribute decorator whose name token is "example"
     let example_indices = $tokens
         | find-attribute-tokens
-        | where {|a| $a.name_token.content == "example" }
+        | where name_token.content == "example"
         | get name_index
 
     if ($example_indices | is-empty) {
@@ -1018,13 +1038,14 @@ export def find-examples []: string -> table<original: string, code: string> {
         # Find block tokens (shape_block) - opening and closing braces
         let block_tokens = $remaining
             | enumerate
-            | where {|r| $r.item.shape == "shape_block" }
+            | where item.shape == "shape_block"
 
         # Not "the first two block tokens": `ast --flatten` gives `(` and `)` the
         # shape_block shape too, so an example calling `(glob ...)` resolved its
         # closing brace to that `(`, never found --result, and was dropped with no
         # warning. Match by content and depth-count instead, like --result below.
-        let open_block = $block_tokens | where {|b| $b.item.content | str starts-with "{" } | first
+        let open_block = $block_tokens | where item.content starts-with "{" | first
+
         if $open_block == null { return null }
 
         let close_block = $block_tokens
@@ -1034,10 +1055,12 @@ export def find-examples []: string -> table<original: string, code: string> {
                     let opened = $b.item.content | str starts-with "{" | into int
                     let closed = $b.item.content | str ends-with "}" | into int
                     let depth = $acc.depth + $opened - $closed
+
                     if $depth == 0 { {depth: 0 block: $b} } else { {depth: $depth block: null} }
                 }
             }
             | get block
+
         if $close_block == null { return null }
 
         let open_brace = $open_block.item
@@ -1051,7 +1074,8 @@ export def find-examples []: string -> table<original: string, code: string> {
         let after_block_meaningful = $after_block
             | where shape not-in ["shape_whitespace" "shape_newline"]
 
-        let result_info = if ($after_block_meaningful | is-not-empty) and ($after_block_meaningful | first | get shape) == "shape_flag" and ($after_block_meaningful | first | get content) == "--result" {
+        let flag = $after_block_meaningful | get 0?
+        let result_info = if $flag.shape? == "shape_flag" and $flag.content? == "--result" {
             # Has --result flag - get the value token(s) (skip whitespace after flag)
             let result_tokens = $after_block_meaningful | skip 1
                 | where shape not-in ["shape_whitespace" "shape_newline"]
@@ -1071,9 +1095,11 @@ export def find-examples []: string -> table<original: string, code: string> {
                             let opened = $t.content | str starts-with $open_char | into int
                             let closed = $t.content | str ends-with $close_char | into int
                             let new_depth = $acc.depth + $opened - $closed
+
                             if $new_depth == 0 { {depth: 0 token: $t} } else { {depth: $new_depth token: null} }
                         }
                     }
+
                 $close_token.token.end
             } else {
                 $first_token.end
@@ -1113,7 +1139,7 @@ export def find-examples []: string -> table<original: string, code: string> {
         }
     }
     | compact
-    | where {|row| $row.code != '' }
+    | where code != ''
 }
 
 # Execute example code and return the result as nuon.
@@ -1139,7 +1165,8 @@ export def execute-example [code: string file: path]: nothing -> string {
         ($code) | to nuon
     "
 
-    let result = do --ignore-errors { ^$nu.current-exe -n -c $script } | complete
+    let result = do --ignore-errors { ^$nu.current-exe --no-config-file --commands $script } | complete
+
     if $result.exit_code != 0 {
         error make --unspanned {msg: ($result.stderr | str trim | default "unknown error")}
     }
@@ -1255,7 +1282,8 @@ export def variable-definitions-to-record []: string -> record {
     # Fail fast: we already have parsed `let` definitions, so a non-zero exit means they
     # don't evaluate (e.g. a broken vars header in a previously extracted file). Report it
     # instead of returning {} and silently dropping the user's saved variables.
-    let result = (nu -n -c $script | complete)
+    let result = (nu --no-config-file --commands $script | complete)
+
     if $result.exit_code != 0 {
         error make --unspanned {msg: $"failed to evaluate variable definitions:\n($result.stderr)"}
     }
@@ -1265,9 +1293,7 @@ export def variable-definitions-to-record []: string -> record {
 @example '' {
     'export def --env "test" --wrapped' | lines | last | extract-command-name
 } --result "test"
-export def 'extract-command-name' [
-    module_path?: path # path to a nushell module file
-] {
+export def 'extract-command-name' [] {
     str replace --regex '\[.*' ''
     | str replace --regex '^(export )?def ' ''
     | str replace --all --regex '(--(env|wrapped) ?)' ''
@@ -1307,11 +1333,12 @@ export def escape-for-quotes []: string -> string {
 # built-in vanishes from it entirely — a custom `print` drops the built-in `print` row,
 # so `print` stops counting as excluded and starts showing up as a dependency edge.
 # The same files would then yield a different answer depending on who called. nutest
-# does exactly this (`export def print` to capture test output). Asking a clean `nu -n`
+# does exactly this (`export def print` to capture test output). Asking a clean `nu --no-config-file`
 # instead costs one spawn (~7ms over the in-process call) and buys a deterministic result.
 export def excluded-command-names [--keep-builtins]: nothing -> list<string> {
     let excluded_types = if $keep_builtins { ['keyword'] } else { ['keyword' 'built-in'] }
-    ^$nu.current-exe -n -c $"help commands | where command_type in ($excluded_types | to nuon) | get name | to nuon"
+
+    ^$nu.current-exe --no-config-file --commands $"help commands | where command_type in ($excluded_types | to nuon) | get name | to nuon"
     | from nuon
 }
 
@@ -1336,7 +1363,7 @@ export def list-module-commands [
     # Phase 1a: Find def statements using split-statements
     # Each statement has accurate byte ranges for scope detection
     let def_definitions = $statements
-        | where { $in.statement =~ '^(export )?def ' }
+        | where statement =~ '^(export )?def '
         | insert caller { $in.statement | lines | first | extract-command-name | replace-main-with-module-name $module_path }
         | select caller start end
 
@@ -1386,11 +1413,7 @@ export def list-module-commands [
                 }
                 | last
 
-            if $matching_def == null {
-                $token | insert caller null | insert filename_of_caller null
-            } else {
-                $token | insert caller $matching_def.caller | insert filename_of_caller $matching_def.filename_of_caller
-            }
+            $token | insert caller $matching_def.caller? | insert filename_of_caller $matching_def.filename_of_caller?
         }
         | where caller != null and caller !~ '^@' # exclude tokens inside attribute blocks
         | where shape in ['shape_internalcall' 'shape_external']
@@ -1421,6 +1444,7 @@ export def 'module-commands-code-to-record' [
         let name = $s.statement | lines | first
             | extract-command-name
             | replace-main-with-module-name $module_path
+
         {$name: $s.statement}
     }
     | into record
@@ -1431,6 +1455,7 @@ export def module-files [
     module_path: path
 ]: nothing -> record<name: string, source: path, is_dir: bool, files: list<path>> {
     let expanded = $module_path | path expand
+
     if ($expanded | path type) == 'dir' {
         {
             name: ($expanded | path basename)
@@ -1515,7 +1540,7 @@ export def export-ify-file [
     | save --force $file
 }
 
-# Import an export-ified module copy in a clean `nu -n` and dump `name -> source` (plus the
+# Import an export-ified module copy in a clean `nu --no-config-file` and dump `name -> source` (plus the
 # parameter list, for --vars scaffolding) for every exposed command — one process for the
 # whole module instead of one per command
 export def dump-module-commands [
@@ -1534,7 +1559,8 @@ export def dump-module-commands [
         "| to nuon"
     ] | str join (char nl)
 
-    let result = nu -n -c $script | complete
+    let result = nu --no-config-file --commands $script | complete
+
     if $result.exit_code != 0 {
         error make --unspanned {msg: $"module import failed:\n($result.stderr)"}
     }
@@ -1578,7 +1604,7 @@ export def execute-and-parse-results [
     # its source line index (baked into the `embed-in-script` call) so results are placed by
     # identity, not by execution order — two capture points running out of source order would
     # otherwise have their annotations swapped. Markers are emitted as consts so the generated
-    # script stands alone under `nu -n`. Captures stay raw here; `# => ` prefixing happens in
+    # script stands alone under `nu --no-config-file`. Captures stay raw here; `# => ` prefixing happens in
     # the caller. Not `view source comment-hash-colon` injected into the child because: that
     # string form resolves the name at runtime among top-level-visible commands, so it breaks
     # whenever dotnu is imported without `*` (e.g. `use dotnu/`).
@@ -1604,7 +1630,7 @@ export def execute-and-parse-results [
 
     if $script_path != null { $script_path | path dirname | cd $in }
 
-    ^$nu.current-exe -n -c $script_updated
+    ^$nu.current-exe --no-config-file --commands $script_updated
     # Parsing presupposes capturing only the output of a script command, so it won't correctly
     # capture content inside custom command definitions executed more than once (the count-assert
     # in embeds-update catches that case).
@@ -1626,7 +1652,7 @@ export def find-capture-points []: string -> table<index: int, line: string> {
 export def embeds-remove [] {
     normalize-newlines
     | lines
-    | where not ($it starts-with $annotation_prefix)
+    | where $it not-starts-with $annotation_prefix
     | str join "\n"
     | $in + "\n" # Explicit LF with trailing newline for Windows compatibility
 }
@@ -1664,6 +1690,7 @@ export def extract-exported-commands [
     | where item.content in ['export def' 'export use']
     | each {|match|
         let idx = $match.index
+
         if $match.item.content == 'export def' {
             # Command name is next token
             $tokens | get ($idx + 1) | get content | str trim --char "'" | str trim --char '"'
@@ -1747,6 +1774,7 @@ export def ast-complete []: string -> table {
         | where {|p| $p.0.end < $p.1.start }
         | each {|p|
             let content = $bytes | bytes at $p.0.end..<$p.1.start | decode utf8
+
             {content: $content start: $p.0.end end: $p.1.start shape: (classify-gap $content)}
         }
 
@@ -1754,7 +1782,7 @@ export def ast-complete []: string -> table {
 }
 
 # Classify gap content into synthetic shape types
-def classify-gap [content: string]: nothing -> string {
+export def classify-gap [content: string]: nothing -> string {
     match ($content | str trim) {
         ";" => "shape_semicolon"
         "=" => "shape_assignment"
@@ -1811,6 +1839,7 @@ export def split-statements []: string -> table<statement: string, start: int, e
             let content = $token.content | str replace --all --regex '#.*' ''
             let opens = ($content | split row "{" | length) - 1
             let closes = ($content | split row "}" | length) - 1
+
             $depth = $depth + $opens - $closes
         }
 
@@ -1824,8 +1853,10 @@ export def split-statements []: string -> table<statement: string, start: int, e
             $token.shape in ["shape_semicolon" "shape_newline"]
             or ($token.shape == "shape_gap" and (($token.content | str replace --all --regex '#.*' '') | str contains "\n"))
         )
+
         if $depth == 0 and $is_boundary {
             let stmt_text = $bytes | bytes at $stmt_start..<$token.start | decode utf8 | str trim
+
             if ($stmt_text | is-not-empty) {
                 $statements = $statements | append {
                         statement: $stmt_text
@@ -1839,6 +1870,7 @@ export def split-statements []: string -> table<statement: string, start: int, e
 
     # Capture final statement
     let final_text = $bytes | bytes at $stmt_start..<($source | str length --utf-8-bytes) | decode utf8 | str trim
+
     if ($final_text | is-not-empty) {
         $statements = $statements | append {
                 statement: $final_text
