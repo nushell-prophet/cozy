@@ -26,5 +26,5 @@ export def main [
     --size: string@"nu-complete wezterm size" # window size as COLSxROWS, e.g. 140x40
 ]: nothing -> any {
     # the window's job id, so `job kill` can reach it; nothing with --no-job
-    attach-window [sbx exec --interactive --tty $sandbox_name] ($zellij_session | default --empty $sandbox_name) --config-file $config_file --background $background --no-job=$no_job --record=$record --size=$size
+    attach-window [sbx exec --interactive --tty $sandbox_name] ($zellij_session | default --empty $sandbox_name) --config-file $config_file --background $background --no-job=$no_job --record=$record --size-flags (size-flags $size)
 }

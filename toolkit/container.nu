@@ -946,6 +946,9 @@ export def "main attach" [
 ]: nothing -> any {
     # the window's job id — `job kill` it to close the window
 
+    # Why first: a typo in --size must fail before the restart below can run.
+    let window_size = size-flags $size
+
     # `container exec -it` cannot enter a stopped container, so a window opened
     # on one lands on that error. Stopped is exactly what a runtime restart
     # (`container system stop/start`, an upgrade, a reboot) leaves behind, and
@@ -970,7 +973,7 @@ export def "main attach" [
         | append (if ($workdir | is-not-empty) { [--cwd $workdir] } else { [] })
         | append $name
 
-    attach-window $exec_argv ($zellij_session | default --empty $name) --config-file $config_file --background $background --no-job=$no_job --record=$record --size=$size
+    attach-window $exec_argv ($zellij_session | default --empty $name) --config-file $config_file --background $background --no-job=$no_job --record=$record --size-flags $window_size
 }
 
 # Upstream's newest image in the maintained tag family. Errors rather than

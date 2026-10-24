@@ -30,6 +30,24 @@ export def "nu-complete wezterm size" []: nothing -> table<value: string, descri
     ]
 }
 
+# The WezTerm flags for a window size given as COLSxROWS; none without a size,
+# so the config file's initial_cols/initial_rows apply.
+# Why apart from attach-window: `container attach` may restart the cage before
+# it opens the window, and a typo in --size has to fail before that restart.
+export def size-flags [size?: string]: nothing -> list<string> {
+    if $size == null { return [] }
+
+    let dims = $size | parse --regex '^(?<cols>[1-9]\d*)x(?<rows>[1-9]\d*)$'
+
+    if ($dims | is-empty) {
+        error make --unspanned {
+            msg: $"--size ($size) is not COLSxROWS"
+            help: "give columns and rows joined by an x, e.g. --size 140x40"
+        }
+    }
+    [--config $'initial_cols=($dims.0.cols)' --config $'initial_rows=($dims.0.rows)']
+}
+
 export def attach-window [
     exec_argv: list<string> # how to get a shell inside, e.g. [sbx exec --interactive --tty my-box]
     session: string # zellij session to attach to, created if missing
@@ -37,23 +55,11 @@ export def attach-window [
     --background: string@"nu-complete wezterm background" = "000000" # hex without '#'
     --no-job # don't create a background job for the process
     --record: path # save the session as an asciicast into this directory, one new file per call; don't resize the window, the recorder keeps its start size
-    --size: string@"nu-complete wezterm size" # window size as COLSxROWS, e.g. 140x40; default: the config file's initial_cols/initial_rows
+    --size-flags: list<string> = [] # the window size, as `size-flags` returns it
 ]: nothing -> any {
     # the spawned job's id, so `job kill` can reach it; nothing with --no-job
     let conf = $config_file
         | default $default_conf
-
-    let size_config = if $size != null {
-        let dims = $size | parse --regex '^(?<cols>[1-9]\d*)x(?<rows>[1-9]\d*)$'
-
-        if ($dims | is-empty) {
-            error make --unspanned {
-                msg: $"--size ($size) is not COLSxROWS"
-                help: "give columns and rows joined by an x, e.g. --size 140x40"
-            }
-        }
-        [--config $'initial_cols=($dims.0.cols)' --config $'initial_rows=($dims.0.rows)']
-    }
 
     # Why: set the background via --config at window creation rather than the
     # OSC user-var trick, which applies it only after the shell starts and
@@ -64,7 +70,7 @@ export def attach-window [
     let wezterm_config = [
         --config-file $conf
         --config $'colors={background="#($background)"}'
-        ...$size_config
+        ...$size_flags
     ]
 
     # Why `wezterm record` around the exec: it wraps the very command the window
