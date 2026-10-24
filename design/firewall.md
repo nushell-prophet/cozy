@@ -74,7 +74,7 @@ Each is turned into a loud, named failure instead:
 The proxy image is pinned by **digest with no tag** — with both, the tag is ignored and reads as a lie (this carried `:latest` while frozen).
 It holds the policy and is the one container with internet, so it must not change under a `pull`.
 Frozen also means upstream CVE fixes never arrive; re-pin deliberately.
-What it points at is a build from the maintained `<squid>-<ubuntu>_edge` family — squid **7.2** on Ubuntu 26.04 when the pin was first set on 2026-08-06, moved forward by `refresh-egress` since (last on 2026-08-16, `b481a4b`).
+What it points at is a build from the maintained `<squid>-<ubuntu>_edge` family — squid **7.2** on Ubuntu 26.04 when the pin was first set on 2026-08-06, moved forward by `refresh-egress` since (last on 2026-10-24, Change-Id `wtxzlvop`).
 Only the digest is written down, in all three files, so the tag behind the current one is whatever upstream's newest was on the day it moved.
 Tracking `:latest` is not the fresher alternative it looks like: upstream has not moved that tag in eight months, and it resolves to a squid 6.6 `_beta` build — so un-pinning would have pinned us to something older, with the guarantee dropped as well.
 The maintained stream is the `_edge` tags, and following it means re-pinning, not un-pinning.

@@ -11,7 +11,7 @@ Under Apple `container` and `sbx` the workspace is mounted at its original host 
 - `hx` (Helix)
 - `zellij`
 - `git`, `delta` (git-delta), `git-lfs`
-- `jj` — `hx` as editor
+- `jj` — non-interactive for the agent: its config (`JJ_CONFIG`) sets `editor = "true"`; a human's jj falls back to `$EDITOR`, which is `hx`
 - `lazygit`
 - `broot` / `br` (in Nushell)
 - `fzf`, `rg` (ripgrep), `bat`, `fd`

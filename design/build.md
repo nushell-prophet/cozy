@@ -54,7 +54,7 @@ Its layers, in order:
    Also `HOMEBREW_NO_ASK=1` (brew's "Do you want to proceed?" prompt hangs forever without a TTY); `ensure-nu.sh` and `bootstrap.nu` export it too, so the host path is covered.
    `bootstrap.nu` Step 0 writes a *subset* of this block into `/etc/sandbox-persistent.sh` for in-sandbox re-runs — the three `XDG_*`, `HELIX_RUNTIME` and `LANG`, plus a once-per-session MOTD; no `PATH`, no `TERM*`, no `HOMEBREW_*`, since a login shell should not assert the terminal it was reached from.
    [`sbx-kit/spec.yaml`](../sbx-kit/spec.yaml)'s `environment.variables` mirrors the whole block for the kit, and adds `HOME` (which the Dockerfile omits on purpose — an image-wide `ENV HOME` would hand a root exec the agent's home).
-   `toolkit/check.nu env` guards the five shared keys across all three and the five Dockerfile/kit-only ones against each other.
+   `toolkit/check.nu env` guards the five shared keys across all three and the four Dockerfile/kit-only ones against each other, plus the `PATH` prefix in both.
 7. **`HOME` is deliberately not an `ENV`** — a `RUN` asserts `$HOME = /home/agent` instead, sitting between the two ENV blocks.
    An `ENV` is image-wide, not per-user, so `ENV HOME` would beat the passwd lookup for *every* user: `docker exec -u root … bash -l` would then read `/home/agent/.profile` and `.bashrc` — agent-owned files from `/etc/skel` — as uid 0.
    Same primitive as the agent-writable marker file in layer 4.
@@ -161,7 +161,7 @@ Config sources live in the `dotfiles` repo — see [`modules.md`](modules.md).
 Dotfiles owns only `~/.config`.
 
 ### Step 5 — `~/.claude`
-`claude-home` (`cozy-module/install/claude-home.nu`) merges `docker-files/claude/settings.json` into `~/.claude/settings.json` (the shipped keys win, the keys Claude Code wrote itself stay), copies `keybindings.json`, and installs every skill, agent, output style and mod from `~/repos/my-claude-skills/plugins` and `~/repos/nushell-skills/plugins`; nushell-skills wins a name both ship.
+`claude-home` (`cozy-module/install/claude-home.nu`) merges `docker-files/claude/settings.json` into `~/.claude/settings.json` (the shipped keys win, the keys Claude Code wrote itself stay), copies `keybindings.json`, copies `rules/*.md` into `~/.claude/rules/`, and installs every skill, agent, output style and mod from `~/repos/my-claude-skills/plugins` and `~/repos/nushell-skills/plugins`; nushell-skills wins a name both ship.
 
 ### Step 6 — global Claude instructions
 Appends [`docker-files/global-claude.md`](../docker-files/global-claude.md) (the tool catalog and the working rules) to `~/.claude/CLAUDE.md`, marker-wrapped (`# >>> cozy catalog >>>`) and replaced in place on a re-run — the same idiom as Step 0's env block.

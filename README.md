@@ -171,7 +171,7 @@ This config disables all of Wezterm's default keybindings, which is what lets Ze
 Changes from WezTerm defaults:
 
 - **QuickSelect** (the killer feature): `ctrl+shift+space` highlights matches on screen for quick copying.
-  Custom regexes extend it to paths, jj change IDs, Nushell error locations (`╭─[file:line:col]`), and Nushell table headers and values.
+  Custom regexes extend it to paths (diff paths without the `a/` / `b/` prefix), git commit ranges, jj change IDs and Change-Id trailers, text inside backticks, the text typed at Claude Code's `❯` prompt, Nushell error locations (`╭─[file:line:col]`), and Nushell table headers and values.
 - **Keybindings**: all defaults disabled; CMD+SHIFT+letter sends kitty-protocol escape sequences so Zellij and apps behind it can distinguish them
 - **Dynamic modes**: the `ZEN_MODE` user variable adjusts font size at runtime; the sandbox background is set at window creation via `--config` (see the launch command below)
 
@@ -281,7 +281,7 @@ For *why* it's built this way, see `design/`.
 
 **Prerequisite:** Homebrew (https://brew.sh).
 On a Linux host with passwordless sudo the script installs it for you; on macOS install it first — the script exits early with the copy-paste command, so your sudo password never goes through a script.
-A Linux host also needs `gcc` and `libc6-dev` (the topiary grammar compiles at install time); the installer fails fast if they're missing.
+A Linux host also needs `gcc` and `libc6-dev` (the topiary grammar compiles at install time); the installer fails fast if `gcc` is missing.
 
 ```sh
 git clone https://github.com/nushell-prophet/cozy
@@ -333,7 +333,7 @@ use toolkit                                # attach needs an interactive nu, see
 toolkit container attach my-cozy --workdir ~/path/to/project
 ```
 
-`attach` opens the WezTerm window as a background job, and a nushell job dies with the nu that spawned it — so `nu toolkit/container.nu attach …` would exit before the window is up and no window would appear.
+`attach` opens the WezTerm window as a background job, and a nushell job dies with the nu that spawned it — so `nu toolkit/container.nu attach …` refuses with an error instead of leaving no window.
 Load the module in your REPL instead (the same holds for `toolkit sbxw` on the sbx path).
 Load it as `use toolkit`, not `use toolkit/container.nu`: the second form names the module's `main` `container`, which hides the `container` CLI for the rest of that session.
 `--no-job` runs wezterm in the foreground of the current shell, which does work from a script, but blocks it until the window closes.

@@ -44,7 +44,7 @@ git status --porcelain vendor/ | lines
 | each { str substring 3.. | split row '/' | first 2 | str join '/' } | uniq
 ```
 
-The `dotfiles` repo is an exception worth noting: it contains many per-app modules (`broot/`, `claude/`, `helix/`, `lazygit/`, `nushell/`, `zellij/`, `wezterm/`, ...).
+The `dotfiles` repo is an exception worth noting: it contains many per-app modules (`broot/`, `helix/`, `jj/`, `lazygit/`, `nushell/`, `zellij/`, `wezterm/`, ...).
 When changes span only one or two of those, prefer a tighter subject like `vendor: updated dotfiles/zellij` and stage only that subdir.
 When many apps changed at once, one `vendor: updated dotfiles` commit is fine.
 
@@ -79,6 +79,7 @@ git commit -m "<subject>" -m "<body>"
 ```
 
 Files removed upstream show as `D` in `git status` — include them in the same per-repo commit, don't split.
+`toolkit/vendor.nu` rewrites `cozy-module/vendored-repos.nuon` on every run; when it shows as changed (the repo set changed), add it to the commit of that change.
 If an entire repo disappeared (dropped from `vendor.yml`), the subject should say `vendor: drop <repo>` and the body should reference the `vendor.yml` change.
 
 ## 5. Sync README.md

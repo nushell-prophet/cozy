@@ -200,11 +200,13 @@ Read the history with `git -C ($env.WORKSPACE_DIR | path join sandbox-state file
 ### `cozy verify`
 
 Runs the post-build checks against the sandbox you are inside: tools launch, expected files/dirs/env vars exist, the nushell MCP, pbcopy, topiary, and git-XDG wiring is in place, and — the only checks that touch the network — that `api.anthropic.com` is not intercepted and that an egress allowlist is in force.
-Every expected value is derived from repo sources (`vendored-repos.nuon`, the autoload glob, `bootstrap.nu`), so the checklist can't drift from the build.
+The expected files, dirs and env vars are derived from repo sources (`vendored-repos.nuon`, the autoload glob, `bootstrap.nu`); the list of tools that must launch is kept by hand in `verify.nu`.
 
 ```nushell
 cozy verify
 ```
+
+`cozy verify run-checks <transport>`, `cozy verify local-runner` and `cozy verify report <results>` are the parts it is built from: `run-checks` takes the closure that carries each command, so the same checks run through another transport.
 
 The `cozy` module is autoloaded only in an interactive nushell session, so run this from an interactive shell or the nushell MCP `evaluate` tool — a one-shot `nu -c` skips autoloads and won't have `cozy` unless you load it explicitly (`nu --config ~/.config/nushell/autoload/modules-core.nu -c 'cozy verify'`).
 

@@ -69,6 +69,8 @@ Edit them freely.
 - `autoload/*.nu` — loaded when nu starts an **interactive** session (a one-shot `nu -c '…'` skips them).
   From cozy's `docker-files/`: `git-global-ignore.nu`, `git-identity.nu`, `git-safe-directory.nu`, `host-ssh-agent.nu`, `mcp-server.nu`, `modules-core.nu`, `modules-repl.nu`.
   From dotfiles: `br.nu`, `completions.nu`, `hooks-config.nu`, `zzz_ignore_vars.nu`
+- `scripts/*.nu` — helpers of the fzf history picker (from dotfiles)
+- `toolkit.nu` — from dotfiles
 - `completions/*.nu` — custom tab-completions for `bat`, `chafa`, `delta`, `fd`, `fzf`, `hx`, `lazygit`, `rg`, `sandbox-exec`, `vd`, `zellij` (from dotfiles; loaded by `autoload/completions.nu`)
 
 **Other tools** — under `~/.config/`
@@ -87,5 +89,5 @@ Edit them freely.
 **Home & Claude**
 
 - `~/.claude/CLAUDE.md` — cozy's tool catalog and working rules are appended here
-- `~/.claude/settings.json`, `keybindings.json` — Claude Code settings from cozy's `docker-files/claude/`; `skills/`, `agents/`, `output-styles/`, `mods/` from `my-claude-skills` and `nushell-skills`; bootstrap merges the agent's git identity and `JJ_CONFIG` into `settings.json`'s `env`
-- `~/.claude.json` — Nushell's built-in MCP server (`nu --mcp`) is registered (gives the agent `evaluate` / `list_commands` / `command_help`)
+- `~/.claude/settings.json`, `keybindings.json`, `rules/` — Claude Code settings and rules from cozy's `docker-files/claude/`; `skills/`, `agents/`, `output-styles/`, `mods/` from `my-claude-skills` and `nushell-skills`; bootstrap merges the agent's git identity and `JJ_CONFIG` into `settings.json`'s `env`
+- `~/.claude.json` — Nushell's built-in MCP server (`nu --mcp`) is registered (gives the agent `evaluate` / `list_commands` / `command_help`), and `externalEditorContext` is on (the last response shows in the external editor)

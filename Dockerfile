@@ -161,16 +161,14 @@ COPY --chown=agent:agent docker-files/workspace-README.md /home/agent/workspace/
 # ---- final root layer: login PATH + revoke the build-time privilege ----
 # Kept last so tweaking either doesn't invalidate the cached brew layers.
 #
-# login env: a login shell (`bash -l`, and the non-interactive `bash -lc` that
-# `cozy verify` reads env through) runs /etc/profile, not /etc/bash.bashrc. So
+# login env: a login shell (`bash -l`) runs /etc/profile, not /etc/bash.bashrc. So
 # two things must be re-supplied there. (1) PATH: /etc/profile rebuilds it from
 # scratch and drops the ENV PATH additions above, so `nu` and every brew tool
 # vanish — brew shellenv puts linuxbrew's bin/sbin back and we prepend the
 # per-user bins like the ENV PATH does. (2) The cozy env block (XDG_*,
 # HELIX_RUNTIME, LANG) lives in /etc/sandbox-persistent.sh, which
 # /etc/bash.bashrc sources for interactive shells but a login shell never
-# sees — so source it here too, or verify's env checks false-fail on a base
-# image that bakes no ENV. profile.d is sourced by /etc/profile unconditionally, so both
+# sees — so source it here too. profile.d is sourced by /etc/profile unconditionally, so both
 # interactive and non-interactive login shells get it. The sbx base wired all
 # this for us; on plain Debian the profile.d drop-in does. Non-login shells
 # still get PATH from the ENV directive, and the env block from /etc/bash.bashrc
