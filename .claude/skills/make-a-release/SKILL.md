@@ -14,7 +14,8 @@ Full release procedure for the cozy project.
 
 - Working directory is clean (`git status` shows no uncommitted changes)
 - `## [Unreleased]` in `CHANGELOG.md` has entries to release
-- You are on `master` — this repo's default branch (or the branch the user intends to release from)
+- You are on a task branch in `wtr/cozy`, never on the mono `master`: the release commit reaches `master` through `/mono-land` (step 6)
+- The recipient `public/cozy-public` is checked out beside the mono (steps 2 and 6 read it)
 
 If any prerequisite fails, stop and tell the user what needs to happen first.
 
@@ -31,7 +32,19 @@ Suggest based on changes:
 
 ### 2. Audit git log for missed changes
 
-Run `git log --oneline <previous-tag>..HEAD` to see all commits since the last release.
+The release tags live in the recipient (step 6), and the commits not exported yet live only in the mono, so read both histories.
+Set the recipient path first; this form holds from any directory of the mono, a worktree included:
+
+```sh
+R="$(git rev-parse --path-format=absolute --git-common-dir)/../../public/cozy-public"
+test -d "$R" || { echo "no cozy-public checkout at $R"; exit 1; }
+```
+
+- Exported already: `git -C "$R" log --oneline <previous-tag>..<branch>`, with `<branch>` from the `branch` of cozy in `../mono.yml`.
+- Not exported yet: `git log --oneline <mono-sha>..HEAD -- .`, where `<mono-sha>` is the `Mono-Commit` trailer of the recipient's tip, `git -C "$R" log -1 --format='%(trailers:key=Mono-Commit,valueonly)' <branch>`.
+
+Which history the `CHANGELOG.md` hashes cite is not decided yet; `validate-docs` checks them against the recipient.
+
 Cross-reference each commit against the `[Unreleased]` entries in `CHANGELOG.md`.
 
 Look for:
@@ -98,8 +111,10 @@ Land the release commit on the mono `master` with `/mono-land`, run `nu toolkit/
 Stop if the search finds nothing — an empty `$sha` would make `git tag` tag the recipient's `HEAD`:
 
 ```sh
-sha=$(git -C ../public/cozy-public log --format=%H --grep '^Mono-Commit: <release sha>')
-test -n "$sha" && git -C ../public/cozy-public tag X.Y.Z "$sha"
+R="$(git rev-parse --path-format=absolute --git-common-dir)/../../public/cozy-public"
+test -d "$R" || { echo "no cozy-public checkout at $R"; exit 1; }
+sha=$(git -C "$R" log --format=%H --grep '^Mono-Commit: <release sha>')
+test -n "$sha" && git -C "$R" tag X.Y.Z "$sha"
 ```
 
 No `v` prefix.

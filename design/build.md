@@ -133,6 +133,11 @@ Last, `~/.cargo/bin` is created empty: cargo-built binaries (`cozy install nushe
 ### Step 1 — brew installs
 `brew install nushell git fzf lazygit helix zellij broot git-delta visidata bat topiary fd jj git-lfs`, then `brew cleanup --prune=all`.
 Errors if brew is missing.
+`brew install` also upgrades a listed formula that is installed but outdated, because `HOMEBREW_NO_INSTALL_UPGRADE` is not set.
+So the shipped `nu` can be newer than the one `ensure-nu.sh` checked.
+That is accepted: the pinned `nu` exists only for a `nu` that cannot run `bootstrap.nu`,
+and `bootstrap.nu` is already running when the upgrade happens.
+On a host, the same line upgrades the user's own outdated formulae of this list (`git`, `fzf`, ...).
 `git` is here although layer 2 of the Dockerfile already installs it from apt: that one exists for the Homebrew installer and is frozen at Debian stable, too old for `git fast-export --signed-commits` in `mono.nu`; brew's sits earlier on `PATH` and tracks upstream.
 
 ### Step 2 — XDG git config

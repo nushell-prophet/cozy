@@ -45,15 +45,15 @@ git status --porcelain vendor/ | lines
 ```
 
 The `dotfiles` repo is an exception worth noting: it contains many per-app modules (`broot/`, `helix/`, `jj/`, `lazygit/`, `nushell/`, `zellij/`, `wezterm/`, ...).
-When changes span only one or two of those, prefer a tighter subject like `vendor: updated dotfiles/zellij` and stage only that subdir.
-When many apps changed at once, one `vendor: updated dotfiles` commit is fine.
+When changes span only one or two of those, prefer a tighter subject like `vendor: update dotfiles/zellij` and stage only that subdir.
+When many apps changed at once, one `vendor: update dotfiles` commit is fine.
 
 ## 3. Compose subject + body per repo
 
-Subject conventions (verified against `git log --oneline -- vendor/`):
+Subject conventions — the imperative `update`, the form `toolkit/vendor.nu` writes itself (older commits also say `updated`; leave them as they are):
 
-- Simple bump: `vendor: updated <repo>` (e.g. `vendor: updated nu-goodies`)
-- Single-file bump: `vendor: updated <filename>` (e.g. `vendor: updated wezterm.lua`)
+- Simple bump: `vendor: update <repo>` (e.g. `vendor: update nu-goodies`)
+- Single-file bump: `vendor: update <filename>` (e.g. `vendor: update wezterm.lua`)
 - Specific behavior change worth naming: `vendor: <repo> <short description>` (e.g. `vendor: dotfiles XDG_CONFIG_HOME fallback in env.nu`)
 
 **Body MUST paraphrase what changed upstream.**
@@ -62,6 +62,10 @@ Get it by reading the mono log of the repo's subdir between the previously-vendo
 ```sh
 git log --oneline <last-vendored-sha>..master -- ../<repo>/
 ```
+
+`master` here is the ref, so the command works from any worktree.
+A sha vendored before the monorepo import does not resolve here: the import rewrote every sha.
+Then use the staged-diff fallback below.
 
 For a third-party repo (`nutest`, `topiary-nushell`), read the sibling clone next to `mono/` instead: `git -C <workspace>/<repo> log --oneline <last-vendored-sha>..HEAD`.
 

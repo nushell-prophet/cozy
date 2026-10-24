@@ -70,15 +70,18 @@ In incremental mode every step below is scoped to the changed set from the basel
 
 ## CHANGELOG commit hashes
 
-Every hash cited in `CHANGELOG.md` must resolve to a commit reachable from `HEAD` of the recipient `public/cozy-public`.
+Every hash cited in `CHANGELOG.md` must resolve to a commit reachable from the branch of the recipient `public/cozy-public` (the `branch` of cozy in `mono.yml`), not from whatever that checkout has at `HEAD`.
 Why the recipient and not the mono: the import into the mono rewrote every sha, and the cited hashes and the release tags live in the recipient.
 This is a stopgap: which history new entries cite is not decided yet.
 This check **always runs over the whole file**, even in incremental mode — a rebase (or any history edit) rewrites the hash a commit is known by *without changing a single byte of `CHANGELOG.md`*, so scoping to the changed-file set would skip exactly the drift this catches.
 
 ```sh
-R="$(git rev-parse --path-format=absolute --git-common-dir)/../../public/cozy-public"
+M="$(git rev-parse --path-format=absolute --git-common-dir)/.."
+R="$M/../public/cozy-public"
+test -d "$R" || { echo "no cozy-public checkout at $R"; exit 1; }
+B=$(nu --commands "open '$M/mono.yml' | where name == cozy | get 0.branch")
 grep -oE '\(([0-9a-f]{7,40}(, )?)+\)' CHANGELOG.md | grep -oE '[0-9a-f]{7,40}' | sort -u \
-| while read h; do git -C "$R" merge-base --is-ancestor "$h" HEAD 2>/dev/null || echo "unresolved: $h"; done
+| while read h; do git -C "$R" merge-base --is-ancestor "$h" "$B" 2>/dev/null || echo "unresolved: $h"; done
 ```
 
 `merge-base --is-ancestor` is stricter than `rev-parse`: a commit rebased off the branch still exists as a dangling object, but is no longer an ancestor of `HEAD`, so it is correctly flagged.

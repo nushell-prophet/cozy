@@ -37,7 +37,7 @@ use claude.nu
 use claude-home.nu
 
 # Cozy repo root, derived from this file's location:
-# cozy-module/install/bootstrap.nu  →  three dirnames up
+# cozy-module/install/bootstrap.nu  →  two levels up from its directory
 const cozy_root = path self ../..
 
 # The agent's own identity. Step 9 writes it into Claude Code's `env` setting,

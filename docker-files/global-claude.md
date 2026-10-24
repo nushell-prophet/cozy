@@ -126,7 +126,7 @@ The `claude-nu` skill (nushell-skills) is the full guide; the short form:
 - `messages 'regex'` is what the user said (`--context 2` adds the rows around each hit; `where kind == typed` keeps the user's own words, not `!` commands or their output).
 - `tool-calls --tool Bash 'regex'` is what agents ran (`--results` adds what came back), `timeline` every block in file order, `records` every raw line.
 - `sessions --columns ...` the numbers per session, `--active-since` by record time; `workflows` the Workflow runs, and `sessions --subagents --columns agent_type,agent_label` which agent each transcript is.
-- Every row carries `session`, so any result pipes onward as the next scope; the rows of `messages`, `tool-calls`, `timeline` and `records` also carry `uuid`.
+- Every row of `messages`, `tool-calls`, `timeline` and `records` carries `uuid` and `session`, so any result pipes onward as the next scope; a `sessions` or `workflows` row carries `session` with no `uuid`.
 
 A plain `rg` over `~/.claude` can find nothing and say nothing: where `~/.claude` is a git repo ignoring `*`, rg skips it all — pass `--no-ignore`.
 

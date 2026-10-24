@@ -200,7 +200,7 @@ Read the history with `git -C ($env.WORKSPACE_DIR | path join sandbox-state file
 ### `cozy verify`
 
 Runs the post-build checks against the sandbox you are inside: tools launch, expected files/dirs/env vars exist, the nushell MCP, pbcopy, topiary, and git-XDG wiring is in place, and — the only checks that touch the network — that `api.anthropic.com` is not intercepted and that an egress allowlist is in force.
-The expected files, dirs and env vars are derived from repo sources (`vendored-repos.nuon`, the autoload glob, `bootstrap.nu`); the list of tools that must launch is kept by hand in `verify.nu`.
+The expected dirs and env vars, and most expected files, are derived from repo sources (`vendored-repos.nuon`, the autoload glob, `bootstrap.nu`); the list of tools that must launch and three files (`pbcopy`, `.claude.json`, the dotfiles' `hooks-config.nu`) are kept by hand in `verify.nu`.
 
 ```nushell
 cozy verify

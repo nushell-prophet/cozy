@@ -28,7 +28,7 @@ Tests are written with nutest's **description-tag** attributes (`# [test]`, `# [
 zellij 0.44.3 renders **nothing** into a pane's grid and applies **no input** unless a real PTY client is attached to the session (zellij-org/zellij#4508; the official docs claim otherwise — wrong for 0.44.3).
 A `--create-background` session tracks command exit codes headlessly, but `dump-screen` returns empty and keystrokes never render until a client attaches.
 
-`harness.nu start` therefore: creates the background session, then `job spawn { ^script -qec "stty rows R cols C; zellij attach NAME" /dev/null }` to attach a sized throwaway PTY client, then polls `list-clients` until the client lands before returning.
+`harness.nu start` therefore: creates the background session, then `job spawn { ^script --quiet --return --command "stty rows R cols C; zellij attach NAME" /dev/null }` to attach a sized throwaway PTY client, then polls `list-clients` until the client lands before returning.
 `stop` kills that job and deletes the session.
 Terminal size is pinned via `stty` so renders are deterministic (headless default 50x49 is not).
 Every test owns a uniquely-named session and never touches the user's live session.
