@@ -60,7 +60,7 @@ services:
   # on a throwaway container before it goes near the running cage --
   # `nu toolkit/container.nu refresh-egress` is the rehearsal that does it.
   egress:
-    image: ubuntu/squid@sha256:6c919903a7a60f3ddd27735cab4516e2991420d49dfc3247e5228de994172d8b
+    image: ubuntu/squid@sha256:d11db6479501aa4618b3253f95a88b2547229e2d081726b6fb20dc75a98cc61b
     networks: [caged, out]
     # The whole policy directory, one mount. Not the two files individually:
     # a bind-mounted *file* pins an inode, so an editor that saves atomically
