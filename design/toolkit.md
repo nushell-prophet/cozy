@@ -49,7 +49,7 @@ Three invariants that nothing else enforces:
 
 - The env block is spelled out in three places — [`../Dockerfile`](../Dockerfile) `ENV`, [`../sbx-kit/spec.yaml`](../sbx-kit/spec.yaml) `environment.variables`, and the `export` block `bootstrap.nu` writes to `/etc/sandbox-persistent.sh`.
   The three formats can't share one literal, so the check asserts they agree and fails loud on drift.
-  Two key sets, because not every key belongs in all three: the *shared* five (XDG dirs, `HELIX_RUNTIME`, `LANG`) are compared across all three, and the *paired* five (`TERM`, `COLORTERM`, `TERM_PROGRAM`, `HOMEBREW_NO_ASK`, `HOMEBREW_NO_AUTO_UPDATE`) only across Dockerfile and kit — they are deliberately absent from `bootstrap.nu`'s block, which every login shell sources, and `TERM` belongs to the terminal that connected.
+  Two key sets, because not every key belongs in all three: the *shared* five (XDG dirs, `HELIX_RUNTIME`, `LANG`) are compared across all three, and the *paired* four (`TERM`, `COLORTERM`, `TERM_PROGRAM`, `HOMEBREW_NO_ASK`) only across Dockerfile and kit — they are deliberately absent from `bootstrap.nu`'s block, which every login shell sources, and `TERM` belongs to the terminal that connected.
   A paired key missing from one of the two counts as drift rather than being skipped.
   `HOME` is in neither set: the Dockerfile omits it on purpose, so only the kit spells it out.
   The `PATH` is a *prefix* comparison across the same two — `bootstrap.nu`'s block writes no `PATH` (recorded as `(n/a)`), and the Dockerfile's tail is the base image's `${PATH}`, which no file here can say, so checking the full tail would only hardcode a second guess.

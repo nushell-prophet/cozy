@@ -51,7 +51,7 @@ Its layers, in order:
    `USER agent`.
 5. Install Homebrew — cache-priming only: `run-install.sh` auto-installs brew when it's missing, so this layer is optional for correctness; it keeps brew out of the uncached tail.
 6. `ENV` blocks — `PATH` puts `~/.local/bin` first (so a pinned `nu` shadows brew's), then `~/.cargo/bin` (so cargo-built binaries from `cozy install nushell`/`zellij` shadow brew's — bootstrap creates the dir up front so exists-filtered PATHs like dotfiles `env.nu` keep it before rust is installed), then linuxbrew; plus `HELIX_RUNTIME`, `TERM*`, `LANG`, and (after the assert below) the `XDG_*` dirs.
-   Also `HOMEBREW_NO_ASK=1` (brew's "Do you want to proceed?" prompt hangs forever without a TTY) and `HOMEBREW_NO_AUTO_UPDATE=1` (skip the implicit `brew update` — faster, and bottle versions stay fixed); `ensure-nu.sh` and `bootstrap.nu` export the same pair so the host path is covered too.
+   Also `HOMEBREW_NO_ASK=1` (brew's "Do you want to proceed?" prompt hangs forever without a TTY); `ensure-nu.sh` and `bootstrap.nu` export it too, so the host path is covered.
    `bootstrap.nu` Step 0 writes a *subset* of this block into `/etc/sandbox-persistent.sh` for in-sandbox re-runs — the three `XDG_*`, `HELIX_RUNTIME` and `LANG`, plus a once-per-session MOTD; no `PATH`, no `TERM*`, no `HOMEBREW_*`, since a login shell should not assert the terminal it was reached from.
    [`sbx-kit/spec.yaml`](../sbx-kit/spec.yaml)'s `environment.variables` mirrors the whole block for the kit, and adds `HOME` (which the Dockerfile omits on purpose — an image-wide `ENV HOME` would hand a root exec the agent's home).
    `toolkit/check.nu env` guards the five shared keys across all three and the five Dockerfile/kit-only ones against each other.

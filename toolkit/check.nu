@@ -33,7 +33,7 @@ const shared_env_keys = [XDG_CONFIG_HOME XDG_DATA_HOME XDG_CACHE_HOME HELIX_RUNT
 # it on purpose (an ENV is image-wide, so `ENV HOME=/home/agent` would hand a
 # root exec the agent's home — see the `Not ENV HOME` comment in the Dockerfile). Both sides
 # derive it from the passwd entry instead, and only the kit has to spell it out.
-const paired_env_keys = [TERM COLORTERM TERM_PROGRAM HOMEBREW_NO_ASK HOMEBREW_NO_AUTO_UPDATE]
+const paired_env_keys = [TERM COLORTERM TERM_PROGRAM HOMEBREW_NO_ASK]
 
 # The PATH prefix the Dockerfile prepends (before its `${PATH}`) — sbx-kit/spec.yaml
 # has no ${PATH} to expand, so it must start with this exact prefix.

@@ -134,10 +134,7 @@ ENV XDG_CONFIG_HOME=/home/agent/.config \
 # it would also upgrade outdated deps. The build has no TTY, so brew hangs
 # forever. NONINTERACTIVE=1 only covers the brew installer script, not package
 # installs — HOMEBREW_NO_ASK is the one that silences the install prompt.
-# NO_AUTO_UPDATE skips the implicit `brew update` before each install: faster
-# builds and the bottle versions stay fixed to whatever the formula API serves.
-ENV HOMEBREW_NO_ASK=1 \
-    HOMEBREW_NO_AUTO_UPDATE=1
+ENV HOMEBREW_NO_ASK=1
 
 # Cache-prime latest nushell too — ensure-nu.sh (called by run-install.sh)
 # installs it when `nu` is absent, checks that it can load bootstrap.nu, and

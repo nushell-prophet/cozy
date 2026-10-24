@@ -67,9 +67,7 @@ export def main [
     # Why: recent Homebrew prompts "Do you want to proceed?" on `brew install`
     # when it would also upgrade outdated deps; with no TTY brew hangs forever.
     # Set here so the host-install path (no Dockerfile/kit ENV) is covered too.
-    # NO_AUTO_UPDATE skips the implicit `brew update` before each install.
     $env.HOMEBREW_NO_ASK = "1"
-    $env.HOMEBREW_NO_AUTO_UPDATE = "1"
 
     # Step 0 — container system setup. The sbx base image ships the marker
     # file /etc/sandbox-persistent.sh (what we append env exports to below);
