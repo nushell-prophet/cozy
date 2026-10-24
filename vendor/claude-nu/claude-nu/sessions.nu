@@ -53,7 +53,10 @@ const SESSION_COLUMNS = [
 ]
 
 # Columns every `sessions` row carries whatever --columns selects.
-const ROW_COLUMNS = [path parent_session_id]
+# Why `session`: every other command keys its rows by it, and it is read from
+# the path the way `messages` reads it — `agent-<id>` on a subagent row, where
+# `session_id` names the parent.
+const ROW_COLUMNS = [path session parent_session_id]
 
 # Selectable columns read from the file listing, not from the records: a
 # selection of only these opens no session file.
@@ -222,8 +225,8 @@ export def messages [
     let piped_files = piped-session-files $input
 
     # Why up here: a misspelled bound must fail before any session is opened.
-    let since_at = if $since == null { null } else { $since | resolve-time-bound "--since" }
-    let until_at = if $until == null { null } else { $until | resolve-time-bound "--until" }
+    let since_at = $since | resolve-time-bound "--since"
+    let until_at = $until | resolve-time-bound "--until"
 
     if $context != null and $regex == null {
         error make {
@@ -239,21 +242,10 @@ export def messages [
         }
     }
 
-    let scoped_files = if $piped_files != null {
-        $piped_files
-    } else {
-        top-level-session-files
-        | if ($in | is-empty) { error make "No session files found for the current project" } else { }
-    }
-
     # Why here, before the pre-filter and the read loop: rg touches these paths
     # first, and its own "No such file" (exit 2) would mask this error and throw
     # away the matches it did find. One check, at the one point they enter.
-    let missing = $scoped_files | where not ($it | path exists)
-
-    if ($missing | is-not-empty) {
-        error make $"Session file not found: ($missing | str join ', ')"
-    }
+    let scoped_files = scoped-session-files $piped_files
 
     let session_files = $scoped_files
         | if $since_at == null { } else { mtime-filter-session-files $since_at }
@@ -307,7 +299,7 @@ export def messages [
         } else {
             $filtered
             | each {|msg|
-                {role: $msg.type message: $msg.text timestamp: ($msg.timestamp? | into datetime) uuid: $msg.uuid? kind: $msg.kind}
+                {role: $msg.type text: $msg.text timestamp: ($msg.timestamp? | into datetime) uuid: $msg.uuid? kind: $msg.kind}
                 | if $context == null { } else { insert hit $msg.hit }
             }
             | if $include_responses { } else { reject role }
@@ -328,7 +320,7 @@ export def messages [
     # dropped from that session, and neighbours chosen before would stay behind
     # there as context for a hit it no longer returns.
     | if $context == null { } else {
-        chunk-by {|m| $m.session } | each { keep-context $context } | flatten
+        chunk-by session | each { keep-context $context } | flatten
     }
 }
 
@@ -340,8 +332,8 @@ export def messages [
 # top-level session of the current project, piped session rows narrow it, the
 # regex argument gets the same rg pre-filter over the raw JSONL, and `--no-rg`
 # turns that off.
-# Why a command and not another `sessions` column: `bash_commands` was the only
-# window onto agent actions, and it is Bash-only — mining this store for
+# Why a command and not another `sessions` column: `bash_commands` is Bash-only —
+# mining this store for
 # `claude-nu` invocations, 82 of the 588 an agent made came through
 # `mcp__nushell__evaluate` and were invisible. It also aggregates per session,
 # so a matched command carries no timestamp and no row of its own, and the
@@ -395,23 +387,12 @@ export def tool-calls [
     }
 
     # Why up here: same as in `messages` — a bad bound fails before any parsing.
-    let since_at = if $since == null { null } else { $since | resolve-time-bound "--since" }
-    let until_at = if $until == null { null } else { $until | resolve-time-bound "--until" }
-
-    let scoped_files = if $piped_files != null {
-        $piped_files
-    } else {
-        top-level-session-files
-        | if ($in | is-empty) { error make "No session files found for the current project" } else { }
-    }
+    let since_at = $since | resolve-time-bound "--since"
+    let until_at = $until | resolve-time-bound "--until"
 
     # Why here, before rg: same reason as in `messages` — rg's own "No such
     # file" would mask this and discard the matches it did find.
-    let missing = $scoped_files | where not ($it | path exists)
-
-    if ($missing | is-not-empty) {
-        error make $"Session file not found: ($missing | str join ', ')"
-    }
+    let scoped_files = scoped-session-files $piped_files
 
     let session_files = $scoped_files
         | if $since_at == null { } else { mtime-filter-session-files $since_at }
@@ -511,31 +492,32 @@ export def tool-name-pattern [tools: list<string>]: nothing -> string {
 @example "the permission modes the last session ran in" { claude-nu sessions --last | claude-nu records | where type == permission-mode | get record.permissionMode }
 export def records [
     regex?: string # Filter records by regex over the record as JSON (`'"type":"system"'`)
+    --since: any # Only records at or after this point — a duration means ago (`1wk`), or a datetime/date string
+    --until: any # Only records at or before this point
     --no-rg # Skip the ripgrep file pre-filter and match entirely in-engine (exact regex semantics, slower)
 ]: [nothing -> table record -> table table -> table list<string> -> table] {
     let input = $in
     let piped_files = piped-session-files $input
 
-    let scoped_files = if $piped_files != null {
-        $piped_files
-    } else {
-        top-level-session-files
-        | if ($in | is-empty) { error make "No session files found for the current project" } else { }
-    }
+    # Why up here: same as in `messages` — a bad bound fails before any parsing.
+    let since_at = $since | resolve-time-bound "--since"
+    let until_at = $until | resolve-time-bound "--until"
 
-    let missing = $scoped_files | where not ($it | path exists)
-
-    if ($missing | is-not-empty) {
-        error make $"Session file not found: ($missing | str join ', ')"
-    }
+    let scoped_files = scoped-session-files $piped_files
 
     $scoped_files
+    | if $since_at == null { } else { mtime-filter-session-files $since_at }
     | if $regex == null or $no_rg { } else { rg-filter-session-files $regex }
     | each {|session_file|
         let records = $session_file | read-session-records
 
         $records
         | each {|r| {type: ($r.type? | default "") uuid: $r.uuid? timestamp: ($r.timestamp? | if $in == null { } else { into datetime }) record: $r} }
+        # Why a record with no timestamp is dropped by a bound: it cannot be
+        # placed inside the window, and keeping it would answer "since X" with
+        # rows nobody can show to be after X.
+        | if $since_at == null { } else { where timestamp != null and timestamp >= $since_at }
+        | if $until_at == null { } else { where timestamp != null and timestamp <= $until_at }
         | if $regex == null { } else { where ($it.record | to json --raw) =~ $regex }
         | insert session ($session_file | session-id-from-path)
         | insert project ($session_file | project-dir-name)
@@ -579,21 +561,10 @@ export def slash-commands [
     let piped_files = piped-session-files $input
 
     # Why up here: same as in `messages` — a bad bound fails before any parsing.
-    let since_at = if $since == null { null } else { $since | resolve-time-bound "--since" }
-    let until_at = if $until == null { null } else { $until | resolve-time-bound "--until" }
+    let since_at = $since | resolve-time-bound "--since"
+    let until_at = $until | resolve-time-bound "--until"
 
-    let scoped_files = if $piped_files != null {
-        $piped_files
-    } else {
-        top-level-session-files
-        | if ($in | is-empty) { error make "No session files found for the current project" } else { }
-    }
-
-    let missing = $scoped_files | where not ($it | path exists)
-
-    if ($missing | is-not-empty) {
-        error make $"Session file not found: ($missing | str join ', ')"
-    }
+    let scoped_files = scoped-session-files $piped_files
 
     $scoped_files
     | if $since_at == null { } else { mtime-filter-session-files $since_at }
@@ -641,7 +612,7 @@ def keep-context [n: int]: table -> table {
 
     $rows
     | merge ($near | wrap _near)
-    | where _near
+    | where $it._near
     | reject _near
 }
 
@@ -823,8 +794,8 @@ def is-record []: any -> bool {
 
 # Extract session file paths from piped input
 # Returns null when input is not a table
-export def resolve-piped-sessions [input: any]: nothing -> any {
-    if ($input | describe) == "nothing" { return null }
+export def resolve-piped-sessions [input: any]: nothing -> oneof<list<path>, nothing> {
+    if $input == null { return null }
     # Why: a record is a 1-row table (e.g. `sessions | first`); widen it here so
     # every piped command accepts a single row without the caller re-wrapping it.
     let input = if ($input | is-record) { [$input] } else { $input }
@@ -883,7 +854,7 @@ export def resolve-piped-sessions [input: any]: nothing -> any {
 # top-level sessions, the same set a bare call reads for the current project.
 # Why here and not in resolve-piped-sessions: `sessions` shares that one and
 # expands a directory itself, subagent transcripts included for --subagents.
-export def piped-session-files [input: any]: nothing -> any {
+export def piped-session-files [input: any]: nothing -> oneof<list<path>, nothing> {
     let piped = resolve-piped-sessions $input
 
     if $piped == null { return null }
@@ -899,6 +870,24 @@ export def piped-session-files [input: any]: nothing -> any {
     # Why: a directory and a file inside it can both be piped in, and the same
     # file must not be read twice.
     | uniq
+}
+
+# The files a dialogue command reads: the piped ones from `piped-session-files`,
+# or the top-level sessions of the current project when nothing was piped.
+# Fails when the current project has none, or when a file does not exist.
+export def scoped-session-files [piped_files: oneof<list<path>, nothing>]: nothing -> list<path> {
+    let scoped_files = if $piped_files != null {
+        $piped_files
+    } else {
+        top-level-session-files
+        | if ($in | is-empty) { error make "No session files found for the current project" } else { }
+    }
+    let missing = $scoped_files | where not ($it | path exists)
+
+    if ($missing | is-not-empty) {
+        error make $"Session file not found: ($missing | str join ', ')"
+    }
+    $scoped_files
 }
 
 # Completer for --columns: comma-separated session column names. Returns full
@@ -979,7 +968,7 @@ export def main [
     --last # Only the most recent session of the current project
     --all-projects # Enumerate sessions across every project under ~/.claude/projects
     --subagents # Also list subagent transcripts (<uuid>/subagents/agent-*.jsonl); off by default
-    --columns (-c): string@"nu-complete claude session-columns" # Comma-separated columns to include (default: overview set)
+    --columns: string@"nu-complete claude session-columns" # Comma-separated columns to include (default: overview set)
     --all-columns # Include all columns
     --since: any # Only sessions last active at or after this point — a duration means ago (`1wk`), or a datetime/date string
     --until: any # Only sessions last active at or before this point
@@ -988,10 +977,10 @@ export def main [
 ]: [nothing -> table string -> table record -> table table -> table list<string> -> table] {
     let input = $in
     # Why up here: a misspelled bound must fail before any session is parsed.
-    let since_at = if $since == null { null } else { $since | resolve-time-bound "--since" }
-    let until_at = if $until == null { null } else { $until | resolve-time-bound "--until" }
-    let active_since_at = if $active_since == null { null } else { $active_since | resolve-time-bound "--active-since" }
-    let active_until_at = if $active_until == null { null } else { $active_until | resolve-time-bound "--active-until" }
+    let since_at = $since | resolve-time-bound "--since"
+    let until_at = $until | resolve-time-bound "--until"
+    let active_since_at = $active_since | resolve-time-bound "--active-since"
+    let active_until_at = $active_until | resolve-time-bound "--active-until"
 
     # Why exclusive: the two pairs ask one question on two clocks — file mtime
     # and record time — and a call mixing them answers a window nobody named.
@@ -1002,28 +991,41 @@ export def main [
         }
     }
     let active_window = $active_since_at != null or $active_until_at != null
-    # Why: piped string is a target path (`"dir" | sessions`); piped table
-    # carries path/session columns like the other commands accept.
-    let piped_path = if ($input | describe) == "string" { $input } else { null }
-    let piped_files = if $piped_path == null { resolve-piped-sessions $input } else { null }
+    # Why a piped string equal to --session is no second scope: inside
+    # `each {|id| ... }` the item is also piped into the first command of the
+    # closure, so `each {|id| claude-nu sessions --session $id }` pipes in the
+    # very id it names.
+    let input = if ($input | describe) == "string" and $input == $session { null } else { $input }
+    # Why a string becomes a list of one: a list already reads each string as a
+    # path when one exists there, otherwise as a selector as `--session` reads
+    # it. So `$id | sessions` works inside `each`, where `--session` would be a
+    # second scope.
+    let input = if ($input | describe) == "string" { [$input] } else { $input }
 
     # Why data-driven: every scope selector excludes every other, so one check
     # over the active set covers all pairs — the old pairwise ifs had to
     # hand-enumerate each combination and could miss one.
     let active_scopes = [
         [scope active];
-        ["piped input" ($piped_files != null or $piped_path != null)]
+        ["piped input" ($input != null)]
         ["--session" ($session != null)]
         ["--last" $last]
         ["--all-projects" $all_projects]
         ["explicit paths" ($paths | is-not-empty)]
     ]
-        | where active
+        | where $it.active
         | get scope
 
     if ($active_scopes | length) > 1 {
-        error make $"($active_scopes | str join ' and ') are mutually exclusive — pick one session scope"
+        error make {
+            msg: $"($active_scopes | str join ' and ') are mutually exclusive"
+            help: "pick one session scope"
+        }
     }
+    # Why after the check: resolving a piped id that names nothing fails with
+    # "Session not found", which would hide the conflict the caller wrote.
+    let piped_files = resolve-piped-sessions $input
+
     # Why: --last/--session resolve to a single file — a subagent one when
     # --session names `agent-<id>` — so there is nothing to widen with
     # subagents; flag it as a no-op rather than silently ignore.
@@ -1055,7 +1057,7 @@ export def main [
         # Why: piped rows and positional paths mean the same thing (`projects |
         # sessions` pipes project dirs), so they share one expansion.
         $paths
-        | if ($in | is-empty) { [($piped_path | default (get-sessions-dir))] } else { }
+        | if ($in | is-empty) { [(get-sessions-dir)] } else { }
         | expand-session-paths --subagents=$subagents
     }
 
@@ -1105,11 +1107,11 @@ export def main [
     let selected = if $all_columns {
         $all_names
     } else if ($requested | is-empty) {
-        $SESSION_COLUMNS | where default | get name
+        $SESSION_COLUMNS | where $it.default | get name
     } else {
         # Why: fail fast on a typo'd column name — parse-session-columns would
         # otherwise silently omit it, hiding the mistake.
-        # Why the two row columns are accepted and dropped here: every row
+        # Why the row columns are accepted and dropped here: every row
         # carries them anyway, and the help names them, so asking for one is
         # not a typo — it was refused as an unknown column.
         let unknown = $requested | difference $all_names | difference $ROW_COLUMNS
@@ -1152,6 +1154,7 @@ export def main [
         | merge $from_listing
         | select ...$selected
         | insert path $row.path
+        | insert session ($row.path | session-id-from-path)
         | insert parent_session_id $row.parent_session_id
     }
 }
@@ -1271,7 +1274,7 @@ export def export-session [
             | select type text
             | rename role content
             # Merge consecutive same-role messages
-            | chunk-by {|r| $r.role }
+            | chunk-by role
             | each {|chunk| {role: $chunk.0.role content: ($chunk.content | str join "\n\n")} }
 
         # Format as markdown

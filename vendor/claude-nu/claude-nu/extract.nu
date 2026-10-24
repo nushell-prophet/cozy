@@ -79,7 +79,7 @@ export def is-builtin-slash-command []: string -> bool {
 # transcript is a list of blocks, and this project's own sessions are full of
 # them (the text `<command-name>/usage` appears 15 times here in files where it
 # was invoked 0 times).
-export def extract-slash-command []: record -> any {
+export def extract-slash-command []: record -> oneof<record, nothing> {
     let record = $in
     let text = [$record.message?.content? $record.content?]
         | where ($it | describe) == "string"
@@ -330,13 +330,12 @@ export def extract-file-operations []: table -> record {
 }
 
 # Extract agent info from tool calls
-# Why only `Agent`: 2.1.x renamed `Task` to `Agent`, and the old spelling is
-# gone from every recent transcript (0 of the newest 80 sessions), so carrying
-# it would be a branch nothing can reach. The drift check reports such a name as
-# `dead` precisely so it gets deleted rather than kept "just in case".
+# Why `Task` too: 2.1.x renamed `Task` to `Agent` with the same input shape, and
+# claude-nu mines the whole history, where old sessions still spawn agents under
+# the old name (7 calls in 6 sessions on 2026-10-19).
 # TaskCreate/Update/Stop are TODO-list ops with different schema, not agents.
 export def extract-agents []: table -> table {
-    where name? == "Agent"
+    where name? in ["Task" "Agent"]
     | each {
         {
             type: ($in.input?.subagent_type? | default "unknown")

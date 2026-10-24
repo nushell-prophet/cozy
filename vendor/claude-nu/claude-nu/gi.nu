@@ -38,15 +38,12 @@
 # Bare `gi` is the third name and does no work: it reports which canvas the
 # asking session is bound to, and the canvases where you stand.
 #
-# Why a plugin and not files copied into each repo, which is what this replaced:
-# `--plugin-dir` loads a directory for one session, reading it in place. Copying
-# was copy-if-absent, so every repo was pinned to whatever the module held when
-# it was first seeded, and nothing anybody reads reported the drift — repos ran
-# months of canvas sessions on a style and skills the module had long since
-# rewritten. Reading in place cannot go stale, writes nothing into the repo, and
-# still loads only for launches gi makes, so a plain `claude` anywhere is
-# untouched. It also deleted the whole seeding half of this file: gi-paths,
-# gi-seed, gi-stale, the `.claude/.gitignore` block, and `gi enable` itself.
+# Why a plugin and not files copied into each repo:
+# `--plugin-dir` loads a directory for one session, reading it in place. A copy
+# pins each repo to whatever the module held when it was seeded, and nothing
+# anybody reads reports the drift. Reading in place cannot go stale, writes
+# nothing into the repo, and still loads only for launches gi makes, so a plain
+# `claude` anywhere is untouched.
 # Plugin components are namespaced by the plugin's name, so the style is
 # `gi:Canvas` and the skills are `gi:git-intent` and friends — verified against
 # the CLI, an unnamespaced `Canvas` resolves to nothing and the launch is
@@ -135,24 +132,25 @@ def gi-repo-root [dir?: path]: nothing -> path {
 
 # Current branch at root, or null outside a repo / on detached HEAD — nothing
 # to protect there, so the branch guard passes.
-def gi-branch [root: path]: nothing -> any {
+def gi-branch [root: path]: nothing -> oneof<string, nothing> {
     let out = ^git -C $root branch --show-current | complete
     let branch = $out.stdout | str trim
 
     if $out.exit_code == 0 and ($branch | is-not-empty) { $branch }
 }
 
-# Move a fresh canvas off the trunk: on a protected branch with nothing staged,
-# switch to a new branch named `name`. Why: gi commits must not land on the
-# trunk, and a new canvas is the moment new work starts. With files staged the
-# user is in the middle of something there, so the switch stays theirs; the
-# launch note still names it.
-# A branch that already exists fails here, with git's own message.
-def gi-leave-trunk [dir: path name: string]: nothing -> nothing {
-    if (gi-branch $dir) not-in $GI_PROTECTED_BRANCHES { return }
-    let staged = ^git -C $dir diff --cached --quiet | complete
+# Start a fresh canvas on a branch of its own: switch to a new branch named
+# `name`, made from the current one. Why: a new canvas is the moment new work
+# starts, and its commits belong together on one branch — whatever branch the
+# user stands on, not only the trunk. `--current-branch` on `gi new` is the
+# opt-out. Outside a repo there is no branch to make.
+# Already on a branch named `name`: the user made the task branch first, so the
+# canvas belongs on it. Any other existing branch of that name fails here, with
+# git's own message.
+def gi-branch-off [dir: path name: string]: nothing -> nothing {
+    let repo = ^git -C $dir rev-parse --is-inside-work-tree | complete
 
-    if $staged.exit_code != 0 { return }
+    if $repo.exit_code != 0 or (gi-branch $dir) == $name { return }
     ^git -C $dir switch --create $name
 }
 
@@ -485,19 +483,21 @@ def gi-edit [doc: path editor: string]: nothing -> nothing {
 # here.
 
 # Create a canvas and open a session bound to it: `<folder>/<date>-<slug>.md`,
-# the editor for writing the task in, then the launch. On main or master with
-# nothing staged, it first switches to a new branch named after the slug.
+# the editor for writing the task in, then the launch. It first switches to a
+# new branch named after the slug, made from the current one; --current-branch
+# stays where it is.
 @category claude-nu
 export def --wrapped "gi new" [
     slug: string # What the canvas is about; the file is <date>-<slug>.md
     --folder: path # Where the canvas lands, relative to where you are (default: gi-canvas/ if present, else todo/ if present, else gi-canvas/, created)
+    --current-branch # Stay on the current branch instead of switching to a new one named after the slug
     --no-editor # Write the canvas without opening it for editing
     --no-claude-launch # Write the canvas and hand back its path; launch nothing
     --no-hook # Launch with the Canvas style but without the Stop-hook floor (the commit guard stays)
     --execute # Start the session on a first prompt, `@<canvas> go`, so it works on the canvas without waiting
     --dangerously-skip-permissions # Pass claude's flag of the same name through
     ...rest: string # Any other flags go straight to `claude`
-]: nothing -> any {
+]: nothing -> oneof<path, nothing> {
     # Same rule as `gi open`'s canvas argument: under --wrapped an undeclared
     # flag typed before the positional becomes the positional, so a typo would
     # otherwise create `todo/<date>---modle.md` instead of reaching the
@@ -530,7 +530,7 @@ export def --wrapped "gi new" [
         }
     }
     # Before the canvas is written: a switch that fails leaves nothing behind.
-    gi-leave-trunk $dir $slug
+    if not $current_branch { gi-branch-off $dir $slug }
     mkdir ($paths_doc.abs | path dirname)
     gi-new-text $today | save --raw $paths_doc.abs
     if $editor != null { gi-edit $paths_doc.abs $editor }
@@ -600,13 +600,9 @@ export def --wrapped "gi open" [
     gi-launch --doc $doc --hook=(not $no_hook) --new-session=$new_session --fork=$fork --execute=$execute --extra $extra
 }
 
-# Why a verb of its own and not a flag on `gi enable` (which is what this
-# replaced): enable seeds distributed text and makes no canvas, so an import
-# living there dragged in a path and three flags the command had no other use
-# for, plus three run-time guards to keep them apart. Why the session is a
-# parameter and not "the session I run inside": a switch can only ever mean the
-# live one, so importing an older chat from the REPL was impossible, and a
-# switch gives a completer nothing to complete.
+# Why the session is a parameter and not "the session I run inside": a switch
+# can only ever mean the live one, so importing an older chat from the REPL
+# would be impossible, and a switch gives a completer nothing to complete.
 
 # Write a canvas from a session's dialogue: the canvas header, an import note,
 # then the user's messages and Claude's visible replies. The doc records that
@@ -687,13 +683,10 @@ export def "gi import" [
     }
     if $commit {
         ^git -C $root add -- $paths_doc.abs
-        ^git -C $root commit --quiet -m $"gi: import session (gi-session-key $file) as the working doc" -m "Dialogue up to the import; the full session log stays outside the repo." -- $paths_doc.abs
+        ^git -C $root commit --quiet --message $"gi: import session (gi-session-key $file) as the working doc" --message "Dialogue up to the import; the full session log stays outside the repo." -- $paths_doc.abs
     }
 
     print $"canvas: ($paths_doc.rel)"
-    # Nothing to check before this line any more: the style and the skills ride
-    # the launch as a plugin, so there is no per-repo state an import could find
-    # missing and no seeded copy that could have drifted.
     print $"open a bound session on it:  claude-nu gi open ($paths_doc.rel)"
     if $session == null {
         # The log can never hold the turn that ran the import (Claude Code writes

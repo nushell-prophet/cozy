@@ -12,6 +12,7 @@ Nushell utilities for working with [Claude Code](https://claude.ai/code) session
 - **Search what the agent ran** — `tool-calls 'pattern'` searches the tool calls themselves, not only what was typed
 - **Read a session in order** — `timeline` gives one row per text, thinking, tool call and result, in file order
 - **Workflow runs** — `workflows` lists each Workflow tool run: status, duration, error, agents
+- **Running sessions** — `live-sessions` lists the Claude Code sessions running on this machine, and where each one started
 - **Rank your slash commands** — `slash-commands` counts what you actually invoked, skills and custom commands, built-ins left out
 - **Smart session picker** — `claude --resume <TAB>` shows age, size, and summary instead of raw UUIDs
 - **Export to markdown** — Keep session history in git with YAML frontmatter
@@ -69,7 +70,7 @@ Rows come session by session — newest session first, chronological inside each
 A resumed or forked session repeats its parent's records under the same `uuid`; `messages`, `tool-calls`, `slash-commands` and `records` keep one copy, the one in the session listed last — by default the least recently active, usually the parent where it was first written — so a resumed conversation is not counted twice.
 
 **Output:**
-- `message` — User message content
+- `text` — User message content
 - `timestamp` — When message was sent
 - `uuid` — The record's own id: its address inside the session
 - `kind` — What the row is: `typed`, `bash-input` (a `!` command), `bash-output` (what it printed), `file` (a file attached with `@`, or the part of a file that changed on disk outside the agent's Edit and Write tools during the session), `system` (only with `--include-system`) or `response` (only with `--include-responses`)
@@ -77,7 +78,7 @@ A resumed or forked session repeats its parent's records under the same `uuid`; 
 - `project` — Project directory the session belongs to, encoded (`/` turned into `-`) — a display name, not a real path
 - `project_name` — The same project, readable: its `cwd`'s last two path segments, same form as `projects.name`. `""` when the session carries no `cwd`
 
-`--include-responses` adds `role`; `--context` adds `hit`; `--raw` replaces `message` with the raw record's `type` and fields.
+`--include-responses` adds `role`; `--context` adds `hit`; `--raw` replaces `text` with the raw record's `type` and fields.
 
 **Why `kind`.**
 The rendered text cannot tell a `!git log` from a `git log` output the user pasted: both become the same fenced block.
@@ -207,12 +208,13 @@ claude-nu sessions --subagents --columns agent_id,agent_type,agent_label | where
 - `last_timestamp` — Last activity
 - `user_messages` — List of user message texts
 - `path` — Session file path
+- `session` — The session's id as every other command's rows name it, so a row pipes on by it: the UUID, or `agent-<id>` on a subagent row
 - `parent_session_id` — Parent UUID for subagent transcripts
 
 **Additional columns:** request via `--columns name1,name2` (or `--all-columns` for everything).
-Any `--columns` selection narrows output to `path`/`parent_session_id` plus the requested columns.
+Any `--columns` selection narrows output to `path`/`session`/`parent_session_id` plus the requested columns.
 
-- `session_id` — UUID
+- `session_id` — The `sessionId` the records carry: on a subagent row, the parent's
 - `first_timestamp` — Session start time
 - `user_msg_count` — Number of user messages
 - `user_msg_length` — Total chars typed by user
@@ -292,11 +294,11 @@ The one thing it uniquely holds is the built-in commands that never reach the mo
 
 ### The time window
 
-`--since` and `--until` are on `sessions`, `messages`, `tool-calls`, `slash-commands` and `timeline`.
+`--since` and `--until` are on `sessions`, `messages`, `tool-calls`, `slash-commands`, `timeline`, `records` and `workflows`.
 Each takes a duration meaning *ago* (`--since 1wk`, `--until 3day`), a date (`2026-08-01`), or a `datetime` value — so "what did I do last week" is a flag, not a filter you write afterwards.
 
 What the window is measured against is the row you are asking for.
-In `messages`, `tool-calls` and `slash-commands` a row is one message, one call or one invocation, so the window is compared to its own timestamp.
+In `messages`, `tool-calls`, `timeline`, `slash-commands` and `records` a row is one message, one call, one block, one invocation or one record, so the window is compared to its own timestamp; a `workflows` row is one run, compared by its `started`.
 In `sessions` a row is a whole session, timed by its file's mtime — its last activity, the same clock that already orders every listing here.
 Deciding the window from a parsed `first_timestamp` instead would have to parse every session to find out which sessions to parse, which is the cost the window exists to avoid.
 
@@ -332,6 +334,30 @@ claude-nu workflows | sort-by started | last | get agents | group-by phase     #
 - `agents` — `{agent_id, label, phase, state}` per agent the run's progress lists; `agent_id` joins to the `agent_id` column of `sessions --subagents`
 - `state_file` — The JSON file the row was read from
 - `project`, `project_name` — As in `messages`
+
+### `claude-nu live-sessions`
+
+The Claude Code sessions running on this machine, one row per process.
+Claude Code itself writes a registry file for each session in `~/.claude/sessions/<pid>.json`, and the command reads it.
+The format is undocumented, so a Claude Code update can change it.
+A file stays after a crash, and the kernel reuses a pid.
+So on Linux a row counts only while `/proc` shows that pid, not a zombie, with the start time the file records; on macOS the pid alone must be alive.
+The command takes no scope: the registry is machine-wide, and `where` narrows it.
+
+```nushell no-run
+claude-nu live-sessions | where cwd == (pwd)                       # sessions started in this directory
+claude-nu live-sessions | where status == busy | select name cwd   # the sessions working right now
+claude-nu live-sessions | where cwd == (pwd) | claude-nu messages  # what the sessions started here were asked
+```
+
+**Output:**
+- `session` — The session id; with `project` it makes the row a selector, so it pipes on into `messages` and the rest. A session that has not written its transcript yet fails that pipe
+- `name` — The name of the session, from `/rename`, `--name`, or the one Claude Code derives
+- `status` — `busy` or `idle`, as Claude Code last wrote it
+- `cwd` — Where the session started, not where it works now
+- `pid`, `kind` — The process and its kind (`interactive`, ...)
+- `started`, `updated` — When the session started and when its file last changed
+- `project`, `project_name` — As in `messages`, from `cwd`
 
 **Why the state file and not the agents' `journal.jsonl`.**
 The journal holds only started/result pairs, while the state file has the status, the duration, the error and each agent's label and phase.
@@ -459,8 +485,9 @@ A turn may still end there, so landing a branch onto the trunk is not blocked.
 The byte budget is tunable via `GI_HOOK_MAX_LEN`.
 
 **`chat:` is the way out.**
-Open your message with `chat:` and that one exchange is off the canvas: the hook lets the turn end with any answer, and the style tells the agent to answer in chat and write nothing — no document, no commit.
-It is for the questions you ask *about* the work rather than as part of it.
+Open your message with `chat:` and that one exchange is off the canvas: the hook lets the turn end with any answer, and the style tells the agent to answer in chat and write nothing to the canvas.
+It is for the questions you ask *about* the work rather than as part of it, and for an order to run outside the canvas (an edit, a commit, a landing) that reports in the chat.
+A `go` typed in the chat lifts the hook too: the agent goes on by the defaults and the decisions so far, and puts each answer where the protocol says, canvas work in the canvas.
 The marker is read from the prompt that opened the turn, and only from one you typed, so only you can spend one: a marker the agent could write would be the agent lifting its own floor, which is what the hook exists to prevent.
 It covers one turn — the next unmarked message is canvas work again.
 A slash command you run counts as an aside too: a skill carries its own rules for the chat — `/40-land-branch` shows its plan there and waits — so the floor stands down for that turn and the agent answers as the skill says.
@@ -505,7 +532,7 @@ Numbering is max+1 over the series, never the first free gap: the canvas folder 
 
 **Starting a canvas from a slug.**
 `gi new <slug>` is the naming half of `gi open`: the canvas is `<folder>/<date>-<slug>.md` (`--folder`; by default `gi-canvas/` when the directory has one, else `todo/` when it has that, else a new `gi-canvas/` — the same folder `gi open` and `gi import` pick when given no path), it starts with the todo frontmatter — `status`, `updated` and `agents-mode`, the creation date being in the file name already — and the same header a canvas gets from `gi open`, and the command ends in that launch.
-On `main` or `master` with nothing staged, it first switches to a new branch named after the slug, so the canvas and its commits start off the trunk.
+It first switches to a new branch named after the slug, made from the current one, so the canvas and its commits start on a branch of their own; `--current-branch` stays where it is, and so does a run on a branch already named after the slug.
 It then puts the file in front of you, in `$env.EDITOR`, to write the task in: inside zellij in a pane of its own, so the document stays in view while the session runs beside it; outside zellij in the terminal you are in, and the launch follows when the editor exits — with no `$env.EDITOR` set that is an error naming `--no-editor`, never a guess at which editor you have.
 `--no-editor` skips that, `--no-claude-launch` skips the launch and hands back the path instead, and the flags `gi open` defines — `--no-hook`, `--execute`, `--dangerously-skip-permissions`, anything else straight to `claude` — work here too.
 `--fork` and `--new-session` are the two it does not take: both act on a canvas that exists and already records a session.
@@ -528,27 +555,21 @@ The `40-gi-canvas` skill drives the whole flow from inside a chat session, so yo
 The one write is Claude Code's own: an interactive load of the hooks module puts editor types (`tsconfig.json`, `.claude-plugin/types/`) into the plugin folder, inside this module, never into your repo.
 Both are gitignored, and a read-only plugin folder still loads.
 So a canvas launch writes exactly one thing into your repo: the canvas.
-There is no `.claude/` from gi, no `.gitignore` block explaining it, and no `gi enable` verb — nothing is seeded, so nothing has to be refreshed.
+There is no `.claude/` from gi — nothing is seeded, so nothing has to be refreshed.
 
 Reading in place cannot go stale.
 It also keeps the protocol opt-in: the plugin loads only for launches gi makes, so a plain `claude` anywhere else is untouched — which a machine-wide install into `~/.claude/skills/` would have given up.
 
 **The parts are namespaced.**
-Claude Code prefixes a plugin's components with the plugin's name, so the style is `gi:Canvas` and the skills are `/gi:git-intent`, `/gi:git-intent-readback`, `/gi:git-intent-distill`, `/gi:git-intent-squash-archive`.
+Claude Code prefixes a plugin's components with the plugin's name, so the style is `gi:Canvas` and the skills are `/gi:git-intent`, `/gi:git-intent-readback`, `/gi:canvas-tidy`, `/gi:canvas-format`, `/gi:git-intent-squash-archive`.
 The prefix is not cosmetic: a bare `Canvas` in `outputStyle` resolves to nothing and the session starts with no style **and no error**, which is gi silently half on.
-
-**A repo seeded by the old gi needs cleaning out by hand.**
-Nothing migrates it, on purpose: gi no longer reads those paths, so it cannot tell its own leftovers from files you put there.
-Project skills and plugin skills coexist rather than override, so until you remove them a canvas session in such a repo loads each gi skill twice — once bare from the repo copy, which is frozen at whatever the module held when that repo was first seeded, and once as `gi:*` from the plugin.
-Four things to delete: `.claude/output-styles/canvas.md`, `.claude/skills/git-intent*`, `.claude/skills/gi-canvas`, and the `# gi seeds` block in `.claude/.gitignore` (delete the file if that block is all it holds).
 
 **One skill is not in the plugin.**
 `40-gi-canvas` (the `40-` prefix is that repo's, so its skills group in the menu) turns the chat you are already in into a canvas, which means it has to be there in sessions gi did *not* launch — exactly where `--plugin-dir` never reaches.
 It ships with the rest of your own skills instead, and is the one piece of gi that is installed rather than read from the module.
 
-**Why `import` is its own verb.**
-It was `gi enable --from-session`, which put a canvas-writing switch on the one command that makes no canvases, and dragged in a path plus three flags that meant nothing without it — enforced by run-time guards a signature states for free.
-As a switch it could also only ever mean the live session, so an older chat could not be imported from the REPL at all, and there was nothing for a completer to complete.
+**Why `import` takes its session as a parameter.**
+A switch could only ever mean the live session, so an older chat could not be imported from the REPL at all, and there would be nothing for a completer to complete.
 
 Canvases come from `gi open`, which creates one from the template and binds a session to it in the same breath, or from `gi import`, which writes one from a dialogue — so no two verbs ever write the same file.
 

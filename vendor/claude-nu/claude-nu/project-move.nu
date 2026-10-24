@@ -50,11 +50,16 @@ def normalize-project-path []: path -> path {
 # A path held in a variable is literal to `ls`, so the walk is spelled out.
 # Not `discover-session-files` because: it filters names by the UUID pattern,
 # and a `cwd` needs rewriting whatever the file is called.
+# Why a symlink is skipped: its target is a transcript of its own. In this store
+# that file is rewritten where it lies; in another store it belongs to another
+# project.
 def jsonl-files [dir: path]: nothing -> list<path> {
     ls $dir
     | each {|entry|
         if $entry.type == "dir" {
             jsonl-files $entry.name
+        } else if $entry.type == "symlink" {
+            []
         } else {
             [($entry.name | path expand)]
         }
@@ -136,7 +141,10 @@ def swap-in-file [file: path swaps: table<needle: string, replacement: string>]:
     | save --raw --force $tmp
     if (ls $file | get 0.modified) != $before {
         rm --force $tmp
-        error make {msg: $"($file) changed while claude-nu was rewriting it — nothing was written to it; rerun the move"}
+        error make {
+            msg: $"($file) changed while claude-nu was rewriting it — nothing was written to it"
+            help: "rerun the move"
+        }
     }
     mv --force $tmp $file
     touch --modified --timestamp $before $file
@@ -158,7 +166,7 @@ def swap-in-file [file: path swaps: table<needle: string, replacement: string>]:
 # refuse a move nobody can then make.
 def refuse-shared-dir [scanned: table src: path old: path]: nothing -> nothing {
     let foreign = $scanned
-        | where scan.records_cwd and scan.old == 0 and scan.new == 0
+        | where $it.scan.records_cwd and scan.old == 0 and scan.new == 0
         | sort-by source
 
     if ($foreign | is-not-empty) {
@@ -209,6 +217,15 @@ def plan-fold [src: path dst: path rewriting: list<string> dst_rewriting: list<s
     | each {|rel|
         let from = $src | path join $rel
         let to = $dst | path join $rel
+
+        # Why a link always yields: it stands for a transcript another session
+        # holds, and the destination already has a file of that name — the same
+        # agent id, so the same transcript. Moved over it, the link would
+        # replace a real file with a pointer.
+        if ($from | path type) == "symlink" {
+            return {kind: "keep-destination" path: $to replaced: null source: $from swaps: null}
+        }
+
         # Compared as the source will look after its cwd swap, not as it looks
         # now: the swap runs first, so comparing the current bytes would resolve
         # a pair that never exists on disk. Which is also why the swap is applied
@@ -228,7 +245,10 @@ def plan-fold [src: path dst: path rewriting: list<string> dst_rewriting: list<s
         let verdict = fold-verdict $after $target
 
         if $verdict == "conflict" {
-            error make {msg: $"($rel) exists in both stores and neither copy contains the other: ($from) and ($to). Nothing was written — settle that file by hand, then rerun."}
+            error make {
+                msg: $"($rel) exists in both stores and neither copy contains the other: ($from) and ($to). Nothing was written."
+                help: "settle that file by hand, then rerun"
+            }
         }
         {kind: $verdict path: $to replaced: null source: $from swaps: null}
     }
@@ -311,7 +331,7 @@ def plan-sessions [src: path dst: path old: path new: path]: nothing -> table {
         | insert kind "session"
         | insert path {|row| $row.source | str replace $src $dst }
         | insert replaced {|row| $row.scan.old }
-        | insert swaps {|_| $swaps }
+        | insert swaps $swaps
         | select kind path replaced source swaps
         # A destination copy the source replaces is overwritten, so its rewrite
         # would be work reported on a file about to vanish.
@@ -334,6 +354,35 @@ def plan-sessions [src: path dst: path old: path new: path]: nothing -> table {
         [{kind: $relocation path: $dst replaced: null source: $src swaps: null}]
         | append $fold
         | append $files
+    }
+}
+
+# Plan rows for the symlinks that point into the moving store: `path` is where
+# the link ends up, `target` what it points at after the move.
+# Why: Claude Code gives a session that continues another one links to the
+# subagent transcripts and workflow directories of that session, by absolute
+# path. A store that moves leaves each such link pointing at a directory that is
+# gone, and a reader that lists the link then fails to open it.
+# Why the whole projects root and not `src` alone: a session resumed from
+# another project links into this store from outside it.
+# Why `glob` here, unlike `jsonl-files`: the pattern is the projects root, built
+# from HOME; the encoded project names below it are matched by `**`, never
+# parsed as a pattern.
+def plan-links [src: path dst: path]: nothing -> table {
+    if $src == $dst { return [] }
+
+    glob (projects-root | path join "**") --no-dir --no-file
+    | each {|link| ls --long --directory $link | get 0 }
+    | where target starts-with $"($src)/"
+    | sort-by name
+    | each {|link|
+        let path = if ($link.name | str starts-with $"($src)/") {
+            $link.name | str replace $src $dst
+        } else {
+            $link.name
+        }
+
+        {kind: "link" path: $path replaced: null source: $link.name swaps: null target: ($link.target | str replace $src $dst)}
     }
 }
 
@@ -451,16 +500,22 @@ export def main [
     if $merges_config {
         # The two entries are printed rather than diffed: which side wins is a
         # judgement per field, so the useful thing to hand over is both records.
-        error make {msg: ([
-            $"($config) already has an entry for ($new) — merging two settings records is not this command's job."
-            "Read both, fold them into one by hand, then rerun:"
-            $"  open ($config) | get projects | get \"($old)\""
-            $"  open ($config) | get projects | get \"($new)\""
-        ] | str join "\n")}
+        error make {
+            msg: $"($config) already has an entry for ($new) — merging two settings records is not this command's job."
+            help: ([
+                "Read both, fold them into one by hand, then rerun:"
+                $"  open ($config) | get projects | get \"($old)\""
+                $"  open ($config) | get projects | get \"($new)\""
+            ] | str join "\n")
+        }
     }
 
+    let sessions = plan-sessions $src $dst $old $new
+    # A link the fold deletes needs no new target.
+    let dropped = $sessions | where kind == "keep-destination" | get source
     let plan = [
-        (plan-sessions $src $dst $old $new)
+        $sessions
+        (plan-links $src $dst | where source not-in $dropped)
         (plan-swap (prompt-history) "history" $'"project":"($old)"' $'"project":"($new)"')
         (plan-swap $config "config" $'"($old)"' $'"($new)"')
     ] | flatten
@@ -473,7 +528,7 @@ export def main [
         }
     }
     if $dry_run {
-        return ($plan | reject source swaps)
+        return ($plan | reject --optional source swaps target)
     }
 
     $plan | where swaps != null | each {|row| swap-in-file $row.source $row.swaps }
@@ -486,5 +541,13 @@ export def main [
     if "sessions-dir" in $plan.kind { mv $src $dst }
     if "sessions-fold" in $plan.kind { fold-into $src $dst $plan }
 
-    $plan | reject source swaps
+    # After the relocation, because a link inside the store is only at its new
+    # `path` once the store has moved. A run that dies before this line leaves
+    # links still pointing into the old store, and a rerun plans them again.
+    # Not `--symbolic --force --no-dereference` because: the BSD ln of macOS has
+    # no long flags. `-n` replaces a link to a directory instead of writing a
+    # new link inside that directory.
+    $plan | where kind == "link" | each {|row| ^ln -s -f -n $row.target $row.path }
+
+    $plan | reject --optional source swaps target
 }

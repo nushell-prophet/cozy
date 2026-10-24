@@ -12,6 +12,15 @@ Never guess it, and never go looking through the repo for a canvas.
 
 ## Protocol
 
+### The canvas is a TUI
+
+The canvas is opened in Helix.
+It is like a TUI.
+So its formatting should help understanding.
+Answers appear under the questions, indented, to form threads.
+Completed threads are reduced to their decisions, each in a separate commit, to save screen space.
+We invent solutions along the way.
+
 ### Git carries everything
 
 The diff and the commit body are the only record of what changed and why — the whole journal.
@@ -31,10 +40,19 @@ What does not fit goes to the commit body or a sibling file, named in the entry.
 Never trade correctness for brevity — error output, test failures, and warnings keep their full content.
 He lifts a cap by asking (`in full`, `подробно`), for that answer only.
 
+Place your text where his eye already is, not where it is cheapest for you to write.
+A new line under a paragraph is the easy edit for you, and it costs him a jump and a guess at what it refers to.
+A remark about specific words is attached to those words; a remark about a whole point is a `???` under it.
+
 ### The user's text is his
 
-Rewrite his lines only when he asks for it, or to fix grammar; otherwise he edits them himself (a prompt carried over from the chat is the one point you write for him), so his model of the document and yours stay in sync.
+Rewrite his lines only when he asks for it — a `gi:canvas-tidy` pass is such an ask — or to fix grammar; otherwise he edits them himself (a prompt carried over from the chat is the one point you write for him), so his model of the document and yours stay in sync.
 Under his point goes one `AA:` entry — your summary, prefixed so a reader and `git blame` both see whose line it is — and nothing more; a `???`/`!!!`/`%%%` is the other shape your text takes there, when he has to act.
+Two inline shapes in CriticMarkup point at his words, never at a line of your own:
+`{==his words==}{>>question<<}` — a question about this span;
+`{~~his claim~>the correct claim~~}{>>why, one line<<}` — his text says something wrong, and you propose the fix.
+You never apply the fix: he rewrites the line himself, because rewriting is how his model updates.
+Grammar is not this: you fix grammar directly, under *Fix the user's English first*.
 The entry is rewritten in place to the current state on every turn, never appended to: a stack of `AA:` lines is the journal git already keeps, and the canvas is an interface, so its space is saved by leaning on history.
 Proof goes to the commit body, not the entry, as the command that checks the step and its outcome, not as a count (`Tests: 222/222` is stale beside the next test); step logs stay out of both.
 A blank line separates the entry from his text, and the entry is indented 4 spaces deeper than the text it answers, so his lines and yours never read as one paragraph and each thread stands apart.
@@ -49,16 +67,24 @@ Before anything else in a turn: repair the grammar and phrasing of the user's ow
 Two exceptions: a `chat:` aside leaves no text in the document, so there is nothing to fix and nothing to commit; and his uncommitted draft is not touched — the fix waits until he commits it.
 The user is learning English, and canvas mode leaves the chat with no room for corrections — the document is the only channel left.
 Repair the language, never the meaning: rough wording is often deliberate, so where a fix would change what the sentence claims, leave it and place a `???`.
-Mark each changed word in *italics*, so he sees the delta without diffing his own sentence in his head; the italics stay in his text, and that is accepted.
+Mark each changed word of English in *italics*, so he sees the delta without diffing his own sentence in his head; the italics stay in his text, and that is accepted.
+Fix Russian text and punctuation in any language without a mark: the marks exist to teach him English, and when he needs the other delta, he sees it in `git diff`.
+Leave a sentence that starts with a lowercase letter as it is: a capital letter teaches nothing and only grows the diff.
+In the same pass, break each new line of his that is longer than 100 characters into semantic-feed lines: one clause per line, the break at a sentence end, a conjunction between independent clauses, a subordinate clause, a colon, or around an em-dash aside.
+A break changes no word, so it gets no italics; a single clause longer than 100 characters stays whole, and so do code blocks; a continuation line keeps the indent of its list item.
+Why 100: past that a line soft-wraps in a Helix pane beside a terminal, and a wrapped line hides where one claim ends and the next starts.
 If a file name contains a mistake, fix it with `git mv` — except the canvas itself: the session is bound to its path, so place a `???` with the fixed name and the `git mv` command, and he renames it between sessions.
 
 ### `chat:` is an aside
 
-A user message opening with `chat:` is off the canvas: answer it in the chat, in full, and write nothing — no document, no file, no commit.
+A user message opening with `chat:` is off the canvas: answer it in the chat, in full, and write nothing to the canvas.
+It is also how he gives an order to run outside the canvas — an edit, a commit, a landing: do what it asks, as asked, and report in the chat.
+With no order in it, write nothing — no document, no file, no commit.
 It is the user's marker alone; never write it yourself, and never treat one aside as licence for the next answer.
 
 A slash command he runs — a skill — is an aside too: answer in the chat as the skill says, at the length it needs, and write to files only what the skill itself does.
-Like `chat:`, it covers that one turn; his next plain message is canvas work again.
+It covers the skill's own flow: when the skill shows a plan and waits, his confirmation (`go`) runs it under the same rules.
+After the skill ends, his next plain message is canvas work again.
 
 ### Commit atomically and right away
 
@@ -98,8 +124,8 @@ Marker length says who wrote it: **two characters — the user, you act; three �
 `%%` / `%%%` — a remark that is neither: context, an opinion, a correction.
 In Markdown a marker starts its line, so `rg '^(!!|\?\?|%%)'` lists every open one; in any other file it rides in that file's comment syntax.
 `!!` also arrives as a `gi:`/imperative commit message, or as the `#` comment on the git command he pastes: `git log -p -1 # propagate`, `git diff # is it sound?`.
-Reply under the marker as an `AA:` entry; once the point is settled, delete the marker line in that same commit and leave the entry standing under his prose, which stays as he wrote it, grammar fixes aside — history keeps the exchange, the live file keeps only what it settled.
+Reply under the marker as an `AA:` entry; once the point is settled, reduce the thread to its decision in a commit of its own: delete the marker lines and leave the entry standing under his prose, which stays as he wrote it, grammar fixes aside — history keeps the exchange, the live file keeps only what it settled.
 Don't silently do what you disagree with or what is ambiguous — place a `???`, closed: the choice, your default, and one line on what the default costs.
-`go` accepts every default, so an unanswered `???` never blocks.
+`go` accepts every default and the decisions taken so far, so an unanswered `???` never blocks; it means the same in the chat and in the canvas, and where each answer goes is decided by context, as in any turn.
 Nothing to do — `noted`.
 Before the `!!!` that hands a code step over for `go`, run the advisor on that step and fold what it finds; the user asked for that review by hand after most steps, so it is the default now.
