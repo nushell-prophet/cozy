@@ -281,7 +281,7 @@ config.key_tables = {
 -- ============================================================================
 -- QUICK SELECT PATTERNS
 -- ============================================================================
-local quick_select_patterns = {
+local hash_patterns = {
   -- git commit ranges: hash..hash (two-dot) and hash...hash (three-dot),
   -- matched as one block. Must precede the bare-hash/jj rules below so the
   -- whole range wins over selecting a single side.
@@ -294,7 +294,9 @@ local quick_select_patterns = {
   -- k-z alphabet. The rule above cannot reach them: no \b falls after letter 12.
   -- Their 8-letter short form is already covered by the rule above.
   "\\b[k-z]{32}\\b",
+}
 
+local quick_select_patterns = {
   -- The text typed after a ❯ prompt (Claude Code's TUI), trimmed at both ends.
   -- Why \x{a0}: Claude Code puts a no-break space after the ❯, not a plain one.
   -- Why it sits before the path rule: a prompt like `/40-land-branch` starts
@@ -345,8 +347,23 @@ local quick_select_patterns = {
   "(?:[.\\w\\-@~]+)?(?:/+[^/\\s│]+)+(?<![.,;:!?)\\]>\"'`])",
 }
 
+for i, p in ipairs(hash_patterns) do
+  table.insert(quick_select_patterns, i, p)
+end
+
 config.quick_select_patterns = quick_select_patterns
 config.quick_select_remove_styling = true
+
+-- Option+Shift+Space: quick select over hashes only. `patterns` replaces the
+-- built-in and configured sets, so the bare git sha (a built-in) is listed here.
+local hash_only_patterns = { "\\b[0-9a-f]{7,64}\\b" }
+for i, p in ipairs(hash_patterns) do
+  table.insert(hash_only_patterns, i, p)
+end
+table.insert(config.keys, {
+  key = ' ', mods = 'ALT|SHIFT',
+  action = wezterm.action.QuickSelectArgs { patterns = hash_only_patterns },
+})
 
 -- ============================================================================
 -- DYNAMIC CONFIGURATION (ZEN MODE)
