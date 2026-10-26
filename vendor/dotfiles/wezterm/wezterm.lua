@@ -294,6 +294,9 @@ local hash_patterns = {
   -- k-z alphabet. The rule above cannot reach them: no \b falls after letter 12.
   -- Their 8-letter short form is already covered by the rule above.
   "\\b[k-z]{32}\\b",
+
+  -- IPFS CIDv0 (cybergraph particles): Qm and 44 base58 characters.
+  "\\bQm[1-9A-HJ-NP-Za-km-z]{44}\\b",
 }
 
 local quick_select_patterns = {
