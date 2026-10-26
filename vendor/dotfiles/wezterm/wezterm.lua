@@ -336,6 +336,12 @@ local quick_select_patterns = {
   -- gets no label of its own -- only the whole span.
   "`([^`\\n]{2,200}?)`",
 
+  -- Bare file names: README.md, toolkit.nu, Cargo.lock.
+  -- Why a fixed list of extensions: any extension would also match field
+  -- access (config.keys, wezterm.action) and bare domains (github.com).
+  -- The lookbehind keeps it off the tail of a path, a $var.field or a name.
+  "(?<![\\w.\\-/@~$])[\\w-]+(?:\\.[\\w-]+)*\\.(?:md|nu|nuon|lua|toml|json|yaml|yml|kdl|rs|py|sh|txt|csv|lock)\\b",
+
   -- File paths: absolute, relative and ~-prefixed; strips trailing punctuation
   -- (. , ; : " ' `) via lookbehind.
   -- Why the leading (?:[.\w\-@~]+)?: wezterm concatenates our patterns and its
