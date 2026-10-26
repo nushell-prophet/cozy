@@ -340,7 +340,7 @@ local quick_select_patterns = {
   -- Why a fixed list of extensions: any extension would also match field
   -- access (config.keys, wezterm.action) and bare domains (github.com).
   -- The lookbehind keeps it off the tail of a path, a $var.field or a name.
-  "(?<![\\w.\\-/@~$])[\\w-]+(?:\\.[\\w-]+)*\\.(?:md|nu|nuon|lua|toml|json|yaml|yml|kdl|rs|py|sh|txt|csv|lock)\\b",
+  "(?<![\\w.\\-/@~$])[\\w-]+(?:\\.[\\w-]+)*\\.(?:md|nu|nuon|lua|toml|json|yaml|yml|kdl|rs|py|sh|txt|csv|lock|pub|patch|ots|sig|jsonl|hjson|scm|png)\\b",
 
   -- File paths: absolute, relative and ~-prefixed; strips trailing punctuation
   -- (. , ; : " ' `) via lookbehind.
