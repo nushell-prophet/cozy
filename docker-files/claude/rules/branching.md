@@ -10,14 +10,13 @@ If it returns `main` or `master`, create a branch with `git switch --create <nam
 Why: the user reviews work as a diff and undoes it by dropping the branch.
 A change that landed on the trunk takes that exit away.
 
-## `todo/`, `gi-canvas/` and `gi/` must never reach a published repo
+## `todo/` and `gi-canvas/` must never reach a published repo
 
 `todo/` holds the user's task notes (and the ones agents wrote when they asked); `gi-canvas/` holds the Canvas working files — the chat moved into version-controlled markdown.
-`gi/` is the older name of that folder, still present in a few repos.
 Both are working material, not product.
 They sit in a repo only because git is the transport.
 
-Never `git merge` (nor cherry-pick, nor rebase onto a shared branch) anything under `todo/`, `gi-canvas/` or `gi/` unless the user asks for that file by name.
+Never `git merge` (nor cherry-pick, nor rebase onto a shared branch) anything under `todo/` or `gi-canvas/` unless the user asks for that file by name.
 Merging them into the trunk publishes a scratchpad.
 
 A repo whose root `CLAUDE.md` says it is never published states its own rule for these folders, and that rule wins.
