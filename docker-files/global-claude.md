@@ -246,20 +246,22 @@ Don't implement an idea you haven't understood: they want the architecture kept 
 - Path, filename, or target location is ambiguous
 - Intent is genuinely unclear and a wrong guess is costly
 
-### One step at a time
+### Work to the end, then show the result
 
-The user needs to keep up, not just approve.
-Chained approvals are how that breaks: agent proposes, user says yes, agent proposes again — after a few rounds nobody can tell what happened or which step to undo.
-Speed is not the problem; legibility is.
-Once step 3 stands on step 1, reverting step 1 means unpicking three.
+The user checks the result, not each proposal.
+A diff is exact, while a plan has to be rebuilt in the head before a "go", so a stop per step costs more than it saves.
+So on a task branch, do the whole task: edit, commit atomically, go on, and report at the end.
+Each commit is a rollback point: the user reverts the ones they dislike.
+Why: the maintainer granted this by hand again and again ("commit atomically, I'll check the diff": 115 prompts in 101 sessions, counted on 2026-10-28).
 
 - **A question is not an order.** "Can we do X?", "Should we X?", "Is X possible before Y?" asks for an answer.
   Answer it — the shape you would build, in a few lines — and stop.
   Do not deliver X.
-- **One reviewable step per turn.** When a task splits into steps that build on each other, do the first, report it, wait.
-  Not the chain.
-- **Say where the boundary is.** End with the next step and that you are waiting, so the user can say "go" without rebuilding the plan in their head.
-- **Never on inference:** rewriting branch history, touching `main`, editing a global config, pushing to a remote.
+- **Show a changed command as a terminal before and after.** When the change alters what a non-interactive command does, and the difference can be shown, report the command and its output before the change, then the same command and its output after it.
+  Run both versions and paste the real output, in the dotnu shape (`# =>` lines); say where the "before" came from (an old commit, or earlier in the session), and mark output that could not be run `not run`.
+  Skip it when the diff alone shows the effect.
+  Why: the user checks behaviour faster from a terminal than from a description of the code.
+- **Stop only where a revert is not one commit away:** rewriting the history of shared commits, touching `main` or `master`, editing a global config, pushing to a remote.
   Propose the exact command instead.
 
 ### Long flags always

@@ -91,7 +91,7 @@ A markdown brief that tells the agent what cozy built around it: available tools
 Its most load-bearing line is not a fact but an instruction: end any nu pipeline you are going to read with `| to nuon --pretty`, because a stock one-shot `nu` renders an 80-column box table that drops columns and truncates names without saying so.
 That it is an instruction and not a mechanism is a decision, not an omission — a `nu` wrapper injecting a display config was built and reverted, since `--config` is an opt-out (and the documented `nu --config …/modules-core.nu -c …` form was exactly the one it could not reach), while a pipeline ending in `| table` renders to a string before any config is consulted.
 An instruction cannot rot; its weakness is that it fires only when the agent remembers.
-Below the catalog, a `# Working Rules` half carries the rules that hold for any cozy user — collaboration, one step at a time, long flags, fail-fast, verification, commits, comments, git-friendly prose, conciseness; the branch rules are in `claude/rules/branching.md` instead.
+Below the catalog, a `# Working Rules` half carries the rules that hold for any cozy user — collaboration, working to the end, long flags, fail-fast, verification, commits, comments, git-friendly prose, conciseness; the branch rules are in `claude/rules/branching.md` instead.
 It is the neutral part of the maintainer's own global `CLAUDE.md`, kept in sync with it by hand; dotfiles ships no `CLAUDE.md`, so a user's personal instructions sit above the marked block and Step 6 leaves them alone.
 **Code:** [`docker-files/global-claude.md`](../docker-files/global-claude.md)
 
