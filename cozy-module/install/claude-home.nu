@@ -59,4 +59,9 @@ export def main [cozy_root: path]: nothing -> nothing {
         }
     }
     print $"deployed ($items | length) skills, agents, output styles and mods into ($claude_dir)"
+
+    # Why claude-nu installs this one itself: the gi-canvas skill is built from
+    # the module, with tidy.md written from the gi plugin's canvas-tidy skill,
+    # so no skill repo holds it. A spawned nu, because `use` needs a parse-time path.
+    ^nu --no-config-file --commands 'use ~/repos/claude-nu/claude-nu; print $"installed the gi-canvas skill into (claude-nu gi install-skill)"'
 }

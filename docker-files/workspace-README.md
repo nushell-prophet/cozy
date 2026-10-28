@@ -89,5 +89,5 @@ Edit them freely.
 **Home & Claude**
 
 - `~/.claude/CLAUDE.md` — cozy's tool catalog and working rules are appended here
-- `~/.claude/settings.json`, `keybindings.json`, `rules/` — Claude Code settings and rules from cozy's `docker-files/claude/`; `skills/`, `agents/`, `output-styles/`, `mods/` from `my-claude-skills` and `nushell-skills`; bootstrap merges the agent's git identity and `JJ_CONFIG` into `settings.json`'s `env`
+- `~/.claude/settings.json`, `keybindings.json`, `rules/` — Claude Code settings and rules from cozy's `docker-files/claude/`; `skills/`, `agents/`, `output-styles/`, `mods/` from `my-claude-skills` and `nushell-skills`, and the `gi-canvas` skill from `claude-nu gi install-skill`; bootstrap merges the agent's git identity and `JJ_CONFIG` into `settings.json`'s `env`
 - `~/.claude.json` — Nushell's built-in MCP server (`nu --mcp`) is registered (gives the agent `evaluate` / `list_commands` / `command_help`), and `externalEditorContext` is on (the last response shows in the external editor)
