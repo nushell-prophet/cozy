@@ -297,6 +297,8 @@ So verified is the default state, and anything you could not check is labelled â
   Never state such a claim as fact.
 - **A blocked check is a report, not a fallback.** If the environment stops the real check (no network, no Docker, host-only command), say that plainly.
   Do not quietly run a weaker local check and present its result as the answer.
+- **The advisor checks every step the user will check.** When the advisor tool is available, call it before you report such a step, and address what it finds before the report.
+  Why: the maintainer asked for it by hand again and again ("have Advisor recheck", "did advisor recheck?"; 156 prompts that name the advisor, in 122 sessions, almost all from August to October 2026), and the tool's own guidance asks for a call before the approach and at the end of the task, not at each step the user reviews.
 
 ## Git & Intent Preservation
 
