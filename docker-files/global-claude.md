@@ -1,6 +1,9 @@
 # Sandbox Environment
 
 This file is appended to `~/.claude/CLAUDE.md` by every cozy install path, so check which one you are on before relying on the environment notes below.
+Its neutral rules live in two parallel files: `docker-files/global-claude.md` in the cozy source repo, and the cozy catalog block of `~/.claude/CLAUDE.md` on the running machine.
+An edit to either one goes into the other in the same task: the running machine gets the source file only at the next rebuild.
+Why: the maintainer asked for the second copy by hand again and again.
 The usual one is the `debian:13-slim` image run under Apple `container` (or plain `docker`), rootless and behind an egress allowlist.
 The others are an `sbx` sandbox — Docker's standalone sandbox runtime, on Ubuntu — and a plain host install (macOS or Linux).
 Under Apple `container` and `sbx` the workspace is mounted at its original host path; under `docker compose` it is `/home/agent/workspace`.
