@@ -116,6 +116,8 @@ def "an untouched verbose template aborts with a custom comment char" [] {
 @test
 def "a verbose commit with a message gets a change-id and no diff" [] {
     let repo = $in.repo
+    # Why: this test compares the whole message, and an agent's run would add a Session trailer.
+    hide-env --ignore-errors CLAUDE_CODE_SESSION_ID
 
     commit-file $repo base.txt base "base"
     git install-change-id-hook $repo
@@ -129,6 +131,52 @@ def "a verbose commit with a message gets a change-id and no diff" [] {
     let msg = ^git -C $repo log --max-count 1 --format=%B | str trim
 
     assert ($msg =~ '^subject\n\nChange-Id: [k-z]{32}$') $"unexpected message: ($msg)"
+}
+
+@test
+def "a commit inside a claude session names the session" [] {
+    let repo = $in.repo
+    git install-change-id-hook $repo | ignore
+
+    with-env {CLAUDE_CODE_SESSION_ID: 'session-one'} { commit-file $repo a.txt one 'add' | ignore }
+
+    assert equal (^git -C $repo log -1 --format='%(trailers:key=Session,valueonly)' | str trim) 'session-one'
+}
+
+@test
+def "a commit outside a claude session has no session trailer" [] {
+    let repo = $in.repo
+    git install-change-id-hook $repo | ignore
+
+    hide-env --ignore-errors CLAUDE_CODE_SESSION_ID
+    commit-file $repo a.txt one 'add' | ignore
+
+    assert equal (^git -C $repo log -1 --format='%(trailers:key=Session,valueonly)' | str trim) ''
+    assert (^git -C $repo log -1 --format='%(trailers:key=Change-Id,valueonly)' | str trim | is-not-empty)
+}
+
+@test
+def "an amend in a later session keeps the first session" [] {
+    let repo = $in.repo
+    git install-change-id-hook $repo | ignore
+
+    with-env {CLAUDE_CODE_SESSION_ID: 'session-one'} { commit-file $repo a.txt one 'add' | ignore }
+    with-env {CLAUDE_CODE_SESSION_ID: 'session-two'} { ^git -C $repo commit --quiet --amend --no-edit }
+
+    assert equal (^git -C $repo log -1 --format='%(trailers:key=Session,valueonly)' | str trim) 'session-one'
+}
+
+@test
+def "an amend commit in a later session keeps the session of its target" [] {
+    let repo = $in.repo
+    git install-change-id-hook $repo | ignore
+
+    let target = with-env {CLAUDE_CODE_SESSION_ID: 'session-one'} { commit-file $repo a.txt one 'add' }
+    with-env {CLAUDE_CODE_SESSION_ID: 'session-two'} {
+        ^git -C $repo commit --quiet --allow-empty --message $"amend! ($target)" --message 'new subject'
+    }
+
+    assert equal (^git -C $repo log -1 --format='%(trailers:key=Session,valueonly)' | str trim) 'session-one'
 }
 
 @test
@@ -401,6 +449,8 @@ def "an amend commit named by sha keeps the change-id of its target" [] {
 @test
 def "an amend that carries an empty change-id gets a fresh one" [] {
     let repo = $in.repo
+    # Why: this test compares the whole message, and an agent's run would add a Session trailer.
+    hide-env --ignore-errors CLAUDE_CODE_SESSION_ID
 
     commit-file $repo base.txt base "base"
     git install-change-id-hook $repo

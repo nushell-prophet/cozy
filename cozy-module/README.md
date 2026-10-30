@@ -77,6 +77,10 @@ The id survives amend, rebase and squash, which a sha does not, so it is what a 
 Its first 24 letters are random and its last 8 are the unix time it was minted, so a prefix stays unique and the tail dates the change through every rewrite.
 The hook adds an id and never replaces one, and leaves a comment-only message alone so an empty commit still aborts, `commit --verbose` included, whatever the comment character.
 An older copy of this hook is replaced and reported as `updated`: a copy is recognised as this hook by its header comment on line 2, which every version carries.
+Inside a Claude Code session the same hook adds a `Session` trailer with the session id, so `git log -1 --format='%(trailers:key=Session,valueonly)'` leads from a commit to the session that wrote its message.
+An amend with the same message, a rebase and an `amend! <sha>` keep that session; a reword with a new message names the new session, and a landing squash names the landing session, so the real sessions of a commit with an `Archive:` trailer are on the archived branch.
+An amend of a commit with no `Session` trailer adds the current session, because the hook cannot tell an amend from a new commit.
+A command typed with `!` inside a session counts as made in that session.
 It also installs `hooks/applypatch-msg`, which hands each message `git am` applies to that same hook, since `am` never runs `commit-msg` itself.
 `git revert` does not run `commit-msg` either, so `hooks/prepare-commit-msg` forwards a revert to it, and it rewrites "This reverts commit <sha>." to "This reverts change <change-id>.", which still names the reverted commit after a rebase.
 A rebase or a cherry-pick that replays an old revert leaves its message unchanged.

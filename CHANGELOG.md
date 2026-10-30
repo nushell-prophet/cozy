@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- The `commit-msg` hook adds a `Session` trailer with the Claude Code session id to a commit made inside a session, so a commit leads to its conversation; run `cozy git install-change-id-hook` again to update a repo.
+
 ## [0.5.2] - 2026-10-19
 
 ### Changed

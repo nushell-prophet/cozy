@@ -27,28 +27,49 @@ if [ -z "$(sed '/^.* -\{24\} >8 -\{24\}$/,$d' "$msg" | git stripspace --strip-co
     exit 0
 fi
 
-if git interpret-trailers --parse <"$msg" | grep -q '^Change-Id:'; then
-    exit 0
-fi
-
 # Why: `rebase --autosquash` puts the whole message of an `amend!` commit onto its target, so a
-# fresh id here would replace the target's id. The target is resolved only when it is a commit
-# name, `amend! <sha>`. Why one id only: a commit that carries two names no single change, as in
-# prepare-commit-msg.
+# fresh id here would replace the target's id, and the current session would replace the target's.
+# The target is resolved only when it is a commit name, `amend! <sha>`.
 # Not by subject, as autosquash also matches: the hook cannot see the rebase range, so with two
 # commits of one subject it can copy the id of the other one, and one id names two changes.
 # A subject only costs a fresh id.
-id=
+sha=
 subject=$(git stripspace --strip-comments <"$msg" | sed -n '1p')
 case "$subject" in
 'amend! '*)
     sha=$(git rev-parse --verify --quiet "${subject#amend! }^{commit}" 2>/dev/null || true)
-    if [ -n "$sha" ]; then
-        id=$(git log -1 --format='%(trailers:key=Change-Id,valueonly,separator=%x2C)' "$sha")
-    fi
-    case "$id" in *,*) id= ;; esac
     ;;
 esac
+
+# Why: interpret-trailers needs the last line terminated. `git merge --no-edit` writes its message
+# without a final newline, and then the trailer lands on the subject line instead of in a block:
+# `%(trailers)` reads nothing and the next amend mints a second id.
+if [ -n "$(tail -c 1 "$msg")" ]; then
+    printf '\n' >>"$msg"
+fi
+
+# Why: a commit names the conversation that wrote its message, so "did I ask for this" is one lookup.
+# Why doNothing: an amend or a rebase that keeps the message keeps the session that wrote it.
+# A reword with a new message names the new session; a landing squash names the landing session.
+# Why the target's value: an `amend!` target keeps its own session, or stays without one.
+session=${CLAUDE_CODE_SESSION_ID:-}
+if [ -n "$sha" ]; then
+    session=$(git log -1 --format='%(trailers:key=Session,valueonly,separator=%x2C)' "$sha")
+fi
+if [ -n "$session" ]; then
+    git interpret-trailers --in-place --if-exists doNothing --trailer "Session: $session" "$msg"
+fi
+
+if git interpret-trailers --parse <"$msg" | grep -q '^Change-Id:'; then
+    exit 0
+fi
+
+# Why one id only: a commit that carries two names no single change, as in prepare-commit-msg.
+id=
+if [ -n "$sha" ]; then
+    id=$(git log -1 --format='%(trailers:key=Change-Id,valueonly,separator=%x2C)' "$sha")
+fi
+case "$id" in *,*) id= ;; esac
 
 # jj's reverse-hex alphabet: 12 random bytes and the unix time, written as 32 letters from z to k.
 # Letters can never read as a git sha. The tr -d in the middle is not optional: tr translates only
@@ -61,13 +82,6 @@ if [ -z "$id" ]; then
     random=$(dd if=/dev/urandom bs=12 count=1 2>/dev/null | od -An -v -tx1 | tr -d ' \n')
     stamp=$(printf '%08x' "$(date +%s)")
     id=$(printf '%s%s' "$random" "$stamp" | tr '0123456789abcdef' 'zyxwvutsrqponmlk')
-fi
-
-# Why: interpret-trailers needs the last line terminated. `git merge --no-edit` writes its message
-# without a final newline, and then the trailer lands on the subject line instead of in a block:
-# `%(trailers)` reads nothing and the next amend mints a second id.
-if [ -n "$(tail -c 1 "$msg")" ]; then
-    printf '\n' >>"$msg"
 fi
 
 # interpret-trailers, not an append: where the body ends in prose it opens a block with a blank
