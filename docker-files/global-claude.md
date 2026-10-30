@@ -402,6 +402,9 @@ Never the Russian guillemets `« »`, never the curly `" "` / `„ "`.
 
 When pointing to another file in repo docs, prefer the bare relative path in backticks — `../install.md` — over a Markdown link like `[install.md](../install.md)`.
 
+- The path is relative to the file it is written in, not to the working directory: in `todo/a.md`, its sibling is `b.md`, not `todo/b.md`.
+  A path inside a command stays relative to the directory the command runs in.
+  Why: the user follows these paths with `gf` in helix, and helix resolves a relative path against the directory of the open document, not against the cwd.
 - The path is the whole point; the link wrapper just adds noise and a second copy of the same string to keep in sync.
 - Use a real `[text](path)` link only when the link text says something the path doesn't, or when the doc is rendered somewhere the link must be clickable.
 
