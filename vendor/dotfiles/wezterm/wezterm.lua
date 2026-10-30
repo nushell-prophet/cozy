@@ -297,6 +297,14 @@ local hash_patterns = {
 
   -- IPFS CIDv0 (cybergraph particles): Qm and 44 base58 characters.
   "\\bQm[1-9A-HJ-NP-Za-km-z]{44}\\b",
+
+  -- Their short form: Qm and 8 more, 10 characters in all, planned for quote
+  -- and block tags such as <!-- Qm3adfKK7w --> ... <!-- /Qm3adfKK7w -->.
+  -- Why the /? and the capture group: in the closing tag the path rule starts
+  -- at the `/` and would copy `/Qm3adfKK7w`. This rule starts there too, wins
+  -- by its earlier place, and wezterm copies the capture group, the CID alone.
+  -- Inside a real path (seals/Qm3adfKK7w) the path rule still wins.
+  "/?\\b(Qm[1-9A-HJ-NP-Za-km-z]{8})\\b",
 }
 
 local quick_select_patterns = {

@@ -179,6 +179,15 @@ export def copy-link-tag [
 
 # Commit in a Zellij pane that takes this pane's place until git exits (the `+ g` / `+ G`
 # bindings); --add stages the whole file first. Returns only when the pane closes.
+# Below the scissors line git's editor shows the staged diff word by word, or line by line
+# with --line-diff (the `+ + g` / `+ + G` bindings).
+# Why word by word: the user commits mostly markdown, where a line is a whole sentence and a
+# line diff hides the one word that moved.
+# Not `git commit --verbose` for it because: git has no option to make that diff a word diff.
+# So the word diff goes into a --template after a scissors line of its own, and
+# --cleanup=scissors drops it from the message.
+# Why only a `# <path>` line per file and the changed text: the user needs only what changed;
+# the blob hashes, the `@@` line numbers and git's status are noise there.
 # Why the refusal: a Helix command list runs on after a failed command, so when the save
 # fails, :buffer-close! fails with it and leaves the view on [scratch], whose expanded path
 # lands in Helix's cwd, where git would commit whatever is staged in that repo.
@@ -188,6 +197,7 @@ export def copy-link-tag [
 export def commit [
     file: string # buffer path (Helix %{buffer_name})
     --add # stage the whole file before committing
+    --line-diff # show the diff line by line, as `git commit --verbose` does
 ]: any -> nothing {
     let file = $file | path expand
 
@@ -195,7 +205,31 @@ export def commit [
     let dir = $file | path dirname
 
     if $add { ^git -C $dir add $file }
-    ^zellij run --in-place --close-on-exit --block-until-exit --name commit --cwd $dir -- hx-nu --commands 'try { git commit --verbose } catch { null | input "press Enter" }' | ignore
+
+    let template = if $line_diff { null } else { mktemp --tmpdir commit-template.XXXXXX }
+    if $template != null {
+        let root = ^git -C $dir rev-parse --show-toplevel
+        ^git -C $root diff --cached --name-only -z
+        | split row (char nul)
+        | compact --empty
+        | each {|f|
+            ^git -C $root diff --cached --word-diff --no-color -- $f
+            | lines
+            | skip until { $in starts-with '@@' }
+            | each { if $in starts-with '@@' { '' } else { } }
+            | prepend $"# ($f)"
+            | str join (char newline)
+        }
+        | str join "\n\n"
+        | $"\n# ------------------------ >8 ------------------------\n($in)\n"
+        | save --force $template
+    }
+    let git_commit = if $line_diff { 'git commit --verbose' } else {
+        $"git commit --no-status --cleanup=scissors --template r#'($template)'#"
+    }
+
+    ^zellij run --in-place --close-on-exit --block-until-exit --name commit --cwd $dir -- hx-nu --commands $"try { ($git_commit) } catch { null | input 'press Enter' }" | ignore
+    if $template != null { rm $template }
 }
 
 # The message `quick-commit` writes: the user's markers (2-char `!!` `??` `%%` at a line
@@ -344,17 +378,21 @@ export def send-to-nu [file: path]: any -> nothing {
     ^zellij action send-keys --pane-id $pane Enter
 }
 
-# List the keys of one normal-mode table of config.toml (`+`, `\`) with what each does:
+# List the keys of one normal-mode table of config.toml (`+`, `\`, `+ +`) with what each does:
 # the `#…→` label a prompt binding shows, else the comment at the end of the key line,
 # else the first sentence of the comment above the key, else the command itself.
 # Why: Helix's own `+` popup shows a multi-command key only as "[Multiple commands]".
 # Why one table: `?` of each table lists only that table's own keys.
 # Parses the raw text, because a TOML parser drops the comments.
 export def keys [
-    table: string # the key that opens the table: `+` or `\`
+    table: string # the keys that open the table, space-separated: `+`, `\` or `+ +`
     config: path = (path self | path dirname | path join config.toml)
 ]: nothing -> table<key: string, does: string> {
-    let header = $"[keys.normal.\"($table | str replace --all '\' '\\')\"]"
+    let header = $table
+    | split row ' '
+    | each { $'"($in | str replace --all '\' '\\')"' }
+    | str join '.'
+    | $"[keys.normal.($in)]"
     let label = {|line| $line | parse --regex ':[a-z-]+ #(?<l>.*)→$' | get --optional 0.l }
 
     open --raw $config
