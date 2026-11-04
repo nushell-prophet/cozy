@@ -49,6 +49,7 @@ Two files carry these.
 - **nu-cmd-stack** — command-history stacking.
   Prefix `cmd-stack`.
   The autoload runs `cmd-stack init` right after the `use` — that's what registers the keybindings (ctrl+s push, ctrl+alt+j/k scroll); a bare `use` binds no keys.
+  An agent writes a list of commands for the user as a stack file in `~/.local/share/nushell/cmd-stacks/`; the user loads it with `cmd-stack load <Tab>` when ready and runs the commands with ctrl+alt+k.
   Repo `nushell-prophet/nu-cmd-stack`.
 
 ## Vendored but not autoloaded (need a manual `use`)
