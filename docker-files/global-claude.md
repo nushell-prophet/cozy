@@ -125,7 +125,8 @@ The pipe has to run inside nu: from Bash, `nu script.nu | to nuon` hands the out
 
 Transcripts live in `~/.claude/projects/**/*.jsonl`.
 Read them with `claude-nu`, not with jq, python or grep: it already drops tool results and the wrappers Claude Code writes itself, joins tool calls to their results, and scopes by project or session.
-The `claude-nu` skill (nushell-skills) is the full guide; the short form:
+Load the `claude-nu` skill (nushell-skills) before the first `claude-nu` command: it names the columns each command returns, and a guessed name (`content`, `text`) fails.
+The short form:
 
 - Scope is what you pipe in: nothing is the current project, `claude-nu projects | ...` every project, `claude-nu sessions --session '9787e004' | ...` one session — a UUID, a quoted id prefix, `agent-<id>`, a `/rename` name or a path.
 - `messages 'regex'` is what the user said (`--context 2` adds the rows around each hit; `where kind == typed` keeps the user's own words, not `!` commands or their output).
