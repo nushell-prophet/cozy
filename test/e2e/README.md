@@ -39,7 +39,7 @@ Every test owns a uniquely-named session and never touches the user's live sessi
 |---|---|---|
 | `start NAME` / `stop CTX` | — | session + PTY-client lifecycle (returns/takes `{session, job}`) |
 | `run-cmd CTX ...cmd` / `run-nu CTX` | — | spawn a pane; `run-nu` waits for the nu prompt |
-| `type` / `key` / `focus` | input | `write-chars` / `send-keys` / `focus-pane-id` (optional `--pane`) |
+| `type-text` / `key` / `focus` | input | `write-chars` / `send-keys` / `focus-pane-id` (optional `--pane`) |
 | `screen` / `wait-text` | **rendered** | `dump-screen` (needs the PTY client); `wait-text` polls until a regex matches |
 | `panes` / `wait-pane-command` | **clientless state** | `list-panes --json`; poll a pane until its `pane_command` matches |
 | `tab-names` / `wait-tab` / `new-tab` | clientless state | `query-tab-names`; poll until a tab name appears; open a tab |

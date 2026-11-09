@@ -83,7 +83,7 @@ export def run-nu [ctx: record, --cwd: string]: nothing -> string {
 }
 
 # Type literal characters into a pane (no submit). Targets focused pane unless --pane.
-export def type [ctx: record, text: string, --pane: string]: nothing -> nothing {
+export def type-text [ctx: record, text: string, --pane: string]: nothing -> nothing {
     mut args = [--session $ctx.session action write-chars $text]
 
     if $pane != null { $args = ($args | append [--pane-id $pane]) }

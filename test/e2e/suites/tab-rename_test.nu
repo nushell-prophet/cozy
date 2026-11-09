@@ -36,7 +36,7 @@ def "cd renames the tab to the dir basename" [] {
 
     let pane = run-nu $it.ctx
 
-    type $it.ctx $"cd ($dir)" --pane $pane
+    type-text $it.ctx $"cd ($dir)" --pane $pane
     key $it.ctx "Enter" --pane $pane
 
     let names = wait-tab $it.ctx "myproject"
@@ -55,14 +55,14 @@ def "second tab in a same-named dir gets the dot-N suffix" [] {
 
     let p1 = run-nu $it.ctx
 
-    type $it.ctx $"cd ($a)" --pane $p1
+    type-text $it.ctx $"cd ($a)" --pane $p1
     key $it.ctx "Enter" --pane $p1
     wait-tab $it.ctx "proj" | ignore
 
     new-tab $it.ctx
     let p2 = run-nu $it.ctx
 
-    type $it.ctx $"cd ($b)" --pane $p2
+    type-text $it.ctx $"cd ($b)" --pane $p2
     key $it.ctx "Enter" --pane $p2
 
     let names = wait-tab $it.ctx "proj·2"
@@ -80,7 +80,7 @@ def "leading dashes are stripped from the tab name" [] {
 
     let pane = run-nu $it.ctx
 
-    type $it.ctx $"cd ($dir)" --pane $pane
+    type-text $it.ctx $"cd ($dir)" --pane $pane
     key $it.ctx "Enter" --pane $pane
 
     # hook does: str replace -r '^-+' '' → "dashy"

@@ -45,7 +45,7 @@ def teardown [] {
 }
 
 def launch-lstd [it: record]: nothing -> string {
-    type $it.ctx "use ~/.config/zellij/todo-nu/todo.nu lstd; lstd" --pane $it.pane
+    type-text $it.ctx "use ~/.config/zellij/todo-nu/todo.nu lstd; lstd" --pane $it.pane
     key $it.ctx "Enter" --pane $it.pane
     wait-pane-command $it.ctx $it.pane 'fzf' | ignore
     # fzf draws a "current/total" counter once the picker is up

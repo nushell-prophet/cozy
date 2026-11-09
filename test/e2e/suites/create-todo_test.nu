@@ -35,7 +35,7 @@ def teardown [] {
 }
 
 def launch-create-todo [it: record]: nothing -> nothing {
-    type $it.ctx "use ~/.config/zellij/todo-nu/todo.nu create-todo; create-todo" --pane $it.pane
+    type-text $it.ctx "use ~/.config/zellij/todo-nu/todo.nu create-todo; create-todo" --pane $it.pane
     key $it.ctx "Enter" --pane $it.pane
     # Gate on helix's RENDERED status line, not pane_command: pane_command flips
     # to "hx" the instant it spawns, but helix hasn't entered raw mode / drawn its
@@ -72,7 +72,7 @@ def "quitting unmodified deletes the file and the new todo folder" [] {
     assert equal (todo-md-files $it.tmp | length) 1
 
     # quit without editing (helix opens in NOR mode): :q
-    type $it.ctx ":q" --pane $it.pane
+    type-text $it.ctx ":q" --pane $it.pane
     key $it.ctx "Enter" --pane $it.pane
     wait-helix-gone $it
 
@@ -89,9 +89,9 @@ def "editing then saving persists the file" [] {
 
     # insert a body, escape, write-quit
     key $it.ctx "i" --pane $it.pane
-    type $it.ctx "real task body" --pane $it.pane
+    type-text $it.ctx "real task body" --pane $it.pane
     key $it.ctx "Esc" --pane $it.pane
-    type $it.ctx ":wq" --pane $it.pane
+    type-text $it.ctx ":wq" --pane $it.pane
     key $it.ctx "Enter" --pane $it.pane
     wait-helix-gone $it
 
