@@ -1,7 +1,7 @@
 ---
 name: 40-land-branch
-description: Land a finished branch on the trunk as a coherent commit — fold the rollback commits into the work they correct, carry the branch's reasoning into the message, archive the old history in a tag, keep `todo/`, `gi-canvas/` and `gi/` off the trunk, then merge. Use when the user says "land the branch", "land this", "merge to main", "finish this branch", or "squash and merge".
-argument-hint: [--grouped]
+description: Land a finished branch on the trunk as a coherent commit — fold the rollback commits into the work they correct, carry the branch's reasoning into the message, archive the old history in a tag, keep `todo/` and `gi-canvas/` off the trunk, then merge. Use when the user says "land the branch", "land this", "merge to main", "finish this branch", or "squash and merge".
+argument-hint: [--grouped] [--no-confirm]
 allowed-tools: Bash(git *), Read, Write, Edit
 ---
 
@@ -12,7 +12,7 @@ The moment the branch lands none of that may survive — not as its own commit, 
 A later agent reading `git log` on the trunk should find the coherent story the branch tells, not the back-and-forth it took to arrive there.
 
 So the branch lands as the smallest sequence of commits that story actually has — usually **one**, squashed; a genuine few when the branch bundles more than one (see `references/grouped.md`).
-Either way its full history survives in a tag, and the working material (`todo/`, `gi-canvas/`, and `gi/`, the older name of `gi-canvas/`) never reaches the trunk at all.
+Either way its full history survives in a tag, and the working material (`todo/` and `gi-canvas/`) never reaches the trunk at all.
 
 The tag is insurance against the rewrite: `reset --soft` makes the original commits unreachable, and the tag is what keeps them.
 When the branch is already a single clean commit there is no rewrite, it lands on the trunk untouched, and a tag pointing at it preserves nothing that the trunk does not already hold.
@@ -27,6 +27,25 @@ So do not stop one command short and hand back a merge command to paste.
 
 What the exception buys is one confirmation, not silence: show the whole plan at step 8, wait, then run it.
 Everything before that stop is read-only.
+
+`--no-confirm` gives that confirmation in advance:
+the agent does not wait at step 8,
+and the report of step 14 carries the plan.
+The advisor call of step 8 still runs.
+The flag answers one question: "run this plan?".
+A decision the plan cannot make stays with the user,
+so the agent still stops before step 9 when:
+
+- step 5a finds a content fork-point, because dropped commits do not show in a diff;
+- step 8 finds a chapter of another feature;
+- `references/grouped.md` needs a whole-hunk patch, or merges two chapters that share one hunk, because the user takes on that risk;
+- the advisor finds a problem that needs the decision of the user.
+
+A contrast line from step 7c is cut at step 11b and named in the report, because the diff shows the cut.
+A branch from step 13b is not re-based and the report names it as declined, because that rewrite is work the user did not name.
+A conflict in the rebase of step 13 stops the landing after step 9 too:
+the agent does not resolve it,
+and the archive tag holds the old tip.
 
 Two things stay off-limits even here: **never push**, and never run this on the trunk itself.
 
@@ -120,7 +139,7 @@ Nothing is changed until the user confirms.
    When the folded bodies give one reason per file,
    merge them into that one reason:
    a line per file retells the diff.
-   If the branch has a canvas in `gi-canvas/` or `gi/` or the current session holds reasoning that never reached a commit body, pull it in here — the tag preserves the old bodies, but only this commit is read on the trunk.
+   If the branch has a canvas in `gi-canvas/` or the current session holds reasoning that never reached a commit body, pull it in here — the tag preserves the old bodies, but only this commit is read on the trunk.
 
    **Strip every `Change-Id:` trailer from what you fold in.**
    The `commit-msg` hook adds an id only to a message that has none, so a trailer copied out of a folded body becomes the landing commit's own id — the same id as a commit the archive tag keeps, a duplicate the skill itself manufactured.
@@ -140,41 +159,36 @@ Nothing is changed until the user confirms.
 
    **The body leaves this repo — write it for whoever receives it.**
    The trunk is not the last stop.
-   A published repo gets cloned; a monorepo exports each subdirectory to the recipient it was imported from, and that export copies the message byte for byte — `mono check` verifies exactly that equality — so nothing downstream can repair a body.
-   This is the only moment, and the test is one question: can a reader who has nothing but the receiving repo follow every pointer in this body?
-   These shapes fail it; the first four were measured on a real export where 62 of 141 patches failed the question while the prose itself was fine everywhere:
+   A published repo gets cloned, and a clone keeps the message as it is: a repair after that rewrites the trunk that others already hold.
+   This is the only moment, and the test is one question: can a reader who has nothing but a clone of the trunk follow every pointer in this body?
+   These shapes fail it:
 
-   - **A `todo/`, `gi-canvas/` or `gi/` path.**
-     Step 11 drops those files from the trunk, and in a monorepo, where they do land, they still never cross: `mono.yml` excludes `todo/` from the export, and a `gi-canvas/` or `gi/` at the monorepo root sits outside every exported subdirectory — one inside a subdirectory crosses unless `mono.yml` excludes it, so check where it sits.
-     Either way the pointer is dead in every recipient, by design.
+   - **A `todo/` or `gi-canvas/` path.**
+     In a published repo step 11 drops those files from the trunk, so the pointer is dead in every clone, by design.
      A note is not a reference, it is the source you are copying from: what the commit took from it goes into the body itself.
-   - **The monorepo's point of view.**
-     A path carrying the mono's subdirectory prefix, an absolute `/Users/...` path, the name of the directory that holds the recipients, "the three-repo checkpoint".
-     Each of these resolves here and none of them resolves there.
+   - **A local path.**
+     An absolute `/Users/...` path, or a relative one that leaves the repo (`../sibling/...`), resolves on this machine and on no other.
    - **Session shorthand.**
      "task 4", "the audit", "the survey", a branch name nobody kept, a slash command.
      Each was clear to the session that wrote it and to nobody after; say what it meant.
    - **A bare sha.**
      The rule above bans the hashes of `base..HEAD`; this one bans the rest.
-     An export rewrites every commit it crosses, so a sha that resolves here resolves nowhere on the other side — and a rebase kills it on this side too.
+     A sha dies with every rewrite of a branch that has not landed, and it names nothing for a reader without the object; a `Change-Id` travels inside the message.
      Name the commit by its short `Change-Id` where the repo stamps one, and where it stamps none, say what that commit did instead of pointing at it.
    - **A quoted command.**
      A repo may keep the user's commands verbatim in branch bodies, for an audit — "ok go ahead", "fix point 3".
-     Each one answered a question the recipient never saw.
+     Each one answered a question the reader of the trunk never saw.
      Carry the reason the command gave into the body; the archive tag keeps the words.
 
 7. **Find the working material.**
-   `git diff --name-status <base>..HEAD -- todo/ gi-canvas/ gi/`.
+   `git diff --name-status <base>..HEAD -- todo/ gi-canvas/`.
    Keep the status letters; they decide what the working tree looks like afterwards (step 11).
 
    **First: does this repo publish them?**
    Read the repo's root `CLAUDE.md`.
-   If it says the repo is a monorepo, personal, internal, or never sent upstream, then `todo/`, `gi-canvas/` and `gi/` are ordinary content there — they land with everything else, and steps 7, 11 and 11a have nothing to do.
+   If it says the repo is personal, internal, or never sent upstream, then `todo/` and `gi-canvas/` are ordinary content there — they land with everything else, and steps 7, 11 and 11a have nothing to do.
    Say so once in the step 8 block instead of listing paths to drop.
    Only when nothing says it is the repo published, which is the default this step assumes.
-
-   This settles the **files**, not the body.
-   A monorepo keeps its own `todo/`, `gi-canvas/` and `gi/`, but its commit *messages* are exported to the recipients — so step 6's outside-reader rule holds there in full, and most sharply there, since that is where the leak was measured.
 
    7a. **Find the branch's own commits cited inside the tree.**
    A changelog line, a design doc, a code comment may quote a commit hash.
@@ -211,13 +225,6 @@ Nothing is changed until the user confirms.
 
    A word that resolves to nothing is not an id and falls out by itself; an id that resolves to a commit this landing rewrites is settled at step 11a exactly like a hash.
 
-   7b. **Does the branch touch more than one exported repo?** — monorepo only, decided by the `CLAUDE.md` step 7 already read.
-   `git diff --name-only <base>..HEAD | cut -d/ -f1 | sort -u` names the subdirectories the branch touched, and `mono.yml` maps each to a repo and says whether it has a recipient (`export: false` means none).
-   Two or more exported subdirectories means the commit you are about to write gets split at the export: each recipient receives only its own part of the diff, under this one whole body.
-   A body describing the entire change then arrives in a repo where most of what it describes has no diff to stand on — a reader there sees a message about work that is not in front of them.
-   So the body says which part lands where: one line per exported repo, naming the subdirectory and what that repo actually gets.
-   Step 9 needs this same subdirectory list for the tag name — compute it once.
-
    7c. **Find prose that explains the change instead of the result.**
    A comment or a `.md` line written during the branch tends to define the new design by contrasting it with the one it replaces — "not as a pile of timestamped files", "instead of writing a flat copy", "`restore` used to overwrite it whole".
    Step 6 asks for exactly that contrast in the *body*, where it is the point.
@@ -250,6 +257,8 @@ Nothing is changed until the user confirms.
    Propose the cut at step 8 and let the user confirm it — the edit happens at 11b.
 
 8. **Judgement, then STOP.**
+   First call the advisor, when the tool is available, on the branch and the plan below, and address what it finds; the plan or the report says what it changed.
+   Why: the user asked for "advisor, then land" by hand again and again.
    Two calls to make first:
    - Already one clean commit whose body passes step 6's outside-reader test?
      Then there is nothing to rewrite — skip straight to the merge (step 13).
@@ -273,17 +282,13 @@ Nothing is changed until the user confirms.
      and drop them from this branch with `git rebase --onto`;
      when they are not all at the bottom of the branch, say that this rebase can conflict.
 
-   Show the user, in one block: the chapters found and which original commits fold into each, each chapter of another feature with the choice it needs, the generated message(s), the `todo/`/`gi-canvas/`/`gi/` paths being dropped, each hash from step 7a with the file citing it and whether it is dropped or repointed (step 11a), each contrast-framing line from step 7c with the words you propose to cut from it, the exported repos step 7b found and the per-repo lines the body carries for them, an overwrite warning if `git tag -l` already finds the tag step 9 will write, the rebase warning from step 5, the content fork-point from step 5a with its evidence if one was found, any branch step 13b will offer to re-base, the exact merge command, and the branch-delete command from step 13a.
-   **Wait for confirmation.**
+   Show the user, in one block: the chapters found and which original commits fold into each, each chapter of another feature with the choice it needs, the generated message(s), the `todo/`/`gi-canvas/` paths being dropped, each hash from step 7a with the file citing it and whether it is dropped or repointed (step 11a), each contrast-framing line from step 7c with the words you propose to cut from it, an overwrite warning if `git tag -l` already finds the tag step 9 will write, the rebase warning from step 5, the content fork-point from step 5a with its evidence if one was found, any branch step 13b will offer to re-base, the exact merge command, and the branch-delete command from step 13a.
+   **Wait for confirmation**, unless `--no-confirm` was passed (see *Authorization*).
 
 ## Landing
 
 9. **Archive first** — only on the squash path.
    `git tag -f archive/<branch> HEAD`.
-   In a monorepo — the root `CLAUDE.md` says so, and step 7 has already read it — the tag is `archive/<repo>/<branch>` instead, where `<repo>` is the subdirectory the branch's diff lives in: `git diff --name-only <base>..HEAD | cut -d/ -f1 | sort -u`.
-   A branch whose diff spans several subdirectories keeps the plain `archive/<branch>`.
-   Why the prefix: a monorepo's tag namespace is flat and shared by every repo it holds, so an unprefixed name collides the first time two of them archive the same branch name — its tooling spec says so, and writes the archives it imports under the same `archive/<repo>/` prefix.
-   Every later `archive/<branch>` in this skill, the `-prerebase` tags of step 13b included, means the name chosen here.
    This runs before anything destructive, and it is what makes the rest reversible — every original commit, including the `todo/` ones, stays reachable.
    Skip it entirely when step 8 sent you to the merge: there is nothing to make reachable.
 
@@ -295,7 +300,7 @@ Nothing is changed until the user confirms.
     For the paths found in step 7: `git restore --staged -- <paths>`.
     Only pass paths that actually appear there; a pathspec matching nothing is an error.
 
-    This is the whole `todo/`/`gi-canvas/`/`gi/` mechanism — no filtering, no history rewrite, one command at the one moment it is natural.
+    This is the whole `todo/`/`gi-canvas/` mechanism — no filtering, no history rewrite, one command at the one moment it is natural.
     What it leaves behind depends on the status letter, and you must **report** the leftovers rather than claim a clean tree:
     - `A` (added on the branch) → the file becomes untracked.
       This is the normal case, and exactly where a parked note belongs.
@@ -304,7 +309,7 @@ Nothing is changed until the user confirms.
 
     A note this branch **finished** is not parked any more — it is done.
     Say so at step 14 and offer to delete it, instead of leaving it in the working tree where the next session reads it as open work.
-    Same for a `gi-canvas/` or `gi/` canvas whose thread closed with this branch.
+    Same for a `gi-canvas/` canvas whose thread closed with this branch.
     Judge each file: only the ones this branch actually resolved — a branch often adds a note about something it did not fix, and that one stays.
     The archive tag holds every one of them, so deleting loses nothing.
 
@@ -321,7 +326,7 @@ Nothing is changed until the user confirms.
 
     Skip a hash whose file was dropped at step 11 — that file is not landing.
 
-    11b. **Cut the prose** — the step 7c hits the user confirmed at step 8 — in the working tree, then `git add` each file you touched.
+    11b. **Cut the prose** — the step 7c hits the user confirmed at step 8, or after `--no-confirm` the hits the agent judged a defect — in the working tree, then `git add` each file you touched.
     Cut the defect and change nothing else: take out the words that name the gone state and leave the rest of the sentence as it stands, so what survives says what the code does now and the constraint that makes it right.
     An edit that swaps the tense and keeps the line's length has removed nothing.
     The contrast you are deleting is not lost:
@@ -331,9 +336,9 @@ Nothing is changed until the user confirms.
     Skip a file dropped at step 11, exactly as 11a does.
 
 12. **Commit** with the message from step 6, plus an `Archive:` trailer naming the archived tip.
-    Its value is the tip's `Change-Id`, read with `git log -1 --format='%(trailers:key=Change-Id,valueonly)' archive/<branch>`, because the id still names that commit after the tag is renamed, and tag names stop being unique across repos; when that prints nothing — the repo stamps no ids, or the tip predates the hook — the value is the tag name, `archive/<branch>`.
+    Its value is the tip's `Change-Id`, read with `git log -1 --format='%(trailers:key=Change-Id,valueonly)' archive/<branch>`, because the id travels inside the message, so it still names that commit if the tag is renamed or deleted; when that prints nothing — the repo stamps no ids, or the tip predates the hook — the value is the tag name, `archive/<branch>`.
     The tag from step 9 is written either way: an id keeps nothing alive, only a ref does.
-    This trailer is the deliberate exception to step 6's outside-reader rule — the archive it names exists only here, it resolves in no recipient, and that is accepted, not repaired: it is explained once in the recipient's README rather than dropped from every commit that has one.
+    This trailer is the deliberate exception to step 6's outside-reader rule — the archive it names exists only here, and that is accepted, not repaired.
     Run the drafted body through both of step 7a's loops first — before the `Archive:` trailer is appended, since that trailer names the tip by design — with the message text in place of the diff and `archive/<branch>` in place of `HEAD`: after step 10 `HEAD` is `<base>`, and against it the ancestor tests flag nothing.
     A hash or an id reaching the body is usually one copied out of a folded commit, and after the commit exists there is no fixing it.
 
@@ -342,7 +347,7 @@ Nothing is changed until the user confirms.
     With the rebase from step 5 if the trunk moved.
 
     13a. **Delete the branch.**
-    Safe only because of the tag from step 9, the dropped `todo/`/`gi-canvas/`/`gi/` commits included.
+    Safe only because of the tag from step 9, the dropped `todo/`/`gi-canvas/` commits included.
     On the squash path, `git reset --soft` produced a new commit object that differs from the branch tip, so git won't recognize it as merged: use `git branch -D <branch>`.
     When step 8 sent you straight to the merge (already one clean commit, no squash, no tag), the branch tip *is* the trunk tip now, so the plain `git branch -d <branch>` works.
 
@@ -363,6 +368,7 @@ Nothing is changed until the user confirms.
     The test catches a branch that contains the whole landed branch; one forked from its middle is caught by step 5a when its own turn comes.
 
 14. **Report**, briefly: the trunk's new commit — by its short `Change-Id` where it carries one, by sha only where the repo stamps none — that the user is now standing on `<trunk>` (say it plainly — the next edit would otherwise land there), that `<branch>` was deleted, and — if step 9 ran — that `git log archive/<branch>` still holds the full history.
+    After `--no-confirm`, also name which commits folded into each chapter, each cut from step 7c, and what the advisor changed.
     Split the leftover working-tree state from step 11 into notes still open and artifacts this branch completed; for the completed ones give the `rm` command (`allowed-tools` here is git only, so the user runs it).
     This is also where run status belongs — `nutest run` → `57 passed`, not in the commit body.
     Name every branch step 13b re-based, with its `archive/<other>-prerebase` tag, and every one you offered and the user declined — a branch left long-routed is the next session's conflict.

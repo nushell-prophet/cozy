@@ -20,6 +20,7 @@ Retelling either in your own words puts a second layer of loss over the first.
 
 So: copy the words.
 Trim to the sentences that matter, mark a cut with `…`, and do not smooth the grammar — a repaired sentence is no longer the quote.
+A commit whose author reads `<the user's name> (verbatim via Claude)`, with `+claude@` in the address (from 2026-11-05), holds a chat prompt of the user that an agent carried into a gi canvas: quote its added lines as his words, verbatim, and its message as the agent's.
 
 You will want to explain what it all means.
 Resist it.

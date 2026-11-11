@@ -8,7 +8,10 @@ description: >
   the answer covered, what was never asked at all). Use this skill when the user
   asks "why is this like this", "why was it done this way", "what was tried
   before", "did I ask for this", "who decided this", "почему так", "откуда это",
-  "я это просил", "откуда эта конвенция", "history of this function", or before
+  "я это просил", "откуда эта конвенция", "почему мы", "why did we choose",
+  "найди историю этого решения", "копни в историю", "сделай археологию",
+  "git archaeology", "найди сессию, где мы обсуждали", "find the session where
+  we", "find the commit where we", "history of this function", or before
   changing code whose shape looks arbitrary, or before obeying a comment that
   states a rule nothing tests. Also use when a fix keeps regressing — the history
   usually holds the constraint the current attempt is breaking — or when a
@@ -39,6 +42,7 @@ A confident retelling of history you did not verify is worse than no answer — 
 **git** says when and what changed, and often why — this project mandates the user's reasoning in commit bodies.
 **`~/.claude/projects`** says what was actually asked and answered.
 Neither alone can tell an instruction from an agent's own choice: a commit body states a rationale in the same voice whether the user supplied it or the agent invented it.
+One mark helps: a commit whose author reads `<the user's name> (verbatim via Claude)`, with `+claude@` in the address (from 2026-11-05), holds a chat prompt of the user that an agent carried into a gi canvas — the added lines are his prompt, verbatim; the message is the agent's.
 
 The two paths do not cost the same.
 Git is cheap — a `git log -L` is one command, and you want it before changing almost anything.
@@ -111,8 +115,15 @@ git log -L <start>,<end>:<file> --no-patch
 `-L` follows the block as it moves inside the file, which is what makes it better than `git log -- <file>` (every unrelated change to that file) and better than `git blame` (only the last touch).
 Start with `--no-patch` for the list of commits, then drop the flag and read the diffs — every one whose body does not already settle what it did, which in practice is most of them.
 
-`-L` cannot be combined with `--follow` (git: `--follow requires exactly one pathspec`).
-If the file was renamed, find the rename with `git log --follow --name-status -- <file>`, then re-run `-L` against the old path for the earlier part of the history.
+Name a whole block by two regexes, which survive edits above it: `git log -L '/^export def x \[/,/^}/:<file>' --no-patch`.
+Anchor the start past the name: `/^export def x/` also matches `export def xyz`, and an earlier match is tracked with no error.
+Prefer them to `:<name>:<file>`, whose end is the next line git takes for a function start: in a `.nu` file that range takes the next command's leading comment, and in Markdown it needs `*.md diff=markdown` and stops at the first subheading.
+
+`-L` follows a rename by itself while git still detects it, also when the same commit edits the file.
+A commit that renames the file and rewrites most of it ends the listing and reads as the file's creation.
+`-M<n>` extends the listing only when n is at or below the share of content that the rename kept.
+So when the oldest listed commit creates the file, check it with `git show --name-status <sha>`: if it deletes another file, run `-L` on that old path at `<sha>^`.
+It takes neither `--follow` nor a pathspec: both are fatal errors.
 
 **3. Hop into the archived branch history.**
 For each commit from step 2, read its full body.
@@ -150,6 +161,11 @@ git log --all --grep='^Revert'
 `-S` is the one that answers "was this approach ever in the tree".
 It reports the commit that introduced the string and the commit that removed it; read both bodies.
 
+`-S` returns nothing in two cases where the string was there, so run both forms before you report an absence:
+
+- With a path, history simplification hides a side branch whose change a merge dropped: add `--full-history`.
+- A string born in a merge commit is not searched by default: add `--diff-merges=first-parent`.
+
 **5. Find what changed together.**
 For each key commit: `git show --stat <sha>`.
 Then look across the set — files that keep appearing in the same commits are coupled, and that coupling is usually an invariant nobody wrote down.
@@ -167,8 +183,8 @@ git show -s --format='%h %ad%n%B' <sha>
 **7. Look outside git for what git does not carry.**
 `# Why:` and `# Not <alternative> because:` comments sit at the decision point in the code.
 `todo/` notes carry a known-but-unfixed problem and an `origin_session:` UUID — that UUID is a direct address into the transcripts, and following it is the hand-off described above, not an optional extra.
-`gi-canvas/` holds the canvas discussion, and so does `gi/`, its older name, in a few repos.
-`git log --all -- ':(glob)**/todo/**' ':(glob)**/gi-canvas/**' ':(glob)**/gi/**'` reaches them wherever they are, a subdirectory's own included: on the trunk, on branches, in archive tags.
+`gi-canvas/` holds the canvas discussion.
+`git log --all -- ':(glob)**/todo/**' ':(glob)**/gi-canvas/**'` reaches them wherever they are, a subdirectory's own included: on the trunk, on branches, in archive tags.
 
 **8. Anchor a sentence to its birth commit.**
 When the target is a line of prose — a comment, a README sentence, a flag description — find the commit that introduced it before going anywhere near the transcripts:

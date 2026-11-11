@@ -6,14 +6,12 @@ Everything not restated here runs exactly as `../SKILL.md` says.
 Step 8's own analysis is what decides a branch needs more than one commit — not a flag.
 `--grouped` only saves a round trip: pass it when you already know the branch bundles more than one subject, and the plan goes straight to the multi-commit shape instead of first proposing a single squash.
 
-The trade-off is the same either way, and the user takes it on by confirming the plan: the chapter commits reach the trunk as ordinary commits, one after another, with no merge commit around them.
+The trade-off is the same either way, and the user takes it on by confirming the plan or by passing `--no-confirm`: the chapter commits reach the trunk as ordinary commits, one after another, with no merge commit around them.
 A multi-subject branch is an accident of workflow, not a unit — a merge commit would record that accident, and its body would have to describe several subjects at once.
 Landing plain keeps the history one shape: linear, exactly like the squash path.
 The cost: each chapter's body must be self-sufficient, because no other place survives to carry its reasoning.
 
-Self-sufficient means step 6's outside-reader test applied once per chapter, not once per branch: every chapter's body is exported on its own, so each one has to answer the question alone.
-Step 7b's per-repo lines belong to whichever chapter actually crosses the boundary.
-Chapters often split along the recipients already — a subject per repo — and then no chapter needs them; a chapter whose own paths reach two exported subdirectories carries them, and the others say nothing about repos they do not touch.
+Self-sufficient means step 6's outside-reader test applied once per chapter, not once per branch: each chapter's body has to answer the question alone.
 
 Steps 1–7c and 9 run unchanged.
 Step 7c scans the branch's added lines, not its commits, so the chapter split changes nothing about what it finds; where each confirmed rewrite lands is settled below, with step 11b.
@@ -65,7 +63,7 @@ An intermediate commit holding part of a file may not build — the ordered-hist
 - Step 11b's rewrites are made once, in the working tree, after the soft reset and before the first chapter is committed.
   Each rewritten line then lands with whichever chapter stages its file — the same mechanism that folds a later correction automatically (above), so no rewrite needs repeating per chapter.
   For a file split between chapters the line lands with whichever part of the split carries it, which may not be the chapter whose body explains the rewrite.
-- `todo/`, `gi-canvas/` and `gi/` are never added, so step 11's `git restore --staged` has nothing to do and disappears — the same result reached by doing nothing.
+- `todo/` and `gi-canvas/` are never added, so step 11's `git restore --staged` has nothing to do and disappears — the same result reached by doing nothing.
   What they leave behind in the working tree, and your duty to report it instead of claiming a clean tree, is exactly as step 11 describes.
 - If every chapter comes out empty, the branch held only working material.
   Report that and stop, as step 11 says.
