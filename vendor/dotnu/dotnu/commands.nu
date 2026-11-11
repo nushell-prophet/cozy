@@ -10,9 +10,12 @@
 # So the two can't disagree on what a capture point is.
 const capture_point = '\|\s*print\s+\$in\s*$'
 
-# The embed annotation prefix. `comment-hash-colon` writes it; `embeds-remove` strips it —
-# a single const so the two can't drift apart.
+# The embed annotation prefix. `comment-hash-colon` writes it; `embeds-remove` finds the
+# lines it wrote by `annotation_line`, the same prefix with the space optional.
+# Why optional: an editor that strips trailing spaces on save turns the annotation of an
+# empty output line, `# => `, into `# =>`, and a line left behind doubles on every update.
 const annotation_prefix = '# => '
+const annotation_line = '^# => ?'
 
 # Check .nu module files to determine which commands depend on other commands.
 @category dotnu
@@ -1646,13 +1649,13 @@ export def find-capture-points []: string -> table<index: int, line: string> {
     | rename --column {item: line}
 }
 
-# Removes annotation lines starting with "# => " from the script
+# Removes annotation lines starting with "# =>", with or without the space after it, from the script
 @category dotnu
 @search-terms "strip" "clean" "annotations"
 export def embeds-remove [] {
     normalize-newlines
     | lines
-    | where $it not-starts-with $annotation_prefix
+    | where $it !~ $annotation_line
     | str join "\n"
     | $in + "\n" # Explicit LF with trailing newline for Windows compatibility
 }
