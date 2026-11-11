@@ -1,18 +1,28 @@
 [[language]]
 name = "nu"
 auto-format = true
-formatter = { command = "topiary", args = ["format", "--language", "nu"] }
+# topiary, then a strip of trailing spaces: `format-as-on-save` in nu-hx.nu, the same
+# command that `\ k` and `\ l` run. `--no-newline`: see markdown below.
+formatter = { command = "nu", args = ["--no-newline", "--stdin", "--commands", "use ~/.config/helix/nu-hx.nu; $in | nu-hx format-as-on-save nu"] }
 indent = { tab-width = 4, unit = "    " }
 # soft-wrap = { enable = false }
 
 [[language]]
 name = "markdown"
 indent = { tab-width = 4, unit = "    " }
-# Why: strip trailing spaces on save. Not prettier — it was never installed here and
+# Why: strip trailing spaces on save, by `format-as-on-save` in nu-hx.nu, the same command
+# that `\ k` and `\ l` run. Not prettier — it was never installed here and
 # the user stopped using it. Not `[editor] trim-trailing-whitespace` — that is global,
-# and the rule is wanted for markdown only.
+# and the rule is wanted for markdown and nu only.
 # `--no-newline` matters: without it nu appends a newline and the file grows a blank
-# line on every save. The regex keeps the file byte-exact otherwise (`lines | to text`
-# would rewrite the final newline).
-formatter = { command = "nu", args = ['--no-newline', '--stdin', '-c', '$in | str replace --all --regex "(?m)[ \t]+$" ""'] }
+# line on every save.
+formatter = { command = "nu", args = ["--no-newline", "--stdin", "--commands", "use ~/.config/helix/nu-hx.nu; $in | nu-hx format-as-on-save md"] }
 auto-format = true
+
+# Why: zellij pane dumps open with soft-wrap off. The scrollback editor gets zellij's
+# `<uuid>.dump` in the temp dir; `zellij/hx-pane-dump.nu` writes `/tmp/zellij-dumps/*.txt`.
+[[language]]
+name = "zellij-dump"
+scope = "text.zellij-dump"
+file-types = ["dump", { glob = "zellij-dumps/*.txt" }]
+soft-wrap = { enable = false }

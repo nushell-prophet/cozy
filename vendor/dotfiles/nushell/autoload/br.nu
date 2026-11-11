@@ -21,10 +21,11 @@ export def --env br [
     --hidden (-h) # Show hidden files
     --no-hidden (-H) # Don't show hidden files
     --height: int # Height (if you don't want to fill the screen or for file export)
-    --help # Print help information
     --git-ignored (-i) # Show git ignored files
     --no-git-ignored (-I) # Don't show git ignored files
     --install # Install or reinstall the br shell function
+    --listen: string # Listen for commands on a given linux socket
+    --listen-auto # Listen for commands on a random linux socket
     --no-sort # Don't sort
     --permissions (-p) # Show permissions
     --no-permissions (-P) # Don't show permissions
@@ -61,10 +62,11 @@ export def --env br [
         [$hidden --hidden]
         [$no_hidden --no-hidden]
         [($height != null) $'--height=($height)']
-        [$help --help]
         [$git_ignored --git-ignored]
         [$no_git_ignored --no-git-ignored]
         [$install --install]
+        [($listen != null) $'--listen=($listen)']
+        [$listen_auto --listen-auto]
         [$no_sort --no-sort]
         [$permissions --permissions]
         [$no_permissions --no-permissions]
@@ -127,6 +129,8 @@ export extern broot [
     --git-ignored (-i) # Show git ignored files
     --no-git-ignored (-I) # Don't show git ignored files
     --install # Install or reinstall the br shell function
+    --listen: string # Listen for commands on a given linux socket
+    --listen-auto # Listen for commands on a random linux socket
     --no-sort # Don't sort
     --outcmd: path # Write cd command in given path
     --permissions (-p) # Show permissions

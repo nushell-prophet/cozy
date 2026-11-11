@@ -80,14 +80,28 @@ def create-left-prompt []: nothing -> string {
         }
         | where {|s| if 'alive' in $s { $s.alive } else { do $proc_alive $s } }
         | length
-        | if $in == 0 { '' } else { $'(ansi magenta)claude($in)(ansi reset) ' }
+        | if $in == 0 { '' } else { $'(ansi magenta)cl($in)(ansi reset) ' }
+
+    # Other zellij panes of this session whose cwd is exactly this directory.
+    # Panes that run Claude Code count too, so `cl1 zj1` can be one pane.
+    # Why not the own pane: it is always here, and `zj1` would sit in every prompt.
+    # Why `not is_plugin`: a plugin pane and a terminal pane can share an id.
+    # Why --physical: zellij reads the cwd from the OS, with symlinks such as
+    # ~/repos/<name> resolved, while plain `pwd` keeps them.
+    let zellij = if $env.ZELLIJ_PANE_ID? == null { '' } else {
+        zellij action list-panes --json --all
+        | from json
+        | where not is_plugin and pane_cwd? == (pwd --physical) and id != ($env.ZELLIJ_PANE_ID | into int)
+        | length
+        | if $in == 0 { '' } else { $'(ansi cyan)zj($in)(ansi reset) ' }
+    }
 
     # hide near-instant commands
     let duration = $env.CMD_DURATION_MS | into int | if $in < 90 { '' } else { $'($in)ms ' }
 
     # everything after the path — built once, so the width math below and the
     # rendered prompt can't drift apart
-    let tail = $'($git_status)($duration)($last_exit_code)($shlvl)($jobs)($claude)'
+    let tail = $'($git_status)($duration)($last_exit_code)($shlvl)($jobs)($claude)($zellij)'
     let width = { ansi strip | str length --grapheme-clusters } # visible width
     let max_width = (term size).columns - 2 # the `┏ ` prefix takes 2 cells
 

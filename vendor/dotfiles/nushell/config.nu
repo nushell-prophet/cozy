@@ -83,6 +83,7 @@ $env.config.abbreviations = {
     cs: 'claude --dangerously-skip-permissions'
     cn: 'claude-nu'
     cno: 'claude-nu gi open --dangerously-skip-permissions'
+    cnn: 'claude-nu gi new --dangerously-skip-permissions'
     gd: 'git diff'
     gp: 'git pull'
     gs: 'git status'
@@ -271,6 +272,7 @@ $env.config.menus ++= [
         # `$token.text` is only the word under the cursor.
         source: {|token|
             let buffer_esc = $token.text | str replace --all --regex '(_|-)' '_|-'
+            let segment_colors = [(ansi cyan) (ansi yellow) (ansi magenta) (ansi blue)]
 
             open $nu.history-path
             | query db "SELECT cwd FROM history GROUP BY cwd ORDER BY MAX(start_timestamp) DESC"
@@ -278,11 +280,27 @@ $env.config.menus ++= [
             | into string
             | where $it =~ $"\(?i)($buffer_esc)"
             | compact --empty
-            | each {
-                if $in has (char space) {
-                    $'"($in)"' # enclose entry into quotes
-                } else { }
-                | {value: $in}
+            | each {|dir|
+                let workspace = $env.WORKSPACE_DIR?
+                # Why: long paths in this menu annoyed the user, and most rows share the prefix of the workspace, so the row shows only the part that differs.
+                # `value` stays the full path: it lands in the buffer and has to work from any directory.
+                let short = if $workspace != null and ($dir starts-with $"($workspace)/") {
+                    $dir | path relative-to $workspace
+                } else if ($dir starts-with $"($nu.home-dir)/") {
+                    '~' | path join ($dir | path relative-to $nu.home-dir)
+                } else { $dir }
+
+                # Why: `ansi reset` here would also cancel the reverse video of the selected row, so each segment ends with the plain text color of the menu.
+                let segments = $short
+                    | split row '/'
+                    | enumerate
+                    | each {|s| $"($segment_colors | get ($s.index mod 4))($s.item)(ansi green)" }
+                    | str join '/'
+
+                {
+                    value: (if $dir has (char space) { $'"($dir)"' } else { $dir }) # enclose entry into quotes
+                    display_override: $segments
+                }
             }
         }
     }

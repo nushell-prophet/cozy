@@ -6,13 +6,30 @@
 # Docker sandbox has no system clipboard. We use the pbcopy OSC 52 shim
 # installed in the Dockerfile (see cozy/Dockerfile, cozy/pbcopy).
 os:
-  copyToClipboardCmd: printf {{text}} | pbcopy
+  # Not `printf {{text}}` (the lazygit docs example) because: printf reads that argument as a format.
+  #   A copied diff hunk keeps its +/- prefixes, so it starts with '-': printf fails with "invalid option",
+  #   pbcopy gets nothing and sends an empty clipboard, and the pipe still exits 0, so lazygit reports success.
+  #   '%' and '\' in the text are expanded too.
+  copyToClipboardCmd: printf %s {{text}} | pbcopy
+# Why: q in the log view (X below) returns to lazygit at once, not after a "Press enter" pause.
+#   The key is global, so leaving an editor started from lazygit has no pause either.
+promptToReturnFromSubprocess: false
 git:
   autoFetch: false
   diffRenderers:
     - colorArg: always
       command: delta --dark --paging=never --true-color=always --minus-style='syntax 52' --plus-style='syntax 22' --line-numbers --side-by-side --wrap-max-lines 20
 customCommands:
+  # The log view (log-view.yml), opened as a nested lazygit; q returns here.
+  # Why a key inside lazygit: switch to the view from the lazygit that zellij Super Alt l opens.
+  # Not `lazygit log` (half screen mode) because: the side and main sections are split 50/50 there,
+  #   and sidePanelWidth does not apply.
+  # --screen-mode normal: the `log` argument alone turns on half screen mode.
+  - key: 'X'
+    context: 'global'
+    command: 'lazygit --use-config-file "$HOME/.config/lazygit/config.yml,$HOME/.config/lazygit/log-view.yml" --screen-mode normal log'
+    output: terminal
+    description: 'Log view: commits at full height, diff on the right'
   - key: 'E'
     context: 'files'
     command: 'zellij edit {{.SelectedFile.Name}}'

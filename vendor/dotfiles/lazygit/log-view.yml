@@ -1,0 +1,19 @@
+# The log view: the commits panel alone on the left, at full height, the diff on the right.
+# config.yml opens it on X as a nested lazygit (`--use-config-file config.yml,log-view.yml`); q returns.
+# Why: to read the diffs of the agents' commits in a canvas over a period.
+#   <ctrl+s> filters by the canvas path, v selects the period; the diff then shows only that file.
+gui:
+  # One side window gets the whole height in normal screen mode.
+  # 'files', 'branches' and 'commits' cannot be hidden, so the other two are tabs behind commits.
+  sidePanels:
+    - [commits, branches, files]
+  # Why narrow: the diff is what is read here, and delta splits it side by side.
+  sidePanelWidth: 0.2
+  showCommandLog: false
+  showBottomLine: false
+customCommands:
+  # Why: custom commands of a later config file come first, so this X shadows the X of config.yml:
+  #   inside the log view X does nothing, and a third lazygit never opens.
+  - key: X
+    context: global
+    command: 'true'

@@ -2,7 +2,6 @@ full-path
 ~/.config/broot/conf.hjson
 ~/.config/broot/select.hjson
 ~/.config/broot/verbs.hjson
-~/.config/helix/config-no-wrap.toml
 ~/.config/helix/config.toml
 ~/.config/helix/hx-nu
 ~/.config/helix/hx-block
@@ -14,6 +13,7 @@ full-path
 ~/.config/helix/languages.toml
 ~/.config/helix/runtime/**/*
 ~/.config/lazygit/config.yml
+~/.config/lazygit/log-view.yml
 ~/.config/nushell/autoload/br.nu
 ~/.config/nushell/autoload/completions.nu
 ~/.config/nushell/autoload/hooks-config.nu

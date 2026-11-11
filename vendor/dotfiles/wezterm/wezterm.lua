@@ -171,8 +171,22 @@ config.mux_enable_ssh_agent = false
 -- KEY BINDINGS
 -- ============================================================================
 config.disable_default_key_bindings = true
+
+-- Why: wezterm splits a run of wrapped rows into logical lines of about 1024
+-- cells, and selection_text adds a newline for each logical line after the
+-- selected one, though none of its cells is selected. So a word copied from such
+-- a run ends in one newline per remaining piece. A quick select match never ends
+-- in a newline by itself, so the trim removes only what wezterm added.
+-- Cost: a capital label pastes directly (send_paste), and that text keeps them.
+local quick_select_copy = wezterm.action_callback(function(window, pane)
+  local text = window:get_selection_text_for_pane(pane)
+  -- Why the extra parentheses: gsub also returns a count, and that count would
+  -- land in the destination argument.
+  window:copy_to_clipboard((text:gsub('\n+$', '')), 'ClipboardAndPrimarySelection')
+end)
+
 config.keys = {
-  { key = ' ', mods = 'SHIFT|CTRL', action = wezterm.action.QuickSelect },
+  { key = ' ', mods = 'SHIFT|CTRL', action = wezterm.action.QuickSelectArgs { action = quick_select_copy } },
   { key = 'x', mods = 'SHIFT|CTRL', action = wezterm.action.ActivateCopyMode },
   { key = 'p', mods = 'SHIFT|CTRL', action = wezterm.action.ActivateCommandPalette },
   -- Prefills the search box from the current selection, empty otherwise
@@ -295,16 +309,16 @@ local hash_patterns = {
   -- Their 8-letter short form is already covered by the rule above.
   "\\b[k-z]{32}\\b",
 
-  -- IPFS CIDv0 (cybergraph particles): Qm and 44 base58 characters.
-  "\\bQm[1-9A-HJ-NP-Za-km-z]{44}\\b",
-
-  -- Their short form: Qm and 8 more, 10 characters in all, planned for quote
-  -- and block tags such as <!-- Qm3adfKK7w --> ... <!-- /Qm3adfKK7w -->.
+  -- IPFS CIDv0 (cybergraph particles): Qm and 44 base58 characters, and any
+  -- prefix of one from 10 characters up. The short form is 10 characters,
+  -- planned for quote and block tags such as <!-- Qm3adfKK7w --> ... <!-- /Qm3adfKK7w -->.
+  -- Why every length from 10 to 46: nushell often truncates a long cell in a
+  -- table (Qm3adfKK7wXYZ…), and the cut can fall at any length.
   -- Why the /? and the capture group: in the closing tag the path rule starts
   -- at the `/` and would copy `/Qm3adfKK7w`. This rule starts there too, wins
   -- by its earlier place, and wezterm copies the capture group, the CID alone.
   -- Inside a real path (seals/Qm3adfKK7w) the path rule still wins.
-  "/?\\b(Qm[1-9A-HJ-NP-Za-km-z]{8})\\b",
+  "/?\\b(Qm[1-9A-HJ-NP-Za-km-z]{8,44})\\b",
 }
 
 local quick_select_patterns = {
@@ -379,7 +393,7 @@ for i, p in ipairs(hash_patterns) do
 end
 table.insert(config.keys, {
   key = ' ', mods = 'ALT|SHIFT',
-  action = wezterm.action.QuickSelectArgs { patterns = hash_only_patterns },
+  action = wezterm.action.QuickSelectArgs { patterns = hash_only_patterns, action = quick_select_copy },
 })
 
 -- ============================================================================

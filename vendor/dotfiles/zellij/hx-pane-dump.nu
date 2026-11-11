@@ -57,7 +57,7 @@ def main [
     | str join "\n"
     | save $file
 
-    hx --config ~/.config/helix/config-no-wrap.toml ...(if $full { ['+99999'] } else { [] }) $file
+    hx ...(if $full { ['+99999'] } else { [] }) $file
 }
 
 # The sessionId of the Claude Code process running in this zellij pane, or null.

@@ -30,3 +30,8 @@ inherits = "ayu_evolve"
 # Cyan is the one free ayu colour; it is close to the heading blue, but a heading
 # is a bold line of its own, so the two do not mix.
 "markup.raw.inline" = { fg = "cyan", bg = "black" }
+
+# Why: in a CriticMarkup substitution the proposed text must lead and the old text must
+# stay readable; the scopes come from runtime/queries/markdown.inline/highlights.scm.
+"markup.critic.new" = "green"
+"markup.critic.old" = { fg = "gray", modifiers = ["italic"] }

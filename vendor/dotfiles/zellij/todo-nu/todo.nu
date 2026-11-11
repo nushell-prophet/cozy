@@ -65,7 +65,7 @@ export def create-todo []: nothing -> nothing {
     # line is the phantom line after the final newline, where helix computes no indent, so
     # list continuation lines start at column 0.
     let template = $"---
-status: draft #draft | in_progress | completed | rejected
+status: draft #draft | accepted | in_progress | completed | rejected
 agents-mode: co-editing #read-only | grammar-fixes | co-editing
 updated: '($date)' #yyyyMMdd
 ---
