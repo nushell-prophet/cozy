@@ -14,7 +14,7 @@ export def main [
     --keep-single-breaks # Don't remove single line breaks
     --width (-w): int = 80 # The total width of text to wrap it
     --indent (-i): int = 0 # Indent output by number of spaces
-    --align: string = 'left' # Alignment of text
+    --align: string@[left center right] = 'left' # Alignment of text
 ]: [string -> nothing nothing -> nothing nothing -> string string -> string] {
     let text = if $text == null { } else { $text }
 
@@ -113,6 +113,7 @@ export def 'indentit' [
     str replace --all --regex --multiline '^' (char sp | str repeat $indent)
 }
 
-export def 'completions-colors' []: nothing -> list<string> {
-    ansi --list | take until {|it| $it.name == reset } | get name
+export def 'completions-colors' []: nothing -> list<record<value: string, style: string>> {
+    # Why: the menu shows each name in its own color; bg_ and attr_ names have no fg and stay plain
+    ansi --list | take until {|it| $it.name == reset } | each { {value: $in.name style: $in.name} }
 }

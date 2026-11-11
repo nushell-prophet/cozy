@@ -1,5 +1,5 @@
 use history.nu [ get-last-commands-from-sql ]
-use str.nu [ "str c" "to-safe-filename" ]
+use str.nu [ "str c" "str to-md-fence" "to-safe-filename" ]
 
 # Capture recent commands from Wezterm scrollback with ANSI codes
 @category capture
@@ -34,7 +34,7 @@ export def 'wez-to-asciicast' [
 @category capture
 export def 'wez-to-gif' [
     --filename: path # Output GIF path
-    --font-family: string = "ZedMono Nerd Font" # Font for rendering
+    --font-family: string@completions-fonts = "ZedMono Nerd Font" # Font for rendering
     --font-size: int = 20 # Font size in pixels
 ]: nothing -> nothing {
 
@@ -69,12 +69,24 @@ export def 'default-image-path' [
     | path join $filename
 }
 
-const bg_presets = [
-    '#0d0d0d' # near-black
-    '#000000' # pure black (cozy sandbox background)
-    '#ffffff' # white
-    'transparent' # no background fill
-]
+export def 'completions-colorschemes' []: nothing -> list<string> {
+    # Why: each line is the name, a space pad and a demo of color blocks drawn with spaces, so after `ansi strip` the name is all that is left
+    ^ansisvg --listcolorschemes | lines | ansi strip | str trim --right | each { $'"($in)"' }
+}
+
+export def 'completions-fonts' []: nothing -> list<string> {
+    # Why: a font has several family names (e.g. 'ZedMono NF Extd' next to 'ZedMono Nerd Font'), and `%{family}` joins them with commas
+    ^fc-list --format '%{family}\n' | lines | split row ',' | uniq | sort | each { $'"($in)"' }
+}
+
+export def 'completions-backgrounds' []: nothing -> list<record<value: string, description: string>> {
+    [
+        {value: '#000000' description: 'pure black (cozy sandbox background)'}
+        {value: '#0d0d0d' description: 'near-black'}
+        {value: '#ffffff' description: 'white'}
+        {value: 'transparent' description: 'no background fill'}
+    ]
+}
 
 # Render ANSI on stdin to a PNG file via ansisvg -> rsvg-convert.
 # Returns the output path so callers can pass it to ^open or chafa.
@@ -82,11 +94,11 @@ const bg_presets = [
 export def 'ansi-to-png' [
     out?: path # Why: when omitted, auto-pick the next free img<N>.png in cwd
     --font-size: int = 50
-    --font-name: string = 'ZedMono NF Extd' # Why: wezterm sets `stretch = 'Expanded'` on ZedMono Nerd Font, so plain 'ZedMono Nerd Font' resolves to the Regular width and the box-drawing/logo glyphs render wrong. 'ZedMono NF Extd' selects the Extended variant fontconfig uses for that stretch (the same ttf install-deps checks for)
+    --font-name: string@completions-fonts = 'ZedMono NF Extd' # Why: wezterm sets `stretch = 'Expanded'` on ZedMono Nerd Font, so plain 'ZedMono Nerd Font' resolves to the Regular width and the box-drawing/logo glyphs render wrong. 'ZedMono NF Extd' selects the Extended variant fontconfig uses for that stretch (the same ttf install-deps checks for)
     --line-height: float = 1.0
     --width: int = 0 # Why: ansisvg terminal width in columns. When wider than the content it left-aligns and pads the right, i.e. adds space from the right. 0 = auto-fit to content
-    --background: string@$bg_presets = '#000000' # Why: matches the cozy sandbox background (black), set via `sbxw --background`
-    --colorscheme: string = 'Wez' # Why: resolves palette-dependent ANSI codes (ansi green/yellow/…) with wezterm's own palette, since wezterm sets no color_scheme (built-in default). ansisvg's default 'Builtin Dark' is a saturated VGA palette that doesn't match. Any name from `ansisvg --listcolorschemes`. See todo/20260524-0240-ansi-to-png-palette-mismatch.md
+    --background: string@completions-backgrounds = '#000000' # Why: matches the cozy sandbox background (black), set via `sbxw --background`
+    --colorscheme: string@completions-colorschemes = 'Wez' # Why: resolves palette-dependent ANSI codes (ansi green/yellow/…) with wezterm's own palette, since wezterm sets no color_scheme (built-in default). ansisvg's default 'Builtin Dark' is a saturated VGA palette that doesn't match. Any name from `ansisvg --listcolorschemes`. See todo/20260524-0240-ansi-to-png-palette-mismatch.md
     --recolor: record = {'#55cc55': '#89fc6e', '#cdcd55': '#cdcd68'} # Why: ansisvg only loads its bundled schemes (no custom-palette file) and never bold-brightens, so bold green (1;32) comes out plain #55cc55. Real wezterm bold-brightens it. These swaps (measured off the real terminal) nudge Wez's green/yellow to what wezterm actually shows. Maps source-hex -> target-hex, applied to the SVG before rasterizing. Pass `--recolor {}` to disable.
     --show
 ]: string -> path {
@@ -190,7 +202,7 @@ export def 'session-commands' [limit: int]: nothing -> list<string> {
     | get command_line
 }
 
-export def 'completions-copy-out' []: nothing -> list<record<value: int, description: string>> {
+export def 'completions-copy-out' []: nothing -> record {
     let width = term size | get columns | $in - 5
 
     session-commands 20
@@ -201,6 +213,8 @@ export def 'completions-copy-out' []: nothing -> list<record<value: int, descrip
             description: ($i.item | str replace --all (char nl) '·' | str substring --grapheme-clusters 0..$width)
         }
     }
+    # Why: nushell sorts the values as text (1, 10, 11, ..., 2); the list is already newest first
+    | {completions: $in options: {sort: false}}
 }
 
 export def 'zellij-dump-prompts' [
@@ -302,6 +316,7 @@ export def 'copy-out' [
     --ansi (-a) # Keep ANSI escape codes
     --no-comment (-C) # Don't comment output with # =>
     --cwd # Include CWD into first line comment
+    --md # Wrap each command with its output in a ```nu markdown block
 ]: nothing -> oneof<string, nothing> {
     let indices = $rest | default --empty [1]
 
@@ -313,9 +328,11 @@ export def 'copy-out' [
     | each {|n|
         format-block (prompt-block $output_lines $dump.reversed_prompts $n ($n - 1)) $no_comment
     }
+    # Why: the CWD comment goes before the fences are made, so it lands inside the first block
+    | if $cwd { update 0 { $"# (pwd)\n($in)" } } else { }
+    | if $md { each { str to-md-fence } } else { }
     | str join "\n\n"
     | str replace --all --regex '\n+$' ''
-    | if $cwd { $"# (pwd)\n($in)" } else { }
     | if $echo { } else { pbcopy }
 }
 

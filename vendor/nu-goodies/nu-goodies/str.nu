@@ -99,3 +99,17 @@ export def 'str to-raw-string' []: string -> string {
 
     $"r#($hashes)'($input)'#($hashes)"
 }
+
+# Wrap a string into a fenced ```nu markdown block. The fence is one longer than
+# the longest backtick run that opens a line, so captured markdown cannot close it early.
+# Why only at a line start: CommonMark closes a fence nowhere else, so a `# => ```nu` line stays harmless.
+@example plain { "ls\n" | str to-md-fence } --result "```nu\nls\n```"
+@example nested-fence { "```nu\nls\n```" | str to-md-fence } --result "````nu\n```nu\nls\n```\n````"
+@category strings
+export def 'str to-md-fence' []: string -> string {
+    let input = $in | str replace --regex '\n+$' ''
+    let longest = $input | parse --regex '(?m)^ {0,3}(`{3,})' | get capture0 | each { str length } | append 2 | math max
+    let fence = '`' | str repeat ($longest + 1)
+
+    $"($fence)nu\n($input)\n($fence)"
+}

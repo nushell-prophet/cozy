@@ -1,4 +1,5 @@
 use kv
+use str.nu [ "str to-md-fence" escape-regex ]
 
 # use in-vd.nu
 
@@ -17,16 +18,19 @@ export def get-last-commands-from-sql [n: int = 1]: nothing -> any {
 
 # Copy this command to clipboard
 @category history
-export def 'copy-cmd' []: nothing -> nothing {
+export def 'copy-cmd' [
+    --md # Wrap the command in a ```nu markdown block
+]: nothing -> nothing {
     let commands = get-last-commands-from-sql 2
         | str trim
 
     $commands
     | last
-    | if $in == 'copy-cmd' {
+    | if $in =~ '^copy-cmd(\s|$)' {
         $commands | first
     } else { }
     | str replace --regex '\s*\| copy-cmd.*' ''
+    | if $md { str to-md-fence } else { }
     | pbcopy
 }
 
@@ -169,6 +173,10 @@ export def 'hist-to-script' [
 @category history
 export def 'in-vd history' []: table -> nothing {
     where command !~ 'in-vd history'
+    | if ($in | is-empty) {
+        print --stderr 'hist: nothing found'
+        return
+    } else { }
     | to csv
     | vd --save-filetype csv --filetype csv --output -
     | complete
@@ -183,84 +191,14 @@ export def 'in-vd history' []: table -> nothing {
     | commandline edit --replace $in
 }
 
-# Helper function to initialize dead_cwds table if it doesn't exist
-export def 'init-dead-cwds-table' []: nothing -> nothing {
+# Helper function to get all unique directories from command history that exist now
+export def 'get-history-dirs' []: nothing -> list<string> {
     open $nu.history-path
-    | query db "CREATE TABLE IF NOT EXISTS dead_cwds (path TEXT PRIMARY KEY, added_date TEXT DEFAULT CURRENT_TIMESTAMP)"
-}
-
-# Helper function to add a dead directory to the table
-export def 'add-dead-dir' [
-    dir: string # Directory to add to dead dirs list
-]: nothing -> nothing {
-    # Insert new directory if it doesn't exist (parameterized to prevent SQL injection)
-    open $nu.history-path
-    | query db "INSERT OR IGNORE INTO dead_cwds (path) VALUES (?)" --params [$dir]
-}
-
-# Helper function to get all unique directories from command history
-# Now with SQL-level filtering against dead_cwds
-export def 'get-history-dirs' [
-    --include-dead (-d) # Include nonexistent directories in the results
-]: nothing -> list<string> {
-    # Ensure dead_cwds table exists
-    init-dead-cwds-table
-
-    if $include_dead {
-        # Return all directories without filtering
-        open $nu.history-path
-        | query db "SELECT DISTINCT(cwd) FROM history ORDER BY id DESC"
-        | get cwd
-        | compact
-    } else {
-        # Return only directories that are not in dead_cwds table
-        open $nu.history-path
-        | query db "SELECT DISTINCT(h.cwd) FROM history h
-                   LEFT JOIN dead_cwds d ON h.cwd = d.path
-                   WHERE d.path IS NULL
-                   ORDER BY h.id DESC"
-        | get cwd
-        | compact
-    }
-}
-
-# Scan history directories and rebuild the dead_cwds table with non-existent paths
-export def 'update-dead-dirs' []: nothing -> list<string> {
-    # Get all directories including those already marked as dead
-    let all_cwds = get-history-dirs --include-dead
-
-    # Check which directories no longer exist
-    let dead_cwds = $all_cwds
-        | where not ($it | path exists)
-
-    # Clear existing dead_cwds table and insert new values
-    # (table already initialized by get-history-dirs above)
-    open $nu.history-path
-    | query db "DELETE FROM dead_cwds"
-
-    # Insert each dead directory
-    $dead_cwds | each {|dir|
-        add-dead-dir $dir
-    }
-
-    $dead_cwds
-}
-
-# Find first existing path from candidates, recording dead ones along the way
-export def 'find-first-existing' [
-    candidates: list<string>
-]: nothing -> oneof<string, nothing> {
-    $candidates
-    | par-each --keep-order {|path|
-        if ($path | path exists) {
-            $path
-        } else {
-            add-dead-dir $path
-            null
-        }
-    }
+    | query db "SELECT DISTINCT(cwd) FROM history ORDER BY id DESC"
+    | get cwd
     | compact
-    | get 0?
+    # Not a stored list of dead directories because: a stored list goes stale, and the check of the whole list costs only milliseconds.
+    | where { path exists }
 }
 
 # Select a directory path using fuzzy search
@@ -279,14 +217,13 @@ export def 'select-dir' [
     }
 
     # Try fuzzy finding first
-    let candidates = $valid_cwds | fzf --filter $query | lines | first 10
-    let existing_path = find-first-existing $candidates
+    let best_match = $valid_cwds | fzf --filter $query | lines | get 0?
 
-    if ($existing_path | is-empty) {
+    if ($best_match | is-empty) {
         # Fall back to interactive
         $valid_cwds | fzf --scheme=path --query $query
     } else {
-        $existing_path
+        $best_match
     }
 }
 
@@ -296,24 +233,33 @@ export def 'zellij-tab-names' []: nothing -> list<string> {
     zellij action query-tab-names | lines
 }
 
-# Generate regex pattern to match Zellij tab by directory name
-# Matches "dirname" or "dirname·2" (indexed duplicates)
-export def 'zellij-tab-pattern' [dir_name: string]: nothing -> string {
-    $"^($dir_name)\(·|$\)"
+# The name the PWD hook of the nushell config (`hooks-config.nu` in dotfiles) gives the tab of a directory
+# Why: z looks for the tab the hook named, so it strips the leading dashes the same way
+# (a Claude Code project directory is named `-Users-user-...`)
+export def 'zellij-tab-name' []: string -> string {
+    path basename | str replace --regex '^-+' ''
 }
 
-# Handle Zellij tab navigation: create new tab, switch to existing, or rename current.
-# Returns true if caller should cd (Zellij renamed tab), false if Zellij handled navigation.
+# Generate regex pattern to match Zellij tab by its name
+# Matches "name" or "name·2" (indexed duplicates)
+export def 'zellij-tab-pattern' [dir_name: string]: nothing -> string {
+    ['^' ($dir_name | escape-regex) '(·\d+)?$'] | str join
+}
+
+# Handle Zellij tab navigation: create a new tab or switch to an existing one.
+# Returns true if caller should cd, false if Zellij handled navigation.
+# Why no tab naming here: the PWD hook of the nushell config (`hooks-config.nu` in dotfiles) names the tab
+# after the directory; it keeps a name the user typed by hand and numbers a duplicate `name·2`.
 export def 'zellij-navigate' [
     path: string # Target directory path
-    dir_name: string # Directory name for tab
+    dir_name: string # Tab name to look for
     --new-tab (-n) # Open in new tab
 ]: nothing -> bool {
     if ($env.ZELLIJ? | is-empty) { return true }
 
     if $new_tab {
         # Create new tab with the directory
-        zellij action new-tab --layout compact-bar-up --cwd $path --name $dir_name
+        zellij action new-tab --layout compact-bar-up --cwd $path
         return false
     }
 
@@ -337,8 +283,6 @@ export def 'zellij-navigate' [
         return false
     }
 
-    # Rename current tab
-    zellij action rename-tab $dir_name
     true
 }
 
@@ -348,17 +292,9 @@ export def --env 'z' [
     query?: string@'completions-cwds' # Fuzzy search query for directory
     --interactive (-i) # Always show interactive picker
     --new-tab (-n) # Open in new Zellij tab
-    --update-dead-dirs (-u) # Rebuild nonexistent directories cache
 ]: nothing -> nothing {
     if ($nu.history-path | str ends-with 'txt') {
         print "z requires SQLite history format"
-        return
-    }
-
-    # Handle update dead dirs
-    if $update_dead_dirs {
-        print "Updating dead directories list..."
-        update-dead-dirs
         return
     }
 
@@ -371,64 +307,95 @@ export def --env 'z' [
     # Expand the path to full format
     let expanded_path = $target_path | path expand
 
-    # Get directory name for tab naming
-    let dir_name = $target_path | path split | last
+    let dir_name = $expanded_path | zellij-tab-name
 
-    zellij-navigate $expanded_path $dir_name --new-tab=$new_tab
-
-    cd $expanded_path
+    # Why: after a switch to another tab or a new tab, the shell left behind stays where it was;
+    # a cd there would make the tab hook rename its tab to `name·2`, next to the tab just reached
+    if (zellij-navigate $expanded_path $dir_name --new-tab=$new_tab) {
+        cd $expanded_path
+    }
 }
 
 # Generate completions for z command from history
 export def 'completions-cwds' []: nothing -> record {
     if ($nu.history-path | str ends-with 'txt') { return {completions: [] options: {}} }
 
-    # Using SQL-level filtering for completions as well
-    init-dead-cwds-table
-
     let termsize = term size | get columns | $in - 5
-    let max_depth = 6
 
     # Get open Zellij tabs for marking
     let zellij_tabs = zellij-tab-names
 
-    let variants = open $nu.history-path
-        | query db "SELECT h.cwd, MAX(h.start_timestamp) as last_timestamp
-               FROM history h
-               LEFT JOIN dead_cwds d ON h.cwd = d.path
-               WHERE d.path IS NULL
-               GROUP BY h.cwd
-               ORDER BY MAX(h.id) DESC"
+    let now_ms = date now | into int | $in // 1_000_000
+
+    let rows = open $nu.history-path
+        | query db "SELECT cwd,
+                   MAX(start_timestamp) as last_timestamp,
+                   MIN(start_timestamp) as first_timestamp,
+                   COUNT(*) as commands
+               FROM history
+               GROUP BY cwd
+               ORDER BY MAX(id) DESC"
         | where cwd != null
-        | update cwd {|i|
-            do --ignore-errors { $i.cwd | path relative-to $nu.home-dir }
-            | match $in {
-                null => $i.cwd
-                '' => '~'
-                $relative_pwd => ([~ $relative_pwd] | path join)
-            }
-            | if ($in has ' ') { $'\"($in)\"' } else { }
-        }
-        # Filter by depth - skip paths deeper than max_depth
-        | where { $in.cwd | path split | length | $in <= $max_depth }
-        # Filter by length
-        | where ($it.cwd | str length --grapheme-clusters) < $termsize
-        | update last_timestamp {|row|
+        | where { $in.cwd | path exists }
+        | each {|row|
             let timestamp = $row.last_timestamp | into int | $in / 1000 | into int | into datetime --format '%s' | date humanize
 
+            let value = do --ignore-errors { $row.cwd | path relative-to $nu.home-dir }
+                | match $in {
+                    null => $row.cwd
+                    '' => '~'
+                    $relative_pwd => ([~ $relative_pwd] | path join)
+                }
+
+            # Why: the long workspace root is in every history path and cannot move, so the menu shows only the part inside it; nushell still inserts the full value
+            let display = if $env.WORKSPACE_DIR? != null {
+                    do --ignore-errors { $row.cwd | path relative-to $env.WORKSPACE_DIR }
+                }
+                | default --empty $value
+
             # Check if a Zellij tab exists for this directory
-            let dir_name = $row.cwd | path split | last | str replace '"' ''
+            let dir_name = $row.cwd | zellij-tab-name
             let has_tab = $zellij_tabs | any { $in =~ (zellij-tab-pattern $dir_name) }
 
-            if $has_tab { $"⇆ ($timestamp)" } else { $timestamp }
+            {
+                value: $value
+                display: $display
+                last: (if $has_tab { $"⇆ ($timestamp)" } else { $"  ($timestamp)" })
+                days: $"($now_ms - $row.first_timestamp | $in // 86_400_000)d"
+                commands: $"($row.commands) cmd"
+                # Why: wtr, public and mono are the special directories of the mono workflow; a path with no mark is a visible signal too
+                mark: ($display | path split | where $it in [wtr public mono] | get 0? | if $in == null { '' } else { $'# ($in)/' })
+            }
         }
-        | rename value description
+
+    # Why: aligned columns put the marks in one column at the end, where they read as a signal
+    let width = {|column| $rows | get $column | each { str length --grapheme-clusters } | append 0 | math max }
+    let w_last = do $width last
+    let w_days = do $width days
+    let w_commands = do $width commands
+
+    let described = $rows
+        | each {|row|
+            let description = [
+                ($row.last | fill --width $w_last)
+                ($row.days | fill --alignment right --width $w_days)
+                ($row.commands | fill --alignment right --width $w_commands)
+                $row.mark
+            ]
+            {value: $row.value display_override: $row.display description: ($description | str join '  ' | str trim --right)}
+        }
+    let hint_width = $described.description | each { str length --grapheme-clusters } | append 0 | math max
+
+    let variants = $described
+        # Why: the menu gives the hint only the width left after the longest shown path, so one long path cuts every hint
+        | where ($it.display_override | str length --grapheme-clusters) + $hint_width < $termsize
+        # Why: nushell inserts a completion value as is, and a backtick string keeps a path with spaces one word
+        | update value { if $in has ' ' { $'`($in)`' } else { } }
 
     {
         options: {
             case_sensitive: false
             completion_algorithm: fuzzy
-            positional: false
             sort: false
         }
         completions: $variants

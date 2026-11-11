@@ -1,5 +1,6 @@
+use cprint.nu [ completions-colors ]
 use history.nu [ get-last-commands-from-sql ]
-use str.nu [ "str c" "str to-raw-string" ]
+use str.nu [ "str c" "str to-md-fence" "str to-raw-string" ]
 
 # Open table in Less
 @category viewers
@@ -136,6 +137,7 @@ export def 'example' [
     --abbreviated: int = 10
     --bare # Don't wrap in `nu -c`, output the raw nushell command
     --cwd # Include CWD into first line comment
+    --md # Wrap the result in a ```nu markdown block
 ]: any -> string {
     let input = table --abbreviated $abbreviated
         | if $no_comment { } else { into string | ansi strip }
@@ -168,6 +170,7 @@ export def 'example' [
     | prepend $command
     | str join (char nl)
     | if $cwd { $"# (pwd)\n($in)" } else { }
+    | if $md { str to-md-fence } else { }
     | if $no_copy { } else {
         tee { pbcopy }
     }
@@ -219,6 +222,8 @@ export def 'format profile' []: table -> table {
 }
 
 # Show git commit dates for files, excluding bulk-change commits
+#
+# A more general solution is in active development: `gitnu`, a Nushell module that gives git as tables.
 @category filesystem
 export def ls-git-modified-date [
     path?: path
@@ -226,7 +231,9 @@ export def ls-git-modified-date [
 ]: nothing -> table {
     let path = $path | default { pwd }
 
-    let gitlog = git log --all --format="===%ai" --name-only --diff-filter=ACMRT -- $path
+    # Why `--no-relative`: under `diff.relative = true` in the git config, `git log` gives the names
+    # from the cwd, `git ls-files --full-name` gives them from the root, and the join matches nothing.
+    let gitlog = git log --no-relative --all --format="===%ai" --name-only --diff-filter=ACMRT -- $path
         | $"\n($in)"
         | split row "\n==="
         | skip # skip the first empty group
@@ -574,7 +581,7 @@ export def 'number-format' [
     --significant-digits: int = 0 # The number of first digits to display, others will become 0
     --decimals (-d): int = 0 # Number of digits after decimal delimiter
     --denom (-D): string = '' # Denom
-    --color: string = 'green'
+    --color: string@completions-colors = 'green'
 ]: [int -> string float -> string nothing -> string] {
     let in_num = $in
 
@@ -1075,7 +1082,6 @@ export def 'completions-files-modified' [token: record]: nothing -> record {
         options: {
             case_sensitive: false
             completion_algorithm: fuzzy
-            positional: false
             sort: false
             filter: $filter
         }
@@ -1168,9 +1174,12 @@ if [ "$l" -gt 0 ]; then
   start=$((l - ${FZF_PREVIEW_LINES:-40} / 2))
   [ "$start" -lt 1 ] && start=1
 fi
+# Why: plain prefix strip, not realpath --relative-to, which macOS realpath lacks;
+# a path outside the cwd stays absolute.
+rel=${f#"$PWD/"}
 case $(file --brief --mime -- "$f") in
-  *binary*) file -- "$f" ;;
-  *) bat --wrap=auto --terminal-width=${FZF_PREVIEW_COLUMNS:-80} --color=always --pager=never --style=numbers --line-range=$start: --highlight-line=$l -- "$f" ;;
+  *binary*) file -- "$rel" ;;
+  *) bat --wrap=auto --terminal-width=${FZF_PREVIEW_COLUMNS:-80} --color=always --pager=never --style=header-filename,numbers --file-name="$rel" --line-range=$start: --highlight-line=$l -- "$f" ;;
 esac'
 
     $values
