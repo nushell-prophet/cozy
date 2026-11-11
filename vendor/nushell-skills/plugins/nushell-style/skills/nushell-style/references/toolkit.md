@@ -67,7 +67,8 @@ Design the output for both — without making either pass a flag in the common c
 
 **Detect the consumer with `is-terminal --stdout`, not `$nu.is-interactive`.**
 A terminal means a human is watching; a pipe or redirect means an agent or CI is capturing.
-`$nu.is-interactive` is the wrong signal — it reports REPL-ness, not human-ness: it is `false` for *any* `nu toolkit.nu ...` script run (whoever launched it) and `true` for an agent driving the Nushell MCP, so it detects the opposite of what you want.
+`$nu.is-interactive` is the wrong signal — it reports REPL-ness, not human-ness: it is `false` for *any* `nu toolkit.nu ...` script run, a human at the terminal included, so it cannot tell the two consumers apart.
+Under `nu --mcp` it is `false` since 0.117 and was `true` before (source-checked, #19153), so it does not mark an agent either.
 
 ```nushell
 def machine-mode [--json --pretty]: nothing -> bool {

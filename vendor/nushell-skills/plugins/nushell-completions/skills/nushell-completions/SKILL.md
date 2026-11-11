@@ -1,12 +1,12 @@
 ---
 name: nushell-completions
-description: This skill should be used when generating Nushell custom completions, writing completer functions, adding tab-completion to extern commands, using string@completer annotations, inline @[...] completion lists, the @complete and @interactive attributes, completer inputs (token, place, buffer), external completers such as carapace, menu source closures, or `commandline complete --input` for testing. Also for migrating completers that trigger the "Positional completer input deprecated" warning (old `context`/`pos`/`spans` parameters). Relevant when the user asks to "add completions," "write a completer," "create an extern with tab completion," "set up carapace," or "build context-aware argument suggestions" in Nushell.
+description: This skill should be used when generating Nushell custom completions, writing completer functions, adding tab-completion to extern commands, generating externs for a tool with `generate completions` (from carapace, fish, zsh, man pages or --help), rejecting flag typos with `extern --strict`, using string@completer annotations, inline @[...] completion lists, the @complete and @interactive attributes, completer inputs (token, place, buffer), external completers such as carapace, menu source closures, or `commandline complete --input` for testing. Also for migrating completers that trigger the "Positional completer input deprecated" warning (old `context`/`pos`/`spans` parameters) or that still return the removed `positional` option. Relevant when the user asks to "add completions," "write a completer," "create an extern with tab completion," "generate completions for <tool>," "set up carapace," or "build context-aware argument suggestions" in Nushell.
 ---
 
 # Nushell Custom Completions
 
 Generate completions for Nushell commands following these patterns.
-The completer model below is the 0.116 one: one input record and one output format for parameter completers, command-wide completers, the external completer and menu sources.
+The completer model below is the 0.116 one, which 0.117 keeps: one input record and one output format for parameter completers, command-wide completers, the external completer and menu sources.
 
 ## Quick Reference
 
@@ -17,6 +17,8 @@ The completer model below is the 0.116 one: one input record and one output form
 - `@complete external` — send a whole command to `$env.config.completions.external.completer` (0.108+)
 - `@interactive` — the completer owns the terminal, for `input list` or `fzf` pickers (0.116+)
 - `commandline complete` — reuse nushell's own suggestions (0.114+); `--input` shows what a completer receives (0.116+)
+- `generate completions <tool>` — write `extern` definitions with completions from carapace, fish, zsh, man or `--help` (v0.117)
+- `extern --strict` — an undeclared flag is a parse error, with a "Did you mean" hint for a near match (v0.117)
 
 ## Inline Completions (Nu 0.108+)
 
@@ -32,6 +34,9 @@ def go2 [direction: string@$directions] { $direction }
 ```
 
 Builtins use the same pattern — since 0.115 the unit argument of `format duration` and `format filesize` completes from such a list (`1sec | format duration <Tab>` offers `day`, `hr`, `min`, ...).
+
+With a type alias (v0.117), the completer goes on the parameter: `def paint [color: Color@[red green blue]]`.
+`type Color = string@[red green blue]` is a parse error: "Type specifications do not support custom completers".
 
 ## Completer Inputs (Nu 0.116+)
 
@@ -100,7 +105,17 @@ Filtering by default:
 
 - A **parameter** completer (`string@c`) returns every candidate; nushell filters and sorts them against the typed text.
 - A **command-wide** (`@complete`) or **external** completer is expected to filter by itself: its list is shown as returned, unfiltered and in its own order.
-- Set `options.filter` to change either default — except that `filter: true` is ignored for an `@complete` completer in 0.116.0 (its list stays unfiltered).
+- `filter: false` turns filtering off for a parameter completer, and `filter: true` turns it on for a bare external (`^tool b<Tab>`).
+- `filter: true` does **not** filter an `@complete` completer, `@complete external` included: nushell matches that list against an empty prefix, so the option only sorts it.
+  Filter it yourself, as in *Command-Wide Completers*.
+
+```nu
+def "nu-complete tasks" [] { {completions: [build test lint bump], options: {filter: true}} }
+@complete "nu-complete tasks"
+def --wrapped task [...args] { }
+'task b' | commandline complete
+# => [build, bump, lint, test]
+```
 
 Envelope keys:
 
@@ -112,6 +127,11 @@ Envelope keys:
   - `case_sensitive` — default from `$env.config.completions.case_sensitive`
   - `completion_algorithm` — `prefix`, `substring` or `fuzzy`; default from `$env.config.completions.algorithm`
   - `match_description` — `true` also matches the typed text against `description`
+  - `positional` — removed (v0.117) and ignored: `positional: false` now gets the configured algorithm (prefix by default), where 0.116 switched prefix to substring.
+    Write `completion_algorithm: substring`.
+
+An unknown key — a typo, or `positional` — is ignored, with no warning on screen.
+Run `nu --log-level error` to see it: ``a completion options has no `positional` field, so it is ignored; expected one of filter, sort, case_sensitive, match_description, completion_algorithm``.
 
 Suggestion record fields:
 
@@ -240,6 +260,8 @@ Don't write `$place.command | split row ' '`: it also splits arguments that cont
 
 Return `null` to decline (file completion answers); `{completions: [...], fallback: true}` adds file completion under your list.
 
+When an extern with `@complete external` declares a flag that the external completer also suggests, `--f<Tab>` lists it once (v0.117; 0.116 listed it twice).
+
 ## Menu Sources (Nu 0.116+)
 
 A `source` closure in `$env.config.menus` takes the same named inputs:
@@ -254,6 +276,9 @@ $env.config.menus ++= [{
     source: {|token| [one two three] | where { str starts-with $token.text } }
 }]
 ```
+
+Append with `++=`.
+Since v0.117, `$env.config.menus = [...]` replaces the whole list, and the default `completion_menu`, `history_menu` and `help_menu` go with it.
 
 The old `{|buffer, position| ...}` form triggers the deprecation warning after the menu closes; replace `$position` with `$place.cursor` (`{|buffer, place| ...}`).
 
@@ -327,10 +352,98 @@ export extern "git push" [
 ]
 ```
 
+What an extern passes to the tool:
+
+- An undeclared flag reaches the tool as typed, unless the extern is `--strict` (below).
+- A declared short flag reaches the tool under its long name: with `--count(-n): string`, `tool -n 3` runs `tool --count 3`.
+  Declare a short flag under a long name the tool accepts, or alone (`-n: string`), which passes `-n`.
+- A typed parameter passes its parsed value, not the text: `x: int` sends `007` as `7`.
+  Since v0.117, `x: oneof<string, int>` does the same (0.116 sent `007`); type the parameter `string` to pass the text unchanged.
+- An unknown flag inside a declared flag's value, as in `rg --max-count (ls --bogus) foo`, is a parse error (v0.117), also for a `def --wrapped`.
+  0.116 dropped that error, and a `def --wrapped` received the flag without its value.
+
+`@structured [args] { decode }` on an extern (v0.117) adds the arguments and decodes the output when it goes to a Nushell command; the terminal still gets the tool's own text.
+The `nushell-style` skill covers it in `references/enhancements.md`.
+
+### `extern --strict` (v0.117)
+
+`extern --strict` and `export extern --strict` make an undeclared flag a parse error:
+
+```nu
+extern --strict "rg" [ --hidden pattern?: string ...paths: string ]
+rg --hiden foo .
+# => Error: nu::parser::unknown_flag
+# =>   x The `rg` command doesn't have flag `hiden`.
+# =>   help: Did you mean: `--hidden`?
+```
+
+- Positional arguments, `--` and the arguments after it still reach the tool.
+- An undeclared `--help` still reaches the tool.
+  An undeclared `-h` is a parse error: declare it alone (`-h`), never as `--help(-h)` (see *Never Declare `--help`*).
+
+### `generate completions` (v0.117)
+
+`generate completions <tool>` prints a module of `export extern` definitions with completions.
+It reads the flags from the first source that knows any, in this order:
+
+- `carapace`, `fish`, `zsh` — the whole subcommand tree; each source runs its own program, so a completion file on disk without the program is not read (source-checked; not run: none of the three was installed where this was checked)
+- `man` — the flags of the named command only: `generate completions git` gives one extern, `git`, and `generate completions "git status"` reads `man git-status`
+- `help` — runs `<tool> --help`, then the `--help` of each subcommand it lists: `generate completions jj --source help` gives an extern for each jj subcommand
+
+`--source <name>` picks one source, and `--source all` merges them.
+When man answers and the tool's `--help` lists subcommands, help is merged in (`gh` got both).
+Some help formats are not read: `generate completions git --source help` fails with "no flags or subcommands found in help".
+Then pipe the help of one subcommand: `^git status -h | generate completions "git status" --source help`.
+
+What the module completes:
+
+- A value list in the source becomes an inline list: `fd` lists `auto`, `always` and `never` as the possible values of `--color`, and the module declares `--color(-c): string@[auto always never]`.
+- A cobra tool such as gh gets a command-wide completer that asks `<tool> __complete`: with the gh module, `'gh pr list --state ' | commandline complete` gives `[open, closed, merged, all]`.
+  The command's help names docker and kubectl too (source-checked).
+- A value that fish or zsh computes (git branches, users, hosts) becomes a completer command (source-checked).
+- Every other extern gets `@complete external`.
+- A flag with an optional value (`--color[=when]`) or a single-dash long name cannot be declared: a comment lists it, and it still reaches the tool.
+
+An excerpt of `generate completions fd --source help`:
+
+```nu
+# Generated by `generate completions` from `fd --help`.
+# Flags that are not declared here still reach `fd`. Arguments without a completer
+# here are completed by the external completer in $env.config.completions.external.
+
+# Not declared (optional value or unsupported name): --hyperlink, --strip-cwd-prefix
+@complete external
+export extern "fd" [
+    # ... (lines left out)
+    --color(-c): string@[auto always never] # Declare when to use color for the pattern match output
+    # ... (lines left out)
+    --help(-h)                     # Print help (see a summary with '-h')
+]
+```
+
+A generated extern declares `--help` whenever its source lists it, and that breaks the tool's own help: `rg --help` prints Nushell's usage of the extern (see *Never Declare `--help`*).
+Remove those lines before you save.
+`save --force` creates the autoload directory when it is missing; a plain `save` fails there with `directory_not_found`.
+
+```nu
+let dir = $nu.user-autoload-dirs | first
+generate completions rg
+| lines
+| where $it !~ '^\s*--help(\(-\w\))?(\s|$)'
+| to text
+| save --force ($dir | path join rg-completions.nu)
+```
+
+- Name the file other than the tool: `use rg.nu` fails with "Can't export known external named same as the module" (see *Module Naming Rule*).
+- Read the module before you rely on it: a man page can give a wrong type or description, such as `-c: string # =<value> Pass a configuration parameter` for git.
+- A tool with the name of a builtin is refused: `generate completions ls` says that an extern with its name would replace it.
+
 ## Never Declare `--help`
 
-Nushell intercepts `--help` and `-h` for anything carrying a signature — an `extern` included — and prints the signature instead of running the binary.
-Declaring the flag therefore breaks the tool's own help, silently:
+An `extern` or a `def --wrapped` that declares `--help` prints Nushell's usage of its signature for `--help`, instead of running the tool.
+`--help(-h)` takes `-h` as well.
+An undeclared `--help` or `-h`, and a short-only `-h`, reach the tool.
+A plain `def` cannot declare `--help` at all since v0.117: "The `--help` flag is reserved".
 
 ```nu
 # ❌ WRONG — `fd --help` now prints `Usage: > fd {flags} (pattern) ...(args)`
@@ -338,10 +451,14 @@ export extern main [ pattern?: string --help(-h) --hidden ]
 
 # ✅ CORRECT — leave it out; nushell passes --help and -h through to the binary
 export extern main [ pattern?: string --hidden ]
+
+# ✅ CORRECT for --strict, which rejects an undeclared -h: declare -h alone
+export extern --strict main [ pattern?: string -h --hidden ]
 ```
 
 Leave it undeclared even though the tool's own `--help` output lists it.
 That listing is exactly the trap: the natural move is to declare every flag you see, and three separate agents writing three separate completion files each reproduced this bug independently, breaking `hx`, `fd`, `chafa`, `zellij`, `lazygit`, `rg`, `vd` and `delta`.
+`generate completions` falls into the same trap: a module it writes declares `--help` whenever the source lists it.
 
 ## Module Naming Rule
 

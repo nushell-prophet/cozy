@@ -1,6 +1,6 @@
 ---
 name: nushell-style
-description: This skill should be used when writing, editing, reviewing, or debugging Nushell (.nu) files. Covers opinionated pipeline composition, command choices (where vs filter, match vs if/else, get --optional), formatting conventions (Topiary), type signatures, module structure, testing with nutest (unit tests, snapshot tests, @example attributes, coverage), NUON data format, the fancy-regex flavor behind =~ and --regex flags, toolkit.nu patterns, nu --ide-check debugging, the Nushell MCP server, the `tui` command family (pickers, forms and panes, tested headlessly with `tui debug`), and migration guide for updating scripts across Nushell versions (0.100–0.116: breaking changes, renamed commands, new idioms). Relevant when the user says "write nushell code," "review my .nu file," "nushell style," "nushell best practices," "format nushell," "nushell pipeline," "nutest," "NUON," "nushell regex," "lookahead," "lookbehind," "backreference," "nu --ide-check," "nushell MCP," "tui," "terminal UI," "picker," "tui debug," "update nushell script," "nushell breaking changes," or "nushell migration."
+description: This skill should be used when writing, editing, reviewing, or debugging Nushell (.nu) files. Covers opinionated pipeline composition, command choices (where vs each-if, match vs if/else, get --optional), formatting conventions (Topiary), type signatures, module structure, testing with nutest (unit tests, snapshot tests, @example attributes, coverage), NUON data format, the fancy-regex flavor behind =~ and --regex flags, toolkit.nu patterns, nu --ide-check debugging, the Nushell MCP server, the `tui` command family (pickers, forms and panes, tested headlessly with `tui debug`), and migration guide for updating scripts across Nushell versions (0.100–0.117: breaking changes, renamed commands, new idioms). Relevant when the user says "write nushell code," "review my .nu file," "nushell style," "nushell best practices," "format nushell," "nushell pipeline," "nutest," "NUON," "nushell regex," "lookahead," "lookbehind," "backreference," "nu --ide-check," "nushell MCP," "tui," "terminal UI," "picker," "tui debug," "update nushell script," "nushell breaking changes," or "nushell migration."
 ---
 
 # Nushell Code Style Guide
@@ -17,8 +17,8 @@ description: This skill should be used when writing, editing, reviewing, or debu
 - `references/toolkit.md` — toolkit.nu, repo utilities, commit conventions
 - `references/mcp.md` — Nushell as MCP server (`nu --mcp`), tools, persistent state
 - `references/tui.md` — the `tui` family: pickers, forms and panes from a pipeline, tested headlessly with `tui debug`
-- `references/migration.md` — breaking changes, renamed commands, new idioms (0.100 → 0.116)
-- `references/enhancements.md` — new features to improve existing scripts (0.100 → 0.116)
+- `references/migration.md` — breaking changes, renamed commands, new idioms (0.100 → 0.117)
+- `references/enhancements.md` — new features to improve existing scripts (0.100 → 0.117)
 
 ---
 
@@ -87,7 +87,25 @@ open x.md | save y.md                # ✗ silent — writes the parsed AST as a
 ```
 
 `hide 'from md'` turns the conversion off.
-In a script it covers the whole file: measured on 0.116, `open` calls on lines *above* a top-level `hide` also returned text — so put it at the top, where it reads as it runs.
+In a script it covers the whole file: measured on 0.116 and 0.117, `open` calls on lines *above* a top-level `hide` also returned text — so put it at the top, where it reads as it runs.
+Only a top-level `hide` works: inside `do { }` or a `def` body it leaves `open` converting, on both versions.
+
+## Agent Tip: Breaks in 0.117
+
+0.117 removed commands and flags that older code still uses, and the errors do not say "removed":
+
+```nushell
+$xs | where {|x| $x > 1 }            # ✓
+$xs | filter {|x| $x > 1 }           # ✗ External command failed — Command `filter` not found
+$rec | get --optional key            # ✓
+$rec | get -i key                    # ✗ The `get` command doesn't have flag `-i` (same in select, reject)
+```
+
+A failing external piped into `print` now fails the pipeline with its exit code, so `^grep pat file | print` stops a script when nothing matches.
+An `alias` cannot hold a pipe any more (`alias q = ls | length` → `Can't create alias to expression`): write a `def`.
+`$env.config.keybindings = [...]` and `$env.config.menus = [...]` now replace the whole list, Tab completion included: append with `++=`.
+
+See `references/migration.md` for the rest of the 0.117 breaks.
 
 ## Agent Tip: Two Parse Changes in 0.116
 
@@ -107,6 +125,33 @@ In `take while` / `take until`, a flag after the closure is now a parse error �
 
 See `references/migration.md` for the rest of the 0.116 breaks.
 
+## Agent Tip: History of One Command
+
+To get the history of one command, start the `git log -L` range at the line number of its `def` and end it at the closing brace:
+
+```nushell
+git grep --line-number 'def .*derive' HEAD -- mod.nu                     # HEAD:mod.nu:17:export def derive [
+git log -L '17,/^}/:mod.nu' --no-relative --no-patch --format='%h %s'     # the commits that changed `derive`
+```
+
+Git searches the end regex from the start line,
+and Topiary puts the closing `}` of a top-level `def` in column 0,
+so the range is the exact body.
+A line number is safer than a start regex:
+the name can be bare or quoted (`def ls`, `def 'ls'`, `def "main bootstrap"`),
+and `--env` or `--wrapped` can stand between `def` and the name or between the name and the parameters.
+`git log -L` counts the lines in `HEAD`,
+so take the number from `HEAD`, not from a file with uncommitted edits.
+The `:name` form (`-L ':export def derive :mod.nu'`) is not exact:
+git ends it at the next line that starts with a letter, `_` or `$`,
+so it also takes the doc comment and the attributes of the next command.
+A multi-line string with `}` in column 0 ends the range early.
+
+The git config of the user can set `diff.relative = true`,
+and `git log -L` in a subdirectory then drops the commits from before the file moved there.
+Add `--no-relative` when you run it from a subdirectory:
+the flag is harmless where the setting is off.
+
 ---
 
 ## Conciseness for Advanced Users
@@ -117,7 +162,7 @@ Leverage implicit features:
 - `update field {|row| $row.field | str uppercase}` → `update field { str uppercase }` — closure receives field value directly
 - `each {|x| $x | str trim}` → `each { str trim }` — `$in` implicit, pipeline flows
 - `$list | each { str trim }` → `$list | str trim` — many commands accept `list<string>` directly (see below)
-- `where {|row| $row.status == "active"}` → `where status == "active"` — `where` has field shorthand
+- `where {|row| $row.status == 'active'}` → `where status == 'active'` — `where` has field shorthand
 - `$data | each { $in | process }` → `$data | each { process }` — `$in` passed automatically to first command
 
 **Principle:** If an advanced user knows how `update`, `each`, `where` work, they shouldn't need to parse redundant variable declarations.
@@ -126,7 +171,7 @@ Leverage implicit features:
 
 ## Command Choices
 
-- Filtering — prefer `where`, avoid `filter` (deprecated since 0.105), `each {if} | compact`
+- Filtering — prefer `where`, avoid `each {if} | compact`; `filter` is removed since 0.117
 - List filtering — prefer `where $it =~ ...`, avoid `where { $in =~ ... }`
 - Parallel with order — prefer `par-each --keep-order`, avoid `par-each` (when order matters)
 - Pattern dispatch — prefer `match` expression, avoid long `if/else if` chains
@@ -136,6 +181,7 @@ Leverage implicit features:
 - Syntax check (human) — prefer `nu-check file.nu` (returns `true`/`false`), avoid `source file.nu`
 - Syntax check (agent) — prefer `dotnu diagnose file.nu`, avoid raw `nu --ide-check` and `nu-check` (see Agent Tip above)
 - Membership — prefer `in` operator, avoid multiple `or` conditions
+- Empty check — prefer `is-empty` / `is-not-empty`, avoid `($x | length) == 0`
 - Field extraction — prefer `get --optional`, avoid `each {$in.field?} | compact`
 - Negation — prefer `$x !~ ...`, avoid `not ($x =~ ...)`
 - List element ops — prefer `$list | str trim`, avoid `$list | each { str trim }`
@@ -179,6 +225,37 @@ $list | url encode                   # $list | each { url encode }
 
 **Shape caveat:** `split row` on a list flattens all results into a single list (`['a,b' 'c,d'] | split row ','` → `[a b c d]`), unlike `each { split row ',' }` which keeps one sublist per element.
 Other `split` commands (`chars`, `words`) keep sublists.
+
+---
+
+## String Quoting
+
+Take the first form that can hold the text:
+
+1. **Bare word** — a word in data: a list item, a path part, a `match` arm, a record value.
+   Not for a word that parses as a value (`true`, `false`, `null`, a number, `1sec`, `10mb`), and not for a command argument that starts with `-`.
+   Also a glob as a command argument (`ls *.md`):
+   quotes make the pattern literal text, so `ls '*.md'` looks for a file named `*.md`.
+2. **Single quotes** `'...'` — any fixed text.
+   Nothing inside is processed, so a regex goes here too: `'(?<=a:)b'`.
+3. **Raw string** `r#'...'#` — fixed text that holds a `'`, or spans lines.
+4. **Single-quoted interpolation** `$'...'` — interpolation with no escape and no literal `(`.
+5. **Backtick** `` `...` `` — a path or glob with spaces, as a command argument; at the head of a pipeline it runs as a command.
+6. **Double quotes** `"..."` — only when an escape is needed: `"\n"`, `"\t"`, `"\""`.
+7. **Double-quoted interpolation** `$"..."` — interpolation together with an escape or a literal `(` (see the Agent Tip above).
+
+```nushell
+# Preferred                          # Avoid
+[Edit Write]                         # ["Edit" "Write"]
+[$dir patches] | path join           # [$dir "patches"] | path join
+match $kind { absolute => 1 }        # match $kind { "absolute" => 1 }
+'hello world'                        # "hello world"
+$'Package: ($pkg.name)'              # $"Package: ($pkg.name)"
+$"($n) rows\n"                       # (the escape needs double quotes)
+```
+
+`\'` is not an escape in `'...'` or `$'...'`: the `'` ends the string, so the line either fails to parse or silently gives a wrong value.
+Text with a `'` and interpolation goes to `$"..."`: `$"'($pkg)@($ver)':"`.
 
 ---
 
@@ -323,32 +400,32 @@ When a file is named after the command (e.g., `greet.nu`), the command **must** 
 # File: greet.nu
 
 # WRONG — "Can't export ... named same as the module"
-export def greet [name: string] { $"Hello ($name)" }
+export def greet [name: string] { $'Hello ($name)' }
 
 # CORRECT — `main` becomes the module's default command
-export def main [name: string] { $"Hello ($name)" }
+export def main [name: string] { $'Hello ($name)' }
 ```
 
-After `use greet.nu`, call it as `greet "world"` — `main` is replaced by the module name.
+After `use greet.nu`, call it as `greet world` — `main` is replaced by the module name.
 This applies to `def`, `extern`, and `const`.
 
 ### A command name is prose, not code
 
-A quoted `def "…"` name may contain spaces, and that is the whole point of the multi-word form.
+A quoted `def '…'` name may contain spaces, and that is the whole point of the multi-word form.
 Use **letters, digits, spaces and hyphens** — nothing else.
 Write what the command does, in words.
 Never embed a code fragment, a type, a literal or an operator in the name:
 
 ```nushell
 # WRONG — a code fragment in the name; says nothing a reader could not get from the body
-def "a record {a: 1} round-trips" [] { ... }
+def 'a record {a: 1} round-trips' [] { ... }
 
 # WRONG — the apostrophe English wants here takes the whole file down (see below)
 def "the signer's endorsement" [] { ... }
 
 # CORRECT — prose, and it survives being re-parsed
-def "a single-field record round-trips" [] { ... }
-def "the endorsement of the signer" [] { ... }
+def 'a single-field record round-trips' [] { ... }
+def 'the endorsement of the signer' [] { ... }
 ```
 
 Why this is not merely a style preference: a command name is *data that other tools put back into source code*. nutest builds its suite descriptor by interpolating every test name into generated Nushell:
@@ -371,7 +448,10 @@ Rephrase — a possessive always has an `of` form, and a contraction always has 
 
 Separate rule, same place it bites: since 0.115 a command name can never *be* a parser keyword.
 `def def`, `def if`, `def let` fail with `nu::parser::name_is_keyword`, and that covers module exports and `use *` too.
+Since 0.117 `type` is a keyword as well, so `def type` fails the same way.
 Ordinary builtins stay shadowable — `def ls` still works, and `%ls` reaches the real one.
+Since 0.117 a name whose first word reads as a value fails with `Command name not supported`, and so does a leading, trailing or double space: such a command could never be called.
+That catches test names: `def '2 items are merged'` and `def 'nan values'` fail, `def 'merges 2 items'` works.
 
 ---
 
@@ -384,6 +464,8 @@ Ordinary builtins stay shadowable — `def ls` still works, and `%ls` reaches th
 - Use empty `else { }` for pass-through
 - Use `match` for type dispatch
 - Use `in` for membership testing
+- Use `is-empty` / `is-not-empty` for empty checks
+- Quote strings by the ladder in String Quoting: a bare word or `'...'` first, `"..."` only for an escape
 - Use `get --optional` for field extraction
 - Build a `get`/`update` path as a cell-path value (`$.a.b`, `into cell-path`), not an interpolated string (see `references/patterns.md`)
 - Use `scan` for stateful transforms

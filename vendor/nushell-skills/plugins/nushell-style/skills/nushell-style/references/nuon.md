@@ -47,6 +47,9 @@ $data | to nuon --raw
 $data | to nuon --tabs 1
 ```
 
+(v0.117) `--raw --no-commas` is an error (`Incompatible parameters.`): the pair writes no separator at all, so `[1 2]` became `[12]`, one integer on the way back.
+`--indent 0 --no-commas` and `--tabs 0 --no-commas` still write `[12]` with no error, so never combine `--no-commas` with zero indentation.
+
 ## Common Patterns
 
 ### Configuration Files
@@ -106,6 +109,9 @@ open results.nuon | where status == 'passed'
 {key: value}  # equivalent to {key: 'value'}
 ```
 
+(v0.117) `to nuon` writes a NUL character as `\0` inside quotes (`{k: "\u{0}"} | to nuon` → `{k: "\0"}`).
+0.116 wrote the raw byte, and left it unquoted in a bare word; both versions read `\0` back.
+
 ### Numbers
 
 ```nushell
@@ -122,7 +128,16 @@ open results.nuon | where status == 'passed'
 0xff
 0o755
 0b1010
+
+# Special floats (what `to nuon` writes)
+inf
+-inf
+NaN
 ```
+
+(v0.117) Only `inf`, `NaN` and `nan`, each with an optional sign, spell a special float.
+Inside a list or record, `from nuon` reads `INF`, `Inf`, `Nan`, `Infinity` and other spellings as strings (`'[INF]' | from nuon` → `["INF"]`), and a bare `INF` as the whole document is an error (`calls not supported in nuon`).
+0.116 read all of them as floats.
 
 ### Lists and Records
 
@@ -181,6 +196,9 @@ Tables are lists of records with consistent keys:
 The writer always emits durations in `ns` and file sizes in `b`, so a hand-written `30sec` comes back as `30000000000ns`.
 The type survives; the spelling and any `#` comments do not — keep that in mind before rewriting a hand-edited config file with `to nuon`.
 
+(v0.117) A duration or file size that does not fit in 64 bits is an error in `from nuon`: the label says `duration too large` or `filesize too large`, while `$e.msg` is only `error when loading nuon text`.
+0.116 often returned a wrong value with no error: `ns`, `us`, `b`, `kb` and `kib` saturated to the maximum, and `ms` through `day` wrapped, so `[1e30sec]` read back as `[-1000000ns]`.
+
 ### Use `--indent` for Human-Readable Files
 
 ```nushell
@@ -237,6 +255,8 @@ $data | to nuon --pretty    # 0.114+: --indent 2 shorthand
 $data | to nuon --indent 4  # indented output
 $data | to nuon --tabs 1    # use tabs instead of spaces
 ```
+
+(v0.117) `from nuon` and `open` skip one leading UTF-8 byte-order mark, which PowerShell's `Out-File` and some Windows editors write; 0.116 failed to parse such a file.
 
 With any indentation flag, `to nuon` (0.114+) aligns table columns:
 

@@ -16,6 +16,8 @@ Caught statically:
 Not caught:
 
 - Unknown command — runtime only (could be external)
+- `break` or `continue` outside a loop (`nu::compile::not_in_a_loop`) — the script stops before its first line runs, yet `--ide-check` prints nothing.
+  Since 0.117 this also holds for a closure inside `catch` or `finally`; 0.116 started such a script, and its `catch` failed only when it ran.
 
 ## Parsing Diagnostics
 

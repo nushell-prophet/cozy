@@ -99,14 +99,14 @@ When a command body starts with a pipeline command (`each`, `where`, `select`, e
 ```nushell
 # Preferred: pipeline command receives input directly
 export def extract-agents []: table -> table {
-    where name? == "Task"
+    where name? == 'Task'
     | each { ... }
 }
 
 # Avoid: redundant $in
 export def extract-agents []: table -> table {
     $in
-    | where name? == "Task"
+    | where name? == 'Task'
     | each { ... }
 }
 ```
@@ -222,7 +222,7 @@ let pipeline = [{str uppercase} {str reverse}]
         {|| do $prev | do $step }
     }
 
-"abc" | do $pipeline   # => CBA
+'abc' | do $pipeline   # => CBA
 ```
 
 The seed `{|| $in }` is the identity closure, so an empty list yields a pass-through.
@@ -248,7 +248,7 @@ Use short-named parameters (`|b|`, `|r|`, `|x|`) when the closure has multiple o
 
 # Simple single operation - $in is fine
 | each { $in + 1 }
-| each { $"prefix: ($in)" }
+| each { $'prefix: ($in)' }
 
 # Field extraction - use get, not each
 | get line
@@ -332,12 +332,12 @@ When a command has to behave differently depending on what type it was piped, do
 `peek` stashes the first `n` elements in the pipeline metadata while the stream keeps flowing, and `metadata access` reads them:
 
 ```nushell
-export def "into list" []: any -> list {
+export def 'into list' []: any -> list {
     peek | metadata access {|md|
         match $md.peek.type {
-            "range" => { each {|| } }
-            "list" => { }
-            "record" => { transpose key value }
+            range => { each {|| } }
+            list => { }
+            record => { transpose key value }
             _ => { [$in] }
         }
     }
@@ -368,7 +368,7 @@ Check what the branches actually separate before reaching for the idiom; `descri
 ```nushell
 [1 2 3] | peek 2 | metadata access {|md| $md.peek }   # => {type: list, stream: false, value: [1, 2]}
 [] | peek 1 | metadata access {|md| $md.peek }        # => {type: list, stream: false, value: []}
-"x" | peek 1 | metadata access {|md| $md.peek }       # => {type: string, stream: false}
+'x' | peek 1 | metadata access {|md| $md.peek }       # => {type: string, stream: false}
 ```
 
 With a count, then, the empty case is `value: []` rather than a missing field; `peek 2` is how `std-rfc/iter only` tells "exactly one" from "more than one".
@@ -416,10 +416,10 @@ let loose = $.a.b | split cell-path | update optional true | into cell-path
 {} | get $loose        # => null
 
 # build an accessor from data
-let dynamic = ["users" 0 "name"]
+let dynamic = [users 0 name]
     | each {|s| {value: $s, optional: false, insensitive: false} }
     | into cell-path
-{users: [{name: "ada"}]} | get $dynamic   # => ada
+{users: [{name: 'ada'}]} | get $dynamic   # => ada
 ```
 
 A list index must stay an `int` in the `value` field — `"0"` as a string makes `get` look for a *column* named `0` and fail with `column_not_found`.
@@ -431,10 +431,10 @@ Use this instead of building a path as a string and interpolating it into `get`:
 
 ```nushell
 # Preferred
-| where name? in ["Edit" "Write"]
+| where name? in [Edit Write]
 
 # Avoid
-| where { ($in.name? == "Edit") or ($in.name? == "Write") }
+| where { ($in.name? == 'Edit') or ($in.name? == 'Write') }
 ```
 
 ### `get --optional` for Field Extraction
@@ -479,13 +479,16 @@ For simple conditions on lists, use row condition syntax (`$it`) instead of clos
 | where { $in =~ $UUID_PATTERN }
 | where { $in > 0 }
 
-# Closure IS needed when piping or multiple operations
-| where {|i| $i.1 | path exists }
-| where { $in | str starts-with "test" }
+# A pipe in the condition needs parentheses, not a closure
+| where ($it.1 | path exists)
+| where ($it | str starts-with 'test')
 ```
 
+Without the parentheses, `where $it | str starts-with 'test'` ends the condition at `$it`, and the result is `[]`.
+Keep a closure for a predicate held in a variable: `where $pred`.
+
 A bare boolean column is a row condition too, but write it as a `$it` cell path: `where $it.valid`, `where not $it.valid`.
-The bare form (`where valid`) runs, and the topiary grammar cannot parse it, so the whole file stops formatting.
+The bare form (`where valid`, and since 0.117 `where a and b`) runs, and the topiary grammar cannot parse it, so the whole file stops formatting.
 `$it.valid` gives the same rows and the same errors, null included.
 Not `where valid == true` / `where valid == false`: `== false` silently drops the rows where `valid` is null, where `not` raises an error.
 
@@ -497,13 +500,13 @@ Not `where valid == true` / `where valid == false`: `== false` silently drops th
 The whole of `std/assert` is built on them.
 
 ```nushell
-def "assert even" [n: int] {
+def 'assert even' [n: int] {
     if $n mod 2 != 0 {
         error make {
-            msg: "not an even number"
-            label: {text: $"($n) is odd", span: (metadata $n).span}
-            help: "pass a multiple of two"
-            code: "demo::assert::not_even"
+            msg: 'not an even number'
+            label: {text: $'($n) is odd', span: (metadata $n).span}
+            help: 'pass a multiple of two'
+            code: 'demo::assert::not_even'
         }
     }
 }
@@ -533,14 +536,14 @@ Under `--unspanned` the label is dropped and only `msg` and `help:` render, so t
 ```nushell
 # --unspanned kept — the label is silently swallowed
 export def with-unspanned [n: int] {
-    error make --unspanned {msg: "…" label: {text: "points here" span: (metadata $n).span} help: "the help line"}
+    error make --unspanned {msg: '…' label: {text: 'points here' span: (metadata $n).span} help: 'the help line'}
 }
 # =>   x …
 # =>   help: the help line
 
 # --unspanned dropped — the caret appears, help: unchanged
 export def without-unspanned [n: int] {
-    error make {msg: "…" label: {text: "points here" span: (metadata $n).span} help: "the help line"}
+    error make {msg: '…' label: {text: 'points here' span: (metadata $n).span} help: 'the help line'}
 }
 # =>   x …
 # =>  1 | without-unspanned 42
@@ -553,7 +556,7 @@ Keep `--unspanned` wherever there is no caller argument to point at; drop it whe
 For an error that needs none of the above, the string form is enough:
 
 ```nushell
-error make "something went wrong"
+error make 'something went wrong'
 ```
 
 Input piped into `error make` is not a shorthand for the argument: it is chained in as an *inner* error.
@@ -577,27 +580,30 @@ export def parse-markdown-to-blocks []: string -> table<block_index: int, row_ty
     ...
 }
 
-# Multiple return types (no commas)
-export def run [
-    file: path
-]: [nothing -> string nothing -> nothing nothing -> record] {
+# One signature per input type (no commas)
+export def trim-all []: [string -> string list<string> -> list<string>] {
     ...
 }
 ```
 
+The rows are for different input types.
+Two rows with the same input make the parser check a typed body against both: a body `'x'` under `[nothing -> string nothing -> record]` fails with `expected record, but command outputs string`.
+Several outputs for one input go in `oneof` instead: `]: nothing -> oneof<string, record, nothing>`.
+
 A command that returns a value or null declares `oneof<T, nothing>`, not `any`: `]: nothing -> oneof<string, nothing>`.
 `any` was the only choice before `oneof` existed; keep it for a value that really can be of any type, or a pass-through of the input.
-When the body can end in `error make`, the parser may reject `oneof<...>` with `output_type_mismatch`; then `any` stays, and `dotnu diagnose` shows which case it is.
-On 0.116.2 `oneof` is checked at parse time only: a command declared `-> oneof<string, nothing>` that returns an int raises no runtime error.
+When `error make` is the last statement of the body (also after an early `return`), the parser rejects an output type that does not allow `error` (`string`, `nothing`, `oneof<string, nothing>`) with `output_type_mismatch`; declare `oneof<string, nothing, error>` there instead of falling back to `any`.
+An `error make` inside an `if`, `match` or `try` branch does not trigger it.
+On 0.117, as on 0.116, `oneof` is checked at parse time only: a command declared `-> oneof<string, nothing>` that returns an int raises no runtime error.
 
 ### @example Attributes
 
 Document commands with executable examples using the built-in `@example` attribute (`attr example` — no import needed; `dotnu examples-update` keeps the `--result` values current):
 
 ```nushell
-@example "generate marker for block 3" {
+@example 'generate marker for block 3' {
     code-block-marker 3
-} --result "#code-block-marker-open-3"
+} --result '#code-block-marker-open-3'
 export def code-block-marker [
     index?: int
     --end
@@ -614,8 +620,8 @@ Both land in `scope commands`:
 
 ```nushell
 @category math
-@search-terms "multiply" "scale"
-@example "double five" { 5 | double } --result 10
+@search-terms 'multiply' 'scale'
+@example 'double five' { 5 | double } --result 10
 export def double []: int -> int { $in * 2 }
 ```
 
@@ -731,7 +737,9 @@ Use meaningful labels instead of pattern matching throughout:
 
 ### Module Exports for Testing
 
-**Key pattern:** Nushell has no private/public distinction within a file.
+**Key pattern:** a `def` without `export` is private to its module.
+A test cannot reach it: `use commands.nu helper` fails with `export_not_found`, and `use commands.nu *` does not bring it in.
+So one file cannot hide a helper from users and still test it.
 Use a two-file pattern:
 
 1. **commands.nu** — export ALL commands (public + helpers) for testability
@@ -780,7 +788,7 @@ Inside that module the bare name now resolves to the custom command, and the fai
 ```nushell
 # bad.nu
 use ./helper.nu *
-export def update [] { "custom update" }
+export def update [] { 'custom update' }
 ```
 
 ```
@@ -804,7 +812,7 @@ export def touch-rows []: table -> table {
 
 # and in the shadowing file's own bodies
 export def length [left: list right: int] {
-    if ($left | %length) != $right { error make {msg: "wrong length"} }
+    if ($left | %length) != $right { error make {msg: 'wrong length'} }
 }
 ```
 
@@ -816,7 +824,7 @@ Two limits:
 - It has to be written at the call site, so it fixes code you control.
   A third-party module that spells the name bare still breaks; the answer there is to not take the builtin's name.
 
-**On `alias "core length" = length`:** `std/assert` uses that instead, and it works, but it is not the modern answer — those aliases date to 2023-05-27 (`3005fe10e`), while `%` arrived in 0.112, and `nu-std` uses `%` nowhere.
+**On `alias "core length" = length`:** `std/assert` uses that instead, and it works, but it is not the modern answer — those aliases date to 2023-05-27 (`3005fe10e`), while `%` arrived in 0.112, and `nu-std` first used `%` in 0.117, for `%metadata` in `std/util`, after a user's alias of `metadata` broke it (source-checked, #19224).
 Prefer `%`; it needs no declaration, survives being copied into another file, and says at the call site which command is meant.
 
 ### Const for Static Data
@@ -825,8 +833,8 @@ Prefer `%`; it needs no declaration, survives being copied into another file, an
 const fence_options = [
     [short long description];
 
-    [O no-output "execute code without outputting results"]
-    [N no-run "do not execute code in block"]
+    [O no-output 'execute code without outputting results']
+    [N no-run 'do not execute code in block']
     [t try "execute block inside `try {}` for error handling"]
 ]
 

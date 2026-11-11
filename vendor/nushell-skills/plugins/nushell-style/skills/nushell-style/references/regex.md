@@ -1,6 +1,6 @@
 # Regex Flavor: fancy-regex
 
-Nushell's built-in regex engine is [`fancy-regex`](https://docs.rs/fancy-regex) (0.19 as of Nushell 0.116), **not** the Rust `regex` crate.
+Nushell's built-in regex engine is [`fancy-regex`](https://docs.rs/fancy-regex) (0.20 as of Nushell 0.117, source-checked in its `Cargo.lock`), **not** the Rust `regex` crate.
 Nushell switched in 0.67 ([#6227](https://github.com/nushell/nushell/pull/6227)) and has stayed on it since.
 
 This matters because most "Rust regex" advice says lookaround and backreferences are impossible.
@@ -20,7 +20,9 @@ fancy-regex is a superset: it hands plain patterns to the `regex` crate and runs
 - Possessive quantifier — `a++b` matches `aaab`
 - Conditional — `(a)?(?(1)b|c)` matches `ab`
 - Keep-out — `foo\Kbar` makes the match start after `foo`
-- Recursion — `\((?:[^()]|(?R))*\)` matches balanced parens
+- Recursion — `\((?:[^()]|\g<0>)*\)` matches balanced parens: `\g<0>` calls the whole pattern, `\g<1>` or `\g<name>` one group.
+  Nesting deeper than 20 levels silently matches a shorter, inner span.
+  Not `(?R)`: fancy-regex reads it as the CRLF flag, so the same pattern with `(?R)` matches only a pair with no parens inside (`(b)` in `x(a(b)c)y`), with no error.
 
 Everything from the `regex` crate still works: inline flags `(?i)` `(?s)` `(?m)` `(?x)`, unicode classes `\p{Lu}`, named captures in both `(?<name>…)` and `(?P<name>…)` spellings.
 
@@ -40,6 +42,9 @@ $text | str replace --all --regex '\b(\w+) \1\b' '$1'
 `=~` / `!~` (and their `like` / `not-like` aliases), `where` with those operators, and every `--regex` flag in the core commands:
 
 `find --regex`, `parse --regex`, `split row --regex`, `split column --regex`, `split list --regex`, `str replace --regex`.
+
+(v0.117) `find --regex … --only-matching` returns only the matched text, one string per match, across all input rows — the `grep -o` of Nushell.
+It returns the whole match, so a capture group does not narrow it; `\K` and lookaround do: `'key=val; key=other' | find --regex 'key=\K\w+' --only-matching` → `[val, other]`.
 
 `str escape-regex` escapes a literal string for all of the above — use it whenever a pattern is built from user input or a file path.
 

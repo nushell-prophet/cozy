@@ -14,7 +14,7 @@ Do not parse the transcripts by hand; when claude-nu cannot answer, `claude-nu r
 
 In a cozy sandbox it is autoloaded for interactive nu, including the nushell MCP `evaluate` tool.
 From the Bash tool, `nu --commands` skips autoload: `nu --config ~/.config/nushell/autoload/modules-core.nu --commands '...'`, or put `use ~/repos/claude-nu/claude-nu` at the top of a script file (a bare `use claude-nu` is not found: `~/repos` is not in `NU_LIB_DIRS`) and run `nu file.nu` — nu inside bash quotes is painful.
-Elsewhere: `use /path/to/claude-nu/claude-nu`.
+Elsewhere: clone [claude-nu](https://github.com/nushell-prophet/claude-nu), then `use /path/to/claude-nu/claude-nu`.
 End every pipeline you are going to read with `| to nuon`.
 
 ## The one rule: scope is to the left of the pipe
@@ -51,7 +51,9 @@ Every command reads the sessions piped into it; with no input, the current proje
 - **Anything else in a transcript**: `claude-nu records` — one row per line, `{type, uuid, timestamp, record, ...}`, the whole line under `record`; its regex matches the line as JSON (`records '"permissionMode":"plan"'`).
 - **The sessions themselves**: `claude-nu sessions` rows are `{summary, last_timestamp, user_messages, path, session, parent_session_id}`.
   `session` is the key every other command uses (`agent-<id>` on a subagent row); `session_id` names the parent there.
+  `user_messages` is the list of the messages, not a count; the count is the column `user_msg_count`.
 - **Numbers per session**: `claude-nu sessions --columns a,b` (tab-completes; `--all-columns` for every one).
+  `--columns` replaces the default set: only `path`, `session` and `parent_session_id` stay, so name `summary` or `last_timestamp` too if you need them.
   `tool_counts`, `token_usage`, `turn_count`, `first_timestamp`, `edited_files`, `git_branch`, `plan_mode_used` ...
   `size` and `modified` come from the file listing and open no file; `projects` rows carry `size` too.
 - **A session as markdown**: `... | claude-nu export-session` (`--tools` keeps the calls).

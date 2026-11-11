@@ -21,8 +21,8 @@ nu -c '"x" not-in ["y"]'           # ✓
 
 ```bash
 nu -c "$(cat << 'EOF'
-if ($data | length) != 0 { print "has data" }
-$data | where name !~ "skip"
+if ($data | is-not-empty) { print 'has data' }
+$data | where name !~ 'skip'
 EOF
 )"
 ```
@@ -32,10 +32,10 @@ EOF
 ```bash
 cat > /tmp/test.nu << 'EOF'
 let data = [{a: 1}, {a: 2}]
-if ($data | length) != 0 {
-    print "has data"
+if ($data | is-not-empty) {
+    print 'has data'
 }
-$data | where a > 1 | to nuon
+$data | where a != 1 | to nuon
 EOF
 nu /tmp/test.nu
 ```
@@ -60,14 +60,14 @@ use std/testing *
 use ../module/commands.nu *
 
 @test
-def "command-name handles specific case" [] {
+def 'command-name handles specific case' [] {
     let result = 'input' | command-name
 
     assert equal $result 'expected'
 }
 
 @test
-def "command-name with edge case" [] {
+def 'command-name with edge case' [] {
     let result = '' | command-name
 
     assert equal ($result | length) 0
@@ -80,13 +80,13 @@ Use descriptive names with the command being tested:
 
 ```nushell
 @test
-def "extract-command-name handles export def" [] { ... }
+def 'extract-command-name handles export def' [] { ... }
 
 @test
-def "extract-command-name handles simple def" [] { ... }
+def 'extract-command-name handles simple def' [] { ... }
 
 @test
-def "dependencies excludes calls inside attribute blocks" [] { ... }
+def 'dependencies excludes calls inside attribute blocks' [] { ... }
 ```
 
 **A test name is prose: letters, digits, spaces and hyphens only.**
@@ -106,11 +106,16 @@ The error dump is the generated suite list, so nothing in it names the test that
 def "the endorsement reported is the record signer's" [] { ... }
 
 # CORRECT
-def "the endorsement reported belongs to the record signer" [] { ... }
+def 'the endorsement reported belongs to the record signer' [] { ... }
 ```
 
 Measured: `'` `` ` `` `"` `(` `)` `[` `]` `|` `#` and an unbalanced `{` each take the file down.
 A balanced `{a: 1}` and a `$var` happen to survive, because the parser matches the longest defined command name first — but a name carrying a code fragment is bad naming whether or not it parses, and the next generator to read that name need not be so forgiving.
+
+Since 0.117 the `def` itself fails with `Command name not supported.` in two more cases, which 0.116 defined and could never call:
+
+- the first word is a number, a file size, a duration, a date or a range: `'2 items are merged'`, `'10kb file'`, `'1sec timeout'`, `'2024-01-01 report'`, `'1..3 range'`, `'nan handling'` — write `'merges 2 items'` (a word such as `null` or `true` is fine);
+- a space is doubled, leading or trailing: `'a  b'`, `'a b '`.
 
 Descriptive names are prose, and prose wants possessives and contractions.
 Rewrite them: `X's Y` → `the Y of X`, `doesn't` → `does not`, `cannot`/`is not` instead of `can't`/`isn't`.
@@ -138,9 +143,9 @@ def cleanup [] {
 }
 
 @test
-def "suite files with default glob" [] {
+def 'suite files with default glob' [] {
     let temp = $in.temp  # Access context from setup
-    touch ($temp | path join "test_foo.nu")
+    touch ($temp | path join 'test_foo.nu')
     # ... test logic
 }
 ```
@@ -194,7 +199,7 @@ def collect-integration-results [--update]: nothing -> table {
         $results | where status == 'changed' | each {|r|
             ^git add $r.file
             # stderr, so the note never corrupts JSON on stdout in machine mode
-            print --stderr $"(ansi green)Staged:(ansi reset) ($r.file)"
+            print --stderr $'(ansi green)Staged:(ansi reset) ($r.file)'
         }
     }
 
@@ -297,10 +302,10 @@ assert ($result !~ 'unwanted')
 
 # Negative assertions
 assert ('item' not-in $list)
-assert (($filtered | length) == 0)
+assert ($filtered | is-empty)
 
 # With custom message
-assert (($errors | length) == 0) "should have no errors"
+assert ($errors | is-empty) 'should have no errors'
 ```
 
 ## Test Grouping with Comments
@@ -313,17 +318,17 @@ Group related tests with section comments:
 # =============================================================================
 
 @test
-def "extract-command-name handles export def" [] { ... }
+def 'extract-command-name handles export def' [] { ... }
 
 @test
-def "extract-command-name handles simple def" [] { ... }
+def 'extract-command-name handles simple def' [] { ... }
 
 # =============================================================================
 # Tests for dependencies
 # =============================================================================
 
 @test
-def "dependencies returns table with expected columns" [] { ... }
+def 'dependencies returns table with expected columns' [] { ... }
 ```
 
 ## Embedded Output Tests (dotnu embeds)
@@ -338,7 +343,7 @@ Commands ending with `| print $in` become capture points where output is embedde
 ls | length | print $in
 # => 42
 
-['a' 'b'] | str join ', ' | print $in
+[a b] | str join ', ' | print $in
 # => a, b
 ```
 
@@ -432,24 +437,24 @@ test:
 ### Missing @test annotation
 ```nushell
 # ❌ Test not discovered
-def "my test" [] { ... }
+def 'my test' [] { ... }
 
 # ✅ Correct
 @test
-def "my test" [] { ... }
+def 'my test' [] { ... }
 ```
 
 ### Context comes from pipeline, not function call
 ```nushell
 # ❌ Wrong
 @test
-def "test" [] {
+def 'test' [] {
     let ctx = setup
 }
 
 # ✅ Correct — context piped from @before-each
 @test
-def "test" [] {
+def 'test' [] {
     let ctx = $in
 }
 ```
@@ -464,10 +469,10 @@ def threads []: nothing -> record {
 }
 
 @test
-def "test 1" [] { ... }
+def 'test 1' [] { ... }
 
 @test
-def "test 2" [] { ... }
+def 'test 2' [] { ... }
 ```
 
 The strategy covers the whole suite file.

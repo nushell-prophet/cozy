@@ -61,7 +61,7 @@ A doc over a stateful system (an append-only store, a graph, a ledger) embeds on
 The writes ran once, outside the doc; quote each one as a comment at the point where its result is read:
 
 ```nushell
-#   written once:  nu-cybergraph link add <new> <old>   (×22)
+#   written once:  nu-cybergraph-git link add <new> <old>   (×22)
 ls cybergraph/links | length | print $in
 # => 30
 ```
