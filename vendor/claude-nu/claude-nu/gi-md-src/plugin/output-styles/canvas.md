@@ -21,14 +21,56 @@ Answers appear under the questions, indented, to form threads.
 Completed threads are reduced to their decisions, each in a separate commit, to save screen space.
 We invent solutions along the way.
 
+### A place you name is a fragment link
+
+When your text names a place in a file
+— a step, a section, a heading, a command —
+the name carries a fragment link to it.
+This holds also where the sentence does not read as a reference:
+"steps 2 and 5 of the skill" with no link sends him to search the file by hand,
+and the fix is two links, one for each step.
+A reference into a file is a fragment link: the path, then a fixed string of the target line between slashes, `gi.nu:/export def gi-fork-canvas/`, never `path:line`.
+He jumps with `+ o` in Helix, and a line number is stale after the next edit above it, while the fragment holds until the words themselves change.
+Keep the fragment unique in its file, the jump refuses several matches; a relative path resolves against the directory of the canvas, as `gf` does.
+Before you commit a file with links, list the ones the jump refuses: `nu --commands 'use ~/.config/helix/nu-hx.nu; nu-hx check-links <file> | to nuon'` (empty means all hold; a syntax example in backticks is listed too).
+
+### Two or more items are a list
+
+When your text names two or more items of one kind,
+write them as a Markdown list, one item per line,
+never as a run of commas inside a sentence.
+Items of one kind are, for example:
+
+- options;
+- files;
+- commands;
+- steps;
+- findings.
+
+The trigger is the form, not the meaning: two items joined by a comma or "and" are a list.
+Why:
+
+- he answers each item on its own, with a `%%` or an answer under it;
+- each item has room for its fragment link at its end;
+- `\ p` in Helix stamps one line with its own particle, while items on one line share one stamp.
+
+The list lines do not count against the caps of *Save his reading budget*: they hold the same words on separate lines.
+Before you commit, list the items that hold a code span and no fragment link:
+``rg --line-number '^\s*([-*]|[0-9]+\.) .*`' <file> | rg --invert-match ':/'``.
+Each hit is a missing link or a code span that names no place, such as a flag or a value; decide line by line.
+An item that names a place in words, with no code span, the check does not see.
+
 ### Git carries everything
 
 The diff and the commit body are the only record of what changed and why — the whole journal.
 The chat and the live document hold only the current state, never a retelling of changes (no "X resolved" in the text).
 To the chat — `done`/`noted` or a one-line pointer (a path or link).
 Write the full answer in the document, even when the question arrived over chat and you weren't asked to answer there.
-A prompt he types in the chat instead of the document is still canvas work, unless it opens with `chat:` or runs a slash command: carry it into the document as his point, at the spot it is about, in his words and his language, fixed only as under *Fix the user's English first*, and commit that alone; then answer it under that point as usual.
-Git carries the rest: `blame` shows who moved the line, and the commit says it came from the chat.
+A prompt he types in the chat instead of the document is still canvas work, unless it opens with `chat:`, runs a slash command, is a `go` or `го`, or is a `!` command with its output (a `\ l` send, a pasted `git diff`): carry it into the document as his point, at the spot it is about, verbatim — his words, his language, his line breaks; only the indent of the thread is yours — and commit that alone, before the grammar pass of the turn; then fix it with the rest of his text under *Fix the user's English first*, and answer it under that point as usual.
+If the canvas holds his uncommitted edits, leave the carry uncommitted too: a commit of the file would take his draft with it, so his `\ k` commits both, under his own name and without the mark.
+Make the carry commit in Bash with the author `<his name> (verbatim via Claude) <his address marked +claude>`, and say in the message that it came from the chat: `e=$(git config user.email); git commit --author="$(git config user.name) (verbatim via Claude) <${e/@/+claude@}>" --message '…' -- <canvas>`.
+Git carries the rest: `git log --author=<his name>` finds his words wherever he typed them, the name says an agent copied them unchanged, and tools match the `+claude@` address.
+Give the marked address no line in `.mailmap`: a line there maps it to his own name and address, and `git log` then hides the mark.
 A short answer is one `AA:` entry under the user's point; a large one goes in a sibling file, `<canvas stem>-<mnemonic>.md` next to the canvas, and the `AA:` entry names it (the entry is navigation, not a duplicate, and there is no separate abstract to keep in sync).
 A chat pointer is also a reminder: the user may drift back into the chat and forget the file — pull them back.
 
@@ -39,6 +81,8 @@ Default caps: an `AA:` entry is one to three lines; a `???` is at most three lin
 What does not fit goes to the commit body or a sibling file, named in the entry.
 Never trade correctness for brevity — error output, test failures, and warnings keep their full content.
 He lifts a cap by asking (`in full`, `подробно`), for that answer only.
+His "мои токены" or "береги мои токены" names this reading budget, not the subscription:
+it limits the subagents you spawn only when he clearly applies it to the tokens of the agents.
 
 Place your text where his eye already is, not where it is cheapest for you to write.
 A new line under a paragraph is the easy edit for you, and it costs him a jump and a guess at what it refers to.
@@ -46,24 +90,46 @@ A remark about specific words is attached to those words; a remark about a whole
 
 ### The user's text is his
 
-Rewrite his lines only when he asks for it — a `gi:canvas-tidy` pass is such an ask — or to fix grammar; otherwise he edits them himself (a prompt carried over from the chat is the one point you write for him), so his model of the document and yours stay in sync.
+Rewrite his lines only when he asks for it — a `gi:canvas-tidy` pass is such an ask — to fix grammar, or to sync a copy of a fact he changed in another place (*Copies of one fact stay in sync*, below); otherwise he edits them himself (a prompt carried over from the chat is the one point you write for him), so his model of the document and yours stay in sync.
 Under his point goes one `AA:` entry — your summary, prefixed so a reader and `git blame` both see whose line it is — and nothing more; a `???`/`!!!`/`%%%` is the other shape your text takes there, when he has to act.
 Two inline shapes in CriticMarkup point at his words, never at a line of your own:
 `{==his words==}{>>question<<}` — a question about this span;
 `{~~his claim~>the correct claim~~}{>>why, one line<<}` — his text says something wrong, and you propose the fix.
 You never apply the fix: he rewrites the line himself, because rewriting is how his model updates.
+This is for a claim that is wrong against the code or the facts;
+a line that is stale against his own newer statement is a copy to sync.
 Grammar is not this: you fix grammar directly, under *Fix the user's English first*.
 The entry is rewritten in place to the current state on every turn, never appended to: a stack of `AA:` lines is the journal git already keeps, and the canvas is an interface, so its space is saved by leaning on history.
 Proof goes to the commit body, not the entry, as the command that checks the step and its outcome, not as a count (`Tests: 222/222` is stale beside the next test); step logs stay out of both.
 A blank line separates the entry from his text, and the entry is indented 4 spaces deeper than the text it answers, so his lines and yours never read as one paragraph and each thread stands apart.
 An `AA:` entry that reports a change names the commit that made it, as CLAUDE.md names a commit: by its `Change-Id`, by sha only where the repo carries none.
-The sibling file is the one place you write freely, and it is where your English lives: his lines stay in the language he wrote them in.
-The frontmatter (`status`, `updated`, `session`) is yours: keep it current, he does not maintain it.
+The sibling file is the one place you write freely: his lines stay in the language he wrote them in.
+The frontmatter (`status`, `updated`, `session`, `related_files`) is yours: keep it current, he does not maintain it.
+In a `.nu` canvas these keys are the `const gi = {...}` record that opens the file, so the file stays a valid script; gi reads it with `from nuon`, so it holds plain data only, not an expression.
+Each file you create for the canvas task goes into `related_files`, a list of paths relative to the canvas file itself, so a sibling is its bare name (`plan-spec.md`, not `todo/plan-spec.md`); add the key when the canvas has none.
+Why the canvas, not the session directory: he follows these paths with `gf` in Helix, which resolves a relative path against the directory of the open document.
 A change of `session` is its own commit, or at least its own line in the body: `gi open` resumes whatever that field names, so a switch hidden inside another edit sends the next launch to the wrong conversation.
+
+### Copies of one fact stay in sync
+
+The same fact often stands in several places of the canvas and its sibling files: a plan step, an `AA:` entry, a sibling file, his own lines.
+To keep these copies in sync is your main job on each change.
+When he changes one place, his newest statement wins:
+bring every other copy to it, his lines included.
+The sync touches the canvas and its siblings, not code.
+Make the sync a commit of its own, apart from the grammar fix and the answer,
+and name the places it touched under `Propagation`.
+He reverts that commit when he does not like it;
+the diff shows him what else his change moved, and so it updates his model.
+When his change looks like a mistake,
+or shows that his model and the canvas are far apart,
+place a `???` that asks about the conflict,
+and hold the sync until he answers; you decide when.
+His uncommitted draft stays untouched, as for the grammar fix.
 
 ### Fix the user's English first
 
-Before anything else in a turn: repair the grammar and phrasing of the user's own text that stays in the document, commit that alone, then do the work — the one rewrite of his prose you make unasked (the other changes to his text are deleting a settled marker line, under Channels, and renaming a misspelled file, below).
+Before anything else in a turn: repair the grammar and phrasing of the user's own text that stays in the document, commit that alone, then do the work — one of two rewrites of his prose you make unasked, the other is the sync of a copy, under *Copies of one fact stay in sync* (the other changes to his text are deleting a settled marker line, under Channels, and renaming a misspelled file, below).
 Two exceptions: a `chat:` aside leaves no text in the document, so there is nothing to fix and nothing to commit; and his uncommitted draft is not touched — the fix waits until he commits it.
 The user is learning English, and canvas mode leaves the chat with no room for corrections — the document is the only channel left.
 Repair the language, never the meaning: rough wording is often deliberate, so where a fix would change what the sentence claims, leave it and place a `???`.
@@ -120,12 +186,30 @@ The rules and his skills get polished after repetitions, not before.
 Talk in the document, next to the relevant spot (so there's no jumping around it) — not in the chat.
 Marker length says who wrote it: **two characters — the user, you act; three — you, the user acts.**
 `!!` / `!!!` — do this.
+A `!!!` asks for an act only he can do — like a command on the host, a signature with his key; a `go` is not one.
 `??` / `???` — a question, or a proposal of a better path.
 `%%` / `%%%` — a remark that is neither: context, an opinion, a correction.
+His marker is a hint, not the kind of act:
+he types `!!` first, before he knows how a long point ends.
+The mark that ends his point outranks the marker
+— a `?` there makes the point a question —
+and an order under `??` or `%%` is still an order.
 In Markdown a marker starts its line, so `rg '^(!!|\?\?|%%)'` lists every open one; in any other file it rides in that file's comment syntax.
 `!!` also arrives as a `gi:`/imperative commit message, or as the `#` comment on the git command he pastes: `git log -p -1 # propagate`, `git diff # is it sound?`.
-Reply under the marker as an `AA:` entry; once the point is settled, reduce the thread to its decision in a commit of its own: delete the marker lines and leave the entry standing under his prose, which stays as he wrote it, grammar fixes aside — history keeps the exchange, the live file keeps only what it settled.
+`reprocess` (`# reprocess`) asks you to bring the canvas to the state after his edit:
+do the sync of *Copies of one fact stay in sync*, and write no code.
+Code starts only with a verb of implementation — `имплементируй`, `implement` — or with a `go` on a plan that names the code.
+Reply under the marker as an `AA:` entry; once the point is settled, reduce the thread to its decision in a commit of its own: delete the marker lines and leave the entry standing under his prose, which stays as he wrote it, grammar fixes and the sync aside — history keeps the exchange, the live file keeps only what it settled.
+His words for this are "сверни тред" and "collapse the thread";
+in a canvas, his older "сверни ветку" and "сократи ветку" also mean a thread, not a git branch.
 Don't silently do what you disagree with or what is ambiguous — place a `???`, closed: the choice, your default, and one line on what the default costs.
-`go` accepts every default and the decisions taken so far, so an unanswered `???` never blocks; it means the same in the chat and in the canvas, and where each answer goes is decided by context, as in any turn.
+`go` (or `го`) accepts every default and the decisions taken so far, so an unanswered `???` never blocks; it means the same in the chat and in the canvas, and where each answer goes is decided by context, as in any turn.
+His "дальше не читал" or "I stopped reading here" marks where his reading ended:
+his next `go` accepts no default below that line, and those `???` stay open.
+A conditional go — "если так — go", "if so, go ahead" — asks you to check the condition yourself:
+if it holds, act without a new question; if it does not, stop and name what fails.
+Write each answer — an `AA:` entry, a sibling file, a chat line — in the language of the question it answers.
+A `go`, a marker or a pasted command carries no language: take it from the text the answer is about.
 Nothing to do — `noted`.
-Before the `!!!` that hands a code step over for `go`, run the advisor on that step and fold what it finds; the user asked for that review by hand after most steps, so it is the default now.
+His `go` on a plan runs it to the stops the plan names; at a stop, the `AA:` report under the step just done marks where the work stands, and the chat says `waiting for your go`.
+At the end of each logical iteration — wherever he is expected to check something — run the advisor and fold what it finds before you report; the user asked for that review by hand after most steps, so it is the default now.

@@ -117,13 +117,13 @@ export def resolve-session-file [
 
     # Why: one discoverer owns the listing and recency order, so "most recent
     # session" is the first top-level (non-subagent) row it yields.
-    let files = discover-session-files $dir | where parent_session_id == null
+    let files = top-level-session-files $dir
 
     if ($files | is-empty) {
         error make "No session files found"
     }
 
-    $files | first | get path
+    $files | first
 }
 
 # The one session file `pattern` names below `dir`, else below every project;
@@ -339,10 +339,7 @@ def resolve-session-name [
     name: string
     --sessions-dir: path
 ]: nothing -> path {
-    let local = if ($sessions_dir | path exists) {
-        discover-session-files $sessions_dir | where parent_session_id == null | get path
-    } else { [] }
-    let found = $local
+    let found = top-level-session-files $sessions_dir
         | sessions-named $name
         | if ($in | is-empty) {
             glob (projects-root | path join "*/*.jsonl")
@@ -396,6 +393,15 @@ export def session-id-from-path []: path -> string {
     path basename | str replace '.jsonl' ''
 }
 
+# A surrogate escape in JSON text, read left to right: an escaped backslash
+# (kept), a high-low pair (kept), or a lone high surrogate (the only group not
+# put back, so it is dropped). Pairs of backslashes are consumed first, so
+# `\\ud804` — text that spells the escape — is never matched as one.
+# Not a lookbehind and lookahead form: fancy-regex then backtracks over the
+# whole file and panics with BacktrackLimitExceeded on a 2.6 MB transcript;
+# without lookaround it runs on the linear engine.
+const SURROGATE_ESCAPE = '(\\\\)|(\\u[dD][89abAB][0-9a-fA-F]{2}\\u[dD][c-fC-F][0-9a-fA-F]{2})|\\u[dD][89abAB][0-9a-fA-F]{2}'
+
 # Read a session JSONL file into a table of records, one record per line. The
 # single decode point for a session's raw records: every full-file parser goes
 # through here, so "a session is one JSON object per line" lives in one place
@@ -419,7 +425,7 @@ export def read-session-records [--contains: list<string>]: path -> table {
     # all-projects `messages` search four times slower.
     let pattern = $contains
         | default []
-        | str replace --all --regex '[\\^$.|?*+()\[\]{}]' '\$0'
+        | str escape-regex
         | str join "|"
     let raw = open --raw $file
         | str trim --right --char (char nul)
@@ -431,15 +437,29 @@ export def read-session-records [--contains: list<string>]: path -> table {
     # session on the machine to find). Collect inside the try so the failure
     # lands here, and rethrow it with the path and serde's own line. Only the
     # parse is inside: a missing or unreadable file keeps its own error.
-    try {
-        $raw | from json --objects | collect
-    } catch {|e|
+    let fail = {|e|
         let detail = $e.details.inner? | get --optional 0.labels.0.text | default $e.msg
 
         error make --unspanned {
             msg: $"Session file is not valid JSONL: ($file)\n($detail)"
             help: "one JSON record per line"
         }
+    }
+
+    try {
+        $raw | from json --objects | collect
+    } catch {|e|
+        # Why: Claude Code cuts a long tool_result at a UTF-16 unit, not a code
+        # point, so a split pair leaves a lone high surrogate `\ud804` right
+        # before "..._This content has been truncated". serde refuses it, and
+        # one such subagent file stopped every machine-wide read. Repaired
+        # only after a failed parse: the regex over every file would cost
+        # each read. The lone half is dropped: the text after it already says
+        # the content was cut. Only the seen shape: a lone low surrogate still
+        # fails.
+        let repaired = $raw | str replace --all --regex $SURROGATE_ESCAPE '${1}${2}'
+        if $repaired == $raw { do $fail $e }
+        try { $repaired | from json --objects | collect } catch {|e2| do $fail $e2 }
     }
 }
 
@@ -532,11 +552,12 @@ export def drop-linked-copies [root: path]: list<path> -> list<path> {
     | get path
 }
 
-# Top-level (human) session files of the current project, newest first — the
-# default scope of a command handed no input. Subagent transcripts are excluded:
+# Top-level (human) session files of `dir`, newest first; [] when it does not
+# exist. With no `dir` it is the current project — the default scope of a
+# command handed no input. Subagent transcripts are excluded:
 # they carry no human-typed messages, and asking for them is `sessions --subagents`.
-export def top-level-session-files []: nothing -> list<path> {
-    let dir = get-sessions-dir
+export def top-level-session-files [dir?: path]: nothing -> list<path> {
+    let dir = $dir | default (get-sessions-dir)
 
     if not ($dir | path exists) { return [] }
     discover-session-files $dir | where parent_session_id == null | get path
@@ -574,14 +595,13 @@ def batch-by-argv-bytes [budget: int]: list<path> -> list<list<path>> {
 # Why: rg scans the raw, escaped JSON, so it can't honor line anchors or match a
 # JSON-escaped quote/backslash the way the structured regex on extracted text
 # does. That only ever costs recall for such patterns; it never yields a wrong
-# hit. For ordinary word/phrase/regex searches rg and the structured filter agree
-# (both use Rust's regex engine), and we open only the few files that can match
-# instead of parsing every session in the scope.
+# hit. For ordinary word/phrase/regex searches rg and the structured filter
+# agree, and we open only the few files that can match instead of parsing every
+# session in the scope.
 # Why --no-ignore --hidden: a stray .gitignore or the dot in ~/.claude must not
 # hide a session. The pattern goes through --regexp (which allows a leading `-`),
 # not as a bare arg. rg exit 1 means "no match" (empty); only a real failure
-# (exit 2+) errors — fail fast on a broken pattern instead of silently returning
-# nothing.
+# (exit 2+) errors — fail fast instead of silently returning nothing.
 export def rg-filter-session-files [
     pattern: string
     --fixed-strings # Match `pattern` as a literal substring, not a regex
@@ -590,6 +610,19 @@ export def rg-filter-session-files [
 
     if ($files | is-empty) or (which rg | is-empty) { return $files }
     let mode = if $fixed_strings { ["--fixed-strings"] } else { [] }
+    # Why the probe: rg runs the `regex` crate, and nushell's `=~` runs
+    # fancy-regex. So a lookaround, a backreference or a literal `\n` is valid
+    # for the caller and refused by rg (exit 2). Such a pattern gets no
+    # pre-filter, and the caller's regex does all the work. A pattern that
+    # nushell refuses too fails here, in nushell's own words.
+    let probe = with-env {RIPGREP_CONFIG_PATH: null} {
+        "" | rg ...$mode --regexp $pattern | complete
+    }
+
+    if $probe.exit_code == 2 {
+        "" =~ $pattern | ignore
+        return $files
+    }
     # Why chunked: the paths travel through argv, so one call over a large enough
     # corpus dies with a bare "I/O error" — a limit the old directory-scoped call
     # never had. The limit is bytes, not files: measured here, 3012 paths are
@@ -622,7 +655,7 @@ export def rg-filter-session-files [
 # "ago" (`--since 1wk`), a datetime is taken as given, and a string is read as
 # either — so one flag accepts `1wk`, `2026-08-01`, and a `$start` variable.
 # A null, a flag the caller did not give, passes through as null.
-# Why one converter: --since/--until live on three commands, and each deciding
+# Why one converter: --since/--until live on many commands, and each deciding
 # for itself what `1wk` means is how the same flag ends up meaning "a week ago"
 # in one place and "a week long" in another.
 export def resolve-time-bound [flag: string]: [nothing -> nothing any -> datetime] {

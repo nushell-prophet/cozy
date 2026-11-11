@@ -1,5 +1,5 @@
 # claude-nu extraction: session records -> text, dialogue, and metrics.
-use render.nu [render-message-content render-content content-blocks]
+use render.nu [render-message-content render-content content-blocks text-blocks]
 
 # System-generated message prefixes to filter out.
 # Why: `!`-command wrappers (<bash-input>/<bash-stdout>/<bash-stderr>) are NOT
@@ -14,17 +14,12 @@ use render.nu [render-message-content render-content content-blocks]
 # a real message: the check is str starts-with, so it only drops a record whose
 # text *begins* with the tag — a turn nobody typed. A reminder appended after
 # the user's own words leaves those words first, and the message survives whole.
-# The two tags Claude Code wraps around a typed slash command. They are one
-# definition serving two opposite readers: SYSTEM_PREFIXES below drops these
-# records so `messages` stays human text, and `slash-commands` — that filter's
-# complement — reads nothing else.
-const COMMAND_PREFIXES = [
+const SYSTEM_PREFIXES = [
+    # The two tags Claude Code wraps around a typed slash command. Dropping
+    # these records keeps `messages` human text; `slash-commands` — that
+    # filter's complement — reads nothing else, through extract-slash-command.
     "<command-name>"
     "<command-message>"
-]
-
-const SYSTEM_PREFIXES = [
-    ...$COMMAND_PREFIXES
     "<local-command-caveat>"
     "<local-command-stdout>"
     "<local-command-stderr>"
@@ -114,7 +109,7 @@ def capture-first [pattern: string]: string -> string {
 export def extract-text-content []: record -> string {
     # Why: text blocks join with no separator (unlike render-content's "\n\n")
     # — callers like user_msg_length count exact characters.
-    render-message-content { where type? == "text" | get text --optional | str join }
+    render-message-content { text-blocks | str join }
 }
 
 # Like extract-text-content but also surfaces thinking blocks, prefixed with
@@ -149,13 +144,7 @@ export def message-kind []: record -> string {
     if $record.type? == "assistant" { return "response" }
     if $record.isMeta? == true or $record.isCompactSummary? == true { return "system" }
     let content = $record.message?.content?
-    let raw = if ($content | describe) == "string" { $content } else {
-        $content
-        | content-blocks
-        | where type? == "text"
-        | get text --optional
-        | str join
-    }
+    let raw = if ($content | describe) == "string" { $content } else { $content | text-blocks | str join }
 
     if ($raw | str starts-with "<bash-input>") {
         "bash-input"
@@ -188,6 +177,22 @@ export def attached-files []: table -> table {
     }
     | where ($it.text | default "" | str trim | is-not-empty)
     | insert kind "file"
+}
+
+# The prompts the user typed while the agent worked and Claude Code handed over
+# inside the running turn, as `messages` rows of kind `typed`. Such a prompt is
+# only a `queued_command` attachment: no `type: "user"` record holds it, and
+# none names it — the `source_uuid` of the attachment matches no user record.
+# Why `commandMode` and `origin`: the same attachment carries the
+# `<task-notification>` of a finished background job (`commandMode:
+# task-notification`) and a message from another session (`origin.kind:
+# peer`), and neither is the user's. An `origin` is absent in older versions.
+export def queued-prompts []: table -> table {
+    where type? == "attachment" and $it.attachment?.type? == "queued_command"
+    | where $it.attachment.commandMode? == "prompt" and $it.attachment.origin?.kind? != "peer"
+    | insert text {|r| $r.attachment.prompt? | default "" }
+    | where ($it.text | str trim | is-not-empty)
+    | insert kind "typed"
 }
 
 # Build a dialogue table from raw session records: the user and assistant turns

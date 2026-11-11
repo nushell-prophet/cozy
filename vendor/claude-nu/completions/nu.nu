@@ -75,7 +75,9 @@ export extern main [
     --version (-v) # Print the version
     --config: string # Start with an alternate config file
     --env-config: string # Start with an alternate environment config file
+    --config-home: path # Start with an alternate config directory (e.g. ~/.config/nushell)
     --lsp # Start nu's language server protocol
+    --dap # Start nu's debug adapter protocol server (over stdio)
     --ide-goto-def: int # Go to the definition of the item at the given position
     --ide-hover: int # Give information about the item at the given position
     --ide-complete: int # List completions for the item at the given position

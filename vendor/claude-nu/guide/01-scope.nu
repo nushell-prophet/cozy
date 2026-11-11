@@ -23,7 +23,7 @@ claude-nu projects | select name count | print $in
 # Not `sessions --all-projects | ...`: that parses every file for the session
 # columns before the next command reads any of them (40 s against 2.4 s).
 claude-nu projects | claude-nu messages 'docker' | length | print $in
-# => 10
+# => 16
 
 # The sessions of the current project, with the columns you ask for.
 # A datetime renders as "4 months ago"; `format date` keeps these outputs stable.
@@ -31,15 +31,15 @@ claude-nu sessions --columns session_id,first_timestamp,turn_count
 | select session_id first_timestamp turn_count
 | update first_timestamp { format date '%F %R' }
 | print $in
-# => ╭────┬───────────────────────────────────────┬───────────────────┬─────────────╮
-# => │  # │              session_id               │  first_timestamp  │ turn_count  │
-# => ├────┼───────────────────────────────────────┼───────────────────┼─────────────┤
-# => │  0 │ b9ce8986-5d19-4ff5-9285-e0ed06464b6c  │ 2026-05-10 14:18  │          24 │
-# => │  1 │ ae3bbbf7-0554-45f7-9653-6ca09689be50  │ 2026-05-09 18:53  │          12 │
-# => │  2 │ b370af1e-c96f-46a2-a3fe-66b16f38bc03  │ 2026-05-09 18:14  │          15 │
-# => │  3 │ 99bf0e5b-212c-4891-abb2-6bc585af2ea0  │ 2026-05-06 16:56  │           6 │
-# => │  4 │ ef27ae6d-c8d1-4ce8-b0ff-bcfff3954193  │ 2026-05-06 01:09  │          11 │
-# => ╰────┴───────────────────────────────────────┴───────────────────┴─────────────╯
+# => ╭───┬────────────────────────────────────────┬───────────────────┬─────────────╮
+# => │ # │               session_id               │  first_timestamp  │ turn_count  │
+# => ├───┼────────────────────────────────────────┼───────────────────┼─────────────┤
+# => │ 0 │ b9ce8986-5d19-4ff5-9285-e0ed06464b6c   │ 2026-05-10 14:18  │          24 │
+# => │ 1 │ ae3bbbf7-0554-45f7-9653-6ca09689be50   │ 2026-05-09 18:53  │          12 │
+# => │ 2 │ b370af1e-c96f-46a2-a3fe-66b16f38bc03   │ 2026-05-09 18:14  │          15 │
+# => │ 3 │ 99bf0e5b-212c-4891-abb2-6bc585af2ea0   │ 2026-05-06 16:56  │           6 │
+# => │ 4 │ ef27ae6d-c8d1-4ce8-b0ff-bcfff3954193   │ 2026-05-06 01:09  │          11 │
+# => ╰───┴────────────────────────────────────────┴───────────────────┴─────────────╯
 
 # `size` and `modified` come from the file listing, so asking for only these
 # opens no transcript. `modified` is the file mtime, the clock `--since` and

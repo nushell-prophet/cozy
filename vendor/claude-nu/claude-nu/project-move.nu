@@ -2,7 +2,8 @@
 # location. Claude keys everything by the absolute project path, so a directory
 # moved with `mv` leaves its sessions, its permissions and its prompt history
 # stranded under the old name. This retargets the four places that path is
-# written, and nothing else — the project directory itself is the user's to move.
+# written and the symlinks that point into the moved store, and nothing else —
+# the project directory itself is the user's to move.
 #
 # Why a literal substring swap and not a JSON round trip: a session record is a
 # line of JSON we did not author. Parsing and re-emitting it rewrites every byte
@@ -42,37 +43,13 @@ def normalize-project-path []: path -> path {
     if ($expanded | is-empty) { "/" } else { $expanded }
 }
 
-# Every JSONL under `dir`, at any depth — both the top-level `<uuid>.jsonl` and
-# the subagent transcripts nested under `<uuid>/subagents/`.
+# Every file under `dir`, at any depth, as a path relative to `dir`.
 # Not `glob` because: this directory name is built from the project path, so a
 # project path holding `[`, `*` or `?` becomes a pattern that matches nothing —
 # every session would drop out of the plan while the move went ahead anyway.
 # A path held in a variable is literal to `ls`, so the walk is spelled out.
-# Not `discover-session-files` because: it filters names by the UUID pattern,
-# and a `cwd` needs rewriting whatever the file is called.
-# Why a symlink is skipped: its target is a transcript of its own. In this store
-# that file is rewritten where it lies; in another store it belongs to another
-# project.
-def jsonl-files [dir: path]: nothing -> list<path> {
-    ls $dir
-    | each {|entry|
-        if $entry.type == "dir" {
-            jsonl-files $entry.name
-        } else if $entry.type == "symlink" {
-            []
-        } else {
-            [($entry.name | path expand)]
-        }
-    }
-    | flatten
-    | where $it ends-with ".jsonl"
-}
-
-# Every file under `dir`, at any depth, as a path relative to `dir`.
-# Not `glob`, for the same reason as `jsonl-files`: the directory name is built
-# from the project path, so a `[` in it turns the walk into a pattern matching
-# nothing. Every file, not just `.jsonl` — a store also holds `memory/` and
-# whatever else Claude drops in there, and all of it has to relocate.
+# Every file, not just `.jsonl` — a store also holds `memory/` and whatever else
+# Claude drops in there, and all of it has to relocate.
 def relative-files [dir: path]: nothing -> list<string> {
     ls $dir
     | each {|entry|
@@ -85,11 +62,29 @@ def relative-files [dir: path]: nothing -> list<string> {
     | flatten
 }
 
+# Every JSONL under `dir`, at any depth — both the top-level `<uuid>.jsonl` and
+# the subagent transcripts nested under `<uuid>/subagents/`.
+# Not `discover-session-files` because: it filters names by the UUID pattern,
+# and a `cwd` needs rewriting whatever the file is called.
+# Why a symlink is skipped: its target is a transcript of its own. In this store
+# that file is rewritten where it lies; in another store it belongs to another
+# project.
+# Why the paths are joined to `dir` and not resolved: the plan compares these
+# paths with the ones it builds from `src` and `dst`, and it maps a source path
+# to its destination by that prefix. A path resolved through a symlinked HOME or
+# `~/.claude` matches neither.
+def jsonl-files [dir: path]: nothing -> list<path> {
+    relative-files $dir
+    | where $it ends-with ".jsonl"
+    | each {|rel| $dir | path join $rel }
+    | where ($it | path type) != "symlink"
+}
+
 # A file's bytes as text.
 # Why the explicit `into string`: `open --raw` yields a byte stream, and one that
 # is not valid UTF-8 splits into a single chunk — count 0 — so the file would
-# vanish from the plan while `str replace` on the same bytes throws at write
-# time. Converting first turns "not text" into an error naming the file.
+# vanish from the plan with nothing said. Converting first turns "not text" into
+# an error naming the file.
 def read-text [file: path]: nothing -> string {
     try {
         open --raw $file | into string
@@ -134,11 +129,7 @@ def swap-in-file [file: path swaps: table<needle: string, replacement: string>]:
     let tmp = $"($file).claude-nu-move"
 
     cp $file $tmp
-    $swaps
-    | reduce --fold (open --raw $file | into string) {|swap text|
-        $text | str replace --all --no-expand $swap.needle $swap.replacement
-    }
-    | save --raw --force $tmp
+    open --raw $file | into binary | swap-bytes $swaps | save --raw --force $tmp
     if (ls $file | get 0.modified) != $before {
         rm --force $tmp
         error make {
@@ -164,9 +155,16 @@ def swap-in-file [file: path swaps: table<needle: string, replacement: string>]:
 # its first turn — this store holds such a zero-byte transcript today. It points
 # at no project, so it strands nothing, and reading it as a stranger's would
 # refuse a move nobody can then make.
+# Why a subagent transcript is never foreign: `<uuid>/subagents/agent-*.jsonl`
+# sits under the folder of its parent session, so it belongs to the project its
+# parent `<uuid>.jsonl` belongs to, and the parent is what this check reads. Its
+# cwd can name a third path — a subagent run with `isolation: worktree` records
+# the temporary worktree, `<repo>/.claude/worktrees/agent-*` — and reading that
+# as a stranger's would refuse the move of a session the subagent is part of.
 def refuse-shared-dir [scanned: table src: path old: path]: nothing -> nothing {
     let foreign = $scanned
         | where $it.scan.records_cwd and scan.old == 0 and scan.new == 0
+        | where source !~ '/subagents/'
         | sort-by source
 
     if ($foreign | is-not-empty) {
@@ -195,7 +193,8 @@ def fold-verdict [from: binary to: binary]: nothing -> string {
     }
 }
 
-# The swaps applied to bytes, as `swap-in-file` will apply them to the text.
+# The swaps applied to bytes. `swap-in-file` writes with it and `plan-fold`
+# predicts with it, so the prediction is the write.
 def swap-bytes [swaps: table]: binary -> binary {
     let bytes = $in
 
@@ -437,7 +436,8 @@ def plan-swap [file: path kind: string needle: string replacement: string]: noth
 # fixes what Claude wrote about it: the sessions directory name, the `cwd` field
 # in every session record, every mention of the path in ~/.claude.json (its
 # `projects` key and its `githubRepoPaths` entry), and the `project` field in the
-# prompt history.
+# prompt history. A symlink under the projects root that points into the moved
+# store gets its new target.
 #
 # Occurrences of the old path inside message texts and tool arguments are left
 # alone: they are a record of what happened, not a pointer to the project.

@@ -3,8 +3,7 @@
 use sessions.nu [
     piped-session-files drop-copied-records scoped-session-files
     resolve-time-bound mtime-filter-session-files rg-filter-session-files
-    read-session-records session-id-from-path project-dir-name
-    project-display-name pick-first content-blocks extract-text-content
+    read-session-records insert-session-columns content-blocks extract-text-content
     tool-result-text is-user-text
 ]
 
@@ -57,7 +56,9 @@ export def main [
         let records = $session_file | read-session-records
         let blocks = $records
             | where type? in ["user" "assistant"]
-            | if $include_system { } else { where isMeta? != true }
+            # Why the compaction summary too: `messages` drops it with the
+            # meta turns, and nobody typed it.
+            | if $include_system { } else { where isMeta? != true and isCompactSummary? != true }
             | each { record-blocks }
             | flatten
             | if $include_system { } else {
@@ -85,9 +86,7 @@ export def main [
         | if $regex == null { } else {
             where text =~ $regex or ($it.tool | default "") =~ $regex
         }
-        | insert session ($session_file | session-id-from-path)
-        | insert project ($session_file | project-dir-name)
-        | insert project_name ($records | pick-first $.cwd | project-display-name)
+        | insert-session-columns $session_file $records
     }
     | flatten
     # Why a key per block and not the record uuid alone: a user record carries

@@ -48,12 +48,12 @@ claude-nu sessions --subagents --columns agent_id,workflow,phase
 # project, piped session rows or a project narrow it.
 # A run with no `status` in its state file is `failed` when it has an `error`.
 claude-nu workflows | select id name status agent_count duration | print $in
-# => ╭────┬─────────────────┬────────────────┬───────────┬─────────────┬────────────╮
-# => │  # │       id        │      name      │  status   │ agent_count │  duration  │
-# => ├────┼─────────────────┼────────────────┼───────────┼─────────────┼────────────┤
-# => │  0 │ wf_aaaa1111-001 │ fixture-review │ completed │           2 │       5min │
-# => │  1 │ wf_bbbb2222-002 │ fixture-broken │ failed    │           1 │ 1sec 500ms │
-# => ╰────┴─────────────────┴────────────────┴───────────┴─────────────┴────────────╯
+# => ╭───┬──────────────────┬────────────────┬───────────┬─────────────┬────────────╮
+# => │ # │        id        │      name      │  status   │ agent_count │  duration  │
+# => ├───┼──────────────────┼────────────────┼───────────┼─────────────┼────────────┤
+# => │ 0 │ wf_aaaa1111-001  │ fixture-review │ completed │           2 │       5min │
+# => │ 1 │ wf_bbbb2222-002  │ fixture-broken │ failed    │           1 │ 1sec 500ms │
+# => ╰───┴──────────────────┴────────────────┴───────────┴─────────────┴────────────╯
 
 # What did not complete, and why.
 claude-nu workflows | where status != completed | select id error | print $in

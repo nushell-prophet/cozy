@@ -34,18 +34,18 @@ claude-nu tool-calls 'docker build'
 | select tool input
 | update input { to nuon | str substring 0..50 }
 | print $in
-# => ╭──────┬───────────────┬───────────────────────────────────────────────────────╮
-# => │    # │     tool      │                         input                         │
-# => ├──────┼───────────────┼───────────────────────────────────────────────────────┤
-# => │    0 │ Bash          │ {command: "git add sandbox-toolkit/install/bootstra   │
-# => │    1 │ TaskCreate    │ {subject: "Verify PR 2 (Dockerfile builds)", descri   │
-# => │    2 │ Bash          │ {command: "command -v docker && (docker buildx buil   │
-# => │    3 │ Bash          │ {command: "docker build -t cozy:v1 . 2>&1", descrip   │
-# => │    4 │ Monitor       │ {description: "cozy:v1 docker build progress", comm   │
-# => │    5 │ Bash          │ {command: "docker build -t cozy:v1 . 2>&1", descrip   │
-# => │    6 │ Bash          │ {command: "tail -200 /tmp/claude-1000/-Users-user-g   │
-# => │    7 │ Bash          │ {command: "docker buildx build --check /Users/user/   │
-# => ╰──────┴───────────────┴───────────────────────────────────────────────────────╯
+# => ╭───┬────────────────┬─────────────────────────────────────────────────────────╮
+# => │ # │      tool      │                          input                          │
+# => ├───┼────────────────┼─────────────────────────────────────────────────────────┤
+# => │ 0 │ Bash           │ {command: "git add sandbox-toolkit/install/bootstra     │
+# => │ 1 │ TaskCreate     │ {subject: "Verify PR 2 (Dockerfile builds)", descri     │
+# => │ 2 │ Bash           │ {command: "command -v docker && (docker buildx buil     │
+# => │ 3 │ Bash           │ {command: "docker build -t cozy:v1 . 2>&1", descrip     │
+# => │ 4 │ Monitor        │ {description: "cozy:v1 docker build progress", comm     │
+# => │ 5 │ Bash           │ {command: "docker build -t cozy:v1 . 2>&1", descrip     │
+# => │ 6 │ Bash           │ {command: "tail -200 /tmp/claude-1000/-Users-user-g     │
+# => │ 7 │ Bash           │ {command: "docker buildx build --check /Users/user/     │
+# => ╰───┴────────────────┴─────────────────────────────────────────────────────────╯
 
 # `--tool` keeps the calls to one tool, or to any of a list, by exact name.
 # The regex is no stand-in: it also finds every call whose input mentions the
@@ -73,11 +73,11 @@ claude-nu tool-calls --tool Bash
 | first 3
 | each { lines | first | str substring 0..60 }
 | print $in
-# => ╭─────────┬────────────────────────────────────────────────────────────────────╮
-# => │       0 │ git log --oneline -20                                              │
-# => │       1 │ ls /Users/user/git/ai-sandbox-dev-container/cozy/                  │
-# => │       2 │ wc -l /Users/user/git/ai-sandbox-dev-container/cozy/Dockerfil      │
-# => ╰─────────┴────────────────────────────────────────────────────────────────────╯
+# => ╭───┬──────────────────────────────────────────────────────────────────────────╮
+# => │ 0 │ git log --oneline -20                                                    │
+# => │ 1 │ ls /Users/user/git/ai-sandbox-dev-container/cozy/                        │
+# => │ 2 │ wc -l /Users/user/git/ai-sandbox-dev-container/cozy/Dockerfil            │
+# => ╰───┴──────────────────────────────────────────────────────────────────────────╯
 
 # What failed, and what it said. `--results` adds `result` and `is_error`,
 # joined by the call's `id`; it parses the whole file, so it is off by default.
@@ -87,13 +87,13 @@ claude-nu tool-calls --results
 | update result { lines | first | str substring 0..50 }
 | first 3
 | print $in
-# => ╭────────┬───────────┬─────────────────────────────────────────────────────────╮
-# => │      # │   tool    │                         result                          │
-# => ├────────┼───────────┼─────────────────────────────────────────────────────────┤
-# => │      0 │ Read      │ EISDIR: illegal operation on a directory, read '/Us     │
-# => │      1 │ Read      │ File does not exist. Note: your current working dir     │
-# => │      2 │ Read      │ File does not exist. Note: your current working dir     │
-# => ╰────────┴───────────┴─────────────────────────────────────────────────────────╯
+# => ╭───┬─────────────┬────────────────────────────────────────────────────────────╮
+# => │ # │    tool     │                           result                           │
+# => ├───┼─────────────┼────────────────────────────────────────────────────────────┤
+# => │ 0 │ Read        │ EISDIR: illegal operation on a directory, read '/Us        │
+# => │ 1 │ Read        │ File does not exist. Note: your current working dir        │
+# => │ 2 │ Read        │ File does not exist. Note: your current working dir        │
+# => ╰───┴─────────────┴────────────────────────────────────────────────────────────╯
 
 # With `--results` the regex searches the results too: "which session printed
 # this", when the words never appeared in a message or a command.
@@ -147,15 +147,15 @@ claude-nu sessions --session '99bf0e5b'
 | select role kind tool text
 | update text { lines | first | str substring 0..30 }
 | print $in
-# => ╭─────┬─────────────┬───────────────┬───────┬──────────────────────────────────╮
-# => │   # │    role     │     kind      │ tool  │               text               │
-# => ├─────┼─────────────┼───────────────┼───────┼──────────────────────────────────┤
-# => │   0 │ user        │ text          │       │ I've upgraded the timestamp (ch  │
-# => │   1 │ assistant   │ tool_use      │ Bash  │ {"command":"git status && ls","  │
-# => │   2 │ user        │ tool_result   │ Bash  │ On branch main                   │
-# => │   3 │ assistant   │ tool_use      │ Bash  │ {"command":"ls multiproofs/ mul  │
-# => │   4 │ user        │ tool_result   │ Bash  │ multiproofs/:                    │
-# => ╰─────┴─────────────┴───────────────┴───────┴──────────────────────────────────╯
+# => ╭───┬─────────────┬───────────────┬────────┬───────────────────────────────────╮
+# => │ # │    role     │     kind      │  tool  │               text                │
+# => ├───┼─────────────┼───────────────┼────────┼───────────────────────────────────┤
+# => │ 0 │ user        │ text          │        │ I've upgraded the timestamp (ch   │
+# => │ 1 │ assistant   │ tool_use      │ Bash   │ {"command":"git status && ls","   │
+# => │ 2 │ user        │ tool_result   │ Bash   │ On branch main                    │
+# => │ 3 │ assistant   │ tool_use      │ Bash   │ {"command":"ls multiproofs/ mul   │
+# => │ 4 │ user        │ tool_result   │ Bash   │ multiproofs/:                     │
+# => ╰───┴─────────────┴───────────────┴────────┴───────────────────────────────────╯
 
 # "What did the agent say right before each tool call": a pair of rows.
 claude-nu sessions --session '99bf0e5b'
@@ -165,13 +165,13 @@ claude-nu sessions --session '99bf0e5b'
 | each {|w| {said: ($w.0.text | lines | first | str substring --grapheme-clusters 0..40) tool: $w.1.tool} }
 | first 3
 | print $in
-# => ╭────────┬───────────────────────────────────────────────┬─────────────────────╮
-# => │      # │                     said                      │        tool         │
-# => ├────────┼───────────────────────────────────────────────┼─────────────────────┤
-# => │      0 │ Short answer: **no documented reglament e     │ ToolSearch          │
-# => │      1 │ I'll research the codebase to understand      │ Agent               │
-# => │      2 │ Before I design, three scope questions —      │ AskUserQuestion     │
-# => ╰────────┴───────────────────────────────────────────────┴─────────────────────╯
+# => ╭───┬──────────────────────────────────────────────────┬───────────────────────╮
+# => │ # │                       said                       │         tool          │
+# => ├───┼──────────────────────────────────────────────────┼───────────────────────┤
+# => │ 0 │ Short answer: **no documented reglament e        │ ToolSearch            │
+# => │ 1 │ I'll research the codebase to understand         │ Agent                 │
+# => │ 2 │ Before I design, three scope questions —         │ AskUserQuestion       │
+# => ╰───┴──────────────────────────────────────────────────┴───────────────────────╯
 
 # What the user typed as slash commands, as `messages` is what they said.
 # Built-ins (/clear, /model ...) are dropped unless `--all`.

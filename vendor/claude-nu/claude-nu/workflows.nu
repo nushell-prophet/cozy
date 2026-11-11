@@ -1,8 +1,8 @@
 # claude-nu workflows: the Workflow tool runs a session launched, read from
 # their state files.
 
-use sessions.nu [piped-session-files drop-copied-records]
-use discovery.nu [top-level-session-files top-level-session-file workflow-state-files read-workflow-state read-session-records project-dir-name project-display-name session-id-from-path resolve-time-bound mtime-filter-session-files]
+use sessions.nu [piped-session-files scoped-session-files drop-copied-records]
+use discovery.nu [top-level-session-file workflow-state-files read-workflow-state read-session-records project-dir-name project-display-name session-id-from-path resolve-time-bound mtime-filter-session-files]
 use extract.nu [pick-first]
 
 # The Workflow tool runs of Claude Code sessions, one row per run:
@@ -38,21 +38,16 @@ export def main [
     let since_at = $since | resolve-time-bound "--since"
     let until_at = $until | resolve-time-bound "--until"
 
-    let scoped_files = if $piped_files != null {
-        $piped_files
-    } else {
-        top-level-session-files
-        | if ($in | is-empty) { error make "No session files found for the current project" } else { }
-    }
+    let scoped_files = scoped-session-files $piped_files
 
     # Why: a run belongs to a top-level session — the one that started it or
     # one that resumed it — and a session and its subagents piped together
     # must list each run once.
     let session_files = $scoped_files | each { top-level-session-file } | uniq
 
-    # Why the top-level files too: a piped agent transcript is read through its
-    # parent's, which may be gone while the agent's is still there.
-    let missing = $scoped_files | append $session_files | uniq | where not ($it | path exists)
+    # Why the top-level files are checked again: a piped agent transcript is
+    # read through its parent's, which may be gone while the agent's is still there.
+    let missing = $session_files | where not ($it | path exists)
 
     if ($missing | is-not-empty) {
         error make $"Session file not found: ($missing | str join ', ')"

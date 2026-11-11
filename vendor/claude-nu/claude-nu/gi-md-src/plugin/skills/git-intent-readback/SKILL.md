@@ -71,3 +71,4 @@ The `## Readback` section is spent process material once the work starts: `/gi:c
 
 - `/gi:git-intent` — the execute loop this pass deliberately delays.
 - `/gi:canvas-tidy` — removes the spent readback section afterwards.
+- `/gi:compile` — the same check over the whole canvas and its siblings, not only over the answers of the last commits.

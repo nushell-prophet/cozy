@@ -3,7 +3,6 @@ name: canvas-tidy
 description: Reduce a canvas or working document to its current-state meaning, letting spent markers, resolved readbacks, answer ladders, and dead rejected paths fall into git history (every cut recoverable via `git log -p -- <doc>`), and reshape a chat imported as turns into points with their answers. Use this whenever a working document has grown heavy with process material and the user wants it readable again, and right after a chat is imported as a canvas — "tidy", "distill", "причеши канвас", "отпроцесси канвас", "reduce the canvas", "почисти канвас", "сократи документ", "убери отработанное", "this doc got bloated", "trim it down", "clean up the resolved markers" — even when they never name the skill. Prefer it over trimming the file by hand: hand-deleting loses the reasoning, this keeps it recoverable.
 argument-hint: [scope or instructions]
 allowed-tools: Bash(git *), Read, Edit, Write, Grep, Glob
-# my-claude-skills: plugins/my-skills/skills/40-gi-canvas/tidy.md copies the body below, for a chat the gi plugin is not loaded in. Change both together.
 ---
 
 Tidy compresses the *document*, not the history.
@@ -67,7 +66,7 @@ so tidy rewrites his text too:
   his words and his claims stay,
   only the order and the split change.
 
-This is the one pass that rewrites his prose beyond grammar,
+This is the one pass that paraphrases his prose,
 and the parent commit keeps his original words.
 Where a paraphrase would change what he claims,
 keep his words and place a `???`.

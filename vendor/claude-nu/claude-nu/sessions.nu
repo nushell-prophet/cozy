@@ -264,8 +264,6 @@ export def messages [
 
     $session_files
     | each {|session_file|
-        let session_uuid = $session_file | session-id-from-path
-
         # Why (speed): the default keeps only user turns, so pre-screen the raw
         # JSONL for the user-type marker before decoding — assistant turns, tool
         # results, and summaries (the ~70% bulk) never reach the JSON parser. The
@@ -276,13 +274,14 @@ export def messages [
         let records = if $include_responses {
             $session_file | read-session-records
         } else {
-            $session_file | read-session-records --contains ['"type":"user"' '"type":"file"' '"type":"edited_text_file"']
+            $session_file | read-session-records --contains ['"type":"user"' '"type":"file"' '"type":"edited_text_file"' '"type":"queued_command"']
         }
         let dialogue = $records
             | if $include_responses { } else { where type? == "user" }
             | extract-dialogue $extract_text --keep-system=$include_system
             | insert kind { message-kind }
             | append ($records | attached-files)
+            | append ($records | queued-prompts)
 
         # Why: sorting the ISO-8601 timestamp strings sorts chronologically,
         # so one sort here serves both the --raw and rendered branches.
@@ -304,15 +303,7 @@ export def messages [
             }
             | if $include_responses { } else { reject role }
         }
-        # Why: rows are self-describing — the session column makes messages
-        # output a valid session selector for resolve-piped-sessions, so it
-        # can pipe back into messages/export-session/sessions.
-        # Not "project only when the scope spans several projects" because: the
-        # output schema would then depend on the data, and a script with
-        # `| get project` would work on a wide search and fail on a narrow one.
-        | insert session $session_uuid
-        | insert project ($session_file | project-dir-name)
-        | insert project_name ($records | pick-first $.cwd | project-display-name)
+        | insert-session-columns $session_file $records
     }
     | flatten
     | drop-copied-records uuid
@@ -450,9 +441,7 @@ export def tool-calls [
         | if $regex == null { } else {
             where tool =~ $regex or ($it.input | to json --raw) =~ $regex or ($it.result? | default "") =~ $regex
         }
-        | insert session ($session_file | session-id-from-path)
-        | insert project ($session_file | project-dir-name)
-        | insert project_name ($records | pick-first $.cwd | project-display-name)
+        | insert-session-columns $session_file $records
     }
     | flatten
     | drop-copied-records id
@@ -466,7 +455,7 @@ export def tool-calls [
 # the pre-filter or make rg fail — the pattern must mean the name literally.
 export def tool-name-pattern [tools: list<string>]: nothing -> string {
     let names = $tools
-        | str replace --all --regex '[\\.^$|?*+()\[\]{}]' '\$0'
+        | str escape-regex
         | str join '|'
 
     '"name":"(?:' + $names + ')"'
@@ -519,9 +508,7 @@ export def records [
         | if $since_at == null { } else { where timestamp != null and timestamp >= $since_at }
         | if $until_at == null { } else { where timestamp != null and timestamp <= $until_at }
         | if $regex == null { } else { where ($it.record | to json --raw) =~ $regex }
-        | insert session ($session_file | session-id-from-path)
-        | insert project ($session_file | project-dir-name)
-        | insert project_name ($records | pick-first $.cwd | project-display-name)
+        | insert-session-columns $session_file $records
     }
     | flatten
     | drop-copied-records uuid
@@ -586,9 +573,7 @@ export def slash-commands [
         | if $all { } else { where not ($it.command | is-builtin-slash-command) }
         | if $since_at == null { } else { where timestamp >= $since_at }
         | if $until_at == null { } else { where timestamp <= $until_at }
-        | insert session ($session_file | session-id-from-path)
-        | insert project ($session_file | project-dir-name)
-        | insert project_name ($records | pick-first $.cwd | project-display-name)
+        | insert-session-columns $session_file $records
     }
     | flatten
     | drop-copied-records uuid
@@ -634,6 +619,21 @@ export def drop-copied-records [key: string]: table -> table {
     | uniq-by _copy_key
     | reverse
     | reject _copy_key
+}
+
+# Rows with the columns that say where they came from: `session`, `project`
+# and `project_name`, read from the session file and its records.
+# Why: rows are self-describing — the session column makes the output of
+# `messages` and its siblings a valid session selector for
+# resolve-piped-sessions, so it can pipe back into
+# messages/export-session/sessions.
+# Not "project only when the scope spans several projects" because: the
+# output schema would then depend on the data, and a script with
+# `| get project` would work on a wide search and fail on a narrow one.
+export def insert-session-columns [session_file: path records: table]: table -> table {
+    insert session ($session_file | session-id-from-path)
+    | insert project ($session_file | project-dir-name)
+    | insert project_name ($records | pick-first $.cwd | project-display-name)
 }
 
 # Parse one session file, computing only the selected columns.
@@ -783,7 +783,6 @@ def parse-session-columns [selected: list<string>]: path -> record {
         phase: $identity.phase?
     }
     | select ...$selected
-    | insert path $file_path
 }
 
 # True when a value is a record (which is a 1-row table once piped). Strips the
@@ -861,7 +860,7 @@ export def piped-session-files [input: any]: nothing -> oneof<list<path>, nothin
     $piped
     | each {|p|
         if ($p | path type) == "dir" {
-            discover-session-files $p | where parent_session_id == null | get path
+            top-level-session-files $p
         } else {
             [$p]
         }
@@ -1017,9 +1016,18 @@ export def main [
         | get scope
 
     if ($active_scopes | length) > 1 {
+        # Why the help names the fix: agents widen --session with `projects |`
+        # or --all-projects, not knowing it already looks in every project. And
+        # inside `each {|r| ... }` the row is piped in next to --session.
+        let help = if "--session" in $active_scopes {
+            "--session already looks in every project: drop the other scope. Inside `each {|r| ... }` the row is piped in too: pipe it on instead of --session, as `$r | claude-nu messages`, or `[$id] | claude-nu messages` for an id."
+        } else {
+            "pick one session scope"
+        }
+
         error make {
             msg: $"($active_scopes | str join ' and ') are mutually exclusive"
-            help: "pick one session scope"
+            help: $help
         }
     }
     # Why after the check: resolving a piped id that names nothing fails with
@@ -1137,7 +1145,7 @@ export def main [
         # Why the listing columns bypass the parse: past agents mostly listed
         # sessions to sort them by size or mtime, and `--columns size,modified`
         # over every project should cost one `ls`, not a read of every file.
-        let from_records = if ($parsed | is-empty) { {} } else { $row.path | parse-session-columns $parsed | reject path }
+        let from_records = if ($parsed | is-empty) { {} } else { $row.path | parse-session-columns $parsed }
         # Why overlap and not containment: the question is "what was I doing
         # then", and a session open across the whole window was doing it.
         # A session with no timestamped record has no span, so it is never in one.

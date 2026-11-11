@@ -104,6 +104,12 @@ const plugin_components = [
 const import_sources = [
     {value: "codex" description: "Import config from Codex"}
     {value: "gemini" description: "Import config from Gemini"}
+    {value: "cursor" description: "Import config from Cursor"}
+]
+
+const permission_prompt_targets = [
+    {value: "host" description: "The SDK host or --permission-prompt-tool answers (default)"}
+    {value: "none" description: "Nobody answers: anything that would prompt is denied"}
 ]
 
 const setting_sources = [
@@ -273,7 +279,9 @@ export extern main [
     --append-system-prompt: string@"nu-complete claude freetext" # Append to default system prompt
     --system-prompt-file: path # System prompt read from a file (absent from `claude --help`; verified accepted on 2.1.252 -- do not delete as a phantom on the next sync)
     --append-system-prompt-file: path # Appended system prompt read from a file (same: accepted, unlisted)
+    --system-prompt-snapshot: string@[on off] # Record the system prompt once per conversation and reuse it verbatim on every request and resume (on, the default), or render it fresh every request (off)
     --permission-mode: string@$permission_modes # Permission mode for the session
+    --permission-prompts: string@$permission_prompt_targets # Who answers permission prompts with --print: "host" or "none"
     --continue (-c) # Continue the most recent conversation
     --resume (-r) # Resume conversation by session ID or open picker (optional value; id passes through as a positional, completed via "nu-complete claude prompt")
     --fork-session # Create new session ID when resuming
@@ -312,6 +320,7 @@ export extern main [
     --ax-screen-reader # Render screen-reader friendly output (flat text, no decorative borders or animations)
     --bg # Start the session in the background and return immediately, printing the id `claude attach`/`logs`/`stop`/`rm` take
     --background # Long spelling of --bg (Nushell externs can't carry two long names on one flag, so it is its own line)
+    --desktop # Open in the Claude Desktop app instead of the terminal (with --continue or --resume <id> to pick the session)
     --cloud # Create a cloud session with the given description, or attach to one by session id or claude.ai/code URL (optional value; passes through as a positional)
     --environment: string@"nu-complete claude freetext" # Create a new cloud session on the given self-hosted environment (ccpool_...)
     --teleport # Resume a teleport session (optional value; session id passes through as a positional)
@@ -377,6 +386,12 @@ export extern "claude mcp reset-project-choices" []
 
 export extern "claude plugin" []
 
+export extern "claude plugin configure" [
+    plugin: string@"nu-complete claude installed-plugins" # Plugin whose options to show, or to save with --values-stdin
+    --json # Output as JSON
+    --values-stdin # Read option values from stdin as a JSON object of single-line strings; options left out keep their values
+]
+
 export extern "claude plugin details" [
     name: string@"nu-complete claude installed-plugins" # Plugin whose component inventory and projected token cost to show
 ]
@@ -392,13 +407,61 @@ export extern "claude plugin init" [
 
 export extern "claude plugin validate" [
     path: path # Path to plugin or manifest
+    --json # Output the validation report as JSON (same exit codes)
+    --profile: string@[directory] # Also exit 1 when the plugin directory would refuse a submission of the plugin
     --strict # Treat warnings as errors (exit 1) -- for CI
+]
+
+export extern "claude plugin eval" [
+    target?: string@"nu-complete claude installed-plugins" # Path, plugin name, or plugin@marketplace id to evaluate
+    --ablation: string@[none with-without] # Run a no-plugin baseline arm and report the score delta
+    --allow-real-servers # With --mocks record: also start the plugin's real MCP servers that have no mock
+    --allow-tools: string@"nu-complete claude freetext" # Operator grant for gated tools (Bash, Write, Edit, WebFetch, mcp__*)
+    --case: string@"nu-complete claude freetext" # Filter cases by name glob
+    --concurrency (-j): int # Run up to <n> agent runs at once (1-8; default 1)
+    --disallow-tools: string@"nu-complete claude freetext" # Built-in tools to keep from Claude in every case, even if granted
+    --eval-dir: string@"nu-complete claude freetext" # Directory name (below the plugin) that holds the eval cases
+    --json # Print the full run result as JSON to stdout (optional value; a .json path passes through as a positional)
+    --judge-model: string@"nu-complete claude models" # Override LLM-grader model (default: haiku)
+    --keep-temp # Preserve scaffold dirs for debugging
+    --max-cost-usd: number # Hard cost ceiling; abort and report partial results if hit (exit 2)
+    --mocks: string@[record off] # Mock stand-ins for MCP servers, from <eval dir>/mocks/ (default: record)
+    --model: string@"nu-complete claude models" # Override model for all cases
+    --no-publish # Keep the HTML report local only; skip publishing it to claude.ai
+    --no-scaffold # Explicitly skip scaffold_script
+    --output-dir: string@"nu-complete claude dirs" # Directory for aggregate-result.json
+    --publish-report # Also require publishing the report to claude.ai
+    --report: path # Write the self-contained HTML report to this path instead of the results dir
+    --runs: int # Override per-case runs (default: case.runs ?? 3)
+    --scaffold # Run each case's scaffold_script (author-supplied bash, as you; off by default)
+    --tag: string@"nu-complete claude freetext" # Filter cases by tag (repeatable)
+    --threshold: number # Exit 1 if any case score is below this threshold (default: 1.0)
+    --trust-plugin # Assert that you trust this plugin's code and eval suite, and skip the first-run trust prompt (for CI)
+    --verbose # Log per-message trace events to the debug log
+]
+
+export extern "claude plugin eval init" [
+    name?: string@"nu-complete claude freetext" # Name of the eval suite to author
+    --bare # Write a blank template (prompt.md + graders/criteria.md) instead of running the interview
+    --eval-dir: string@"nu-complete claude freetext" # Directory (below the current directory) to write cases into
+    --interactive (-i) # Run the authoring interview (already the default in a terminal)
+]
+
+export extern "claude plugin restore-set-aside" [
+    plugin: string@"nu-complete claude freetext" # Plugin id to give back the options and secrets set aside when an organization marketplace replaced another source
+    --discard # Delete what is set aside instead of restoring it
+]
+
+export extern "claude plugin test" [
+    dir?: string@"nu-complete claude dirs" # The mod's folder (default: the current folder)
 ]
 
 export extern "claude plugin marketplace" []
 
 export extern "claude plugin marketplace add" [
     source: string # URL, path, or GitHub repo
+    --claudeai # Add the marketplace of this name that claude.ai hosts for you
+    --json # Print one machine-readable result line as the last line on stdout (same exit codes)
     --scope: string@$mcp_scopes # Where to declare the marketplace (user default, project, local)
     --sparse: string@"nu-complete claude freetext" # Limit checkout to specific directories via git sparse-checkout (repeatable)
 ]
@@ -409,22 +472,29 @@ export extern "claude plugin marketplace list" [
 
 export extern "claude plugin marketplace remove" [
     name: string@"nu-complete claude marketplaces" # Marketplace name to remove
+    --json # Print one machine-readable result line as the last line on stdout (same exit codes)
     --scope: string@$mcp_scopes # Remove the declaration from one settings scope; omit to remove it from every scope
 ]
 
 export extern "claude plugin marketplace update" [
     name?: string@"nu-complete claude marketplaces" # Marketplace name (all if not specified)
+    --json # Print one machine-readable result line as the last line on stdout (same exit codes)
 ]
 
 export extern "claude plugin install" [
     plugin: string@"nu-complete claude marketplace-plugins" # Plugin name (use plugin@marketplace for specific)
+    --accept-command: string@"nu-complete claude freetext" # Accept the marketplace-declared command whose sha256 a previous --json run reported; counts as --yes for exactly that command
     --config: string@"nu-complete claude freetext" # Set a userConfig option declared in the plugin's manifest, key=value (repeatable)
+    --json # Print one machine-readable result line on stdout instead of the human message (same exit codes)
+    --marketplace: string@"nu-complete claude freetext" # Install <plugin> (its bare name) from the marketplace at this source: owner/repo, a git or https URL, or a path
+    --registry: string@"nu-complete claude freetext" # For a <package>@npm install: resolve and download from this npm registry
     --scope (-s): string@$mcp_scopes # Configuration scope
     --yes (-y) # Accept the marketplace-declared install command without the confirmation prompt (required when stdin or stdout is not a TTY)
 ]
 
 export extern "claude plugin uninstall" [
     plugin: string@"nu-complete claude installed-plugins" # Plugin name to uninstall
+    --json # Print one machine-readable result line on stdout instead of the human message (same exit codes)
     --scope (-s): string@$mcp_scopes # Configuration scope
     --keep-data # Preserve the plugin's persistent data directory (~/.claude/plugins/data/{id}/)
     --prune # Also remove auto-installed dependencies that are no longer needed
@@ -433,23 +503,28 @@ export extern "claude plugin uninstall" [
 
 export extern "claude plugin enable" [
     plugin: string@"nu-complete claude installed-plugins" # Plugin name to enable
+    --json # Print one machine-readable result line on stdout instead of the human message (same exit codes)
     --scope (-s): string@$mcp_scopes # Configuration scope
 ]
 
 export extern "claude plugin disable" [
     plugin?: string@"nu-complete claude installed-plugins" # Plugin name to disable (omit with --all)
     --all (-a) # Disable all enabled plugins
+    --json # Print one machine-readable result line on stdout instead of the human message (same exit codes)
     --scope (-s): string@$mcp_scopes # Configuration scope
 ]
 
 export extern "claude plugin update" [
     plugin: string@"nu-complete claude installed-plugins" # Plugin name to update
+    --accept-command: string@"nu-complete claude freetext" # Accept the marketplace-declared command whose sha256 a previous --json run reported; counts as --yes for exactly that command
+    --json # Print one machine-readable result line on stdout instead of the human message (same exit codes)
     --scope (-s): string@$plugin_update_scopes # Installation scope: user, project, local, managed
     --yes (-y) # Accept a changed marketplace-declared command without the confirmation prompt (required when stdin or stdout is not a TTY)
 ]
 
 export extern "claude plugin list" [
     --available # Include available plugins from marketplaces (requires --json)
+    --data-size # Measure each installed plugin's saved data directory (requires --json; optional value; a plugin name passes through as a positional)
     --json # Output as JSON
 ]
 
@@ -521,7 +596,8 @@ export extern "claude ultrareview" [
     --json # Print the raw bugs.json payload instead of formatted findings
     --post # Post the finished review's findings to the PR as you (PR targets only; one plain comment, not a review)
     --no-post # Do not post the findings to the PR (the default; accepted for parity with the /ultrareview and /code-review ultra flags)
-    --timeout: int # Maximum minutes to wait for the review to finish (default 30)
+    --timeout: int # Maximum minutes to wait for the review to finish (default 45)
+    --trust-workspace # Trust the current folder for this run only, without asking (for scripts and CI)
 ]
 
 # ===== Agents (background sessions) =====
@@ -568,6 +644,8 @@ export extern "claude kill" [
 
 export extern "claude rm" [
     id: string@"nu-complete claude background-sessions" # Background session to delete, with its worktree; unlike stop, works on an exited session
+    --discard-unpushed: string@"nu-complete claude freetext" # Also discard the worktree's unpushed commits: <commit>@<worktree-id>, the value a previous `claude rm <id>` reported
+    --force-remove-worktree: string@"nu-complete claude freetext" # Delete the worktree directory even though the WorktreeRemove hook or git couldn't remove it: the <worktree-id> a previous `claude rm <id>` reported
 ]
 
 export extern "claude respawn" [

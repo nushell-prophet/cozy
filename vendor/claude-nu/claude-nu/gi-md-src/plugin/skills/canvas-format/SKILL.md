@@ -60,6 +60,7 @@ its claims stay.
    where they disagree with the style, follow his edits and name the difference in the commit body.
    An agent's layout is not his signal, even when he asked for the marker kind:
    a request for CriticMarkup is not a request for where it stands.
+   A commit by `<his name> (verbatim via Claude)` is an agent's too: it holds his chat prompt where the agent placed it.
 5. **Look** — read the canvas from the top, as one screen of Helix shows it.
    Name to yourself the three things that slow the reader most.
    They decide the passes;

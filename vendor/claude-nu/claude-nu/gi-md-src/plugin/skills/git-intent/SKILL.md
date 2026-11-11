@@ -31,6 +31,8 @@ Four channels carry user intent:
   If the message reads as an imperative ("rename foo to bar", "expand this section"), treat it as actionable.
 - **Direct edit** — the user's edit itself, with no marker and no commit-message text, is also an instruction.
   The edit *is* the decision; the agent's job is to honor and propagate it.
+  A commit whose author reads `<his name> (verbatim via Claude)`, with `+claude@` in the address, is not his edit: it is his chat prompt, which an agent carried into the file to answer it there.
+  Its added lines are his prompt, verbatim; the commit is the agent's, and the point stays open until an `AA:` under it answers it.
 - **The `#` comment on a pasted git command** — the user hands you a commit or a diff as `git log -p -1 # propagate`, `git show -p X # is all answered?`, `git diff # is it sound?`.
   It combines with the markers: the instructions sit in the canvas, and the comment adds the last one or two at the moment he runs the command, so you read the paste and the comment together.
   A paste with no comment asks for the default pipeline below.
@@ -53,6 +55,7 @@ The subject prefix is `gi:` (quiet — the commit *is* the unit, no surrounding 
 - Place on the line above or beside the target code
 - **Marker length says who wrote it: two characters — the user, you act; three — you, the user acts.**
   So `!!` do it, `??` answer it, `%%` a remark to take into account — "nothing to change" is a valid outcome.
+  His marker is a hint, and the mark that ends his point outranks it: a `!!` point that ends in `?` is a question, and an order under `??` or `%%` is still an order.
   Leave your own `!!!` / `???` / `%%%` standing until the user clears them, or until his `go` accepts the default a `???` carries; then fold it in the same commit as the work.
 - Removed after processing — in code, fold the result into the surrounding text and remove the whole comment, including any closing delimiters (`*/`, `-->`), not just the marker token.
   In a document the user writes in — a canvas, a note of his — the text is his: reply under the marker as one `AA:` entry — your summary, prefixed so a reader and `git blame` both see whose line it is — and once the point is settled, reduce the thread to its decision in a commit of its own: delete the marker lines and leave the entry standing under his prose, which stays as written.
@@ -66,7 +69,10 @@ The subject prefix is `gi:` (quiet — the commit *is* the unit, no surrounding 
 - **Clean up broken surroundings** — if the user's edit left a dangling sentence, stale list numbering, or broken syntax, fix it.
   Never re-add content the user removed
 - **Surface contradictions** — when markers/edits conflict or scope is unclear, name the conflict in the commit body if you can resolve it, ask the user if you can't
-- **The user's prose is his** — in a document he writes in, rewrite his lines only when he asks for it or to fix grammar (the changed English words marked in *italics*, Russian and punctuation fixed unmarked, a lowercase sentence start left as it is, and a new line of his over 100 characters broken into semantic-feed lines, as the Canvas style says); a stale reference inside them gets an `AA:` or `???` under it, not a silent rewrite, so his model of the document and yours stay in sync
+- **The user's prose is his** — in a document he writes in, rewrite his lines only when he asks for it, to fix grammar, or to sync a copy of a fact his newer edit changed, as the Canvas style says.
+  The grammar fix marks the changed English words in *italics*, fixes Russian and punctuation unmarked, leaves a lowercase sentence start as it is, and breaks a new line of his over 100 characters into semantic-feed lines.
+  The sync is a commit of its own; when his edit looks like a mistake, or shows that his model and the canvas are far apart, a `???` asks first.
+  A line of his that is wrong against the code or the facts gets a CriticMarkup fix or a `???`, not a silent rewrite
 
 ## Procedure
 
@@ -122,4 +128,5 @@ The subject prefix is `gi:` (quiet — the commit *is* the unit, no surrounding 
 
 - `/gi:git-intent-readback` — when the commits to process are the user's answers to your questions, run this first: restate them and stop, instead of executing a reading nobody confirmed
 - `/gi:canvas-tidy` — when the document has filled up with spent markers and superseded deliberation, cut it back to current state before the next loop
+- `/gi:compile` — before a loop on a canvas that grew over many turns: fold it with its siblings to the current state, mark the conflicts, and list what is open
 - `/gi:git-intent-squash-archive` — when done iterating, squash the branch into one clean commit preserved as a git tag

@@ -12,6 +12,19 @@ export def unescape-html []: string -> string {
     | str replace --all '&amp;' '&'
 }
 
+# Wrap text in a code fence longer than every run of backticks in it, three at
+# least, so that a fence inside the text cannot close the block.
+# Why: `git show` of a markdown file prints the fences of that file, and a diff
+# context line keeps such a fence one space from the line start; a fixed triple
+# fence closed at the first of them.
+export def fenced [info: string = ""]: string -> string {
+    let text = $in
+    let longest = $text | parse --regex '(?<run>`+)' | get run | each { str length } | append 2 | math max
+    let fence = '' | fill --character '`' --width ($longest + 1)
+
+    $"($fence)($info)\n($text)\n($fence)"
+}
+
 # Render a `!`-command user record's string content as readable markdown.
 # `<bash-input>CMD</bash-input>` -> a `sh` code block; the paired
 # `<bash-stdout>OUT</bash-stdout><bash-stderr>ERR</bash-stderr>` record -> the
@@ -21,27 +34,30 @@ export def unescape-html []: string -> string {
 # ones, and a missing closing tag (test fixtures) still degrades cleanly.
 # Why: a `!` command is a real user action, but Claude Code stores it in these
 # wrappers; without rendering, export-session/messages drop the user's command.
+# Why only the right end is trimmed: a leading space belongs to the command
+# (` git config ...`) or to the output (the first line of `git branch`, of
+# `--stat`), and both are kept verbatim.
 export def render-bash-wrapper []: string -> string {
     let s = $in
 
     if ($s | str starts-with "<bash-input>") {
         let cmd = $s
             | str replace "<bash-input>" "" | str replace "</bash-input>" ""
-            | unescape-html | str trim
+            | unescape-html | str trim --right
 
-        $"```sh\n($cmd)\n```"
+        $cmd | fenced sh
     } else if ($s | str starts-with "<bash-stdout>") {
         let parts = $s | split row "<bash-stderr>"
         let out = $parts.0
             | str replace "<bash-stdout>" "" | str replace "</bash-stdout>" ""
-            | unescape-html | str trim
+            | unescape-html | str trim --right
         let err = $parts.1? | default ""
             | str replace "</bash-stderr>" ""
-            | unescape-html | str trim
+            | unescape-html | str trim --right
 
         [
-            (if ($out | is-not-empty) { $"```\n($out)\n```" })
-            (if ($err | is-not-empty) { $"```\n[stderr]\n($err)\n```" })
+            (if ($out | is-not-empty) { $out | fenced })
+            (if ($err | is-not-empty) { $"[stderr]\n($err)" | fenced })
         ] | compact | str join "\n\n"
     } else { $s }
 }
@@ -49,6 +65,12 @@ export def render-bash-wrapper []: string -> string {
 # Content value as a list of blocks; [] when it isn't one (string/null content).
 export def content-blocks []: any -> table {
     peek | metadata access {|md| if $md.peek.type == "list" { } else { [] } }
+}
+
+# The texts of the text blocks of a content value, in order; the caller picks
+# the separator.
+export def text-blocks []: any -> list {
+    content-blocks | where type? == "text" | get text --optional
 }
 
 # Shared dispatch on message content shape: string content passes through
@@ -85,13 +107,7 @@ export def render-tool-input []: record -> string {
 export def tool-result-text []: record -> string {
     let raw = $in.content?
 
-    if ($raw | describe) == "string" { $raw } else {
-        $raw
-        | content-blocks
-        | where type? == "text"
-        | get text --optional
-        | str join "\n"
-    }
+    if ($raw | describe) == "string" { $raw } else { $raw | text-blocks | str join "\n" }
 }
 
 # Render a single content block as markdown.

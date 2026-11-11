@@ -29,13 +29,15 @@
 #                      the file says; there is no second verb.
 #                      `--new-session` is the way out when that session is gone
 #                      (deleted, expired): it overwrites the recorded id.
+#                      A launch that ends before its first message leaves no
+#                      transcript, so gi takes its id back out of the canvas.
 #                      `--fork` is the other direction — keep the canvas bound
 #                      as it is and open a copy of it (`plan.md` -> `plan_1.md`)
 #                      on a session of its own, so a document planned in one
 #                      conversation can be carried on in a fresh context while
 #                      the conversation that planned it stays readable.
 #
-# Bare `gi` is the third name and does no work: it reports which canvas the
+# Bare `gi` is a fourth name and does no work: it reports which canvas the
 # asking session is bound to, and the canvases where you stand.
 #
 # Why a plugin and not files copied into each repo:
@@ -59,8 +61,9 @@
 # The style is proactive shaping only — it rests on prose, and the agent drifts
 # back to long chat answers. The Stop hook in the plugin's hooks module is the
 # structural floor under it: it blocks the turn when the final chat message is
-# more than one short line. It comes with every `gi open`; `--no-hook` sets
-# $env.GI_NO_HOOK, and the hook stands down. The same module refuses a
+# more than one short line, or when the user's canvas commits were never sent
+# to the agent (`nu-hx tell-claude-at-stop`, dotfiles). It comes with every
+# `gi open`; `--no-hook` sets $env.GI_NO_HOOK, and the hook stands down. The same module refuses a
 # `git commit` on main/master at the Bash call, with or without the floor (gi
 # commits are internal working history — they reach a public branch only
 # squash-merged, after finalization).
@@ -70,6 +73,7 @@
 # keeps working from its own settings until those keys are deleted by hand.
 
 use sessions.nu [ export-session resolve-session-file "nu-complete claude sessions" ]
+use discovery.nu [ projects-root ]
 
 # The output-style name gi passes to `claude --settings` at launch: the plugin's
 # name, a colon, then the `name:` frontmatter of the style file it ships.
@@ -88,9 +92,10 @@ const GI_STYLE = "gi:Canvas"
 # following the symlink at run time is exactly the dev-link contract.
 const GI_MODULE_DIR = (path self | path dirname)
 
-# The canvas seed. A const of its own because two callers need it: gi-launch
-# copies it when opening a canvas that does not exist yet, and gi-import-text
-# puts it at the head of an imported dialogue.
+# The canvas seed. A const of its own because every way to make a canvas needs
+# it: gi-launch copies it when opening a canvas that does not exist yet,
+# gi-new-text puts the slug into its H1, and gi-import-text puts it at the head
+# of an imported dialogue.
 const GI_HEADER_SRC = ($GI_MODULE_DIR | path join "gi-md-src" "canvas-header.md")
 
 # The plugin `gi open` hands to `claude --plugin-dir`: the Canvas output style
@@ -120,20 +125,10 @@ export def gi-launch-settings []: nothing -> string {
 # enforces it: change both. Here it drives the launch note alone.
 const GI_PROTECTED_BRANCHES = ["main" "master"]
 
-# Repo root (git top-level) of dir — default PWD — falling back to dir itself
-# outside a repo. Both branches yield a physical (symlink-resolved) path — git
-# canonicalizes --show-toplevel itself.
-def gi-repo-root [dir?: path]: nothing -> path {
-    let dir = $dir | default $env.PWD
-    let top = ^git -C $dir rev-parse --show-toplevel | complete
-
-    if $top.exit_code == 0 { $top.stdout | str trim } else { $dir | path expand }
-}
-
-# Current branch at root, or null outside a repo / on detached HEAD — nothing
-# to protect there, so the branch guard passes.
-def gi-branch [root: path]: nothing -> oneof<string, nothing> {
-    let out = ^git -C $root branch --show-current | complete
+# Current branch of the repo dir is in, or null outside a repo / on detached
+# HEAD — nothing to protect there, so the branch guard passes.
+def gi-branch [dir: path]: nothing -> oneof<string, nothing> {
+    let out = ^git -C $dir branch --show-current | complete
     let branch = $out.stdout | str trim
 
     if $out.exit_code == 0 and ($branch | is-not-empty) { $branch }
@@ -158,9 +153,7 @@ def gi-branch-off [dir: path name: string]: nothing -> nothing {
 # does happens here — the session starts in it, a relative canvas is read
 # against it, and the short form printed and handed to the agent is relative
 # to it.
-# `root` (the repo) is a different question and stays a different value: it is
-# the branch the guard reads. That is repo-scoped; the canvas is not.
-# Why not the repo root for both: a path typed on a
+# Not the repo root because: a path typed on a
 # command line means what it means everywhere else in a shell — relative to
 # where you stand — and inside a monorepo the repo root is never where you work.
 # Run from `mono/sub`, `gi open todo/x.md` would silently make and bind
@@ -173,8 +166,8 @@ def gi-run-dir []: nothing -> path {
 # A canvas path in both forms: absolute (what GI_CANVAS carries and what the
 # hook resolves against any cwd) and relative to the run directory (what the
 # user reads in a message, pastes back as a command, and what the agent — whose
-# cwd is that directory — resolves). Shared by import and the launcher so one
-# rule serves both.
+# cwd is that directory — resolves). Every path gi prints or returns goes
+# through here, so one rule serves them all.
 # Why expand the dirname and not the whole path: the canvas may not exist yet,
 # and `path expand` resolves symlinks only for paths that do — this still lets
 # an absolute path arriving through a symlink (cozy's ~/repos) come back
@@ -189,35 +182,16 @@ def gi-doc-path [dir: path doc: path]: nothing -> record {
     }
 }
 
-# A path as the caller would type it from where they stand: relative to the
-# current directory when it sits under it, absolute when it does not.
-# The convention nu-multiproof and nu-cybergraph already follow (`_fs.nu
-# cwd-relative`), duplicated here rather than cross-imported, as those copies
-# are. For a path gi constructs and hands back for a person to read; a caller
-# who needs a handle rather than a label takes `| path expand` — the exact
-# inverse, since the value is relative to the cwd it was made in.
-# Why a prefix test and not `try { path relative-to } catch { }`: "not under
-# here" is an ordinary answer, not a failure. The trailing separator is part
-# of the prefix: without it `/a/bc` counts as under `/a/b`.
-def cwd-relative []: path -> path {
-    let p = $in
-
-    if ($p | str starts-with ($env.PWD | path join "")) {
-        $p | path relative-to $env.PWD
-    } else {
-        $p
-    }
-}
-
 # Copy one file, byte for byte. Every copy gi makes goes through here.
 # Not `cp`, because: nushell's builtin (0.115.0) mixes concurrent copies up —
 # two `cp` calls running in different threads write each other's bytes, so a
 # destination ends up the right length holding another file's content, and
 # nothing errors. Measured: 46 of 205 copies corrupted under `par-each`, 0 with
-# this, 0 with an external `cp`. The two callers — the canvas template and
-# `--fork` — write files a launch immediately reads.
-# No --force: both callers write a path they have just proved free (the template
-# only inside `if not ($doc_abs | path exists)`, a fork at the next unused `_n`).
+# this, 0 with an external `cp`. The canvas template and `--fork` write files a
+# launch immediately reads.
+# No --force: every caller writes a path it has just proved free (the template
+# only inside `if not ($doc_abs | path exists)`, a fork at the next unused `_n`,
+# the global skill into a directory it has just made).
 # A save that finds a file there means that proof broke, and it should say so.
 def copy-file [src: path dst: path]: nothing -> nothing {
     open --raw $src | save --raw $dst
@@ -240,18 +214,102 @@ export def gi-canvas-folder [dir: path]: nothing -> string {
 }
 
 # The canvases already in the run directory, relative to it: every `.md` in
-# `gi-canvas/` and in `gi/` (its older name), and those in `todo/` that carry a
+# `gi-canvas/`, and those in `todo/` that carry a
 # `session:` in their frontmatter.
 # Why the filter only in `todo/`: that folder holds plain task notes too, and
 # one of them listed here would read as a canvas to reopen.
 export def gi-canvases [dir: path]: nothing -> list<string> {
-    [gi-canvas gi todo]
+    [gi-canvas todo]
     | each {|folder| $dir | path join $folder }
     | where { path exists }
     | each { ls $in | where type == file and name ends-with ".md" | get name }
     | flatten
     | where {|f| ($f | path dirname | path basename) != "todo" or (gi-frontmatter-session $f) != null }
     | each { path relative-to $dir }
+}
+
+# Completion for `gi open`: every `.md` in `gi-canvas/` and `todo/`, newest
+# first. Typed text that matches none of them gets `null`, so a path elsewhere
+# falls through to file completion and any path stays accepted.
+# Why name as the second key, also descending: notes are named by the day they
+# were made, and a fresh checkout gives every file the same mtime.
+# Why all of `todo/` and not `gi-canvases`: `gi open` binds a plain note too,
+# and reading every frontmatter on each Tab buys nothing.
+# Not `fallback: true` because: it hangs the cwd files under every list.
+# Why the completer filters itself (`filter: false`) by the configured algorithm:
+# a decline test looser than nushell's filter would return a list the filter
+# then empties — `d` is in every `.md` name, so `gi open d` for `docs/` would
+# show nothing. One rule for both makes that impossible. The algorithm is read, not
+# pinned, because the user toggles prefix and fuzzy.
+export def "nu-complete gi canvases" [token: record]: nothing -> any {
+    let config = $env.config.completions
+    let fold = {|s| if $config.case_sensitive { $s } else { $s | str lowercase } }
+    let typed = do $fold $token.text
+    let completions = [gi-canvas todo]
+        | where { path exists }
+        | each { ls $in | where type == file and name ends-with ".md" }
+        | flatten
+        | sort-by modified name --reverse
+        | where {|f| do $fold $f.name | gi-completion-match $typed ($config.algorithm | str lowercase) }
+        | each {|f| {value: $f.name description: ($f.modified | date humanize)} }
+
+    if ($completions | is-not-empty) {
+        {options: {sort: false filter: false} completions: $completions}
+    }
+}
+
+# Whether a candidate matches the typed text under a completion algorithm.
+# Fuzzy is approximated as a subsequence: the typed characters in order.
+export def gi-completion-match [typed: string algorithm: string]: string -> bool {
+    let candidate = $in
+    match $algorithm {
+        prefix => ($candidate | str starts-with $typed)
+        substring => ($candidate | str contains $typed)
+        _ => (
+            $typed
+            | split chars
+            | reduce --fold 0 {|char pos|
+                if $pos == null { null } else {
+                    let index = $candidate | str substring $pos.. | str index-of $char
+                    if $index < 0 { null } else { $pos + $index + 1 }
+                }
+            }
+            | $in != null
+        )
+    }
+}
+
+# The help for a named canvas that does not exist, the likely typo first.
+# Why `--create` comes last: offered first, it makes the stray file the refusal
+# exists to prevent. A near name in the same folder is the usual case, and a
+# missing folder is a wrong folder typed (`todo/` for `gi-canvas/`).
+# Exported for tests.
+export def gi-missing-canvas-help [dir: path doc: path]: nothing -> string {
+    let folder = $doc | path dirname
+    let folder_abs = gi-doc-path $dir $doc | get abs | path dirname
+    let name = $doc | path basename
+    let near = if ($folder_abs | path exists) {
+        ls $folder_abs
+        | where type == file and name ends-with ".md"
+        | each {|f| $f.name | path basename }
+        | each {|n| {name: $n distance: ($n | str distance $name)} }
+        | where distance <= 3
+        | sort-by distance
+        | get name.0?
+    }
+    let lead = if $near != null {
+        $"did you mean ($folder | path join $near)?"
+    } else if not ($folder_abs | path exists) {
+        $"there is no folder ($folder); canvases here go in (gi-canvas-folder $dir)/"
+    }
+
+    [
+        $lead
+        $"create it: claude-nu gi open ($doc) --create"
+        "name a new canvas from a slug: claude-nu gi new <slug>"
+    ]
+    | compact
+    | str join "\n"
 }
 
 # The canvas path minted when the user names none: the canvas folder, then the
@@ -388,13 +446,14 @@ def gi-session-key [session: string]: nothing -> string {
 
 # Where the gi protocol comes from, the canvas this session is bound to, and
 # the canvases already where you stand.
-# The verbs: `gi new`, `gi import`, `gi open`.
+# The verbs: `gi new`, `gi import`, `gi open`; `gi install-skill`
+# installs the skill that starts a canvas from a plain chat.
 @category claude-nu
 export def main []: nothing -> record {
     let dir = gi-run-dir
 
-    # Not a `ls gi-canvas/*.md todo/*.md gi/*.md` in the 40-gi-canvas skill
-    # because: a repo rarely has all three, and `ls` exits non-zero on any
+    # Not a `ls gi-canvas/*.md todo/*.md` in the gi-canvas skill
+    # because: a repo rarely has both, and `ls` exits non-zero on any
     # missing one, so the call reads as a failure.
     gi-status
     | insert folder (gi-canvas-folder $dir)
@@ -408,21 +467,30 @@ export def gi-new-name [slug: string date: string]: nothing -> string {
     $"($date)-($slug).md"
 }
 
+# The canvas a slug names, in both forms of gi-doc-path: the folder the user
+# gave or the default one, then the name. One rule for `gi new` and `gi import`,
+# so the two cannot name the same slug differently.
+def gi-slug-doc [dir: path slug: string date: string folder?: path]: nothing -> record {
+    gi-doc-path $dir ($folder | default (gi-canvas-folder $dir) | path join (gi-new-name $slug $date))
+}
+
 # The starting content of a canvas `gi new` writes: the todo frontmatter the
-# user's own notes carry, then the same header every other new canvas gets.
+# user's own notes carry, then the header every other new canvas gets, with the
+# slug as its H1 in place of the template's.
+# Why: the slug is what the canvas is about, typed on purpose.
 # Not `to yaml` because: a bare date comes back quoted, so the trailing #hint
 # would land inside the value instead of being a yaml comment.
 # No `created:` because: the file name already starts with that date.
 # Exported for tests.
-export def gi-new-text [date: string]: nothing -> string {
+export def gi-new-text [slug: string date: string]: nothing -> string {
     [
         "---"
-        "status: draft #draft | in_progress | completed | rejected"
+        "status: draft #draft | accepted | in_progress | completed | rejected"
         "agents-mode: co-editing #read-only | grammar-fixes | co-editing"
         $"updated: '($date)' #yyyyMMdd"
         "---"
         ""
-        (open --raw $GI_HEADER_SRC)
+        (open --raw $GI_HEADER_SRC | str replace --regex --no-expand '^# .+' $"# ($slug)")
         "" # a real empty line for gi-edit to open on, see there
     ]
     | str join "\n"
@@ -478,9 +546,12 @@ def gi-edit [doc: path editor: string]: nothing -> nothing {
 # which names a file after the day alone — so the slug arrived by renaming the
 # file in the editor afterwards, and the path was then typed a second time for
 # `gi open`. Naming the canvas is the only thing that ever varied.
-# Why `--fork` and `--new-session` are not among the flags it borrows: both act
-# on a canvas that exists and already records a session, and this one is made
-# here.
+# Why `--fork`, `--new-session` and `--create` are not among the flags it
+# borrows: the first two act on a canvas that exists and already records a
+# session, and this one is made here — which is all `--create` would ask for.
+# Not `--execute` because: its first prompt, `@<canvas> go`, orders the session
+# to work on the task the canvas holds, and nothing tells the session what to
+# do with a canvas that holds only its topic.
 
 # Create a canvas and open a session bound to it: `<folder>/<date>-<slug>.md`,
 # the editor for writing the task in, then the launch. It first switches to a
@@ -494,7 +565,7 @@ export def --wrapped "gi new" [
     --no-editor # Write the canvas without opening it for editing
     --no-claude-launch # Write the canvas and hand back its path; launch nothing
     --no-hook # Launch with the Canvas style but without the Stop-hook floor (the commit guard stays)
-    --execute # Start the session on a first prompt, `@<canvas> go`, so it works on the canvas without waiting
+    --review # Review each turn at its end: checks over the lines the agent added, and one reviewer over the session; findings come back to the agent as advice
     --dangerously-skip-permissions # Pass claude's flag of the same name through
     ...rest: string # Any other flags go straight to `claude`
 ]: nothing -> oneof<path, nothing> {
@@ -516,8 +587,7 @@ export def --wrapped "gi new" [
     # Read once: a run that crosses midnight between the two uses would name the
     # file for one day and stamp `updated:` with the next.
     let today = date now | format date '%J'
-    let doc = $folder | default (gi-canvas-folder $dir) | path join (gi-new-name $slug $today)
-    let paths_doc = gi-doc-path $dir $doc
+    let paths_doc = gi-slug-doc $dir $slug $today $folder
 
     # The same slug on the same day names the canvas that is already there, and
     # that is nearly always the one meant. Not todo.nu's `-1` suffix because:
@@ -532,26 +602,28 @@ export def --wrapped "gi new" [
     # Before the canvas is written: a switch that fails leaves nothing behind.
     if not $current_branch { gi-branch-off $dir $slug }
     mkdir ($paths_doc.abs | path dirname)
-    gi-new-text $today | save --raw $paths_doc.abs
+    gi-new-text $slug $today | save --raw $paths_doc.abs
     if $editor != null { gi-edit $paths_doc.abs $editor }
     if $no_claude_launch {
         # The one case with something to hand back: the canvas is unbound and
         # nothing was launched, so the path is what the caller does the next
         # thing with. A launch returns nothing — `claude` has the terminal.
-        return ($paths_doc.abs | cwd-relative)
+        return $paths_doc.rel
     }
-    gi-launch --doc $doc --hook=(not $no_hook) --execute=$execute --extra $extra
+    gi-launch --doc $paths_doc.abs --hook=(not $no_hook) --review=$review --extra $extra
 }
 
-# Open a canvas: launch a session bound to it, creating the canvas from the
-# template when it does not exist and continuing the session it already records
-# when it has one.
+# Open a canvas: launch a session bound to it, continuing the session it
+# already records when it has one. A named canvas must exist; --create makes it
+# from the template, and so does a bare `gi open` for today's canvas.
 @category claude-nu
 export def --wrapped "gi open" [
-    doc?: path # The canvas, relative to where you are (default: <canvas folder>/<date>-canvas.md, the folder as for gi new); with --fork, the canvas to fork FROM
+    doc?: path@"nu-complete gi canvases" # The canvas, relative to where you are (default: <canvas folder>/<date>-canvas.md, the folder as for gi new); with --fork, the canvas to fork FROM
     --no-hook # Launch with the Canvas style but without the Stop-hook floor (the commit guard stays)
+    --review # Review each turn at its end: checks over the lines the agent added, and one reviewer over the session; findings come back to the agent as advice
     --new-session # Start a fresh session on this canvas, overwriting the id it records
     --fork # Copy the named canvas to its next `_n` sibling and open that, on a session of its own
+    --create # Create the named canvas from the template when it does not exist
     --execute # Start the session on a first prompt, `@<canvas> go`, so it works on the canvas without waiting
     --dangerously-skip-permissions # Pass claude's flag of the same name through
     ...rest: string # Any other flags go straight to `claude`
@@ -597,7 +669,17 @@ export def --wrapped "gi open" [
             label: {text: "flags for `claude` go after the canvas: gi open <doc> <flags>" span: (metadata $doc).span}
         }
     }
-    gi-launch --doc $doc --hook=(not $no_hook) --new-session=$new_session --fork=$fork --execute=$execute --extra $extra
+    # Why: a typo in a named path (`plna.md`) silently made and bound a stray
+    # canvas. A bare `gi open` names today's canvas itself, so it cannot be
+    # mistyped; --fork has its own refusal for a missing source.
+    if not $create and not $fork and ($doc | is-not-empty) and not (gi-doc-path (gi-run-dir) $doc | get abs | path exists) {
+        error make {
+            msg: $"no canvas at ($doc)"
+            label: {text: "this file does not exist" span: (metadata $doc).span}
+            help: (gi-missing-canvas-help (gi-run-dir) $doc)
+        }
+    }
+    gi-launch --doc $doc --hook=(not $no_hook) --review=$review --new-session=$new_session --fork=$fork --execute=$execute --extra $extra
 }
 
 # Why the session is a parameter and not "the session I run inside": a switch
@@ -631,7 +713,6 @@ export def "gi import" [
     # keyed on the name they would read `session-<first 8 chars of the name>`.
     let file = resolve-session-file $sid
     let dir = gi-run-dir
-    let root = gi-repo-root
     # Why the slug is required: a canvas named after its session id says
     # nothing about what it holds, and the agent running the import has just
     # read the whole chat, so it can name it in a few words.
@@ -640,10 +721,7 @@ export def "gi import" [
     # moves, as in gi new.
     # Why the slug comes before the session: the in-session call names a slug
     # but no session, and a positional cannot be skipped.
-    let doc = $folder
-        | default (gi-canvas-folder $dir)
-        | path join (gi-new-name $slug (date now | format date '%J'))
-    let paths_doc = gi-doc-path $dir $doc
+    let paths_doc = gi-slug-doc $dir $slug (date now | format date '%J') $folder
 
     # Check before reading the session: a doc that already holds work must not
     # be reported as a near-miss after a long export.
@@ -682,8 +760,8 @@ export def "gi import" [
         }
     }
     if $commit {
-        ^git -C $root add -- $paths_doc.abs
-        ^git -C $root commit --quiet --message $"gi: import session (gi-session-key $file) as the working doc" --message "Dialogue up to the import; the full session log stays outside the repo." -- $paths_doc.abs
+        ^git -C $dir add -- $paths_doc.abs
+        ^git -C $dir commit --quiet --message $"gi: import session (gi-session-key $file) as the working doc" --message "Dialogue up to the import; the full session log stays outside the repo." -- $paths_doc.abs
     }
 
     print $"canvas: ($paths_doc.rel)"
@@ -698,16 +776,20 @@ export def "gi import" [
     }
     # `doc` and status's `canvas` are different questions: the canvas this call
     # wrote, versus the one the calling session is bound to (usually none).
-    gi-status | insert doc ($paths_doc.abs | cwd-relative)
+    gi-status | insert doc $paths_doc.rel
 }
 
 # The `session:` value from a canvas's YAML frontmatter, or null when the file
 # has no frontmatter or no session key. Both origins write it: export-session
 # for a canvas written by `gi import`, and `gi open` for every
 # other one. Null therefore means an unbound canvas — one `gi open` may claim.
-# Exported for tests. Why parse by hand and not `open`: a .md file is raw text
-# to nushell, and the frontmatter is between the first two `---` lines.
+# Exported for tests. Not `open` because: it parses a .md file into a table of
+# markdown elements, and only from nushell 0.112 on; the frontmatter is the
+# text between the first two `---` lines. A .nu
+# canvas holds the same keys in its record, see gi-record-split.
 export def gi-frontmatter-session [file: path]: nothing -> any {
+    if (gi-nu-canvas $file) { return (gi-record-split $file).data.session? }
+
     let raw = open --raw $file
 
     if not ($raw | str starts-with "---") { return null }
@@ -726,6 +808,7 @@ export def gi-frontmatter-session [file: path]: nothing -> any {
 export def gi-stamp-session [file: path sid: string]: nothing -> nothing {
     let split = gi-frontmatter-split $file
 
+    if (gi-nu-canvas $file) { return (gi-record-stamp $split $sid | save --force $file) }
     if $split.head == null {
         return ($"---\nsession: ($sid)\n---\n\n($split.body)" | save --force $file)
     }
@@ -738,12 +821,44 @@ export def gi-stamp-session [file: path sid: string]: nothing -> nothing {
     $"($head)\n---\n($split.body)" | save --force $file
 }
 
+# Take back a stamp whose session never started: the canvas returns to
+# `previous`, or loses the key when there was none. Left alone when the canvas
+# no longer names `sid` — someone rebound it while the session ran. Exported
+# for tests.
+export def gi-unstamp-session [file: path sid: string previous?: string]: nothing -> nothing {
+    if (gi-frontmatter-session $file) != $sid { return }
+    if $previous != null { return (gi-stamp-session $file $previous) }
+    let split = gi-frontmatter-split $file
+
+    if (gi-nu-canvas $file) { return (gi-record-unstamp $split $sid | save --force $file) }
+    let head = $split.head | lines | where $it != $"session: ($sid)" | str join "\n"
+
+    # A block holding only the key is the one gi-stamp-session created, with the
+    # empty line it put after the fence.
+    if $head == "---" {
+        $split.body | str replace --regex '^\n' '' | save --force $file
+    } else {
+        $"($head)\n---\n($split.body)" | save --force $file
+    }
+}
+
+# Whether Claude Code holds a transcript for the session, in any project.
+# Why every project: `claude --resume` finds an id machine-wide, so a
+# transcript stored under another start path still resumes.
+# Why the transcript and not the id: Claude Code writes it only after the first
+# message, so a session quit before one exists nowhere `--resume` looks.
+export def gi-transcript-exists [sid: string]: nothing -> bool {
+    glob (projects-root | path join "*" $"($sid).jsonl") | is-not-empty
+}
+
 # A canvas cut at its frontmatter fence: `head` is the opening `---` plus the
 # keys and `body` is everything after the closing one, or head is null when the
 # file has no frontmatter at all. One place defines what a well-formed canvas
 # looks like, so `--fork` can ask the question of the *source* before copying
 # anything, instead of the copy discovering it while being stamped.
 def gi-frontmatter-split [file: path]: nothing -> record {
+    if (gi-nu-canvas $file) { return (gi-record-split $file) }
+
     let raw = open --raw $file
 
     if not ($raw | str starts-with "---\n") { return {head: null body: $raw} }
@@ -758,6 +873,72 @@ def gi-frontmatter-split [file: path]: nothing -> record {
         }
     }
     {head: $parts.0 body: $parts.1}
+}
+
+def gi-nu-canvas [file: path]: nothing -> bool {
+    ($file | path parse).extension == "nu"
+}
+
+# A .nu canvas cut at its record: `head` is the `const gi = {...}` that opens the
+# file, `data` is that record, and `body` is everything after the line that
+# closes it. Both are null when the file has no record.
+# Why a record: `---` at the top of a .nu file fails at run time and stops topiary
+# from parsing the file, and a canvas of this kind has to run.
+# Why `const` and not `let`: a `let` at the top refuses `use`.
+# Why `from nuon`: gi reads the record without a run of the canvas, so it refuses a
+# constant expression such as `(1 + 2)`, which nu itself accepts in a const.
+# Why line-based: topiary closes a record of several lines with a `}` in column 0,
+# so an indented `}` of a nested value does not end it.
+def gi-record-split [file: path]: nothing -> record {
+    let raw = open --raw $file
+
+    if not ($raw | str starts-with "const gi = {") { return {head: null body: $raw data: null} }
+    let found = $raw
+        | parse --regex '(?s)^(?<head>const gi = \{(?:\n.*?\n\}|[^\n]*\}))(?:\n(?<body>.*))?$'
+
+    if ($found | is-empty) {
+        error make --unspanned {
+            msg: $"canvas record is not closed: ($file)"
+            help: "`const gi = {` needs a closing `}` in column 0, or the whole record on its first line"
+        }
+    }
+    let head = $found.0.head
+    let data = try { $head | str replace "const gi = " "" | from nuon } catch {
+        error make --unspanned {
+            msg: $"canvas record is not plain data: ($file)"
+            help: "gi reads the `const gi` record with `from nuon`, so it cannot hold an expression"
+        }
+    }
+
+    {head: $head body: $found.0.body data: $data}
+}
+
+# The text of a .nu canvas with `session` set in its record. Only the session
+# value changes, so the other keys and the comments of the record stay as written.
+def gi-record-stamp [split: record sid: string]: nothing -> string {
+    let value = $sid | to nuon
+
+    if $split.head == null { return $"const gi = {session: ($value)}\n\n($split.body)" }
+    let old = $split.data.session?
+    let head = if $old != null {
+        $split.head | str replace --regex $"session:\\s*[\"']?($old)[\"']?" $"session: ($value)"
+    } else if ($split.head | str ends-with "\n}") {
+        $split.head | str replace --regex '\n\}$' $"\n    session: ($value)\n}"
+    } else {
+        $split.head | str replace --regex '\}$' $" session: ($value)}"
+    }
+
+    $"($head)\n($split.body)"
+}
+
+# The text of a .nu canvas with `session` taken out of its record. A record that
+# holds only the key is the one gi-record-stamp created, with the empty line it
+# put after the record.
+def gi-record-unstamp [split: record sid: string]: nothing -> string {
+    if ($split.data | columns) == [session] { return ($split.body | str replace --regex '^\n' '') }
+    let head = $split.head | str replace --regex $"\\s*session:\\s*[\"']?($sid)[\"']?,?" ""
+
+    $"($head)\n($split.body)"
 }
 
 # Which session a launch runs on, decided from what the canvas records. Split
@@ -781,9 +962,9 @@ export def gi-session-plan [recorded: any --new-session]: nothing -> record {
 }
 
 # The `claude` flags a canvas launch owns: the session it binds, the name it
-# shows, and the settings that carry the style. Short forms included — `-c` and `-r` pick a session as surely as their
+# shows, and the settings that carry the style. Short forms included — `-c` and `-r` pick a session, and `-n` names one, as surely as their
 # long spellings.
-const GI_OWNED_FLAGS = ["--settings" "--session-id" "--resume" "-r" "--continue" "-c" "--fork-session" "--name"]
+const GI_OWNED_FLAGS = ["--settings" "--session-id" "--resume" "-r" "--continue" "-c" "--fork-session" "--name" "-n"]
 
 # The pass-through's one rule: it may not carry a flag gi sets itself. Why it has
 # to fail and not just lose: `claude` takes the LAST --settings, so a forwarded
@@ -837,7 +1018,8 @@ export def gi-launch-args [sid: string doc: string --resume --execute ...extra: 
 # Everything travels with the launch and nothing is left in the repo:
 # `--settings` carries the Canvas style for this process only, and
 # $env.GI_CANVAS names the canvas to the plugin's hooks module; $env.GI_NO_HOOK
-# (--no-hook) tells its Stop hook to stand down.
+# (--no-hook) tells its Stop hook to stand down, and $env.GI_REVIEW (--review)
+# turns on its review of each turn (hooks/review.ts).
 # One canvas holds one session for life: a canvas with no `session:` in its
 # frontmatter gets one minted here (`--session-id`) and written in; one that has
 # it is resumed. Why `--resume` and not `--fork-session`: the id must keep
@@ -845,14 +1027,17 @@ export def gi-launch-args [sid: string doc: string --resume --execute ...extra: 
 def gi-launch [
     --doc: path # The canvas; created from the template when new
     --hook # Keep the Stop-hook floor up in the session
+    --review # Turn on the review at each turn end
     --new-session # Mint a fresh session id, overwriting the one the canvas records
     --fork # Open a copy of the named canvas instead, on a session of its own
     --execute # Start the session on a first prompt that runs the canvas's task
     --extra: list<string> = [] # Flags forwarded to `claude` untouched
 ]: nothing -> nothing {
     gi-reject-owned-flags $extra
+    if $review and not $hook {
+        error make {msg: "--review and --no-hook exclude each other" help: "the review runs in the Stop hook, which --no-hook turns off"}
+    }
     let dir = gi-run-dir
-    let root = gi-repo-root
     let doc = $doc | default (gi-default-doc $dir)
     # The copy is made here and not in `gi open` so everything below — the
     # session plan, the stamp, GI_CANVAS, --name — sees only the file being
@@ -880,6 +1065,19 @@ def gi-launch [
     # source's, so the note below names the session this fork grew out of.
     let plan = gi-session-plan (gi-frontmatter-session $doc_abs) --new-session=($new_session or $fork)
 
+    # Fail here, in gi's words: `claude --resume` on a missing id says only
+    # "No conversation found", which names neither the canvas nor the way out.
+    if $plan.resume and not (gi-transcript-exists $plan.sid) {
+        let env_dir = $env.HOME | path join ".claude" "session-env" $plan.sid
+        let launched = if ($env_dir | path exists) {
+            $", launched (ls --directory $env_dir | get modified.0 | format date '%Y-%m-%d %H:%M'),"
+        } else { "" }
+
+        error make --unspanned {
+            msg: $"session (gi-session-key $plan.sid) recorded in ($doc_rel)($launched) has no transcript"
+            help: "Claude Code writes a transcript only after the first message; `gi open --new-session` binds a fresh session to the canvas"
+        }
+    }
     if not $plan.resume {
         if ($plan.replaced | is-not-empty) {
             print (
@@ -894,17 +1092,73 @@ def gi-launch [
     }
     # Same guard the plugin enforces at the commit, surfaced before the session
     # starts — a branch switch now beats a refused commit mid-task.
-    let branch = gi-branch $root
+    let branch = gi-branch $dir
 
     if $branch in $GI_PROTECTED_BRANCHES {
         print $"note: this repo is on ($branch) — gi commits belong on a work branch; a `git commit` is refused until you switch."
     }
     let args = gi-launch-args $plan.sid $doc_rel --resume=$plan.resume --execute=$execute ...$extra
 
-    print $"canvas ($doc_rel), session (gi-session-key $plan.sid)(if $hook { '' } else { ', no Stop hook' })"
-    with-env ({GI_CANVAS: $doc_abs} | if $hook { } else { insert GI_NO_HOOK "1" }) {
-        ^claude --plugin-dir $GI_PLUGIN_DIR --settings (gi-launch-settings) ...$args
+    print $"canvas ($doc_rel), session (gi-session-key $plan.sid)(if $hook { '' } else { ', no Stop hook' })(if $review { ', review' } else { '' })"
+    # Why caught and raised again below: a non-zero exit (Ctrl-C, a failed
+    # start) is an error that would skip the check after the launch.
+    let failure = try {
+        with-env ({GI_CANVAS: $doc_abs} | if $hook { } else { insert GI_NO_HOOK "1" } | if $review { insert GI_REVIEW "1" } else { }) {
+            ^claude --plugin-dir $GI_PLUGIN_DIR --settings (gi-launch-settings) ...$args
+        }
+        null
+    } catch {|e| $e }
+    # The stamp went in before the launch, and the id becomes a session only
+    # with its first message. Without one the canvas would name a session that
+    # `--resume` cannot find, so put back what it held. A fork drops the
+    # source's id it replaced: a copy bound to the source's session is what
+    # forking exists to avoid.
+    if not $plan.resume and not (gi-transcript-exists $plan.sid) {
+        let previous = if $fork { null } else { $plan.replaced }
+
+        gi-unstamp-session $doc_abs $plan.sid $previous
+        print (
+            if $previous == null {
+                $"note: session (gi-session-key $plan.sid) ended before its first message; ($doc_rel) is unbound again"
+            } else {
+                $"note: session (gi-session-key $plan.sid) ended before its first message; ($doc_rel) is back on session (gi-session-key $previous)"
+            }
+        )
     }
+    if $failure != null { error make $failure.raw }
+}
+
+# The one gi skill that is installed and not read from the plugin: it turns a
+# running non-gi chat into a canvas, so it has to exist in sessions gi did not
+# launch, where `--plugin-dir` never applies.
+const GI_GLOBAL_SKILL_SRC = ($GI_MODULE_DIR | path join "gi-md-src" "gi-canvas")
+const GI_TIDY_SRC = ($GI_PLUGIN_DIR | path join "skills" "canvas-tidy" "SKILL.md")
+
+# A skill file without its frontmatter: everything after the second `---` line.
+# Exported for tests.
+export def gi-skill-body []: string -> string {
+    str replace --regex '(?s)\A---\n.*?\n---\n' ''
+}
+
+# Install the gi-canvas skill into ~/.claude/skills, or refresh it there.
+# Returns the installed directory.
+# Why tidy.md is written here: the gi plugin is not loaded in a plain chat, so
+# the skill cannot call `gi:canvas-tidy` and reads its body from the file beside
+# it. Written from the plugin's own skill at every install, it cannot drift.
+@category claude-nu
+export def "gi install-skill" []: nothing -> path {
+    let dest = $env.HOME | path join ".claude" "skills" "gi-canvas"
+    # Why a temp directory then `mv`: a write that fails halfway leaves the
+    # installed skill as it was.
+    let tmp = $"($dest)~"
+
+    rm --recursive --force $tmp
+    mkdir $tmp
+    copy-file ($GI_GLOBAL_SKILL_SRC | path join "SKILL.md") ($tmp | path join "SKILL.md")
+    open --raw $GI_TIDY_SRC | gi-skill-body | save --raw ($tmp | path join "tidy.md")
+    rm --recursive --force $dest
+    mv $tmp $dest
+    $dest
 }
 
 # Whether the session asking is bound to a canvas. Pipeline-friendly record.
@@ -915,6 +1169,6 @@ def gi-status []: nothing -> record {
     {
         # Read from the environment, not from a file: activation is per session,
         # so "is gi on" is a property of who is asking, not of the repo.
-        canvas: ($env.GI_CANVAS? | if ($in | is-not-empty) { cwd-relative } else { })
+        canvas: ($env.GI_CANVAS? | if ($in | is-not-empty) { gi-doc-path (gi-run-dir) $in | get rel } else { })
     }
 }
