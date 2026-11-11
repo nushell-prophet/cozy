@@ -71,7 +71,7 @@ const egress_name = 'cozy-egress'
 # binary named further down is not `squid`. Validate any future candidate on a
 # throwaway container before it goes near the running cage; `refresh-egress`
 # below is that rehearsal, and it proved this one.
-const egress_image = 'ubuntu/squid@sha256:d11db6479501aa4618b3253f95a88b2547229e2d081726b6fb20dc75a98cc61b'
+const egress_image = 'ubuntu/squid@sha256:041c64dd14c81548023c9532e4c2fac487e9a3f9f490913b50547d2974722025'
 const proxy_port = 3128
 # The config path inside the proxy, shared by the run arguments and the reload.
 # One literal because `squid -k` has to be pointed at the same file the running
