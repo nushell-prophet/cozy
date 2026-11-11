@@ -273,6 +273,7 @@ Why: the maintainer granted this by hand again and again ("commit atomically, I'
 - **Show a changed command as a terminal before and after.** When the change alters what a non-interactive command does, and the difference can be shown, report the command and its output before the change, then the same command and its output after it.
   Run both versions and paste the real output, in the dotnu shape (`# =>` lines); say where the "before" came from (an old commit, or earlier in the session), and mark output that could not be run `not run`.
   Skip it when the diff alone shows the effect.
+  Skip it also when the change removes a flag or a command: one sentence that names it as removed is the whole report, and the error that a run of the old call prints adds nothing.
   Why: the user checks behaviour faster from a terminal than from a description of the code.
 - **Stop only where a revert is not one commit away:** rewriting the history of shared commits, touching `main` or `master`, editing a global config, pushing to a remote, deleting a branch or a worktree that this session did not create.
   Propose the exact command instead.
