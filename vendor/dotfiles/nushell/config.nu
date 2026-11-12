@@ -58,7 +58,9 @@ $env.config.completions.case_sensitive = false
 $env.config.completions.persistent_menus = true
 
 # Cursor Shape Configuration
-$env.config.cursor_shape.emacs = "Line"
+# Why inherit: the terminal's default cursor applies (in wezterm, the blinking
+# block of its config), the same cursor as in a Claude Code pane.
+$env.config.cursor_shape.emacs = "inherit"
 $env.config.cursor_shape.vi_insert = "Block"
 $env.config.cursor_shape.vi_normal = "Underscore"
 
@@ -272,7 +274,24 @@ $env.config.menus ++= [
         # `$token.text` is only the word under the cursor.
         source: {|token|
             let buffer_esc = $token.text | str replace --all --regex '(_|-)' '_|-'
-            let segment_colors = [(ansi cyan) (ansi yellow) (ansi magenta) (ansi blue)]
+            # Why: the same folder gets the same color in every row and every session, so the eye finds it without reading.
+            # The md5 of the name picks a hue; fixed saturation and lightness keep every hue readable on a dark background.
+            let segment_color = {|name|
+                let hue = $name | hash md5 --binary | bytes at 0..2 | into int --endian big | $in mod 360
+                let x = 1 - ((($hue / 60) mod 2) - 1 | math abs)
+                let rgb = match ($hue // 60) {
+                    0 => [1 $x 0]
+                    1 => [$x 1 0]
+                    2 => [0 1 $x]
+                    3 => [0 $x 1]
+                    4 => [$x 0 1]
+                    _ => [1 0 $x]
+                }
+                let hex = $rgb
+                    | each {|c| (0.3 + $c * 0.4) * 255 | math round | into int | into binary --compact | encode hex --lower }
+                    | str join
+                ansi --escape {fg: $"#($hex)"}
+            }
 
             open $nu.history-path
             | query db "SELECT cwd FROM history GROUP BY cwd ORDER BY MAX(start_timestamp) DESC"
@@ -289,19 +308,28 @@ $env.config.menus ++= [
                 } else if ($dir starts-with $"($nu.home-dir)/") {
                     '~' | path join ($dir | path relative-to $nu.home-dir)
                 } else { $dir }
-
-                # Why: `ansi reset` here would also cancel the reverse video of the selected row, so each segment ends with the plain text color of the menu.
-                let segments = $short
-                    | split row '/'
-                    | enumerate
-                    | each {|s| $"($segment_colors | get ($s.index mod 4))($s.item)(ansi green)" }
-                    | str join '/'
-
-                {
-                    value: (if $dir has (char space) { $'"($dir)"' } else { $dir }) # enclose entry into quotes
-                    display_override: $segments
-                }
+                {dir: $dir segments: ($short | split row '/')}
             }
+            | do {|rows|
+                # Why: the source runs on every key press, so each unique name is hashed once, not once per row.
+                let colors = $rows.segments
+                    | flatten
+                    | uniq
+                    | each {|name| {name: $name color: (do $segment_color $name)} }
+                    | transpose --header-row --as-record
+                $rows | each {|row|
+                    let dir = $row.dir
+                    # Why: `ansi reset` here would also cancel the reverse video of the selected row, so each segment ends with the plain text color of the menu.
+                    let segments = $row.segments
+                        | each {|name| $"($colors | get ([$name] | into cell-path))($name)(ansi green)" }
+                        | str join '/'
+
+                    {
+                        value: (if $dir has (char space) { $'"($dir)"' } else { $dir }) # enclose entry into quotes
+                        display_override: $segments
+                    }
+                }
+            } $in
         }
     }
 ]
