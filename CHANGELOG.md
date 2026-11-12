@@ -7,9 +7,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-12
+
 ### Added
 
-- The `commit-msg` hook adds a `Session` trailer with the Claude Code session id to a commit made inside a session, so a commit leads to its conversation; run `cozy git install-change-id-hook` again to update a repo.
+- The `commit-msg` hook adds a `Session` trailer with the Claude Code session id to a commit made inside a session, so a commit leads to its conversation; run `cozy git install-change-id-hook` again to update a repo. (58678e5)
+- `nu toolkit/container.nu attach --record <dir>` saves the session as an asciicast; `--size COLSxROWS` sets the size of the window. (b6357c1, bd85866, 2ec697a)
+- nu-cmd-stack: `cmd-stack load <stack>` loads a file of commands that an agent wrote, and `cmd-stack runs` shows which of them ran; the `nu-cmd-stack` skill tells agents to hand commands over this way. (81928a4, d7ae9a1)
+- claude-nu: `live-sessions` lists the Claude Code sessions that run on this machine; `hash-sessions` finds the sessions where a sha, a Change-Id or a CID appeared. (0afca56, 0dc3028)
+- Skills: new `40-park-todo` and `40-skill-authoring`. (875b12b, 306f910)
+- Helix: `\ p` makes the selection a particle, `+ y` / `+ Y` copy the relative / absolute path, `] h` / `[ h` move through the changes of a file in commit order, `+ r` runs the file in the nu pane; Lazygit: `X` opens a full-height log. (5ee7e4a, 3f0eb62)
+- WezTerm: quick select also takes git hashes and Change-Ids (Option+Shift+Space), IPFS CIDs, bare file names and text in backticks. (016ea02, 1dea8d3, f9e37dd, 940b4e6, 5ee7e4a)
+- The Nushell prompt shows the number of live Claude Code sessions started in the current directory. (5ee7e4a, 3f0eb62)
+
+### Changed
+
+- Skill replies print as a column of rows with emoji labels, and a reply that waits for the user ends with `go`. (1869b2f, 306f910)
+- The global instructions tell agents to finish a task on its branch in atomic commits, to call the advisor before each step the user checks, and to stop before they delete a branch they did not create. (a5de3cd, 1e4cd9a, 56a3899)
+- claude-nu: `messages` names its body column `text`, `sessions` drops `-c` (use `--columns`), and `gi new` makes a branch named after the slug. (0afca56)
+- nu-goodies: `in-hx` returns the path of the edited file instead of its text. (a85678c, de46d21)
+- claude-nu installs the gi-canvas skill (`claude-nu gi install-skill`); my-claude-skills no longer ships `40-gi-canvas`. (d5ecbd2, 875b12b)
+
+### Fixed
+
+- Brew tools in a rebuilt image update to the latest version; before, they stayed at the version of the first cached build. (eab0c55)
+- `cozy verify` checks that fzf starts. (dd05b89)
 
 ## [0.5.2] - 2026-10-19
 
@@ -852,7 +874,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.5.2...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.6.0...HEAD
+[0.6.0]: https://github.com/nushell-prophet/cozy/compare/0.5.2...0.6.0
 [0.5.2]: https://github.com/nushell-prophet/cozy/compare/0.5.1...0.5.2
 [0.5.1]: https://github.com/nushell-prophet/cozy/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/nushell-prophet/cozy/compare/0.4.3...0.5.0
