@@ -45,12 +45,59 @@ the grammar fix of the Canvas style runs on its own, at the start of a turn.
 An `AA:` entry, a marker or a legend that an agent wrote may be moved, joined with its point, or turned into another marker;
 its claims stay.
 
+## Replies
+
+The user reads this reply as he reads the output of a shell command:
+he looks for the same element in the same place every time.
+
+- The reply is a column of rows and nothing else:
+  no paragraph before it, no question after it, no blank line between rows.
+- Each row is one Markdown line: the emoji of a shared label, the label in backticks, `│`, then one line of value, as `` 🟢 `go` │ <what go does> ``.
+  The shared labels and their emoji: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of this skill alone has none.
+  The skeletons below show the rows as plain text; the reply adds the emoji, the backticks and the `│`.
+- The labels and the fixed values (`nothing changed`, `nothing`) are in English;
+  the free text of a value is in the language of the session.
+- A row prints only when it has something to say:
+  a lens that changed nothing gets no row, and the invariant gets none — it holds on every run.
+- At most four rows and 480 bytes:
+  in a canvas session the gi Stop hook passes no more, unless he ran the skill as a slash command,
+  and the shape is the same either way.
+  When the rows do not fit, drop `proof` first.
+- This skill runs in a forked context: its last message is these rows,
+  and the agent that called it shows them as they came, not retold in prose.
+
+A run has this shape:
+
+```text
+done      <canvas> · <Change-Id> <lens> · <Change-Id> <lens>
+warn      <where his own edits differ from the style, or where a pass undid a markup he asked for>
+undo      git revert --no-edit <first sha>^..<last sha>
+next      <the exact action for him> | nothing
+```
+
+`done`, `undo` and `next` always print;
+with no commit, `done` is `nothing changed · <canvas>` and `undo` goes.
+`undo` names shas, because `git revert` takes no Change-Id;
+they are the shas of the commits that `done` names.
+
+A stop — an unknown canvas in step 1, a dirty tree in step 2, a hook that blocks a commit — has this shape:
+
+```text
+stop      <step number, or the name of the hook>: <the cause in one line>
+state     nothing changed | <what is edited and not committed>
+proof     <one line>
+next      <the exact action for him>
+```
+
+`stop`, `state` and `next` always print.
+Several actions, or two ways out, are several `next` rows.
+
 ## Procedure
 
 1. **Find the canvas** — `$ARGUMENTS` when it names a path, else `$GI_CANVAS`.
-   With neither, stop and report that the canvas is unknown.
+   With neither, stop: the canvas is unknown.
 2. **Clean-tree check** — `git status --porcelain`.
-   If it is not empty, stop and report it:
+   If it is not empty, stop:
    a pass that starts on a dirty tree mixes his edits into a commit he may revert.
 3. **Read the rules** — the Canvas style (`output-styles/canvas.md` in the plugin directory of this skill) and the semantic-feed rule of the repo `CLAUDE.md`, when there is one.
 4. **Read the history** — `git log -p --follow -- <canvas>`.
@@ -79,7 +126,7 @@ its claims stay.
    `$ARGUMENTS` picks or adds a lens.
 7. **Commit each pass** — subject `canvas: format <lens>`,
    body one line on the rule applied, and the difference from the style when step 4 found one.
-8. **Report** in two lines at most: the commits, and the revert command for the whole run, `git revert --no-edit <first>^..<last>`.
+8. **Report** in the shape of *Replies*: the commits, and the revert command for the whole run, `git revert --no-edit <first>^..<last>`.
 
 ## Related
 

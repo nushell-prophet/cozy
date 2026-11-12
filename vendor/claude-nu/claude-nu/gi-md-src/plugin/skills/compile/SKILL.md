@@ -15,7 +15,8 @@ and reports what is still open.
 The result is the canvas in its current state,
 plus the diagnostics:
 the conflicts as CriticMarkup at their spots,
-the open items in the chat.
+the open items in one `AA:` entry under the H1,
+or in a sibling that the entry names.
 
 Compile does not execute.
 An open `!!` is work for `gi:git-intent`;
@@ -26,8 +27,11 @@ not to start the work.
 ## The source
 
 - The canvas: `$ARGUMENTS` when it names a path, else `$GI_CANVAS`.
-  With neither, stop and report that the canvas is unknown.
-- Its siblings: each path in `related_files`, and each `<canvas stem>-*.md` beside the canvas.
+  With neither, stop: the canvas is unknown.
+- Its siblings: each path in `related_files`, and each `<canvas stem>-*.md` beside the canvas,
+  except `<canvas stem>-open.md`:
+  that file is the output of *Open items*,
+  which the run rewrites and does not read as source.
 - The history: `git log -p -- <canvas> <siblings>`, for the decisions the files no longer show.
 
 Read all of them in full before the first pass.
@@ -38,7 +42,7 @@ Run `git status --porcelain -- <canvas> <siblings>`.
 An uncommitted change of `session:` alone is the stamp that `gi open` writes:
 commit it first, on its own, as the Canvas style says.
 Any other uncommitted line is his draft:
-stop, and ask him to commit it.
+stop, and ask him in `next` to commit it.
 Compile rewrites lines,
 so a draft would go into its commits,
 and every cut must stay recoverable from `git log -p`.
@@ -111,17 +115,72 @@ Mark each finding that stands, at its spot:
 Commit this pass alone, `canvas: compile — mark conflicts`.
 A pass that found nothing makes no commit.
 
-## Report
+## Open items
 
-Reply in the chat, in the language of his request.
-The first line says whether the canvas is ready.
-Then each open item gets one line:
+List what is still open in one `AA:` entry under the H1 of the canvas:
+compile is about the whole canvas, not about one point of it.
+The entry is one line, `AA: compile: <N> open`,
+and under it each open item is one list item on one line:
 its fragment link,
 what waits,
 and who acts — he, or the agent after his `go`.
-Then the commits of the run, by `Change-Id`.
-Count the items from the list in your reply,
+The gi review of a turn (`gi open --review`) counts only the lines of an entry that are not list items,
+so the entry stays within the cap of the Canvas style however long the list is;
+it flags a list item with a code span and no fragment link.
+Past three items, the list goes to the sibling `<canvas stem>-open.md`, which holds only these one-line items,
+the entry line names it (`AA: compile: <N> open, in <canvas stem>-open.md`),
+and `related_files` in the frontmatter names it too,
+as the Canvas style says for a large answer.
+A compile that finds the entry of an earlier compile rewrites it in place,
+and moves the list between the entry and the sibling as its length says.
+When the list is back in the entry, or nothing is open,
+delete the sibling with `git rm` and its line in `related_files`;
+with nothing open, the entry goes too.
+Count the items in the entry or its sibling,
 never from the report of the subagent.
+Commit this alone, `canvas: compile — open items`.
+A list that did not change makes no commit.
+
+## Replies
+
+Reply in the chat in this shape.
+The user reads it as he reads the output of a shell command:
+he looks for the same element in the same place every time.
+
+- The reply is a column of rows and nothing else:
+  no paragraph before it, no question after it, no blank line between rows.
+- Each row is one Markdown line: the emoji of a shared label, the label in backticks, `│`, then one line of value, as `` 🟢 `go` │ <what go does> ``.
+  The shared labels and their emoji: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of this skill alone has none.
+  The skeletons below show the rows as plain text; the reply adds the emoji, the backticks and the `│`.
+- The labels and the fixed values (`yes`, `no`, `nothing`) are in English;
+  the free text of a value is in the language of his request.
+- A row prints only when it has something to say: a pass that found nothing gets no row.
+- At most four rows and 480 bytes:
+  in a canvas session the gi Stop hook passes no more, unless he ran the skill as a slash command,
+  and the shape is the same either way.
+  The open items are in the `AA:` entry of *Open items* or its sibling, so the rows fit.
+
+```text
+ready     yes | no · <Change-Id> fold · <Change-Id> conflicts · <Change-Id> open items
+open      <N> items · <fragment link of the AA: entry>
+go        <the open work that go starts>
+```
+
+The first row says whether the canvas is ready, and it always prints;
+a pass that made no commit adds no Change-Id.
+`open` prints when an item is open:
+it counts the items in the `AA:` entry or its sibling, and gives the fragment link of the entry.
+The last row is `go` when you can do open work after his go,
+`next <the exact action for him>` when only he can act,
+or `next nothing` when the canvas is ready.
+
+A stop — an unknown canvas, a draft of his in *Clean tree* — has this shape:
+
+```text
+stop      <the section>: <the cause in one line>
+state     nothing changed | the session: stamp committed
+next      <the exact action for him>
+```
 
 ## Related
 

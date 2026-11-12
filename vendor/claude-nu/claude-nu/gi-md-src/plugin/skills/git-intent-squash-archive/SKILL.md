@@ -17,16 +17,66 @@ Why: `mono-land` squashes and archives too, under a tag name the mono's shared t
 Verify the working tree is clean (`git status --porcelain` returns empty).
 If not, stop and ask the user to commit or stash first.
 
+## Replies
+
+The user reads these replies as he reads the output of a shell command: he looks for the same element in the same place every time.
+So the plan of step 6, the report of step 11 and every stop have a fixed shape.
+
+- The reply is a column of rows and nothing else: no paragraph before it, no question after it.
+- Each row is one Markdown line: the emoji of a shared label, the label in backticks, `│`, then one line of value, as `` 🟢 `go` │ <what go does> ``.
+  The shared labels and their emoji: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of this skill alone has none.
+  A value of several lines, such as a commit list, goes in a `text` block right under its row.
+  The skeletons below show the rows as plain text; the reply adds the emoji, the backticks and the `│`.
+- The labels and the fixed values (`squash as shown`, `nothing changed`, `nothing`) are in English; the free text of a value is in the language of the session.
+- A row prints only when it has something to say: a check that passed gets no row.
+- `warn` holds a fact that changes what he does or expects.
+- In a canvas session, at most four rows and 480 bytes, counting every line of a `text` block and its fences: the gi Stop hook passes no more, unless he ran the skill as a slash command.
+  There the `text` blocks go: the plan adds `git log --oneline <base>..<branch>` to its `squash` row, and the report keeps its `history` row.
+
+The plan of step 6:
+
+```text
+squash    <branch> → <base> · <N> commits
+          (text block: git log --oneline <base>..<branch>)
+tag       archive/<branch> | archive/<branch> · overwrites <Change-Id> <subject>
+warn      <a fact that changes what he expects>
+go        squash as shown
+```
+
+`tag` names the commit it overwrites by its short `Change-Id`, by sha only where the commit carries none.
+
+The report of step 11:
+
+```text
+squashed  <branch> → <Change-Id> · <N> → 1
+          (text block: git log --oneline -5)
+history   git log archive/<branch>
+next      <the exact action for him> | nothing
+```
+
+A stop — the mono, a dirty tree, the trunk in step 1, no commits in step 4 — has this shape:
+
+```text
+stop      <step number, or "mono", or "clean tree">: <the cause in one line>
+state     nothing changed
+proof     <one line>
+next      <the exact action for him>
+```
+
+`stop`, `state` and `next` always print.
+
+## Procedure
+
 Archive and squash all commits on the current branch:
 
 1. Get branch name: `git branch --show-current`.
    If `master` or `main` — **STOP immediately**, inform the user this command cannot run on the main branch, do not proceed with any further steps
 2. Find base: `git merge-base main <branch>` (fall back to `master` if `main` doesn't exist)
 3. List all commits on the branch: `git log --oneline <base>..<branch>`
-4. If no commits — report and exit
+4. If no commits — stop: nothing to squash
 5. Check if tag `archive/<branch>` already exists (`git tag -l archive/<branch>`).
    If it does, show the user what it points to and warn that it will be overwritten
-6. Show the user: commit list, total count, tag overwrite warning (if applicable).
+6. Show the user the plan of *Replies*: commit list, total count, tag overwrite warning (if applicable).
    **STOP.**
    Wait for confirmation before proceeding
 7. `git tag -f archive/<branch> HEAD`
@@ -38,7 +88,7 @@ Archive and squash all commits on the current branch:
    - No hash and no short `Change-Id` of a commit inside `<base>..<branch>` in the body, the `Archive:` trailer aside: those name commits the trunk will not have, and the trailer names the archived tip on purpose
    - No diff restating; no listing of things you checked and didn't find
 10. `git commit`
-11. Show `git log --oneline -5`, name the new commit by its short `Change-Id` where it carries one (by sha only where the repo stamps none), and remind about `git log archive/<branch>` for the full history
+11. Report in the shape of *Replies*: `git log --oneline -5`, the new commit by its short `Change-Id` where it carries one (by sha only where the repo stamps none), and `git log archive/<branch>` for the full history
 
 ## Related
 

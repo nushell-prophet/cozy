@@ -589,7 +589,7 @@ It lands in the working tree untracked; `--commit` puts it in git, `--gitignore`
 Neither is the default: a transcript carries raw paths and whatever the dialogue quoted, so tracking it is your call — but leaving it ignored means every later gi turn stays out of git too, which is the failure gi exists to prevent.
 
 An imported canvas records the session it came from, so `gi open <doc>` reopens **that same session** (`claude --resume`, so the id keeps matching the frontmatter) with the canvas bound, and — when it was the live session — the agent still holds the turns the log could not contain yet and can append that missing tail itself.
-The `gi-canvas` skill drives the whole flow from inside a chat session, so you don't type nushell into Bash: it runs the import and hands you the one line to run.
+The `gi-canvas` skill drives the whole flow from inside a chat session, so you don't type nushell into Bash: it runs the import and hands you the command to run, as the last row of its reply.
 
 **The protocol rides a plugin, and the repo keeps nothing.**
 `gi open` hands `claude --plugin-dir` the directory `claude-nu/gi-md-src/plugin/`, which holds the Canvas output style, the gi skills and the hooks module that names the canvas.

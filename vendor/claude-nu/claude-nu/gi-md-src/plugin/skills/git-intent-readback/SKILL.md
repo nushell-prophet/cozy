@@ -40,6 +40,42 @@ Walk the work you are about to do and ask what is still undecided — those gaps
 Judgment: doubt is cheap here and silence is not.
 If you hesitate between *clear* and *ambiguous*, it is ambiguous.
 
+## Replies
+
+The readback is in the document; the chat gets only these rows, which point at it.
+The user reads them as he reads the output of a shell command: he looks for the same element in the same place every time.
+
+- The reply is a column of rows and nothing else: no paragraph before it, no question after it, no blank line between rows.
+- Each row is one Markdown line: the emoji of a shared label, the label in backticks, `│`, then one line of value, as `` 🟢 `go` │ <what go does> ``.
+  The shared labels and their emoji: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of this skill alone has none.
+  The skeleton below shows the rows as plain text; the reply adds the emoji, the backticks and the `│`.
+- The labels, the bucket names and the fixed values are in English; the free text of a value is in the language of his answers.
+- A row prints only when it has something to say, and a bucket with zero answers is left out of the count.
+- At most four rows and 480 bytes: in a canvas session the gi Stop hook passes no more, unless he ran the skill as a slash command, and the shape is the same either way.
+  When the rows do not fit, shorten the path in `left` to the file name first.
+- Each choice is a `???` with its default at its spot, not a row: his `go` accepts every default.
+
+```text
+done      readback in <doc> · <N> clear · <N> ambiguous · <N> unanswered · <N> conflicting · <N> gaps · <Change-Id>
+held      <N> more wait for the next round
+left      <doc> uncommitted · the readback of your uncommitted answers
+go        do the work as read back (gi:git-intent); each open ??? takes its default
+```
+
+Outside a stop, `done` and `go` always print.
+`done` counts the four buckets of *The pass*, then the gaps that its completeness check found, in that order.
+`held` prints when the cap of three `???` held some back.
+It counts them only: they are written nowhere until the next round.
+Outside a stop, `go` always ends the reply: the readback waits for his confirmation, even when nothing is ambiguous.
+
+A stop — no canvas path in step 3 — has this shape:
+
+```text
+stop      step 3: no canvas path
+state     nothing changed
+next      name the document
+```
+
 ## Procedure
 
 1. **Tree check** — `git status --porcelain`.
@@ -48,7 +84,7 @@ If you hesitate between *clear* and *ambiguous*, it is ambiguous.
 2. **Get the answers** — `git log -p -N -- <doc>` with `N = $ARGUMENTS` (default `1`); `$ARGUMENTS` may instead name a scope or file.
    `git show HEAD~N:<doc>` gives the pre-answer version — that is where your original questions still stand.
    A pasted `git diff` is the same input, uncommitted: the answers are in the paste, and the pre-answer version is `HEAD:<doc>`.
-3. **Read the canvas in full** — a session launched by `gi open` was told its canvas path in its own instructions; if you were given no such path, ask which document.
+3. **Read the canvas in full** — a session launched by `gi open` was told its canvas path in its own instructions; if you were given no such path, stop and ask which document, in the stop shape of *Replies*.
 4. **Sort and write.**
    Ambiguous, unanswered, and conflicting go in as `???` next to the relevant spot, per the Canvas protocol.
    At most three `???` per pass, the ones blocking the most work first; the rest wait for the next round (the Canvas cap).
@@ -57,7 +93,7 @@ If you hesitate between *clear* and *ambiguous*, it is ambiguous.
    Subject names the pass; body stays thin — the diff is the content.
 6. **Stop.
    Do not start the work.**
-   Report one line to chat: `readback in <doc> — N clear, M ambiguous, K unanswered`.
+   Reply in the shape of *Replies*.
 
 Stop even when nothing is ambiguous.
 Confirmation costs the user one word, and it is the only thing standing between a silent misread and a day of wrong work.

@@ -65,6 +65,7 @@ An item that names a place in words, with no code span, the check does not see.
 The diff and the commit body are the only record of what changed and why — the whole journal.
 The chat and the live document hold only the current state, never a retelling of changes (no "X resolved" in the text).
 To the chat — `done`/`noted` or a one-line pointer (a path or link).
+A gi skill that you call yourself, with no slash command, is not an aside: its pointer is the rows of its *Replies* section, within the chat floor.
 Write the full answer in the document, even when the question arrived over chat and you weren't asked to answer there.
 A prompt he types in the chat instead of the document is still canvas work, unless it opens with `chat:`, runs a slash command, is a `go` or `го`, or is a `!` command with its output (a `\ l` send, a pasted `git diff`): carry it into the document as his point, at the spot it is about, verbatim — his words, his language, his line breaks; only the indent of the thread is yours — and commit that alone, before the grammar pass of the turn; then fix it with the rest of his text under *Fix the user's English first*, and answer it under that point as usual.
 If the canvas holds his uncommitted edits, leave the carry uncommitted too: a commit of the file would take his draft with it, so his `\ k` commits both, under his own name and without the mark.

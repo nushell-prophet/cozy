@@ -6,7 +6,7 @@ allowed-tools: Bash(nu -c *), Bash(grep *), Bash(git *), Read, Edit
 ---
 
 The user wants a canvas session but is inside a chat session, where typing nushell into Bash is awkward.
-Run the module command for them and hand back one line to paste into a terminal.
+Run the module command for them and hand back the command to paste into a terminal.
 
 A canvas session cannot be started from within a session: the gi plugin (the Canvas style, the gi skills, and the hooks that name the canvas to the agent, hold the Stop-hook floor and refuse a commit on the trunk) and `$env.GI_CANVAS`, which those hooks read, all arrive with `claude` at launch.
 So this skill always ends the same way — the user runs one command themselves, in their terminal, and that new session is the canvas one.
@@ -31,7 +31,7 @@ The commands **the user** runs go into their REPL, where the module is already l
 ## Which case
 
 First check you are not already there.
-`gi` on its own reports whether the asking session is bound to a canvas; a non-null `canvas` means this **is** a canvas session — say so and stop, there is nothing to launch.
+`gi` on its own reports whether the asking session is bound to a canvas; a non-null `canvas` means this **is** a canvas session — say so and stop with the reply of *What to report*, there is nothing to launch.
 Doing this first matters because the alternative is importing a session that is already a canvas into a second file, which splits one conversation across two documents.
 The same call answers the rest: `canvases` lists the canvases already here, and `folder` names where a new one lands.
 Do not list the canvas folders yourself — a repo rarely has all of them, and `ls` exits non-zero on any missing one, so the call reads as a failure.
@@ -90,7 +90,7 @@ Read `tidy.md` next to this file and follow it on the imported canvas.
 - With `--no-commit`: tidy the untracked file in place and commit nothing.
   Skip the clean-tree check: the full dialogue stays in the session log, at the `.jsonl` path the import note names.
 
-Then tell the user, in one line: exit this session and run `claude-nu gi open <doc>`.
+Then reply as *What to report* says: exit this session and run `claude-nu gi open <doc>`.
 The import wrote this session's id into the canvas, so that reopens **this same session** (same id, full context) with the canvas bound, and the missing tail — the turns after the import, which the session log cannot contain yet — is still in context: it goes into the canvas through the same tidy rules, under the points it answers, not appended as new turns.
 
 ## A new canvas, or an existing one
@@ -109,5 +109,46 @@ For `gi new`, pick the slug as for an import: two to four words on what the canv
 
 ## What to report
 
-One line with the exact command to run.
+Reply in rows, as the user reads the output of a shell command: the same element in the same place every time.
 No explanation of the protocol, no summary of what the canvas is; the style file does that once the session starts.
+
+- The reply is a column of rows and nothing else.
+- Each row is one Markdown line: the emoji of a shared label, the label in backticks, `│`, then one line of value, as `` 🟢 `go` │ <what go does> ``.
+  The shared labels and their emoji: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of this skill alone has none.
+  The skeletons below show the rows as plain text; the reply adds the emoji, the backticks and the `│`.
+- The labels and the fixed values are in English; the free text of a value is in the language of the session.
+- A row prints only when it has something to say.
+
+An import:
+
+```text
+canvas    <doc> · branch <branch> · <Change-Id> import · <Change-Id> tidy
+next      exit this session, then run: claude-nu gi open <doc>
+```
+
+A new or an existing canvas:
+
+```text
+next      claude-nu gi new <slug> | claude-nu gi open <doc> | claude-nu gi open <doc> --fork | claude-nu gi open <doc> --no-hook
+```
+
+`next` always prints, and it is always the last row: the exact command, bare, as the REPL takes it, after "exit this session, then run:" when the session has to end first.
+"Exit this session" goes only with an import, which resumes this same session.
+`canvas` names the branch only when the import created it, and no Change-Id with `--no-commit`.
+
+A tidy that stops — the clean-tree check of `tidy.md` — is a stop of this skill; `tidy.md` prints no rows of its own:
+
+```text
+stop      tidy: <the cause in one line>
+state     <doc> imported, not tidied · branch <branch> · <Change-Id> import
+proof     <the paths that git status prints>
+next      <the exact action for him>
+```
+
+This session is already a canvas session:
+
+```text
+stop      this session is bound to <canvas>
+state     nothing changed
+next      nothing
+```

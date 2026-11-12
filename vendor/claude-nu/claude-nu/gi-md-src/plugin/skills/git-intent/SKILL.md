@@ -74,12 +74,40 @@ The subject prefix is `gi:` (quiet — the commit *is* the unit, no surrounding 
   The sync is a commit of its own; when his edit looks like a mistake, or shows that his model and the canvas are far apart, a `???` asks first.
   A line of his that is wrong against the code or the facts gets a CriticMarkup fix or a `???`, not a silent rewrite
 
+## Replies
+
+The answers live in the document and in git; the chat gets only these rows, which point at them.
+The user reads them as he reads the output of a shell command: he looks for the same element in the same place every time.
+
+- The reply is a column of rows and nothing else: no paragraph before it, no question after it, no blank line between rows.
+- Each row is one Markdown line: the emoji of a shared label, the label in backticks, `│`, then one line of value, as `` 🟢 `go` │ <what go does> ``.
+  The shared labels and their emoji: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of this skill alone has none.
+  The skeleton below shows the rows as plain text; the reply adds the emoji, the backticks and the `│`.
+- The labels and the fixed values (`nothing to do`, `nothing`) are in English; the free text of a value is in the language of the text it answers.
+- A row prints only when it has something to say: a check that found nothing gets no row.
+- At most four rows and 480 bytes: in a canvas session the gi Stop hook passes no more, unless he ran the skill as a slash command, and the shape is the same either way.
+  When the rows do not fit, fold the `open` rows into one that counts the markers of the document, his and yours, and names the command that lists them, `rg --line-number '^\s*(- )?(\?\?\??|!!!?)' <doc>`; the list also holds a marker already answered under it, until its thread is collapsed.
+- Rows of one label go in order of what they cost him, the most expensive first.
+- A choice is a `???` with its default at its spot in the document, not a row: his `go` accepts every default.
+
+```text
+done      <the file of the answer, or a fragment link to it> · <Change-Id> · <Change-Id> | nothing to do
+open      <fragment link> · <what waits> · <you | me after your go>
+left      <path> uncommitted · your draft | my answer to your pasted diff
+go        <what go does>; each open ??? takes its default
+```
+
+`done` always prints, and names each commit by its short `Change-Id` (by sha only where the repo stamps none).
+`open` is a `???` or `!!!` that this run placed, or a marker of his that it did not process.
+The last row is `go` when the run left work that waits for his go, else `next <the exact action for him> | nothing`.
+An action only he can take, such as a command you did not run because it pushes to a remote, is that `next` row, with the command.
+
 ## Procedure
 
 1. **Tree check** — run `git status --porcelain`.
    Uncommitted lines are the user's draft, lighter than what he commits: read them when he points at them (a pasted `git diff`, a `<selected-text>`), never write over them, and never sweep them into a commit of yours.
    A pasted `git diff` is answered in kind: write the answer, leave it uncommitted; commit only when he asks.
-   A dirty tree stops nothing else — say in one line what you left uncommitted and whose it is.
+   A dirty tree stops nothing else — the `left` row of *Replies* says what you left uncommitted and whose it is.
 
 2. **Get the diff** — run `git log -p -N --reverse` where `N = $ARGUMENTS`, or `1` when `$ARGUMENTS` is empty or is not a positive integer.
    If the patch is very large (>500 lines), prefer `git log -N --stat` plus targeted `git show` per file to avoid filling context.
@@ -122,7 +150,9 @@ The subject prefix is `gi:` (quiet — the commit *is* the unit, no surrounding 
    - **Skip binary files** in the diff.
    - A decision visible in git history is binding — do not override without explicit instruction.
 
-   If there is genuinely nothing to do (no markers, no propagation, no cleanup), report it and exit without creating an empty commit.
+   If there is genuinely nothing to do (no markers, no propagation, no cleanup), reply with the rows `done nothing to do` and `next nothing`, and exit without creating an empty commit.
+
+6. **Reply** in the shape of *Replies*.
 
 ## Related
 

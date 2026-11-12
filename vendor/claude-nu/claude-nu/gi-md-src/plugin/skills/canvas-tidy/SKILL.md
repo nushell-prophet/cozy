@@ -81,18 +81,60 @@ It may set scope ("only the transport section"), aggressiveness ("keep all why-n
 `!!` markers in the doc do the same in place.
 With no instruction, apply the taxonomy above conservatively.
 
+## Replies
+
+The user reads this reply as he reads the output of a shell command: he looks for the same element in the same place every time.
+The substance is in the canvas and in git; the chat gets only these rows, which point at it.
+
+- The reply is a column of rows and nothing else: no paragraph before it, no question after it, no blank line between rows.
+- Each row is one Markdown line: the emoji of a shared label, the label in backticks, `│`, then one line of value, as `` 🟢 `go` │ <what go does> ``.
+  The shared labels and their emoji: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of this skill alone has none.
+  The skeletons below show the rows as plain text; the reply adds the emoji, the backticks and the `│`.
+- The labels and the fixed values (`nothing to cut`, `nothing changed`, `nothing`) are in English; the free text of a value is in the language of the session.
+- A row prints only when it has something to say: a check that found nothing gets no row, and what you kept gets none.
+- At most four rows and 480 bytes: in a canvas session the gi Stop hook passes no more, unless he ran the skill as a slash command, and the shape is the same either way.
+  A value is a path or a fragment link, a Change-Id and a few words; the reasons go to the commit body.
+  When the rows do not fit, fold the `open` rows into one that counts the `???` and `!!!` of the document and names the command that lists them, `rg --line-number '^\s*(- )?(\?\?\?|!!!)' <doc>`.
+- Rows of one label go in order of what they cost him, the most expensive first.
+- A choice is a `???` with its default at its spot in the document, not a row: his `go` accepts every default.
+- When another skill runs this one — `/mono-land`, or `gi-canvas` through `tidy.md` — print no rows: the caller reports.
+
+A run has this shape:
+
+```text
+done      <doc> · <Change-Id> · <sibling> · <Change-Id> | nothing to cut · <doc>
+warn      not requested: <a choice you made to fill a gap, such as a sibling tidied too>
+open      <fragment link> · <what waits> · <you | me after your go>
+go        <the open work that go starts>; each open ??? takes its default
+next      <the exact action for him> | nothing
+```
+
+`done` always prints.
+The last row is `go` when an `open` row waits for his go, else `next`.
+`done` names each document the run committed, with its Change-Id.
+`open` is a `???` this run placed, or a `!!!` that already waits for him.
+
+A stop — a dirty tree in step 1, an unknown document in step 2 — has this shape:
+
+```text
+stop      step <n>: <the cause in one line>
+state     nothing changed
+next      <the exact action for him>
+```
+
 ## Procedure
 
 1. **Clean-tree check** — `git status --porcelain`.
-   Non-empty → stop, ask the user to commit or stash: this pass rewrites the whole file, so his uncommitted lines would be lost in it.
+   Non-empty → stop, name the files in `stop`, and ask in `next` to commit or stash: this pass rewrites the whole file, so his uncommitted lines would be lost in it.
    (The sibling skills accept a dirty tree; this one cannot.)
-2. **Read the canvas in full** — a session launched by `gi open` was told its canvas path in its own instructions; if you were given no such path, ask which document.
+2. **Read the canvas in full** — a session launched by `gi open` was told its canvas path in its own instructions; if you were given no such path, stop, and ask in `next` which document.
 3. **Classify** — mark each section cut/keep per the taxonomy and any `$ARGUMENTS` / `!!` instructions.
    Anything genuinely ambiguous between dead and protective: keep it, add a `???`.
 4. **Edit** — remove the cut material; repair what the cuts leave dangling (broken sentences, stale cross-references, list numbering).
    Never leave the doc mid-broken.
 5. **Commit** — the canvas change as its own commit.
    Body is thin: the diff *is* the archive, so name what was tidied in one line, not what each removed section said.
+6. **Reply** in the shape of *Replies*.
 
 ## Related
 
