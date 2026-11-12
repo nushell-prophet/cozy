@@ -10,6 +10,53 @@ description: >
 
 Full release procedure for the cozy project.
 
+## Replies
+
+Every stop, the plan of steps 1-3 and the report of step 7 follow the global rule *A skill reply reads like shell output*.
+This skill adds:
+
+- No row says that a prerequisite holds.
+- A failed prerequisite and a step 6 search that finds no `Mono-Commit` stop in the shape of the global rule; `next` names what must happen first.
+- The version and the drafts are two `decide` rows, so an answer to one never leaves the other to a guess.
+
+The plan prints after steps 1-3 only when the skill must wait for the user: the user gave no version (step 1), or step 2 drafted new entries.
+Otherwise the skill runs straight on to step 4, and the `hash`, `tidy` and `skip` rows go into the report of step 7, above `content`.
+
+The plan has these rows, in this order:
+
+```text
+release   <previous tag> → X.Y.Z · <n> commits audited · branch <task branch>
+hash      <entry in a few words> → (<sha>)
+add       <Category>: <the draft entry> (<sha>)
+tidy      <entry in a few words> → <the cleaned entry>
+skip      <commits or a group of them> · <why they are not user-facing>
+decide    version? · default: X.Y.Z (<the reason for the bump>) · else: <the other bumps>
+decide    the drafts? · default: add all as shown · else: name the ones to drop or change
+go        write CHANGELOG.md, commit release: X.Y.Z, then /mono-land, export and tag
+```
+
+- `hash`: step 2, an existing entry with a missing or stale hash.
+- `add`: step 2, one row per missed change, in the order of the six categories.
+- `tidy`: step 3, one row per entry that the skill already fixed to clear the release-time checks.
+- `skip`: step 2, the commits that get no entry.
+- The version `decide` prints when the user gave no version (step 1); the drafts `decide` prints when there are `add` rows.
+- `release` and `go` always print.
+
+The report of step 7 has these rows:
+
+```text
+released  X.Y.Z - YYYY-MM-DD · master <short Change-Id> · tag X.Y.Z → <recipient sha> in public/cozy-public
+hash      <entry in a few words> → (<sha>)
+tidy      <entry in a few words> → <the cleaned entry>
+skip      <commits or a group of them> · <why they are not user-facing>
+content   <the summary of the release in a text block under the row>
+warn      <a fact that changes what the user does or expects>
+next      on the host, in public/cozy-public: git push && git push --tags
+next      Apple container: container build -t cozy:latest . · container stop <name>; container delete <name> · nu toolkit/container.nu up
+```
+
+`released`, `content` and both `next` rows always print; `hash`, `tidy` and `skip` print here only when no plan printed them.
+
 ## Prerequisites
 
 - Working directory is clean (`git status` shows no uncommitted changes)
@@ -17,7 +64,7 @@ Full release procedure for the cozy project.
 - You are on a task branch in `wtr/cozy`, never on the mono `master`: the release commit reaches `master` through `/mono-land` (step 6)
 - The recipient `public/cozy-public` is checked out beside the mono (steps 2 and 6 read it)
 
-If any prerequisite fails, stop and tell the user what needs to happen first.
+If any prerequisite fails, stop (see *Replies*) and name in `next` what needs to happen first.
 
 ## Procedure
 
@@ -52,7 +99,7 @@ Look for:
 - Changelog entries whose commit hashes don't appear in the log (stale or wrong hash)
 - Multiple commits that should be merged into a single changelog entry
 
-If you find missed changes, draft new entries and show them to the user before adding.
+If you find missed changes, draft new entries and show them to the user as `add` rows of the plan before adding.
 Not every commit needs a changelog entry — skip internal refactors, CI tweaks, and implementation details that don't affect the user.
 
 ### 3. Review and finalize Unreleased entries
@@ -77,7 +124,7 @@ Past released sections are frozen.
 Do not rewrite them while tidying — only the new entries are in scope.
 
 If entries need cleanup, fix them before proceeding.
-Show the user what you changed.
+Show the user what you changed, as `tidy` rows (see *Replies*).
 
 ### 4. Update CHANGELOG.md
 
@@ -108,7 +155,7 @@ cozy lives in the mono, so a tag here would tag the mono.
 The tag goes into the recipient `public/cozy-public` instead, until the user decides otherwise: the sbx kit clones from its GitHub remote.
 Land the release commit on the mono `master` with `/mono-land`, run `nu toolkit/mono.nu export cozy` from the mono root, then tag the exported commit, found by its `Mono-Commit` trailer.
 `<release sha>` is the sha on `master` after the landing: `/mono-land` rewrites the branch, so the sha from the branch names nothing there.
-Stop if the search finds nothing — an empty `$sha` would make `git tag` tag the recipient's `HEAD`:
+Stop (see *Replies*) if the search finds nothing — an empty `$sha` would make `git tag` tag the recipient's `HEAD`:
 
 ```sh
 R="$(git rev-parse --path-format=absolute --git-common-dir)/../../public/cozy-public"
@@ -126,9 +173,9 @@ Not amend + retag because: the release commit is already on the mono `master` an
 
 ### 7. Report
 
-After completing, tell the user:
+After completing, report in the shape of *Replies*:
 
-- The new version number and date
-- Summary of what was released
-- Remind them to push from the host, in `public/cozy-public`: `git push && git push --tags` — that publishes the release, and it is what the sbx kit clones on every `sbx run`
-- For the main Apple `container` path, pushing changes nothing locally: rebuild the image with `container build -t cozy:latest .` (`up` defaults to `cozy:latest`), and recreate the container to pick it up (`container stop <name>; container delete <name>`, then `nu toolkit/container.nu up`)
+- `released`: the new version number and date
+- `content`: a summary of what was released
+- The first `next`: the push from the host, in `public/cozy-public`: `git push && git push --tags` — that publishes the release, and it is what the sbx kit clones on every `sbx run`
+- The second `next`: for the main Apple `container` path, pushing changes nothing locally: rebuild the image with `container build -t cozy:latest .` (`up` defaults to `cozy:latest`), and recreate the container to pick it up (`container stop <name>; container delete <name>`, then `nu toolkit/container.nu up`)

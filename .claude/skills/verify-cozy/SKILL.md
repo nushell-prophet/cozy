@@ -31,8 +31,33 @@ On a base image that bakes no `ENV` those keys live only in `/etc/sandbox-persis
 The `claude env:` rows are separate and read a file, not an env: the agent's identity (`GIT_AUTHOR_*`, `GIT_COMMITTER_*`, `JJ_CONFIG`) lives in the `env` field of `~/.claude/settings.json`, so it belongs to the Claude Code process and not to any shell.
 Nothing in verify runs inside Claude Code, so the effective value is out of reach — the rows assert the file, which is where the failure that actually happened would show.
 
-Read the printed table; any `pass: false` row names what to fix and, for files, the owning repo.
+Read the printed table; any `pass: false` row names what to fix and, for files, the owning repo; report it as a `fail` row (see *Replies*).
 To add or change a check, edit `cozy-module/verify.nu`.
+
+## Replies
+
+The result of a run follows the global rule *A skill reply reads like shell output*.
+This skill adds:
+
+- No row lists the checks that passed; `result` gives the count.
+- No row names a manual check that was not run: *Manual checks* already lists them.
+
+The result has these rows, in this order:
+
+```text
+target    <the target>
+blocked   <the target asked for> · <why it cannot run here> · run on the host: <command>
+result    <n> of <m> pass · <the command that ran>
+fail      <row> · <detail> · cause: <cause> · fix: <the owning repo, or a command>
+rerun     bootstrap.nu · <its first error>
+warn      <a fact that changes what the user does or expects>
+next      <the exact command or answer for the user> | nothing
+```
+
+- `blocked`: the target asked for could not run here; it takes the place of `target` and `result`.
+- `fail`: one row per `pass: false` row of the table; the two `egress:` rows on the `docker` target get `cause: by design, a bare docker run has no cage`.
+- `rerun`: the re-run of *When to escalate*.
+- `target` and `result` print when the run happened; `next` always prints.
 
 ## Targets
 

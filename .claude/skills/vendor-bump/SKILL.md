@@ -12,11 +12,40 @@ description: >
 Refresh the cozy `vendor/` tree and produce one atomic commit per upstream repo whose files changed.
 The user has repeatedly asked for this split-by-repo grouping ("commit by groups"); never combine multiple repos into one commit.
 
+## Replies
+
+The stops of the preflight, step 1 and step 3, and the report of step 6 follow the global rule *A skill reply reads like shell output*.
+This skill adds:
+
+- No row says that a check found nothing: no "no body is sparse", no "README needs no change", no list of the repos that did not change.
+- A stop has the shape of the global rule.
+  Pending vendor changes from an earlier run stop the preflight: `evidence` is `git status --short vendor/`, and `open` asks whether to commit, stash or discard.
+  An unclear `--local` choice stops step 1: `open` asks for tarballs or `--local`.
+  The question of step 3 is a stop too: `decide` asks for the previously-vendored revision, with the default of step 3 when the user does not know it, the diff against the index; `state` names `vendor/<repo>/` as rewritten and not committed.
+
+The report of step 6 has these rows, in this order:
+
+```text
+vendored  <--local from mono/ | tarballs> · <all repos | <repo>> · branch <task branch>
+commit    <short Change-Id> <subject> · <the upstream change in a few words>
+readme    <short Change-Id> docs(readme): <what was synced>
+sparse    <repo>: <why the body is thin> · amend: <how>
+warn      <a fact that changes what the user does or expects>
+next      /mono-land | nothing
+```
+
+- `commit`: one row per commit of step 4, in commit order.
+- `readme`: step 5, only when it made a commit.
+- `sparse`: one row per repo whose body is thin because the upstream history was not available.
+- `warn`: for example an untracked file that the copy left in `vendor/` and that no commit holds.
+- `vendored` and `next` always print.
+  When a commit was made, the last row is `` `next` /mono-land ``, word for word; when no repo changed, no `commit` row prints and it is `` `next` nothing ``.
+
 ## Preflight
 
 - `cd` to `wtr/cozy/cozy` (the dir with `toolkit/vendor.nu` and `vendor/`), on a task branch, never on the mono `master`
 - `git status` is clean under `vendor/`.
-  If there are pending vendor changes from a previous run, stop and ask the user whether to commit, stash, or discard them before re-vendoring
+  If there are pending vendor changes from a previous run, stop (see *Replies*) and ask the user whether to commit, stash, or discard them before re-vendoring
 
 ## 1. Run vendor.nu
 
@@ -97,8 +126,8 @@ Internal refactors need nothing.
 
 ## 6. Report
 
-List the commits created — one line each with subject.
-Note any repo where the body is sparse because upstream history was unavailable; flag it so the user can amend.
+Report in the shape of *Replies*: one `commit` row per commit created, with its subject.
+Give each repo whose body is sparse, because the upstream history was not available, a `sparse` row, so the user can amend it.
 
 ## Notes
 
