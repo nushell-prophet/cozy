@@ -16,38 +16,6 @@ Cross-reference all documentation files against the actual codebase and fix inco
 Code is the source of truth.
 Docs are claims to verify.
 
-## Replies
-
-Step 4 prints the `pass`, `drift` and `hash` rows, every `drift` and `hash` row `to fix`, and the run goes on to step 5 with no wait.
-After step 6 the full report prints, with the final state of each row, and ends with `next`.
-Both follow the global rule *A skill reply reads like shell output*.
-This skill adds:
-
-- No row says that a check found nothing: no "all CHANGELOG hashes resolve", no list of the claims that are consistent.
-- `drift`, `hash` and `open` rows carry one number sequence (`<#>` below, `drift 3`); a number stays the same in every later reply of the run.
-  An `open` row about a drift or a hash takes the number of that row.
-- `drift` rows are grouped by file; the file with the most expensive drift comes first.
-
-A report has these rows, in this order:
-
-```text
-pass      incremental from <marker short Change-Id> · <n> commits | full · branch <task branch>
-drift     <#> <file>:<line> · doc: <the claim> → code: <the fact> · fixed in <short Change-Id> | to fix
-hash      <#> <the stale hash> in <the entry in a few words> · rehashed → <new hash> | typo → <the real hash> | to fix
-upstream  <repo> <short Change-Id> on <branch>: <file>: <what was fixed in the source of a vendored copy>
-open      <#> <the open item in full: what the doc says, what the code says>
-marker    refs/cozy/docs-validated → <short Change-Id> | stays at <short Change-Id>: <the reason>
-warn      <a fact that changes what the user does or expects>
-next      <the answer an `open` row waits for> | /mono-land
-```
-
-- `drift`: step 3, one row per mismatch between a doc and the code; before step 5 its state is `to fix`.
-  `/update-design` uses the same label for the same kind of row.
-- `hash`: *CHANGELOG commit hashes*, one row per hash that does not resolve.
-- `upstream`: a vendored doc fixed in its source repo (see *Guidelines*).
-- `open`: an ambiguous case of step 5, or a typo hash with no unambiguous match; the skill asks, it does not guess.
-- In the full report, `pass` and `marker` always print.
-
 ## Incremental baseline
 
 Two modes, with a git marker recording the last clean full pass.
@@ -90,12 +58,12 @@ In incremental mode every step below is scoped to the changed set from the basel
    - CHANGELOG contradictions between sequential versions (e.g. v0.0.2 says "switch from A to B" but v0.0.1 already claims B)
    - CHANGELOG commit hashes that no longer resolve to a commit on the branch — see *CHANGELOG commit hashes* below
 
-4. **Report** in the shape of *Replies* — one numbered `drift` row per issue, grouped by file.
+4. **Report** — numbered list of issues, grouped by file.
    Show what the doc says vs what the code says.
 
 5. **Fix** — edit the docs to match code.
    Preserve the author's style.
-   In ambiguous cases, ask the user with an `open` row.
+   In ambiguous cases, ask the user.
 
 6. **Advance the marker** — once fixes are committed and the pass is clean, `git update-ref refs/cozy/docs-validated HEAD`.
    Skip this if you only checked a subset the user named rather than the full changed set — a partial check must not move the baseline.
@@ -124,7 +92,7 @@ Fixing an unresolved hash:
   Find it by matching the entry's described change to a commit subject (`git log <last-release-tag>..HEAD`), and confirm with `git patch-id` (`git diff old^ old | git patch-id --stable` vs the candidate — identical patch-id means it's the same change).
   A confident patch-id match is safe to swap automatically.
 - **Never existed (typo)** — no patch-id match anywhere.
-  Locate the real commit by its message (`git log --all -i --grep='<keywords>'`); if the match is unambiguous, fix it, otherwise ask with an `open` row.
+  Locate the real commit by its message (`git log --all -i --grep='<keywords>'`); if the match is unambiguous, fix it, otherwise ask.
 
 ## Guidelines
 

@@ -16,40 +16,6 @@ Code is the source of truth; each design file is a set of claims to verify.
 This is a **reconcile-and-patch** skill — preserve the existing hand-written wording, fix only what drifted.
 Do not regenerate from scratch.
 
-## Replies
-
-Step 4 prints the `reconcile`, `drift`, `map` and `bug` rows, every `drift` `to patch`, and the run goes on to step 5 with no wait.
-After step 6 the full report prints, with the final state of each row, and ends with `next`.
-Both follow the global rule *A skill reply reads like shell output*.
-This skill adds:
-
-- No row says that a check found nothing: no "map is clean", no "anchors resolve", no "order unchanged, nothing for validate-docs".
-- `drift` and `open` rows carry one number sequence (`<#>` below, `drift 3`); a number stays the same in every later reply of the run.
-  An `open` row about a drift takes the number of that drift.
-- `drift` rows are grouped by file; the file with the most expensive drift comes first.
-- A `reconciled-at` id that resolves to several commits, none of them an ancestor (*Incremental baseline*, step 3), stops in the shape of the global rule.
-
-A report has these rows, in this order:
-
-```text
-reconcile <n> of <m> files · incremental | full · run-start <stamp> · branch <task branch>
-drift     <#> <file>: <what the notes say> → <what the code says> · patched in <short Change-Id> | to patch
-map       design/README.md: <a missing file, a dead link, or the wrong order>
-handoff   <README.md | CLAUDE.md> order changed → /validate-docs
-bug       <file>:<line> · <the code bug found while reconciling> · not fixed
-open      <#> <a rationale the code cannot settle: what the notes say, what the code says>
-stamp     reconciled-at <stamp> on <files> · kept on <skipped files> · human-check pending on <patched files>
-warn      <a fact that changes what the user does or expects>
-next      <the answer an `open` row waits for> | read git diff master...HEAD -- design, then /mono-land
-```
-
-- `drift`: a dead `Code:` anchor, a stale rationale, a missing or removed item, or an order fix; one row per drift, also one that step 6 finds in your own edits.
-  `/validate-docs` uses the same label for the same kind of row.
-- `handoff`: the flag for `validate-docs` that *Canonical-order invariant* asks for.
-- `bug`: *Guidelines*, a code bug flagged, not fixed; the user decides what to do with it.
-- `open`: step 5, a doc claim and the code that contradict; the skill asks, it does not guess.
-- In the full report, `reconcile` and `stamp` always print; `stamp` prints on a clean reconcile too, because the stamp moves then.
-
 ## What design/ is (and isn't)
 
 `design/` records the part no single script can carry: the **build order** (it spans the `Dockerfile`, `bootstrap.nu`, and the kit) and the **motivation** — why each tool is compiled from source, why each module is vendored, why each file ships into the sandbox.
@@ -113,7 +79,7 @@ Default to incremental — only reconcile files whose `covers:` sources actually
 2. If a file has no `reconciled-at` (or the user asked for a **full** check), reconcile it in full — this establishes the baseline.
 3. Otherwise resolve `reconciled-at` to a commit and run `git diff <commit> HEAD -- <covers paths>`.
    A sha is the commit.
-   An id names every commit carrying that trailer — `git log --all --format=%H --grep='^Change-Id: <id>'` — so take the one that is an ancestor of `HEAD` (`git merge-base --is-ancestor <hash> HEAD`), else the sole remaining match, else stop (see *Replies*) and ask: a rebase leaves twins under one id, and only the ancestor test tells them apart.
+   An id names every commit carrying that trailer — `git log --all --format=%H --grep='^Change-Id: <id>'` — so take the one that is an ancestor of `HEAD` (`git merge-base --is-ancestor <hash> HEAD`), else the sole remaining match, else stop and ask: a rebase leaves twins under one id, and only the ancestor test tells them apart.
    **Empty ⇒ skip the file**, it is still in sync.
    Non-empty ⇒ reconcile against that diff.
    A tree diff, not `git log <commit>..HEAD`: a landed branch's squash carries a new id, so a stamp made before the landing resolves only to the archived tip, which is no ancestor of the new trunk — `git log` would list the squash and re-reconcile the file against the whole branch, while the tree diff sees the squash's tree equal to the tip's and stays empty.
@@ -129,9 +95,9 @@ Stamp the run-start `HEAD`, not the commit you are about to make: your commit to
 1. **Read** `design/README.md`, then each subsystem file and its frontmatter.
 2. **For each file the *Incremental baseline* didn't skip**, read the `covers:` sources and run the four checks above (anchors, rationale, coverage, order).
 3. **Check the map** — does `README.md` still point at every file, in build order, no dead links?
-4. **Report** in the shape of *Replies* — one numbered `drift` row per finding, grouped by file: what the notes say vs. what the code says.
+4. **Report** — numbered list grouped by file: what the notes say vs. what the code says.
 5. **Patch** — fix in place, preserve wording, reset `human-check: pending` on every file you edit, and set `reconciled-at` to the run-start stamp on every file you reconciled (patched or confirmed clean).
-   When a doc claim and the code genuinely contradict (a stale rationale you can't resolve from the code alone), ask with an `open` row rather than guess.
+   When a doc claim and the code genuinely contradict (a stale rationale you can't resolve from the code alone), ask rather than guess.
 6. **Verify your own edits** — re-check that each `Code:` anchor you touched still resolves and `human-check` is back to `pending`.
    Reordering and rewrites are exactly when an anchor quietly goes stale.
 
@@ -140,4 +106,4 @@ Stamp the run-start `HEAD`, not the commit you are about to make: your commit to
 - Reconcile against source repos under `../` only if a `covers:` path points there; vendored copies in `vendor/` are snapshots.
 - Don't expand scope: this skill maintains `design/`.
   README/CLAUDE.md accuracy beyond the order invariant is `validate-docs`.
-- Flag, don't fix, genuine code bugs found while reconciling (a lying doc comment, a contradictory invariant) — surface them as `bug` rows; the user decides.
+- Flag, don't fix, genuine code bugs found while reconciling (a lying doc comment, a contradictory invariant) — surface them; the user decides.
