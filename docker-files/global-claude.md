@@ -11,20 +11,12 @@ Under Apple `container` and `sbx` the workspace is mounted at its original host 
 ## Available Tools
 
 - `nu` (Nushell) — prefer over bash when reasonable
-- `hx` (Helix)
-- `zellij`
-- `git`, `delta` (git-delta), `git-lfs`
-- `jj` — non-interactive for the agent: its config (`JJ_CONFIG`) sets `editor = "true"`; a human's jj falls back to `$EDITOR`, which is `hx`
-- `lazygit`
-- `broot` / `br` (in Nushell)
-- `fzf`, `rg` (ripgrep), `bat`, `fd`
-- `vd` (visidata)
 - `python3` — everywhere, pulled in by brew as a VisiData dependency
 - `node`, `go` — from the `sbx` base image only; absent on the Debian image
-- `jq`
 - `xxd` — hex dump; for viewing only, prefer `open --raw file | into binary`
 - `topiary` — Nushell grammar support
 - `brew` — install more as needed
+- Also installed: `hx` (Helix), `zellij`, `git`, `delta` (git-delta), `git-lfs`, `lazygit`, `broot` / `br` (in Nushell), `fzf`, `rg` (ripgrep), `bat`, `fd`, `vd` (visidata), `jq`
 - `sudo` — passwordless on `sbx`; **revoked** on the Debian image, which runs rootless by design
 
 ## Nushell
@@ -35,124 +27,87 @@ Modules are in `~/repos/`:
 - `nu-goodies` — the user's personal nushell commands, gathered over time from many areas; some may be outdated
 - `dotnu` — literate programming for Nushell: executable scripts that embed their own output, plus commands to work with Nushell code
 - `numd` — Nushell-native markdown processor that updates `nu` code blocks
-- `nu-cmd-stack` — command history stacking for interactive use in the REPL.
-  To hand the user commands for their Nushell shell, write a stack file for `cmd-stack load`, not a code block.
-  The skill `nu-cmd-stack` says how.
+- `nu-cmd-stack` — command history stacking for interactive use in the REPL, and the way to hand commands to the user (*Commands for the user go in a file*, below)
 - `nu-kv` — key-value store for any nushell data; kept in a host-mounted folder, so it's available on the host too
 - `claude-nu` — Claude Code commands for extracting session data and for easier REPL interaction
 - `nutest` — test framework; **not** autoloaded, load it with `use ~/repos/nutest/nutest`
 
 Autoload scripts in `~/.config/nushell/autoload/` load the modules above (except `nutest`) — and the `cozy` command — for you, but only when nu starts an **interactive** session.
-The nushell MCP `evaluate` tool runs such a session, so the modules are ready there too.
-A one-shot `nu -c '…'` (e.g. run from Bash) is not interactive and skips autoloads, so `cozy`, `nu-goodies`, `kv` and the rest are absent — you'll get `command not found`.
-The MCP `evaluate` tool is good for interactive exploration (autoloads fire, structured output) — but read its caveats under *Nushell MCP Server* below before relying on it.
-If you use `nu -c`, load the modules with `--config`: `nu --config ~/.config/nushell/autoload/modules-core.nu --commands '…'` — `--config` runs even in `-c` mode (unlike autoload), so the full core module set (`cozy`, `nu-goodies`, `kv`, `dotnu`, `numd`, `claude-nu`) is available.
+The nushell MCP `evaluate` tool runs such a session, so the modules are ready there, with structured output.
+Read its caveats under *Nushell MCP Server* below before you rely on it.
+A one-shot `nu -c '…'` (e.g. run from Bash) is not interactive and skips autoloads, so `cozy`, `nu-goodies`, `kv` and the rest give `command not found`.
+Load them there with `--config`, which runs even in `-c` mode: `nu --config ~/.config/nushell/autoload/modules-core.nu --commands '…'` brings the full core set (`cozy`, `nu-goodies`, `kv`, `dotnu`, `numd`, `claude-nu`).
 
 **End every nu pipeline you are going to read with `| to nuon --pretty`.** A one-shot `nu` loads no config, so it renders with stock defaults — an 80-column box table built for a terminal, not for a reader.
 Read as text it loses data and never says so: identifiers wrap mid-word, a whole column collapses into a bare `...`, a nested value becomes `[list 3 items]`.
 Measured on 2026-08-18 over 3,819 session transcripts, 647 of 2,980 rendered tables came back damaged that way, and after a placeholder or a dropped column the agent re-ran the command to recover the data 14.7% of the time against a 2.5% baseline.
 NUON is lossless, round-trips through `from nuon`, and costs 1.5-2.7x fewer tokens than the box on real commands.
 The one thing never to write is `| table` — it forces the box back.
-The pipe has to run inside nu: from Bash, `nu script.nu | to nuon` hands the output to a program named `to` (`command not found`, then `broken_pipe` from nu), so write `nu --commands 'source script.nu; main | to nuon --pretty'`.
+The pipe has to run inside nu: from Bash, `nu script.nu | to nuon` hands the output to a program named `to` (`command not found`, then `broken_pipe` from nu), so write `nu --commands 'source script.nu; main sub arg | to nuon --pretty'`.
+A second `nu` after the pipe does not help: `nu script.nu | nu --stdin --commands '...'` gets the rendered box table as one string.
 
 ### Pitfalls cheatsheet
 
-- **Never put a remark in parentheses inside `$"..."`.** `print $"rows (was 635 before): ($n)"` tries to run `was` as a command.
-  This is the most repeated Nushell error across past sessions, and it is always the same shape: an explanation in words, in brackets, inside a `print $"…"`.
-  Move the note out of the string.
-  If it must stay, escape both parens — `\(was 635 before\)` — but that escape works **only** in `$"..."`; in `$'...'` backslash is literal and `(` still interpolates, so parens cannot be escaped there at all.
+Each entry is the symptom and the fix; the `nushell-style` skill has the cause, the variants and what was tested.
+
+- **Never put a remark in parentheses inside `$"..."`.** `print $"rows (was 635 before): ($n)"` tries to run `was` as a command; this is the most repeated Nushell error across past sessions.
+  Move the note out of the string, or escape both parens — `\(was 635 before\)`; that escape works **only** in `$"..."`, never in `$'...'`.
 - **`else` has to sit on the same line as the closing brace**: `} else {`, `} else if $x { … }`.
   A line that *starts* with `else` gives ``Command `else` not found``.
-  The bodies may span as many lines as you want — only the position of `else` matters.
 - The Bash tool rewrites `!` → `\!`, breaking `!=`/`!~` in `nu -c '…'`.
   Use a quoted heredoc (`<< 'EOF'`) or a temp file.
 - In Bash, `o+e>| cmd` is not a pipe — `>|` writes a file named `cmd`.
-  That redirect syntax is Nushell-only.
+  That redirect syntax is Nushell-only; in Bash, pipe both streams with `2>&1 |`.
 - A command name is prose: **letters, digits, spaces and hyphens only**.
-  A name is data other tools put back into source code — nutest re-emits every test name as a bare command call inside generated Nushell, so the parser reads every character.
-  One apostrophe in `def "the signer's endorsement"` fails **every** test in the file with `nu::parser::unexpected_eof`, pointing at generated code that names nothing you wrote.
-  Also fatal: `` ` `` `"` `(` `)` `[` `]` `|` `#`, unbalanced `{`.
-  English wants the apostrophe, so rephrase: `X's Y` → `the Y of X`, contractions spelled out.
-  Never embed a code fragment or literal in a name either (`def "a record {a: 1} round-trips"`) — it happens to parse, but it repeats the body and reads as syntax where a reader expects a sentence.
+  nutest puts every test name back into generated Nushell as a bare command call, so one apostrophe in `def "the signer's endorsement"` fails **every** test in the file with `nu::parser::unexpected_eof`, pointing at generated code that names nothing you wrote.
+  Rephrase: `X's Y` → `the Y of X`, contractions spelled out; no code fragment or literal in a name either.
 - **A module that names a command after a builtin breaks the modules it imports, not itself.**
-  `export def update` is legal and the shadowing module runs fine, but every module it `use`s is parsed with that name already bound.
-  So an imported body holding `$rows | update file { cwd-relative }` resolves `update` to the custom command and reads the closure as its string argument, failing with `Parse mismatch: expected non-block value: string` or `expected string, found closure` — pointing at the *imported* file, naming nothing about `update`, and leaving you bisecting a file you did not change.
-  Verified: wholesale and named-list imports behave the same, and a `_`-prefixed internal module is not exempt.
-  Fix: the `%` sigil at the call site — `$rows | %update file { cwd-relative }`.
-  `%name` reaches the builtin whatever is shadowing it, needs no declaration, and works for multiword names (`%str contains`) — verified on 0.115.1 for an imported helper, a same-file shadow and a `def --env` body.
-  It reaches **builtins only** and has to be written where the call is, so a third-party module that spells the name bare still breaks; the answer there is to not take the builtin's name.
-  `std/assert` uses `alias "core length" = length` instead and that works too, but those lines are from 2023 and predate the sigil — do not copy them.
-  Or move the shared code into a module that shadows nothing, which is what to do when several builtins are involved.
+  The error points at the *imported* file and names nothing about the builtin: `extra positional argument`, `Parse mismatch: expected non-block value: string` or `expected string, found closure`.
+  Fix: the `%` sigil in the imported file, where the builtin is called — `$rows | %update file { cwd-relative }`.
+  It reaches **builtins only**, and an imported module that you cannot edit still breaks; the answer there is to not take the builtin's name.
 - `|` is the only operator that continues a line by itself.
-  Any other binary operator (`++`, `+`, `and`, `or`, …) breaks the parse when the expression spans lines: leading (`let a = [x y]` ⏎ `    ++ [z]`) → ``Command `++` not found``, trailing (`[x y] ++` ⏎ `[z]`) → `Incomplete math expression`.
-  Wrap the whole expression in `( … )` — inside parens both positions work — or rewrite it as a pipeline (`| append …`).
-- Nushell's regex is **fancy-regex**, not the Rust `regex` crate.
-  Lookahead, lookbehind (variable-length too), backreferences, atomic groups and `(?R)` recursion all work in `=~`/`!~`/`like` and in every `--regex` flag (`find`, `parse`, `split *`, `str replace`).
-  Don't build a multi-step workaround for a problem Nushell doesn't have.
+  A line break before or after any other binary operator (`++`, `+`, `and`, `or`, …) gives ``Command `++` not found`` or `Incomplete math expression`.
+  Wrap the whole expression in `( … )`, or rewrite it as a pipeline (`| append …`).
+- Nushell's regex is **fancy-regex**, not the Rust `regex` crate: lookahead, lookbehind, backreferences, atomic groups and `(?R)` recursion all work in `=~`/`!~`/`like` and in every `--regex` flag.
   Exception: `idx search --regex` runs on the ripgrep engine — lookaround there matches nothing and returns `[]` with no error.
-- In a pipeline, an empty branch block `{}` = `{$in}` — it passes the input through, not null (`"abc" | if false { "x" } else { } | debug` → `abc`).
-  Don't flag `else { }` as a bug: it's an intentional identity branch.
-  A **missing** else branch is the opposite — it effectively passes nothing (`"abc" | if false { "x" } | describe` → `nothing`).
-- `open x.md` gives structured data, not text.
-  `open` runs `from md` on a `.md` path and returns a table of `element`/`content` rows.
-  String commands then fail loudly (`Input type not supported.` from `lines`, `str replace`), but `open x.md | save y.md` fails **silently** — it writes the parsed AST as a markdown table instead of copying the file.
-  Any time you want the text, `open --raw x.md`; it's a byte stream, so `lines`, `str replace` and `save` all behave.
-  (`hide 'from md'` disables the conversion for the session.)
-- To check a `.nu` file, don't run `nu --ide-check` raw — it floods stdout with type hints and its `span` is raw byte offsets (useless to act on).
-  Use `dotnu diagnose file.nu`: real diagnostics only, each resolved to a line number, the source line, and the flagged text.
-  It's autoloaded (from Bash: `nu --config ~/.config/nushell/autoload/modules-core.nu --commands 'dotnu diagnose file.nu'`); `view source dotnu diagnose` shows what it does.
-  When you finish writing or editing a `.nu` file, run it before considering the file done.
+- In a pipeline, an empty branch block `{}` = `{$in}`: it passes the input through, so `else { }` is an intentional identity branch, not a bug.
+  A **missing** else branch is the opposite — it passes nothing.
+- `open x.md` gives a table of `element`/`content` rows, not text, and `open x.md | save y.md` fails **silently**: it writes that table instead of copying the file.
+  Any time you want the text, `open --raw x.md`.
+- To check a `.nu` file, use `dotnu diagnose file.nu`; raw `nu --ide-check` floods stdout with type hints, and its `span` is raw byte offsets.
+  From Bash: `nu --config ~/.config/nushell/autoload/modules-core.nu --commands 'dotnu diagnose file.nu'`.
+  When you finish writing or editing a `.nu` file, run this check before considering the file done.
 - **In `where`, parentheses turn a column name into a command.** `where (a == 1 and b == 2)` fails with ``Command `a` not found``.
-  Without the parens the same line works: `where a == 1 and b == 2`.
-  For anything more complex use a closure: `where {|r| $r.a == 1 and $r.b > 2 }`.
+  Drop the parens (`where a == 1 and b == 2`), or use a closure: `where {|r| $r.a == 1 and $r.b > 2 }`.
 - **Stale names.** `$nu.temp-path` → `$nu.temp-dir`, `$nu.home-path` → `$nu.home-dir`, `$nu.scope` → the `scope` commands; `range` → `slice`; `str upcase` → `str uppercase`, `str downcase` → `str lowercase`; `std` is a module (`use std` first), and `std/testing` holds only the attribute aliases (`@test`, `@before-each` and the like) — the test runner is `nutest`.
   A wrong `$nu` field fails at runtime, not parse time, and `dotnu diagnose` calls the file clean — so the check above misses it.
   `$nu | columns` prints the current set.
 - **An external argument that starts with `{` is a record or closure since 0.116.** `^find . -exec cat {} ';'` fails with `Can't convert to string.`; quote it: `^find . -exec cat '{}' ';'`.
 - **In `take while` / `take until`, put flags before the closure.** `take while {|x| $x < 3 } --include 1` is a parse error since 0.116 (`expected operator`); `take while --include 1 {|x| $x < 3 }` works.
-- **After `use foo.nu` every command carries the file stem as a prefix, and `main` takes the module's own name.** `use toolkit.nu` gives you `toolkit` (which is `main`) and `toolkit main test` (which is `main test`) — not `toolkit test`, and never a bare `main test`. `use toolkit.nu *` imports them unprefixed.
+- **After `use foo.nu` every command carries the file stem as a prefix, and `main` takes the module's own name.** `use toolkit.nu` gives you `toolkit` (which is `main`) and `toolkit main test` (which is `main test`); `toolkit test` fails with `extra positional argument`.
   To simply run it, use the script form: `nu toolkit.nu test`.
-  When unsure, look instead of guessing: `scope commands | where name =~ toolkit | get name`.
-- **`path self` runs only at parse time, so its result has to land in a `const`.** Called inside a `def` body it fails with `x this command can only run during parse-time`, and the help line — "try assigning this command's output to a const variable" — is the actual fix, not a hint.
-  Put it at the top of the file: `const SCRIPT_DIR = path self | path dirname`.
-  It also takes a path argument resolved against the script's own directory, which is how a script points at a neighbour without a hardcoded absolute path: `const SIBLING = path self ../CLAUDE.md`.
-  Both forms work in a `const`, neither works in a command body.
-  It needs a real file too, so `nu --commands 'path self'` fails — test it in a script, not with `-c`.
-- **A script's output cannot be piped onward into more Nushell from outside.** `nu script.nu | to nuon` run from Bash pipes into a program named `to` (`command not found`, then `broken_pipe` from nu); `nu script.nu | nu --stdin --commands '...'` gets the rendered box table as one string.
-  Load the script into the same `nu` and call it as a command: `nu --commands 'source script.nu; main sub arg | to nuon --pretty'`.
+- **`path self` runs only at parse time, so its result has to land in a `const`** at the top of the file: `const SCRIPT_DIR = path self | path dirname`.
+  In a `def` body it fails with `this command can only run during parse-time`; under `nu --commands` it fails too, because it needs a real file.
 
 ### Reading Claude Code sessions: `claude-nu`
 
 Transcripts live in `~/.claude/projects/**/*.jsonl`.
 Read them with `claude-nu`, not with jq, python or grep: it already drops tool results and the wrappers Claude Code writes itself, joins tool calls to their results, and scopes by project or session.
-Load the `claude-nu` skill (nushell-skills) before the first `claude-nu` command: it names the columns each command returns, and a guessed name (`content`, `text`) fails.
-The short form:
-
-- Scope is what you pipe in: nothing is the current project, `claude-nu projects | ...` every project, `claude-nu sessions --session '9787e004' | ...` one session — a UUID, a quoted id prefix, `agent-<id>`, a `/rename` name or a path.
-- `messages 'regex'` is what the user said (`--context 2` adds the rows around each hit; `where kind == typed` keeps the user's own words, not `!` commands or their output).
-- `tool-calls --tool Bash 'regex'` is what agents ran (`--results` adds what came back), `timeline` every block in file order, `records` every raw line.
-- `sessions --columns ...` the numbers per session, `--active-since` by record time; `workflows` the Workflow runs, and `sessions --subagents --columns agent_type,agent_label` which agent each transcript is.
-- Every row of `messages`, `tool-calls`, `timeline` and `records` carries `uuid` and `session`, so any result pipes onward as the next scope; a `sessions` or `workflows` row carries `session` with no `uuid`.
-
+Load the `claude-nu` skill (nushell-skills) before the first `claude-nu` command: it names the commands, how each one is scoped, and the columns each returns; a guessed name (`content`, `text`) fails.
 A plain `rg` over `~/.claude` can find nothing and say nothing: where `~/.claude` is a git repo ignoring `*`, rg skips it all — pass `--no-ignore`.
 
 ## Nushell MCP Server
 
-A Nushell MCP server is registered in `~/.claude.json`.
-It provides `evaluate`, `list_commands`, and `command_help` tools for running Nushell commands with structured output.
-
-Two caveats:
+The Nushell MCP server is registered in `~/.claude.json`; two caveats about its `evaluate` tool:
 
 - **The session persists — and re-running `use` may not fix it.** All `evaluate` calls share one long-lived nushell state: variables, `$env`, and loaded modules stay between calls.
-  When you edit a module, the old definition can keep being served, and `use module.nu` in the same command line does *not* reliably re-read the file — tested by bare name, by absolute directory and by direct path to `mod.nu`, all serving the stale copy.
-  (`use` is a parse-time keyword: the whole block is parsed before any of it runs, so `save` then `use` in one block cannot work either.)
-  The rule behind which edits get picked up is not established.
-  Nothing fails loudly — a stale `toolkit/container.nu` once recreated the egress proxy from the previous image digest and printed its usual green success.
+  When you edit a module, the old definition can keep being served, `use module.nu` does *not* reliably re-read the file, and nothing fails loudly.
   **The reliable answer is a fresh process: run the file as a script, `nu toolkit/container.nu restart <name>`, or a one-shot `nu -c '…'` from Bash.** The same staleness applies to a long-lived interactive REPL, not just this MCP server.
+  `references/mcp.md` of the `nushell-style` skill has what was tested.
 - **It skips the login environment.** The MCP `nu` is spawned directly, not from a login shell, so it never sources `/etc/sandbox-persistent.sh` — anything that lives only in that file is absent there.
   Real container ENV (`XDG_*`, `HELIX_RUNTIME`, `LANG`) is inherited fine, so the gap is easy to miss.
   If a command depends on a var only the shell sets, run it via `nu -c` from Bash (whose shell sourced the profile) or `bash -lc 'nu -c "…"'`.
-  Your identity is not affected: `GIT_AUTHOR_*`, `GIT_COMMITTER_*` and `JJ_CONFIG` come from Claude Code's own `env` setting, so every process it spawns — the Bash tool, this MCP server, subagents — has them.
+  Your identity is not affected: `GIT_AUTHOR_*` and `GIT_COMMITTER_*` come from Claude Code's own `env` setting, so every process it spawns — the Bash tool, this MCP server, subagents — has them.
 
 ## Git
 
@@ -161,33 +116,17 @@ Two caveats:
   Stage the exact paths your change touched: `git add path/one path/two`.
 - **A commit is named by its `Change-Id` where it has one, by sha otherwise.** Repos here rewrite history often — amend, rebase, squash — and a sha dies with each rewrite, while the `Change-Id: <32 reverse-hex letters>` trailer travels inside the message.
   So a reference to a commit, in a note or a report, is the first 8 letters of the trailer when the commit carries one; `git log -1 --format='%(trailers:key=Change-Id,valueonly)'` reads it, and `git log --all --grep='^Change-Id: <id>'` finds it again.
-  The last 8 letters are the unix time the id was minted, in the same alphabet, so an id also dates a change even after a rebase moved the commit's own date: `printf '%s' <id> | cut --characters 25-32 | tr 'zyxwvutsrqponmlk' '0123456789abcdef'` gives the hex seconds.
-  The trailer is stamped by a `commit-msg` hook, and only repos that have it carry ids: `cozy git install-change-id-hook <repo>` installs it once per clone, into the common `.git/hooks`, so worktrees share it, together with an `applypatch-msg` hook that stamps commits applied by `git am` and a `prepare-commit-msg` hook that names a reverted change by its id in `git revert`.
-  Repos that cannot have it (an upstream clone such as Nushell) stay on shas — so the fallback is the sha, not a guess; and nothing warns about a missing hook, `ls "$(git rev-parse --git-common-dir)/hooks/commit-msg"` is the check.
-- **A commit names the session that wrote it in a `Session:` trailer.** The same `commit-msg` hook stamps it from `CLAUDE_CODE_SESSION_ID`, so a commit made outside Claude Code has none; an amend or a rebase that keeps the message keeps the session, and a new message names the new one.
-  `git log -1 --format='%(trailers:key=Session,valueonly)' <sha>` names the session of a commit, `git log --all --grep='^Session: <uuid>'` lists the commits of a session, and `git branch --contains <sha>` gives their branches.
+  A repo without the `commit-msg` hook that stamps the trailer stays on shas, and nothing warns about a missing hook: `ls "$(git rev-parse --git-common-dir)/hooks/commit-msg"` is the check.
+- **A commit names the session that wrote it in a `Session:` trailer.** `git log -1 --format='%(trailers:key=Session,valueonly)' <sha>` names the session of a commit, `git log --all --grep='^Session: <uuid>'` lists the commits of a session, and `git branch --contains <sha>` gives their branches.
   Ask git this before you mine transcripts for which session or which branch did something.
-  Why: a search for "the branch we made skills in, from this work" took minutes over branch graphs, and a `Session:` trailer that two branches shared answered it in seconds.
-- **A file in another repo is named by a change-id link: `<repo>@<change-id>:<path in repo>`.** Git's own `<rev>:<path>` with the repo in front, so the reader knows where to run git and what to show.
-  When work spans repos, the commit body and the note name the files on the other side this way.
-  `cozy git link <file>` writes one: it names the commit that last touched the file, so the link survives the rewrites that move a sha, and it refuses a file with uncommitted changes, since a link names committed content.
-  `cozy git resolve <link>` prints the file at that commit; a prefix of the id works.
-  A commit without an id gets its sha in the same slot: hex is a sha, letters `k`-`z` are an id.
-  In helix, `+ t` copies the selection as `<selected-text link="…" lines="a-b">`; `+ s` stays for a path inside the same repo.
+- **A file in another repo is named by a change-id link: `<repo>@<change-id>:<path in repo>`.** `cozy git link <file>` writes one, and `cozy git resolve <link>` prints the file at that commit.
   So a reference in a todo or a commit body is a change-id link, or a path plus a quote — never a bare sha, which the next rebase orphans.
-  Why: the repos on this machine change together but do not share a history, so a plain path names a file that has already moved on; the link names the state the writer saw and still resolves after.
-
-- **An old commit message is corrected with a git note, never by rewriting history.** `git notes edit <sha>` writes it; `git log` shows it indented under the message, and `git log -p refs/notes/commits` shows every correction as a diff.
+- **An old commit message is corrected with a git note, never by rewriting history.** `git notes edit <sha>` writes it.
   A custom `--format` hides notes unless it has `%N`, so read a commit you are about to act on without one.
-  Notes stay local: `git push` does not send `refs/notes/*`, and none is set up to, so a fresh clone and the remote never see a correction.
-  Don't push them.
-  Why: the user wants to fix the messages of old commits and see the diff of each fix, with default git functionality instead of a tool of our own.
+  Notes stay local: don't push them.
   "Old" means something depends on the sha: the commit is pushed, or a trailer, a note or a file names it.
-  A commit that is only on a local branch, with nothing naming its sha, is rewritten instead — `commit --amend`, or a `rebase` fixup when later commits sit on it — after the user's go, like any history rewrite; its `Change-Id` survives.
-  Why: a note on such a commit keeps a false sentence in the history for no reader who relies on it.
-  The user: "if the commit was recent and nothing relies on this sha, we can amend, if that is better."
-  Without an editor: `git commit --allow-empty --message 'amend! <sha>' --message '<new message>'`, then `GIT_SEQUENCE_EDITOR=true git rebase --interactive --autosquash <sha>~1`; `--fixup=reword:` refuses `--message` and opens an editor.
-  Name the target by its sha, not its subject: the `commit-msg` hook copies the `Change-Id` only from a commit named by sha, and `amend! <subject>` gets a fresh id that the rebase puts on the target.
+  A commit that is only on a local branch, with nothing naming its sha, is rewritten instead — `commit --amend`, or a `rebase` fixup when later commits sit on it, with no go from the user; its `Change-Id` survives.
+- The `40-change-id` skill has the rest: the hooks that stamp the trailers and how to install them, how an id dates a change, the link from helix, and the recipe that rewords a commit with no editor and keeps its id.
 
 ## Constraints
 
@@ -246,15 +185,14 @@ Don't implement an idea you haven't understood: they want the architecture kept 
 ## Working Style
 
 - Prefer minimal, composable solutions — favor the simplest, most elegant approach that works; no dead code, no placeholder stubs
-- When uncertain about intent, architecture, or scope: STOP and ASK before proceeding
 
-### MUST flag and ask when:
+### Flag and ask when:
 
 - Request would break existing APIs or contracts
 - Request contradicts the codebase architecture
 - Request conflicts with earlier session decisions
 - Path, filename, or target location is ambiguous
-- Intent is genuinely unclear and a wrong guess is costly
+- Intent or scope is unclear and a wrong guess is costly
 
 ### Work to the end, then show the result
 
@@ -341,16 +279,13 @@ Reasoning already captured in a commit body is done being recorded.
   A finished change left uncommitted is invisible to that loop.
   Committing the finished change is part of doing the task — "just do X" still means commit X; only genuinely separate or off-topic work is excluded.
   Off-topic `todo/` notes are that exception — leave them uncommitted, unless the repo's own `CLAUDE.md` says otherwise.
-- Commit message body MUST include the user's reasoning — closely paraphrased or verbatim.
-  Do not sanitize or summarize into something generic.
+- The commit body holds the user's reasoning — closely paraphrased or verbatim: why an approach was chosen, why an alternative was rejected.
+  Do not sanitize or summarize it into something generic; a subject like "implement parser" with no body loses the intent.
   The reasoning must also survive the squash (see the `40-land-branch` skill).
-- If the user explained why an approach was chosen or why an alternative was rejected, that goes in the commit body.
-- A commit subject like "implement parser" with no body is an intent loss.
-  Unacceptable.
-- Commits MUST be atomic: one logical change per commit.
+  Write their reasoning, not your elaboration of it.
+  1–3 sentences usually suffice, and a single line when the trigger is clear and no new reasoning exists.
+- Commits are atomic: one logical change per commit.
   If the diff spans unrelated changes, split it before committing.
-- Still, be concise.
-  Preserve humans and agent's context window.
 
 ### Off-topic findings: drop them
 
@@ -446,11 +381,12 @@ Violate any rule below only when the task genuinely requires it, and justify the
   Prefer one concrete sentence over three abstract ones; prefer naming a file and line over describing where something lives.
 - **Don't list non-findings.** "I checked X and found nothing", "no conflicts elsewhere", "no other references" — absence is the default, report only presence.
 
-**Reconciling with Intent Preservation:** the mandatory commit body is not a loophole for bloat.
-Include the user's reasoning (paraphrased or verbatim), not your elaboration of it.
-1–3 sentences usually suffices; a single line when the trigger is clear and no new reasoning exists.
+### Commands for the user go in a file
 
-### Commands for the host are written as dotnu embeds
-
-When you need something from the host machine, don't print commands verbatim.
-Just write a `dotnu embeds` script (see `/nushell-literate-programming`).
+When the user has to run a command, don't print it for them to copy: a copied command breaks on wrapped lines and indents.
+For their interactive Nushell on this machine, write a stack file for `cmd-stack load`; the skill `nu-cmd-stack` says how.
+Its report gives what ran and the exit status, not the output.
+When you need the output back, write a `dotnu embeds` script in the workspace instead (see `/nushell-literate-programming`).
+The user runs `dotnu embeds-update <file>`, and the output lands in the file as `# =>` lines.
+A command for the host machine is this case.
+A stack file does not reach the host, and you cannot read the history or the screen of the host.
