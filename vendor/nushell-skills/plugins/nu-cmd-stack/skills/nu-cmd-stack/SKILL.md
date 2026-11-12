@@ -16,6 +16,45 @@ Use it where the user has [nu-cmd-stack](https://github.com/nushell-prophet/nu-c
 cozy loads it in every interactive nu out of the box, from `~/repos/nu-cmd-stack/cmd-stack`.
 A command for another machine — for example, the host of a container — goes as a code block.
 
+## Replies
+
+The user reads the handoff and the outcome as he reads the output of a shell command:
+he looks for the same element in the same place every time.
+
+- The part of the reply that this skill writes is a column of rows.
+  The rows are one `text` block, and each line of it is one row, `│ <label> │ <value>`, `│ 👉 next │ cmd-stack load 20261104-1530-check-the-branch`, with the labels padded to one width.
+  The shared labels carry an emoji before the word: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of one skill has none.
+  The skeletons below show the rows as plain text; the reply adds the borders, the padding and the emoji.
+  The labels are in English; the free text of a value is in the language of the session.
+- A row prints only when it has a finding.
+  A check that passed gets no row: a file that parses is the normal case.
+- Several findings of one kind are several rows with the same label, the most expensive for the user first.
+- `warn` is a fact that changes what the user does or expects,
+  for example a step inside the stack that only the user can do.
+- When the stack comes at the end of a longer reply,
+  its rows are the last rows of that reply,
+  and the reply has one `next` row only.
+
+The handoff:
+
+```text
+stack   <file name> · <N> commands · <what the stack does, in a few words>
+warn    <a manual step inside the stack, or a side effect of running it from the user's shell>
+next    cmd-stack load <file name>, then say "done"
+```
+
+The outcome, after the user says the commands ran:
+
+```text
+ran      <N> of <M> commands · <exit 0 | which command failed, was edited, or did not run>
+warn     <the history holds no runs of the stack: the commands ran outside it>
+result   <what the runs show the commands changed>
+next     <the exact next action for the user> | nothing
+```
+
+The `warn` about no runs replaces `ran`: with no runs there is nothing to count.
+`result` prints only when the runs or the dumped screen show it; `next` always prints.
+
 ## Write the file
 
 The folder is `$env.CMD_STACK_DIR`, or `~/.local/share/nushell/cmd-stacks/` when it is not set.
@@ -44,7 +83,7 @@ Write it with the Write tool, so that no quote needs an escape.
 Check that it parses, in cozy with
 `nu --config ~/.config/nushell/autoload/modules-core.nu --commands 'dotnu diagnose <file> | to nuon'`:
 an empty list means no errors.
-Then give the user the command to load it: `cmd-stack load 20261104-1530-check-the-branch`.
+Then give the user the command to load it, in the handoff of *Replies*: `cmd-stack load 20261104-1530-check-the-branch`.
 
 ## Read the outcome
 
@@ -62,3 +101,5 @@ nu --commands 'use ~/repos/nu-cmd-stack/cmd-stack; cmd-stack runs 20261104-1530-
   For the output, read the screen of the pane where it ran:
   `zellij action dump-screen --pane-id <pane> --full`.
   The dump holds only the lines that the pane still keeps.
+
+Report the outcome as *Replies* shows.
