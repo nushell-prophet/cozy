@@ -30,7 +30,7 @@ Everything before that stop is read-only.
 
 `--no-confirm` gives that confirmation in advance:
 the agent does not wait at step 8,
-and the report of step 14 carries the plan.
+and the report of step 14 carries the rows of the plan.
 The advisor call of step 8 still runs.
 The flag answers one question: "run this plan?".
 A decision the plan cannot make stays with the user,
@@ -72,6 +72,45 @@ for trunk in $candidates; do
   git log --oneline "$base"..HEAD 2>/dev/null
 done
 ```
+
+## Replies
+
+The user reads these replies as he reads the output of a shell command:
+he looks for the same element in the same place every time.
+So the plan of step 8, the report of step 14 and every stop have a fixed shape.
+
+- The reply is a column of rows and nothing else: no paragraph before it, no question after it.
+- The rows are one `text` block, and each line of it is one row, `│ <label> │ <value>`, `│ land │ branch → main`, with the labels padded to one width.
+  The shared labels carry an emoji before the word: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of one skill has none.
+  A value of several lines, such as a commit message or the output of a command, goes on the next lines, each with both `│` and spaces in the label cell.
+  The skeletons below show the rows as plain text; the reply adds the borders, the padding and the emoji.
+  The labels, their order and the fixed values (`land as shown`, `nothing changed`, `none`) are always in English.
+  The free text of a value is in the language of the session.
+- A row prints only when it has something to say.
+  A check that found nothing gets no row: no "no hits", no "nothing to re-base".
+  The rows that always print are named under each shape.
+- Several findings of one kind are several rows with the same label.
+- `warn` is the one row with no step behind it: a fact that changes what the user does or expects.
+  A check that passed is never a `warn`.
+- A commit message is always in full, never a path to a file.
+- An `ASSUMED:` list, which the global rules ask for an unchecked claim, goes after the rows: it is the one other text.
+- The last row of a plan is `│ 🟢 go │ land as shown`, word for word.
+  Every choice that `go` makes is a `pick` row above it, with its default.
+
+A stop — a guard of steps 1 and 2, a branch of only working material at step 11, a conflict, a hook that blocks a command, a decision that `--no-confirm` leaves to the user (see *Authorization*) — has this shape:
+
+```text
+stop      <step number, or the name of the hook>: <the cause in one line>
+state     nothing changed | <what changed; archive/<branch> keeps the old tip>
+proof     <one line, or the output of a command on the next lines>
+pick      <question> · default: <choice> · else: <the other choices>
+go        <what go does: the defaults above>
+next      <the exact action for the user>
+```
+
+`stop`, `state` and one of `go` and `next` always print.
+`go` is there only when the agent can go on with a default.
+When only the user can act, `next` ends the reply instead.
 
 ## Procedure
 
@@ -187,7 +226,7 @@ Nothing is changed until the user confirms.
    **First: does this repo publish them?**
    Read the repo's root `CLAUDE.md`.
    If it says the repo is personal, internal, or never sent upstream, then `todo/` and `gi-canvas/` are ordinary content there — they land with everything else, and steps 7, 11 and 11a have nothing to do.
-   Say so once in the step 8 block instead of listing paths to drop.
+   Say so once, in one `drop` row of the step 8 plan, instead of listing paths to drop.
    Only when nothing says it is the repo published, which is the default this step assumes.
 
    7a. **Find the branch's own commits cited inside the tree.**
@@ -282,7 +321,39 @@ Nothing is changed until the user confirms.
      and drop them from this branch with `git rebase --onto`;
      when they are not all at the bottom of the branch, say that this rebase can conflict.
 
-   Show the user, in one block: the chapters found and which original commits fold into each, each chapter of another feature with the choice it needs, the generated message(s), the `todo/`/`gi-canvas/` paths being dropped, each hash from step 7a with the file citing it and whether it is dropped or repointed (step 11a), each contrast-framing line from step 7c with the words you propose to cut from it, an overwrite warning if `git tag -l` already finds the tag step 9 will write, the rebase warning from step 5, the content fork-point from step 5a with its evidence if one was found, any branch step 13b will offer to re-base, the exact merge command, and the branch-delete command from step 13a.
+   Show the plan in this shape, under the rules of *Replies*:
+
+   ```text
+   land      <branch> → <trunk> · <N> → <K> commits · squash | as is
+   commit 1  <subject> ← <short ids of the commits folded into it>
+             <the full message, on the next lines>
+   pick      <question> · default: <choice> · else: <the other choices>
+   drop      <todo/ or gi-canvas/ path> | none: <the line of CLAUDE.md that keeps them>
+   edit      <file> drop "<cited hash or id>" | cut "<contrast words>"
+   split     <file> between commits <k> and <m> · <mechanism>
+   fork      <n> commits already on <trunk> as "<trunk subject>" · <the blob check>
+   rebase    <trunk> moved <n> commits → rebase after the squash; a conflict stops the landing
+   tag       archive/<branch> | archive/<branch> exists → overwrite
+   merge     git switch <trunk> · git merge --ff-only <branch>
+   delete    git branch -D <branch> | git branch -d <branch>
+   advisor   <what it changed in this plan>
+   warn      <a fact that changes what the user does or expects>
+   go        land as shown
+   ```
+
+   The rows and their steps:
+   - `commit`: one row per chapter, step 8; `--grouped` and the chapter count do not change the shape.
+   - `pick`: a branch of step 13b ("re-base <branch>? · default: no"), a chapter of another feature, a step 7c line the agent is not sure about — each with the default that `go` takes.
+   - `drop`: step 7, one row per path; one `none` row when the repo keeps its working material.
+   - `edit`: step 7a hits (11a) and step 7c cuts (11b), one row each.
+   - `split`: a file that `references/grouped.md` splits.
+   - `fork`: step 5a, with its evidence.
+   - `rebase`: step 5.
+   - `tag`: step 9, on the squash path only; the overwrite when `git tag -l` already finds the name.
+   - `merge`, `delete`: steps 13 and 13a.
+
+   `land`, `commit`, `merge`, `delete` and `go` always print.
+
    **Wait for confirmation**, unless `--no-confirm` was passed (see *Authorization*).
 
 ## Landing
@@ -308,7 +379,7 @@ Nothing is changed until the user confirms.
     - `D` (deleted) → the file is missing from disk while the index holds it back; shows as an unstaged deletion.
 
     A note this branch **finished** is not parked any more — it is done.
-    Say so at step 14 and offer to delete it, instead of leaving it in the working tree where the next session reads it as open work.
+    Step 14 gives its `rm` in a `next` row, instead of leaving it in the working tree where the next session reads it as open work.
     Same for a `gi-canvas/` canvas whose thread closed with this branch.
     Judge each file: only the ones this branch actually resolved — a branch often adds a note about something it did not fix, and that one stays.
     The archive tag holds every one of them, so deleting loses nothing.
@@ -354,6 +425,7 @@ Nothing is changed until the user confirms.
     13b. **Re-base the branches built on this one.**
     They are long-routed now: their history holds commits the trunk no longer has, so a later merge or rebase there re-applies or conflicts with work that is already in.
     Find them with the tag from step 9, which is the old branch tip itself — use the trunk tip instead when step 8 skipped the squash:
+    The plan of step 8 needs them before that tag exists, so there the test runs with `HEAD` in place of `archive/<branch>`.
 
     ```sh
     git branch --format='%(refname:short)' | while read -r b; do
@@ -364,14 +436,35 @@ Nothing is changed until the user confirms.
 
     For each one: run step 5a's fork-point against the new trunk, tag the tip (`git tag archive/<other>-prerebase <other>` — a rebase orphans the originals exactly as `reset --soft` does), then `git rebase --onto <trunk> <its fork-point> <other>`.
     The branch keeps its own commits and loses the duplicated ones.
-    **Ask before running it**: this rewrites work the user did not name, and `git worktree list` may show one of these branches checked out elsewhere, where a rebase moves that worktree's files under whoever is working in it.
+    The plan asks it in a `pick` row whose default is no, so a bare `go` leaves the branch alone: this rewrites work the user did not name, and `git worktree list` may show one of these branches checked out elsewhere, where a rebase moves that worktree's files under whoever is working in it.
     The test catches a branch that contains the whole landed branch; one forked from its middle is caught by step 5a when its own turn comes.
 
-14. **Report**, briefly: the trunk's new commit — by its short `Change-Id` where it carries one, by sha only where the repo stamps none — that the user is now standing on `<trunk>` (say it plainly — the next edit would otherwise land there), that `<branch>` was deleted, and — if step 9 ran — that `git log archive/<branch>` still holds the full history.
-    After `--no-confirm`, also name which commits folded into each chapter, each cut from step 7c, and what the advisor changed.
-    Split the leftover working-tree state from step 11 into notes still open and artifacts this branch completed; for the completed ones give the `rm` command (`allowed-tools` here is git only, so the user runs it).
-    This is also where run status belongs — `nutest run` → `57 passed`, not in the commit body.
-    Name every branch step 13b re-based, with its `archive/<other>-prerebase` tag, and every one you offered and the user declined — a branch left long-routed is the next session's conflict.
+14. **Report** in this shape, under the rules of *Replies*:
+
+    ```text
+    landed    <branch> → <trunk> · <short Change-Id, or sha, of each new commit> · squash | as is | <K> commits
+    branch    you are on <trunk> · <branch> deleted
+    history   git log archive/<branch>
+    rebased   <branch> · archive/<other>-prerebase
+    declined  <branch> stays long-routed
+    left      <path> · <untracked | modified | deleted> · still open
+    tests     <command> → <result>
+    changed   <a change against the plan: an advisor finding, a cut, a deviation>
+    problem   <a defect the landing left> · fix: <command> · needs your go
+    warn      <a fact that changes what the user does or expects>
+    next      <the exact command or answer for the user> | nothing
+    ```
+
+    The rows and their steps:
+    - `branch`: the user now stands on `<trunk>`, and the next edit would land there, so the row says it plainly.
+    - `history`: step 9, on the squash path only.
+    - `rebased`, `declined`: step 13b, one row per branch; a declined branch is the next session's conflict, so it also gets a `next` row with the answer that re-bases it.
+    - `left`: step 11, one row per note this branch did not finish.
+    - `tests`: the run status that step 6 keeps out of the body, `nutest run` → `57 passed`.
+    - `next`: one row per action — the `rm` of each note or canvas this branch finished (`allowed-tools` here is git only, so the user runs it).
+
+    `landed`, `branch` and `next` always print, and `next` is the last row.
+    After `--no-confirm` the report opens with the rows of the plan from `commit` to `warn`, because the user saw no plan.
     Do not push.
 
 ## Landing as more than one commit

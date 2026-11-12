@@ -73,6 +73,25 @@ When the reasoning is worth keeping, step 5 puts it in the commit body, which is
 Getting this list wrong is how the sweep wastes a run: it rewrites documents whose whole purpose is the transition, and those commits come straight back out.
 Choose the list yourself; do not wait for the user to confirm it.
 
+## Replies
+
+The user reads the report of step 6 as he reads the output of a shell command: he looks for the same element in the same place every time.
+So the report has a fixed shape.
+
+- The reply is a column of rows and nothing else: no paragraph before it, no question after it.
+- The rows are one `text` block, and each line of it is one row, `│ <label> │ <value>`, with the labels padded to one width.
+  The shared labels carry an emoji before the word: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of one skill has none.
+  A value of several lines goes on the next lines, each with both `│` and spaces in the label cell. The skeleton in step 6 shows the rows as plain text; the reply adds the borders, the padding and the emoji.
+- The labels, their order and the fixed values are always in English. The free text of a value is in the language of the session.
+- A row prints only when it has something to say. A check that found nothing gets no row: no "ASSUMED: none", no "no candidates". The rows that always print are named under the skeleton.
+- Several findings of one kind are several rows with the same label, the one that costs the user most first.
+- Each `candidate` row carries a number, and the number stays the same in every later reply; the user answers by these numbers.
+- A candidate the user has not answered yet prints again, as a full row, in every later reply until he answers it — never "candidates 2 and 3 are still open".
+- A commit is named by its `Change-Id` trailer when the repo stamps one, by its short sha otherwise.
+- `warn` is a fact that changes what the user does or expects. A check that passed is never a `warn`.
+- An `ASSUMED:` list for an unchecked claim of the agent goes after the rows: it is the one other text.
+- The last row is `next`: the exact answer or command for the user, or `nothing`.
+
 ## Step 1 — Scope
 
 One repo per run.
@@ -182,17 +201,34 @@ Nothing was changed there, and a name the agent could not resolve is the one cas
 
 ## Step 6 — Report
 
-One message, after the commits exist:
+One message, after the commits exist, in this shape, under the rules of *Replies*:
 
-- The commits made, one line each — file and what moved.
-- The KEEPs per class as bare `file:line` addresses, not their text. The scan was noisy and the user does not need to re-read innocent prose, but a count with no list behind it cannot be checked.
-- Every ASSUMED in full, with what would settle it.
-- Every CANDIDATE, one line each; the user says which, if any, a second pass takes.
-- The exempt list step 1 used, so a wrong entry is visible as a choice rather than as silence.
-- `git diff --shortstat <base>..HEAD`, quoted. Removal shrinks a file, so a run that lands near net zero rewrote where it should have cut, and it failed whatever its commit bodies claim. Say that in the report rather than leaving the user to measure it.
+```text
+swept      <repo> on <branch> · <n> hits in <m> files · past-state scan | both scans · cut <n> · keep <n> · assumed <n> · candidate <n>
+exempt     <path> <path> …
+cut        <file> · <Change-Id | short sha> · removed "<words>" · stands: <what is left> · <the reason in one line>
+keep       <class from Not archaeology>: <file:line> <file:line> …
+assumed    <file:line> · <the name it could not resolve> · settles it: <the one thing>
+candidate  <n>. <file:line> · <why it would be cut, one line>
+shortstat  <git diff --shortstat <base>..HEAD, quoted> | empty: nothing cut
+rescan     <class>: <file:line> … still there
+warn       near net zero: the run rewrote where it should have cut
+next       <the exact answer or command for the user> | nothing
+```
 
-Re-run step 2 afterwards and report what is still there, by class.
-A sweep that ends with hits remaining is the normal case — the KEEPs are supposed to remain.
+The rows and their reasons:
+
+- `swept`: the counts the user asks for first; the branch says where the commits are.
+- `exempt`: the list step 1 used, so a wrong entry is visible as a choice rather than as silence.
+- `cut`: one row per commit — the file and what moved.
+- `keep`: one row per class, with bare `file:line` addresses, not their text. The scan was noisy and the user does not need to re-read innocent prose, but a count with no list behind it cannot be checked.
+- `assumed`: every ASSUMED hit in full, with what would settle it.
+- `candidate`: every CANDIDATE, one row each, numbered; the user says which, if any, a second pass takes.
+- `shortstat`: `git diff --shortstat <base>..HEAD`, quoted. Removal shrinks a file, so a run that lands near net zero rewrote where it should have cut, and it failed whatever its commit bodies claim. The `warn` row says that, rather than leaving the user to measure it.
+- `rescan`: step 2 re-run after the commits, and what is still there, by class. A sweep that ends with hits remaining is the normal case — the KEEPs are supposed to remain. One row per class, with every hit the re-scan finds, the KEEPs included.
+- `next`: with `candidate` rows, the form of the answer that starts a second pass — `cut <numbers>`, or `none`. Without candidates, `nothing`.
+
+`swept`, `exempt`, `shortstat` and `next` always print, and `next` is the last row.
 
 ## Related
 

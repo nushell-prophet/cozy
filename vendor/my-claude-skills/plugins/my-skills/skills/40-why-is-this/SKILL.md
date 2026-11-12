@@ -293,37 +293,19 @@ Prefer the commits after the last structural change to that area, and name the w
 
 The *measurements* inside a commit body expire the same way, and this one is easy to miss because the sentence reads like a fact rather than a reading.
 "No row in the database is NULL" was true on the day it was written; quoting it as the current state passes a stale reading off as a fresh one.
-Whenever the decision you are reporting rests on such a number, re-run the check yourself and say that you re-ran it — that turns someone else's old evidence into evidence the reader can act on today.
+Whenever the decision you are reporting rests on such a number, re-run the check yourself and say that you re-ran it, in the `re-ran now:` line under its `git` row — that turns someone else's old evidence into evidence the reader can act on today.
 
 ## The output contract
 
 **Open with the answer to the question that was actually asked.**
 Nobody wants the history for its own sake — they are about to change something, and it is evidence for that decision.
-So the first sentences say what to do, or which of the four situations it is and what the decision rests on today: this was already tried and reverted, this shape is load-bearing, the user asked for exactly this, nothing is recorded either way.
+So the `answer` row of *Replies* says what to do, or what the decision rests on today: this was already tried and reverted, this shape is load-bearing, the user asked for exactly this, nothing is recorded either way.
+For a question about a decision, the `situation` row says which of the four situations of *What you are reconstructing* it is.
 Then comes the evidence, which is what makes it a checkable answer instead of an opinion.
 A report that makes the reader assemble the conclusion themselves has done half the job.
 
-Report each finding, in the shape that matches its source.
+Report each finding as a `git` or a `session` row of *Replies*, in the shape that matches its source.
 If you used both sources, keep them in separate blocks — do not interleave them.
-
-**From git**, most relevant first:
-
-```
-<short sha>  <date>  <subject>
-  > verbatim quote from the body — the author's words, not yours
-  touched together: <files from --stat that matter>
-  in the code now: <file>:<line>
-```
-
-**From the transcripts**, oldest first, so the reader watches it happen:
-
-```
-<date>  <what happened>
-  USER      > verbatim
-  ASSISTANT > verbatim
-  → what this settled, and what it left open
-  in git: <sha> <subject>   in the code now: <file>:<line>
-```
 
 Three rules make either usable:
 
@@ -332,7 +314,7 @@ Three rules make either usable:
   For a transcript it is worse — the user is reading his own words, and a paraphrase of them is worthless for the one thing he is doing, which is remembering.
 - **Keep found and inferred visibly apart.**
   This is the one thing that makes the report worth more than a good guess, so it is worth a little structure: "the body says X" and "so probably Y" are different kinds of claim, and a reader who cannot tell which is which has to either re-verify all of it or trust all of it.
-  Mark each inference where it appears, and where there are several, close with a short list of what you concluded rather than found.
+  Each inference is an `inferred` row of *Replies*, with the row it rests on, so the inferences form one list of what you concluded rather than found.
   A reader who can skip straight to that list and check only those lines is exactly the outcome.
 - **An absence is a claim, so give it an address too.**
   "Nothing in the history explains this" and "no discussion found" are real and useful answers — they tell the reader the shape is unexplained before they go changing it.
@@ -341,12 +323,77 @@ Three rules make either usable:
   Without the scope you are not reporting that something is absent, only that you did not happen to see it, and stating the first when you have done the second is how a confident false negative gets written — one that, here, convicts an agent of deciding alone.
   It is the *unattached* transcript that has to go: a list of commands hanging off no particular claim is narration, while the same command written next to the claim it supports is that claim's evidence.
 
+## Replies
+
+The user reads the report as he reads the output of a shell command: he looks for the same element in the same place every time.
+So the report has a fixed shape.
+
+- The report is a column of rows and nothing else: no paragraph before it, no question after it.
+- The rows are one `text` block, and each line of it is one row, `│ <label> │ <value>`, `│ answer │ this shape is load-bearing; keep it`, with the labels padded to one width.
+  The shared labels carry an emoji before the word: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of one skill has none.
+  A value of several lines — a quote, an exchange, the output of a command — goes on the next lines, each with both `│` and spaces in the label cell.
+  The skeleton below shows the rows as plain text; the report adds the borders, the padding and the emoji.
+  The labels and the fixed values are in English.
+  The free text of a value is in the language of the session; a quote keeps the language it was said in.
+- A row prints only when it has a finding.
+  Here an absence is a finding: every absence you report gets an `absent` row, with the scope you searched in the same row.
+- Several findings of one kind are several rows with the same label.
+  `inferred`, `absent` and `warn` rows go in order of what they cost the user, the most expensive first.
+- A choice that still waits is a full `pick` or `open` row in every later report until the user answers it.
+- An `ASSUMED:` list — each claim you could not check, with the one check that would settle it — goes after the rows: it is the one other text.
+
+```text
+answer      <the answer to the question that was asked: what to do, or what the decision rests on today>
+situation   asked for | answered next to | asked and never answered | never asked · <the decision it names>
+git         <short Change-Id where the repo stamps one, short sha otherwise>  <date>  <subject>
+session     <date>  <what happened>
+superseded  <the finding> · it assumed <a structure that is gone> · gone since <date or commit>
+inferred    <a claim you concluded, not found> · from <the row it rests on>
+absent      <what is not there> · searched: <the command and the repos; for transcripts the terms in both languages, --all-projects and --subagents>
+written     <the path of the document the answer went into>
+warn        <a fact the user can act on today, such as a workaround that works now>
+pick        <the one question: the alternative named, the cost of each side> · default: <choice> · else: <the other choices>
+open        <the one question, when it has no default: the alternative named, the cost of each side>
+go          <what go does: the default above>
+next        <the exact command or answer for the user> | nothing
+```
+
+- `answer`: the first row, always.
+  It is the conclusion, so the reader does not have to assemble it from the rows below.
+- `situation`: only when the question was about a decision ("did I ask for this", "who decided this"); one row per decision.
+- `git`: one row per commit, most relevant first, each with its lines under it:
+
+  ```text
+    > verbatim quote from the body — the author's words, not yours
+    touched together: <files from --stat that matter>
+    in the code now: <file>:<line>
+    re-ran now: <the check behind a measurement in the body> → <its result today>
+  ```
+
+- `session`: one row per exchange, oldest first, so the reader watches it happen, each with its lines under it:
+
+  ```text
+    USER      > verbatim
+    ASSISTANT > verbatim
+    → what this settled, and what it left open
+    in git: <commit> <subject>   in the code now: <file>:<line>
+  ```
+
+  All `git` rows come before all `session` rows: the two sources are never interleaved.
+- `inferred`: every claim you concluded rather than found, so a reader can check only these lines.
+- `written`: the answer went into a document (a todo note, a canvas); the rows in chat still carry `answer` and the question.
+- `pick` and `go`: the one question of *What to do with it*, when the answer leads to a change you can make on a default.
+  `open` and `next`: the same question when it has no default, and only the user can answer it.
+  When the decision stands and nothing changes, neither prints, and `next` is `nothing`.
+
+`answer` always prints, and one of `go` and `next` ends the report.
+
 ## What to do with it
 
 The point is not the report.
 The point is that a decision made invisible becomes re-decidable.
 
-- **Bring it back as one question**, with the alternative named and the cost of each side, at the moment it matters.
+- **Bring it back as one question** — the `pick` or `open` row of *Replies* — with the alternative named and the cost of each side, at the moment it matters.
   Not as a finding to file — a filed finding is triage the user pays for later, without the context in his head.
 - **The decision may well stand.**
   Reconstructed circumstances do not make it wrong.

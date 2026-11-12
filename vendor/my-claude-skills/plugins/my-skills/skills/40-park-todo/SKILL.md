@@ -9,6 +9,37 @@ The user parks a thing that he does not want done now.
 Write it down for a later session, which has none of this context,
 and do not start the work.
 
+## Replies
+
+The user reads the report as he reads the output of a shell command:
+the same element in the same place every time.
+So the report of step 6 is one `parked` row:
+
+```text
+parked    <path of the note> · <commit> · on <branch>
+```
+
+- The row is one line of a `text` block, `│ parked │ <value>`, as Nushell prints a table.
+  The label is in English;
+  the free text of a value is in the language of the session.
+- `<commit>` is the `Change-Id` trailer of the commit when the repo stamps one,
+  its short sha otherwise.
+- The row does not repeat what the note says.
+- When the skill runs inside another task,
+  this row goes into the reply of that task,
+  and that reply ends as its own rules say.
+  When the park is the whole reply, `│ 👉 next │ nothing` follows the row.
+- The question of step 1 is a stop, and the reply ends there,
+  in the same `│` rows, with `🛑`, `📦` and `👉` before the shared labels:
+
+  ```text
+  stop      1: two readings of what to park
+  state     nothing changed
+  next      answer which one to park: <one reading> | <the other reading>
+  ```
+
+## Procedure
+
 1. **What.** The thing in `$ARGUMENTS`;
    with no arguments, the last finding the user pointed at.
    If two readings remain, ask which one.
@@ -58,4 +89,4 @@ and do not start the work.
 5. **Commit** only the note, on the current branch of the repo that holds it:
    `git -C <todo folder> add <path>`, subject `todo: add <slug>`.
 
-6. **Report** the path in one line.
+6. **Report** the path in the `parked` row of *Replies*.

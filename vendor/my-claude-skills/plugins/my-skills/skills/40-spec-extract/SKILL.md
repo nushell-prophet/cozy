@@ -215,7 +215,7 @@ Capture it.
 ## After generating the spec
 
 This skill runs in its own context, so you cannot put these questions to the user yourself.
-Return them with the spec, as a numbered list the caller can hand over unchanged.
+Return them with the spec, as the four numbered `open` rows of *Replies*, which the caller hands over unchanged.
 Ask specifically:
 1. Does every feature listed here actually exist?
    (catches hallucinated features)
@@ -229,3 +229,39 @@ Ask specifically:
 The spec is a living document.
 After review, save it alongside the codebase (e.g., `SPEC.md` at the project root).
 It should be version-controlled and updated when features change.
+
+## Replies
+
+This skill runs in its own context, and the caller shows its return to the user as it came, without a retelling in prose.
+The user reads it as he reads the output of a shell command: he looks for the same element in the same place every time.
+So the return has a fixed shape.
+
+- The return is a column of rows and nothing else: no paragraph before it, no question after it.
+- The rows are one `text` block, and each line of it is one row, `│ <label> │ <value>`, `│ spec │ below · 84 lines`, with the labels padded to one width.
+  The shared labels carry an emoji before the word: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of one skill has none.
+  The skeleton below shows the rows as plain text; the return adds the borders, the padding and the emoji.
+  The labels are in English; the free text of a value is in the language of the session.
+- A row prints only when it has a finding.
+- Several findings of one kind are several rows with the same label, the most expensive for the user first.
+- An `ASSUMED:` list — each claim you could not check, with the one check that would settle it — goes after the rows: it is the one other text.
+
+```text
+spec      below · <n> lines | <path> · <n> lines
+size      <n> LOC in <n> files → <n> features · <n> data types · <n> seams · <n> unresolved
+seam      <correctness | functional> · <Feature A ↔ Feature B> · <the mismatch in one line>
+warn      <a fact that changes what the user does or expects>
+open      1. Does every feature listed here actually exist? <what you are least sure of>
+open      2. Is anything missing? <where the scan may have missed code>
+open      3. Are the dependency arrows correct? <the arrow you are least sure of>
+open      4. Do the seams look right? <the seam that may be intentional>
+next      answer the open rows; then <the next step for the spec>
+```
+
+- `spec`: where the spec is.
+  With `below`, the spec goes in a `markdown` block right under the `spec` row, and that block is the one other text besides `ASSUMED:`.
+  A path prints only when the spec was saved after review, as *After generating the spec* says.
+- `seam`: one row per correctness or functional seam, correctness first; cosmetic seams stay in the spec and count only in `size`.
+- `open`: always four rows, the four questions of *After generating the spec*, in that order and with their numbers, so the user can answer them by number.
+  Keep the question word for word, and add after it the one thing in this spec that the question should check.
+
+`spec`, `size`, the four `open` rows and `next` always print, and `next` is the last row.

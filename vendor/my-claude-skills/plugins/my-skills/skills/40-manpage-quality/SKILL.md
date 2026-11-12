@@ -188,12 +188,12 @@ Documentation is a set of claims about behaviour, so the user's verification rul
   Not read from the source and paraphrased — run it.
 - **Every example is executed before it ships.**
   This is the one instruction `mdoc.7` gives with an exclamation mark.
-- **A behaviour you could not trigger is labelled ASSUMED** at the claim, and repeated in the report with the one check that would settle it.
+- **A behaviour you could not trigger is labelled ASSUMED** at the claim, and repeated in the `ASSUMED:` list of *Replies* with the one check that would settle it.
 - **A blocked check is reported, not replaced.**
   If the command needs hardware or root you do not have, say so; do not substitute a weaker check and present the result.
 
 Coverage is part of the bar: every option in the interface appears in the document, or the document is not finished.
-Say which options you could not exercise.
+Say which options you could not exercise, in the `not run` rows of *Replies*.
 
 ## The reader test
 
@@ -208,17 +208,83 @@ Every "the document does not say" is a missing sentence.
 Write it and run the test again.
 Its empty lists are a result too: they say the page held.
 
-## Output
+## Replies
 
-Hand back the document, then a short report in this shape:
+The user reads these replies as he reads the output of a shell command: he looks for the same element in the same place every time.
+So the report after writing, the review, and the report after applying a review have a fixed shape.
 
-    Covered: <n> of <m> options, <n> of <m> exit codes.
-    Verified by running: <the commands, one line each>
-    ASSUMED: <claim> — settled by: <the check>
-    Not documented: <name> — <why>
+- The reply is a column of rows and nothing else: no paragraph before it, no question after it.
+- The rows are one `text` block, and each line of it is one row, `│ <label> │ <value>`, `│ covered │ 11 of 12 options · 3 of 3 exit codes`, with the labels padded to one width.
+  The shared labels carry an emoji before the word: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of one skill has none.
+  A value of several lines — a proposed sentence, the output of a command — goes on the next lines, each with both `│` and spaces in the label cell.
+  The skeletons below show the rows as plain text; the reply adds the borders, the padding and the emoji.
+  The labels and the fixed values are in English; the free text of a value is in the language of the session.
+- A row prints only when it has a finding.
+  `looked` and `reader` are the exceptions: an empty BUGS section and an empty cold-reader list are results, and only these rows say the check ran.
+- Several findings of one kind are several rows with the same label, the most expensive for the user first.
+- Quote behaviour from real output, do not paraphrase it.
+  A paraphrased error message is a new error message, and the reader will grep for the one you invented.
+- A commit is named by its short `Change-Id` where the repo stamps one, by its short sha otherwise.
+- An `ASSUMED:` list goes after the rows, one line each, `<claim> — settled by: <the check>`: it is the one other text.
+  It holds every behaviour you could not trigger.
+- A reply that waits for the user ends with `go`, and every choice that `go` makes is a `pick` row above it, with its default.
+  A choice that still waits is a full `pick` row in every later reply until the user answers it.
+  A reply that waits for nothing ends with `next`: the exact command or answer for the user, or `nothing`.
 
-Quote behaviour from real output, do not paraphrase it.
-A paraphrased error message is a new error message, and the reader will grep for the one you invented.
+After writing a document, hand it back, then report:
+
+```text
+document  <path> | below
+covered   <n> of <m> options · <n> of <m> exit codes
+verified  <command> → <result>
+not run   <option or claim> · <why: needs hardware, root, the network>
+skipped   <name> · <why it is not documented>
+looked    BUGS and CAVEATS: <what you looked for> · <the rows of the section | nothing found>
+reader    cold-reader: <n> questions · <n> unanswered, now answered in the page | all answered
+next      <the exact command or answer for the user> | nothing
+```
+
+With `below`, the document goes in a `markdown` block right under the `document` row, and that block is one more text besides `ASSUMED:`.
+`document`, `covered`, `looked`, `reader` (when the cold-reader ran) and `next` always print.
+
+After a review:
+
+```text
+verdict    holds | fails the bar · <the main reason in one line>
+covered    <n> of <m> options · <n> of <m> exit codes | <n> of <m> of what the page promises (sections, normative sentences, links)
+error      <n>. <file>:<line> · <what the page says that the program does not do>
+gap        <n>. <file>:<line or section> · <the branch the page leaves to running the program>
+register   <n>. <file>:<line or "whole page"> · <what breaks the register>
+verified   <command> → <result>
+not run    <command or claim> · <why>
+reader     cold-reader: <n> questions · <n> unanswered (the gap rows above) | all answered
+report     <path, when the review also went to a file>
+pick       apply which findings? · default: <numbers> · else: <the other sets>
+go         apply <numbers>, one commit each
+next       nothing · with no findings, in place of pick and go
+```
+
+- Number the findings once, across `error`, `gap` and `register`, in the order of their weight.
+  The user answers by these numbers, so a number stays the same in every later reply, and `go` names the numbers it acts on.
+- The fix of a finding, when you can write it, is the sentence the page needs, on the next lines of its row.
+- A finding with a choice of its own (name the bytes, or declare them out of scope), or a collision of this skill with a rule of the repo, is a `pick` row too.
+
+`verdict`, `covered` and `reader` (when the cold-reader ran) always print.
+With findings, the reply ends with `pick` and `go`; with none, it ends with `next nothing`.
+
+After applying a review:
+
+```text
+applied   <short id> · <finding numbers> · <the change in one line>
+deferred  <finding number> · <why it is not applied>
+verified  <command> → <result>
+not run   <command or claim> · <why>
+warn      <a fact that changes what the user does or expects>
+next      <the exact command or answer for the user> | nothing
+```
+
+One `applied` row per commit, oldest first.
+`applied` and `next` always print, and `next` is the last row.
 
 ## What the corpus cannot show
 
@@ -285,7 +351,7 @@ What transfers is what goes in them.
 
 **Do not invent the BUGS section.**
 List what you found and can name.
-An empty BUGS section is honest only if you looked; say in the report that you looked.
+An empty BUGS section is honest only if you looked; say so in the `looked` row of *Replies*.
 
 **Do not soften a limit into a feature.**
 "Only 15 partitions are supported" is the sentence.

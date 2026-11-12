@@ -24,7 +24,112 @@ Cleverness means they say *wow*.
 The second one is a defect report.
 
 **Precondition: the code already works.** This skill does not fix bugs and does not add features.
-If the code doesn't work, say so and stop.
+If the code doesn't work, say so in a stop of *Replies* and stop.
+
+## Replies
+
+The user reads these replies as he reads the output of a shell command:
+he looks for the same element in the same place every time.
+So the gate reply of step 0, the round report, the report at the end and every stop have a fixed shape.
+
+- The reply is a column of rows and nothing else: no paragraph before it, no question after it.
+- The rows are one `text` block, and each line of it is one row, `│ <label> │ <value>`, with the labels padded to one width.
+  The shared labels carry an emoji before the word: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of one skill has none.
+  A value of several lines, such as a commit message or a diff, goes on the next lines, each with both `│` and spaces in the label cell.
+  The skeletons below show the rows as plain text; the reply adds the borders, the padding and the emoji.
+- The labels, their order and the fixed values are always in English.
+  The free text of a value is in the language of the session.
+- A row prints only when it has something to say.
+  A check that found nothing gets no row.
+  The rows that always print are named under each shape.
+- Several findings of one kind are several rows with the same label, the one that costs the user most first.
+- The `open` rows of the gate reply carry a number, and the number stays the same in every later reply.
+  A question that still waits prints again, as a full row, until the user answers it.
+- A question with no default is an `open` row: `go` never answers it.
+- A commit is named by its `Change-Id` trailer when the repo stamps one, by its short sha otherwise.
+- `warn` is a fact that changes what the user does or expects.
+  A check that passed is never a `warn`.
+- An `ASSUMED:` list for an unchecked claim goes after the rows: it is the one other text.
+- A reply that waits for the user ends with `go <what go does>`, and every choice that `go` makes is a `pick` row above it, with its default.
+  A reply that waits for nothing ends with `next`: the exact answer or command for the user, or `nothing`.
+
+The gate reply prints when step 0.3 asks the user whether the characterization tests describe intent, or when coverage is very thin.
+
+```text
+unit         <file, function or region> · <n> lines
+surface      <what must not move>
+gate         <command> → <result> · probe <n> inputs
+untouchable  <branch or region> · <why: no test reaches it> · coverage by tool | by reading
+open         <n>. does this characterization test describe intent? <the test, in one line>
+warn         coverage is thin: <what is not reached> · the honest options: write more tests first, or polish a smaller unit
+next         answer <n>, <n>: yes, or the behaviour that is a bug · then the gate freezes and round 1 starts
+```
+
+`unit`, `surface`, `gate` and `next` always print.
+The `warn` row prints when coverage is very thin; it says so and does not stop the run.
+A gate reply that holds only that `warn` waits for nothing: it ends with `│ 👉 next │ nothing · round 1 follows`.
+
+The round report, after the ratchet of each round:
+
+```text
+round        <n> · champion kept | replaced by <Remove | Reframe | Boring> · <n> transplants
+score        special cases <a> → <b> · concepts <a> → <b> · branches <a> → <b> · dependencies <a> → <b> · lines <a> → <b>
+changed      <one change: the reframe or one transplant>
+reframe      <the change to the requirements that would delete half of the code> · costs: <what> · not implemented
+next         nothing · round <n+1> follows | the report follows
+```
+
+`round`, `score` and `next` always print.
+`reframe` prints in the round report after which the reframing question was asked.
+
+The report, after the last round:
+
+```text
+polished     <unit> · <n> rounds · champion kept | replaced by <Remove | Reframe | Boring> · <n> transplants
+gate         <command> → <result> · probe <n> inputs byte-identical · coverage by tool | by reading
+score        special cases <a> → <b> · concepts <a> → <b> · branches <a> → <b> · dependencies <a> → <b> · lines <a> → <b> · verdict <thanks | wow> → <thanks | wow>
+changed      <one change: the reframe or one transplant>
+rejected     <what> · <why>
+trade        <the count-winner ranked below a thanks candidate> · <what the trade was> · overrule: "take <candidate>"
+reframe      <the change to the requirements that would delete half of the code> · costs: <what> · not implemented
+flagged      <a branch flagged as suspicious and left alone> · <the coverage gap behind it>
+ended        <the stop rule that ended the run>
+commit       <Change-Id | short sha> · log in its body | proposed
+warn         <a fact that changes what the user does or expects>
+next         <the exact answer or command for the user> | nothing
+```
+
+The rows and their steps:
+
+- `gate`: `coverage by tool | by reading` says how step 0.3 made the untouchable list.
+- `score`: counted by the one adversary, with one method for all rounds.
+  When two counters were used, each round gets its own `score` row, and a `warn` row says that the rounds do not compare.
+- `changed`: one row per change applied in *Ratchet*, over all rounds.
+- `rejected`: every "could not remove" of the agents and every reframe the adversary killed, one row each — the half that the next reader needs.
+- `trade`: the stop rule where a *thanks* candidate outranked the count-winner; the user can overrule it.
+- `reframe`: the answer to the reframing question, brought to the user and not implemented.
+- `flagged`: the untouchable branches the agents flagged, and why they were untouchable.
+- `ended`: why the run stopped, as *Stop rules* asks.
+- `commit`: the polish commit, whose body holds the log of *Close the loop*; `proposed` when the repo asks before a commit, with the full message on the next lines of the row.
+- `warn`: a transplant kept that the adversary named as out of scope (speed, a bug fix, a feature).
+- `next`: `take <candidate>` when a `trade` row stands, the answer that commits a proposed commit, or `nothing`.
+
+`polished`, `gate`, `score`, `ended` and `next` always print, and `next` is the last row.
+
+A stop — the code does not work, the gate cannot be built, a subagent found a bug in a round — has this shape:
+
+```text
+stop      <step or round>: <the cause in one line>
+state     nothing changed | <what changed; the champion is at <path or commit>>
+proof     <one line, or the output of a command on the next lines>
+pick      <question> · default: <choice> · else: <the other choices>
+go        <what go does: the defaults above>
+next      <the exact action for the user>
+```
+
+`stop`, `state` and one of `go` and `next` always print.
+`go` is there only when the agent can go on with a default.
+When only the user can act, `next` ends the reply instead.
 
 ## Step 0 — Freeze the baseline
 
@@ -58,9 +163,9 @@ One that narrates the change — what was here before, what moved, what was trie
 
 - Tests exist → run them, record the pass list.
 - No tests → write characterization tests: feed representative inputs, record what comes out, assert on it.
-  Show them to the user and ask whether they describe intent before freezing.
+  Show them to the user in the gate reply of *Replies* and ask whether they describe intent before freezing.
   Some captured behavior is a bug the user has been living with; they decide.
-- Cannot verify at all → tell the user, and stop.
+- Cannot verify at all → tell the user in a stop of *Replies*, and stop.
   Do not proceed on vibes.
 
 **Then measure coverage.** This is not optional, and it is the part most likely to be skipped.
@@ -192,7 +297,7 @@ Subagents propose; only the main session edits real files.
 - **Ties go to the champion.** Incumbency winning ties is what makes this a ratchet instead of a random walk.
 - Apply transplants one at a time, re-running the gate after each.
   A transplant that fails the gate is reverted immediately, not debugged.
-- Report to the user: what changed, and the before/after numbers.
+- Report to the user: what changed, and the before/after numbers, in the round report of *Replies*.
 
 ## Stop rules
 
@@ -210,7 +315,7 @@ Say why you stopped.
 
 Once, between rounds, ask: **what change to the requirements would delete half of this code?**
 
-Bring the answer to the user.
+Bring the answer to the user, in the `reframe` row of *Replies*.
 Do not implement it.
 The largest simplification usually lives in the specification rather than the code — and the specification is not yours to change.
 
@@ -233,7 +338,7 @@ Without it, the next person to look at this file re-opens every question this ru
 
 - Adding features.
 - Fixing bugs.
-  If a subagent finds one, stop the round and report it; a bug fix changes the baseline and invalidates every comparison in flight.
+  If a subagent finds one, stop the round and report it in a stop of *Replies*; a bug fix changes the baseline and invalidates every comparison in flight.
 - Speed.
   Performance and elegance are different axes, and optimizing pulls hard against both R and B.
   Only if the user asks, and then as a separate pass with its own gate.

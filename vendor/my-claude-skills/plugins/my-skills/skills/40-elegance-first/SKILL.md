@@ -48,8 +48,54 @@ If only one approach is viable, state that and why.
 
 Only after steps 1–3 are complete:
 - Implement exactly what was agreed — no extras, no preemptive improvements
-- If an improvement opportunity appears during implementation, mention it; don't implement it
+- If an improvement opportunity appears during implementation, mention it in a `later` row; don't implement it
 - One change per interaction
+
+## Replies
+
+The user reads the framing as he reads the output of a shell command: he looks for the same element in the same place every time.
+So the reply has a fixed shape.
+
+- The four headings are always these, in English, word for word: `## 1. Structural Analysis`, `## 2. Framing Check`, `## 3. Solution Selection`, `## 4. Implementation`.
+  The text under them is in the language of the session.
+- Nothing comes before `## 1. Structural Analysis`.
+  A check you ran that changes the framing goes into section 1; a verdict on the user's own plan is the first sentence of section 2.
+- Sections 1 to 3 are prose, as the checkpoints above ask: there the framing is the content, and rows would cut the reasoning the user checks.
+  Only section 4 is rows.
+- Section 4 is a column of rows and nothing else.
+  The rows are one `text` block, and each line of it is one row, `│ <label> │ <value>`, `│ 🟢 go │ single parser with explicit ambiguity rejection`, with the labels padded to one width.
+  The shared labels carry an emoji before the word: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of one skill has none.
+  The skeletons below show the rows as plain text; the reply adds the borders, the padding and the emoji.
+  The labels are in English; the free text of a value is in the language of the session.
+  A row prints only when it has a finding, and several rows of one kind are several rows with the same label.
+- A choice that still waits is a full `pick` or `open` row in every reply until the user answers it, never "the question above is still open".
+- An `ASSUMED:` list — each claim you could not check, with the one check that would settle it — goes after the rows: it is the one other text.
+
+Section 4 has one of three shapes.
+
+When you wait, and every open choice has a default:
+
+```text
+pick      <question> · default: <choice> · else: <the other choices>
+go        <the one change that go implements, with the defaults above>
+```
+
+When you wait on a question with no default — the "stop and ask" of section 1:
+
+```text
+open      <question>
+next      answer the open rows; then I implement <the one change>
+```
+
+When the change is done in this reply:
+
+```text
+done      <the change, and the commit or file that holds it>
+later     <an improvement seen during implementation, not implemented>
+next      <the exact command or answer for the user> | nothing
+```
+
+`go` or `next` is the last row.
 
 ## Interrupt Conditions
 
@@ -65,21 +111,26 @@ Surface the issue and re-run the relevant checkpoints.
 
 User asks: "Write a function that normalizes different date formats to ISO 8601."
 
-**1. Structural Analysis**
+The reply:
+
+````markdown
+## 1. Structural Analysis
 - Varies: input format (US, EU, ISO, natural language, timestamps)
 - Fixed: output is always ISO 8601; invalid inputs must be rejected, not guessed
 - Actual boundary: starts at a string, ends at a validated date — but the user may also need to handle timezone, which they haven't mentioned
 
-→ Question: should the function handle timezone-aware inputs, or assume naive dates?
-
-**2. Framing Check**
+## 2. Framing Check
 The natural approach is a chain of format-specific parsers tried in order.
 But that makes every new format a new branch.
 Reframing: treat it as "parse any unambiguous date representation" using a single flexible parser, and reject genuinely ambiguous inputs (like 01/02/03) rather than guessing.
 
-**3. Solution Selection**
+## 3. Solution Selection
 Single parser with explicit ambiguity rejection > format-specific chain.
 Collapses the per-format branches and makes adding new formats zero-cost.
 
-**4. Implementation**
-[proceeds after user confirms the timezone question]
+## 4. Implementation
+`open` should the function handle timezone-aware inputs, or assume naive dates?
+`next` answer the open row; then I implement the single parser with explicit ambiguity rejection
+````
+
+The timezone question is asked once, in the `open` row, where the user looks for it.
