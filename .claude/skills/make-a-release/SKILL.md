@@ -17,7 +17,7 @@ This skill adds:
 
 - No row says that a prerequisite holds.
 - A failed prerequisite and a step 6 search that finds no `Mono-Commit` stop in the shape of the global rule; `next` names what must happen first.
-- The version and the drafts are two `decide` rows, so an answer to one never leaves the other to a guess.
+- The version and the drafts are two `pick` rows, so an answer to one never leaves the other to a guess.
 
 The plan prints after steps 1-3 only when the skill must wait for the user: the user gave no version (step 1), or step 2 drafted new entries.
 Otherwise the skill runs straight on to step 4, and the `hash`, `tidy` and `skip` rows go into the report of step 7, above `content`.
@@ -30,8 +30,8 @@ hash      <entry in a few words> → (<sha>)
 add       <Category>: <the draft entry> (<sha>)
 tidy      <entry in a few words> → <the cleaned entry>
 skip      <commits or a group of them> · <why they are not user-facing>
-decide    version? · default: X.Y.Z (<the reason for the bump>) · else: <the other bumps>
-decide    the drafts? · default: add all as shown · else: name the ones to drop or change
+pick      version? · default: X.Y.Z (<the reason for the bump>) · else: <the other bumps>
+pick      the drafts? · default: add all as shown · else: name the ones to drop or change
 go        write CHANGELOG.md, commit release: X.Y.Z, then /mono-land, export and tag
 ```
 
@@ -39,7 +39,7 @@ go        write CHANGELOG.md, commit release: X.Y.Z, then /mono-land, export and
 - `add`: step 2, one row per missed change, in the order of the six categories.
 - `tidy`: step 3, one row per entry that the skill already fixed to clear the release-time checks.
 - `skip`: step 2, the commits that get no entry.
-- The version `decide` prints when the user gave no version (step 1); the drafts `decide` prints when there are `add` rows.
+- The version `pick` prints when the user gave no version (step 1); the drafts `pick` prints when there are `add` rows.
 - `release` and `go` always print.
 
 The report of step 7 has these rows:
@@ -49,7 +49,7 @@ released  X.Y.Z - YYYY-MM-DD · master <short Change-Id> · tag X.Y.Z → <recip
 hash      <entry in a few words> → (<sha>)
 tidy      <entry in a few words> → <the cleaned entry>
 skip      <commits or a group of them> · <why they are not user-facing>
-content   <the summary of the release in a text block under the row>
+content   <the summary of the release on the next lines>
 warn      <a fact that changes what the user does or expects>
 next      on the host, in public/cozy-public: git push && git push --tags
 next      Apple container: container build -t cozy:latest . · container stop <name>; container delete <name> · nu toolkit/container.nu up

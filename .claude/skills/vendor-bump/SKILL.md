@@ -19,9 +19,9 @@ This skill adds:
 
 - No row says that a check found nothing: no "no body is sparse", no "README needs no change", no list of the repos that did not change.
 - A stop has the shape of the global rule.
-  Pending vendor changes from an earlier run stop the preflight: `evidence` is `git status --short vendor/`, and `open` asks whether to commit, stash or discard.
+  Pending vendor changes from an earlier run stop the preflight: `proof` is `git status --short vendor/`, and `open` asks whether to commit, stash or discard.
   An unclear `--local` choice stops step 1: `open` asks for tarballs or `--local`.
-  The question of step 3 is a stop too: `decide` asks for the previously-vendored revision, with the default of step 3 when the user does not know it, the diff against the index; `state` names `vendor/<repo>/` as rewritten and not committed.
+  The question of step 3 is a stop too: `pick` asks for the previously-vendored revision, with the default of step 3 when the user does not know it, the diff against the index; `state` names `vendor/<repo>/` as rewritten and not committed.
 
 The report of step 6 has these rows, in this order:
 
@@ -39,7 +39,7 @@ next      /mono-land | nothing
 - `sparse`: one row per repo whose body is thin because the upstream history was not available.
 - `warn`: for example an untracked file that the copy left in `vendor/` and that no commit holds.
 - `vendored` and `next` always print.
-  When a commit was made, the last row is `` `next` /mono-land ``, word for word; when no repo changed, no `commit` row prints and it is `` `next` nothing ``.
+  When a commit was made, the last row is `│ 👉 next │ /mono-land`, word for word; when no repo changed, no `commit` row prints and it is `│ 👉 next │ nothing`.
 
 ## Preflight
 
