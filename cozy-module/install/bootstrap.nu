@@ -171,6 +171,16 @@ export def main [
     # `git config --global core.autocrlf input` instead of hand-writing a file.
     # delta.hunk-header-style: the user wants the file path in the header of
     # every hunk, not only once above the first one.
+    # delta.pager: the user wants to see how far down a diff he is.
+    # --long-prompt prints the percent, and --file-size makes less read the
+    # piped input to its end at once, because less knows no percent of a pipe
+    # before that. Not `+Gg` because: it fills the screen of a short output
+    # with `~` lines. pager.log leaves --file-size out: with it,
+    # `git log --patch` reads the whole history before the first screen.
+    # --RAW-CONTROL-CHARS and --quit-if-one-screen are stated so that the line
+    # does not depend on the LESS=FRX that git exports for its pager.
+    # --file-size needs less 590 or newer: an older less prints an error and
+    # waits for RETURN before it shows the diff.
     '[user]
 	name = Agent
 	email = agent@sandbox
@@ -188,6 +198,9 @@ export def main [
 [delta]
 	keep-plus-minus-markers = true
 	hunk-header-style = file line-number syntax
+	pager = less --RAW-CONTROL-CHARS --quit-if-one-screen --long-prompt --file-size
+[pager]
+	log = delta --pager \"less --RAW-CONTROL-CHARS --quit-if-one-screen --long-prompt\"
 [format]
 	pretty = format:commit %C(auto)%H%d%n%C(bold blue)%ar%C(reset)  %C(green)%an <%ae>%C(reset)%n%n%w(0,4,4)%B%w(0,8,8)%+N
 [notes]

@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- `git diff` and `git show` print in the prompt of `less` how far down the diff you are, in percent.
+
 ## [0.6.0] - 2026-11-12
 
 ### Added
