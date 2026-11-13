@@ -14,12 +14,12 @@ The user has repeatedly asked for this split-by-repo grouping ("commit by groups
 
 ## Replies
 
-The stops of the preflight, step 1 and step 3, and the report of step 6 follow the section *Replies* of the skill `40-skill-authoring`.
-Before the first reply, load the skill `40-skill-authoring` with the Skill tool: this skill names only its own rows.
+The stops of the preflight, step 1 and step 3, and the report of step 6 follow the section *Replies* of the skill `40-cozy-output-formatting`.
+Before the first reply, load the skill `40-cozy-output-formatting` with the Skill tool: this skill names only its own rows.
 This skill adds:
 
 - No row says that a check found nothing: no "no body is sparse", no "README needs no change", no list of the repos that did not change.
-- A stop has the shape of `40-skill-authoring`.
+- A stop has the shape of `40-cozy-output-formatting`.
   Pending vendor changes from an earlier run stop the preflight: `proof` is `git status --short vendor/`, and `open` asks whether to commit, stash or discard.
   An unclear `--local` choice stops step 1: `open` asks for tarballs or `--local`.
   The question of step 3 is a stop too: `pick` asks for the previously-vendored revision, with the default of step 3 when the user does not know it, the diff against the index; `state` names `vendor/<repo>/` as rewritten and not committed.

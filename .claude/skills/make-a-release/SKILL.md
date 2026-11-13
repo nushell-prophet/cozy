@@ -12,12 +12,12 @@ Full release procedure for the cozy project.
 
 ## Replies
 
-Every stop, the plan of steps 1-3 and the report of step 7 follow the section *Replies* of the skill `40-skill-authoring`.
-Before the first reply, load the skill `40-skill-authoring` with the Skill tool: this skill names only its own rows.
+Every stop, the plan of steps 1-3 and the report of step 7 follow the section *Replies* of the skill `40-cozy-output-formatting`.
+Before the first reply, load the skill `40-cozy-output-formatting` with the Skill tool: this skill names only its own rows.
 This skill adds:
 
 - No row says that a prerequisite holds.
-- A failed prerequisite and a step 6 search that finds no `Mono-Commit` stop in the shape of `40-skill-authoring`; `next` names what must happen first.
+- A failed prerequisite and a step 6 search that finds no `Mono-Commit` stop in the shape of `40-cozy-output-formatting`; `next` names what must happen first.
 - The version and the drafts are two `pick` rows, so an answer to one never leaves the other to a guess.
 
 The plan prints after steps 1-3 only when the skill must wait for the user: the user gave no version (step 1), or step 2 drafted new entries.

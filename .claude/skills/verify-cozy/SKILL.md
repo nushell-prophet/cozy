@@ -36,8 +36,8 @@ To add or change a check, edit `cozy-module/verify.nu`.
 
 ## Replies
 
-The result of a run follows the section *Replies* of the skill `40-skill-authoring`.
-Before the first reply, load the skill `40-skill-authoring` with the Skill tool: this skill names only its own rows.
+The result of a run follows the section *Replies* of the skill `40-cozy-output-formatting`.
+Before the first reply, load the skill `40-cozy-output-formatting` with the Skill tool: this skill names only its own rows.
 This skill adds:
 
 - No row lists the checks that passed; `result` gives the count.
