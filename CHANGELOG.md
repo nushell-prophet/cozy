@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Claude Code asks you to confirm `brew install`, `cargo install` and other install commands even under `--dangerously-skip-permissions`, and the global instructions tell agents to ask before they install software. The list is `permissions.ask` in `~/.claude/settings.json`.
 - `git diff` and `git show` print in the prompt of `less` how far down the diff you are, in percent.
 
 ## [0.6.0] - 2026-11-12

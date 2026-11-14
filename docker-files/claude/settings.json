@@ -9,6 +9,20 @@
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
   "remoteControlAtStartup": false,
+  "permissions": {
+    "ask": [
+      "Bash(brew install *)",
+      "Bash(brew reinstall *)",
+      "Bash(brew upgrade*)",
+      "Bash(brew tap *)",
+      "Bash(cargo install *)",
+      "Bash(npm install --global *)",
+      "Bash(npm install -g *)",
+      "Bash(go install *)",
+      "Bash(uv tool install *)",
+      "Bash(pipx install *)"
+    ]
+  },
   "env": {
     "EDITOR": "hx-quote",
     "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY": "1",

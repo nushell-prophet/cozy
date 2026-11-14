@@ -15,7 +15,10 @@ Under Apple `container` and `sbx` the workspace is mounted at its original host 
 - `node`, `go` — from the `sbx` base image only; absent on the Debian image
 - `xxd` — hex dump; for viewing only, prefer `open --raw file | into binary`
 - `topiary` — Nushell grammar support
-- `brew` — install more as needed
+- `brew` — installed, but do not install software on your own, with brew or any other way (`cargo install`, `npm install --global`, a downloaded binary).
+  Name the tool and the reason, and ask the user first.
+  Why: the user keeps the set of software on the machine known and chosen.
+  Claude Code asks the user to confirm `brew install` and the like even with permission prompts off (`permissions.ask` in `~/.claude/settings.json`); do not route around that prompt.
 - Also installed: `hx` (Helix), `zellij`, `git`, `delta` (git-delta), `git-lfs`, `lazygit`, `broot` / `br` (in Nushell), `fzf`, `rg` (ripgrep), `bat`, `fd`, `vd` (visidata), `jq`
 - `sudo` — passwordless on `sbx`; **revoked** on the Debian image, which runs rootless by design
 
