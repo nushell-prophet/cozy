@@ -259,6 +259,8 @@ export def 'zellij-navigate' [
 
     if $new_tab {
         # Create new tab with the directory
+        # Why compact-bar-up: a layout of the author's dotfiles (zellij/layouts/compact-bar-up.kdl).
+        # Elsewhere, copy that file into your zellij layouts or name one of your own here.
         zellij action new-tab --layout compact-bar-up --cwd $path
         return false
     }

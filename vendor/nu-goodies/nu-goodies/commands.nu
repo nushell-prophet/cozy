@@ -305,7 +305,6 @@ export def --env ln-for-preview [
     cd $temp_path
 }
 
-# source ~/git/nu-goodies/nu-goodies/wez-to-ansi.nu
 #dotnu-vars-end
 
 # def main [ $n_last_commands: int = 2 --regex: string --lines_before_top_of_term: int --min_term_width: int ] {
@@ -378,6 +377,8 @@ export def 'mygit log' []: nothing -> nothing {
     $nu.home-dir
     | path join '.*'
     | glob $in --depth 1 --no-dir --exclude ['.CFUserTextEncoding']
+    # Why dot_home_dir: the author keeps the dotfiles of his home in that folder, a git repo;
+    # elsewhere, create it first or change the path.
     | cp --update ...$in '~/.config/dot_home_dir'
 
     nu ~/.config/nushell/toolkit.nu history backup
@@ -817,6 +818,8 @@ export def 'transcribe' [file: path]: nothing -> nothing {
             $f
         }
 
+    # Why these paths: the author builds whisper.cpp in ~/git/whisper.cpp with the base.en model.
+    # Elsewhere, point them at your own build and model.
     (
         ^~/git/whisper.cpp/build/bin/whisper-cli --file $file
         --model ~/git/whisper.cpp/models/ggml-base.en.bin

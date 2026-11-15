@@ -8,7 +8,7 @@ export def completions-macos-apps []: nothing -> list<string> {
 @category platform
 export def 'O' [
     filepath?: path
-    --app (-a): string@'completions-macos-apps' = 'Snagit 2022.app' # App to open with
+    --app (-a): string@'completions-macos-apps' = 'Snagit 2022.app' # App to open with; the default is the author's screenshot app, pass --app to use another
     --reveal (-r) # Reveal app in Finder
 ]: [path -> nothing nothing -> nothing] {
     if $filepath == null { } else { $filepath }
@@ -36,6 +36,8 @@ export def 'ramdisk-create' [
 # Preview text in all available figlet fonts
 @category platform
 export def figlet-demo [text: string]: nothing -> record {
+    # Why a fixed path: the fonts of figlet 2.2.5 from Homebrew on the author's Mac.
+    # Another install keeps them elsewhere; put its fonts directory here.
     glob /opt/homebrew/Cellar/figlet/2.2.5/share/figlet/fonts/*.flf
     | par-each --keep-order {|font|
         let name = $font | path basename

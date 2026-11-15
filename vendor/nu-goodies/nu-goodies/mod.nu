@@ -96,6 +96,10 @@ export use cprint.nu [
     # "wrapit"
 ]
 
+export use nibble.nu [
+    main
+]
+
 export use history.nu [
     "copy-cmd"
     # "completions-cwds"
