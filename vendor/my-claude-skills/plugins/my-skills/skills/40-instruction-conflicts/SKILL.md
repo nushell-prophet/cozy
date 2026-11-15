@@ -57,7 +57,7 @@ It is also the one that regenerates: fixing both copies leaves two copies, which
 
 **3. Precedence collision.**
 Both rules are stated as absolutes, they come from different sources, and neither carries an exception clause naming the other.
-A real one, verified in this repo: a session-level harness instruction says "Do not call the AgentTool unless the user requested it", while the section *Running it in subagents* of `40-why-is-this/SKILL.md` instructs the agent to run the work in subagents.
+A real one, verified in this repo: a session-level harness instruction says "Do not call the AgentTool unless the user requested it", while `40-why-is-this/SKILL.md:338` instructs the agent to run the work in subagents.
 Splitting prompt: `/40-why-is-this why is this flag here`.
 Neither text mentions the other, so the agent picks — and which way it picks is invisible to the user, who sees either a slow single-threaded run or a violated instruction, and has no reason to connect either to a skill file.
 
@@ -86,7 +86,7 @@ Each of them looks like a contradiction and is not, and reporting them is how th
 ### 1. Enumerate what actually loaded
 
 `/context` is the ground truth and only the user can run it — it is the one place that shows the system prompt, the active output style, and which skill descriptions are in context.
-Ask for it in the `next` row of *Replies* when the answer depends on the harness side.
+Ask for it when the answer depends on the harness side.
 Everything on disk you can enumerate yourself:
 
 ```nushell
@@ -137,7 +137,7 @@ Every hook in `settings.json`: does its command resolve.
 Every skill: does the directory name match the `name:` in frontmatter, and does any name repeat across user, project and plugin sources.
 Trim the value before comparing — a `SKILL.md` saved with CRLF line endings carries the `\r` into the name and reports a mismatch that is not one (`keep-a-changelog` does this today).
 `/doctor` already covers a slice of this — invalid settings files, duplicate subagent names, CLAUDE.md content derivable from the codebase.
-Ask for its output in an `open` row of *Replies* rather than reimplementing it, and spend your effort on what it cannot do.
+Ask for its output rather than reimplementing it, and spend your effort on what it cannot do.
 
 ### 3. Regroup by topic
 
@@ -173,99 +173,38 @@ A resolved conflict is.
 - **Never rewrite the user's instruction files silently.**
   They carry his reasoning in his own voice, and an agent tidying prose reliably keeps the rule and deletes the why.
   Propose the exact edit as a diff, take one confirmation, then apply it.
-  A number that the user names in `go` is the confirmation of that edit, and each edit is one commit per conflict.
 - **Record the resolution where it survives** — the commit body, with the date and what the two rules were.
   Otherwise the next agent reads the surviving rule, finds it arbitrary, and re-opens the question you just closed.
 
-## Replies
+## After the edits: a cold read
 
-The user reads the audit as he reads the output of a shell command:
-he looks for the same element in the same place every time.
-So the audit has a fixed shape.
+An edit that deletes a copy or shortens a paragraph also breaks the text around it:
+a pronoun loses its noun,
+a reason goes out with the sentence that carried it,
+and a fact that stands twice inside one file stays unseen, because the method looks for pairs across files.
+You cannot see these yourself: you know what the text said before the edit.
+So before the report, hand each edited file to the `cold-reader` agent.
+Give it, as its questions, the tasks that an agent does under that file
+— which branch to edit on, how to write a commit message —
+and ask for ambiguous sentences, unclear referents, contradictions inside the file, and facts stated twice.
+Fix what your edits caused.
+What stood in the file before them goes into the report as a finding, with the line quoted.
 
-- The reply is a column of rows and nothing else: no paragraph before it, no question after it.
-- The rows are one `text` block, and each line of it is one row, `│ <label> │ <value>`, with the labels padded to one width.
-  The shared labels carry an emoji before the word: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of one skill has none.
-  A value of several lines, such as a finding or a diff, goes on the next lines, each with both `│` and spaces in the label cell.
-  The skeletons below show the rows as plain text; the reply adds the borders, the padding and the emoji.
-- The labels, their order and the fixed values are always in English.
-  The free text of a value is in the language of the session; a quoted rule keeps its own language.
-- A row prints only when it has something to say.
-  A check that found nothing gets no row: no "mechanical pass was clean", no list of pairs that were not reported.
-  The rows that always print are named under each skeleton.
-- Several findings of one kind are several rows with the same label.
-- Each conflict carries a number: its rank in the first reply.
-  Its `edit` and `pick` rows carry the same number, and the number stays the same in every later reply, even after other conflicts are resolved.
-- An edit or a choice that still waits prints again, as a full row, in every later reply until the user answers it — never "edits 2 and 3 are still open".
-- A commit is named by its `Change-Id` trailer when the repo stamps one, by its short sha otherwise.
-- `warn` is a fact that changes what the user does or expects.
-  A check that passed is never a `warn`.
-- An `ASSUMED:` list for an unchecked claim goes after the rows: it is the one other text.
-- A question with no default, such as a request for the output of `/context`, is an `open` row: `go` never answers it.
-- A reply that proposes edits ends with `go`, and every choice that `go` makes is a `pick` row above it.
-  A reply with no edit to propose ends with `next`: the exact answer for the user, or `nothing`.
+## Output
 
-The audit:
+Order findings by how often the splitting prompt actually occurs, not by how severe they look.
+A conflict that fires on every commit outranks one that fires on a yearly release.
 
-```text
-audit     <n> conflicts · nothing edited
-sources   <the files read, or their count and the command that listed them> · harness prompt observed in this session · not read: <output style, MCP instructions, /context, /doctor>
-topics    <topic>, <topic>, …
-conflict  <n>. <topic> · class <1-4> · fires <on every commit | on a release | only when <file> is read>
-edit      <n>. <file>:<line> · <delete this copy | scope it | move it to a hook>
-pick      <n>. <question> · default: <choice> · else: <the other choices>
-note      <a rule nobody follows, in one line>
-warn      <a fact that changes what the user does or expects>
-open      <a request for the output of /context or /doctor, and the conflict that waits on it>
-go        apply edit <n> | edits <n>, <n>, one commit per conflict
-next      <the exact answer for the user, such as the output an open row waits for> | nothing
 ```
-
-The rows and their steps:
-
-- `sources`, `topics`: steps 1 and 3.
-  "No conflicts" means nothing without them, so they always print.
-  `not read` names the layers the enumeration cannot reach.
-  When the answer depends on one of them, the reply asks the user for the output of `/context` or `/doctor`: in an `open` row, which `go` does not answer: it waits for the output.
-- `conflict`: one row per finding.
-  Order findings by how often the splitting prompt actually occurs, not by how severe they look.
-  A conflict that fires on every commit outranks one that fires on a yearly release.
-  Under the row, on the next lines, each with both `│` and spaces in the label cell:
-
-  ```text
+<topic>  [class 1-4]
   A > "<verbatim rule>"           <file>:<line>
   B > "<verbatim rule>"           <file>:<line>
   splits on: "<the user prompt that triggers both>"
   → <one proposed resolution: delete which copy, or scope which one, or move to a hook>
-  ```
-
-  Quote verbatim.
-  A paraphrase of a rule is a new rule, and the user cannot check a paraphrase against what he meant when he wrote it.
-  A rule from the harness prompt is labelled `harness (observed in this session)` in the place of `<file>:<line>`.
-- `edit`: the exact edit of that conflict, as a diff on the next lines of the row.
-  A conflict whose side is the harness prompt gets its edit on the file on the other side of the pair.
-- `pick`: a resolution with two real options, with the default that `go` takes.
-- `note`: a rule nobody follows, met in passing; it is adherence, not a finding.
-- `go`: names the number of each edit it applies.
-  A number named in `go` is the user's confirmation of that edit, and each edit is one commit per conflict.
-  A bare `go` from the user applies exactly the numbers on the `go` row; he may answer with other numbers instead.
-  An edit whose number is not named is not applied.
-
-`audit`, `sources`, `topics` and one of `go` and `next` always print, and that one is the last row.
-
-The reply after the edits:
-
-```text
-applied   <n>. <file> · <Change-Id | short sha> · <commit subject>
-edit      <n>. <an edit that still waits, in full, as in the audit>
-pick      <n>. <a choice that still waits, in full, as in the audit>
-warn      <a fact that changes what the user does or expects>
-go        apply edit <n> | edits <n>, <n>
-next      <the exact answer or command for the user> | nothing
 ```
 
-`applied` prints once per commit.
-`go` ends the reply while an edit still waits; `next` ends it when none does.
+Quote verbatim.
+A paraphrase of a rule is a new rule, and the user cannot check a paraphrase against what he meant when he wrote it.
 
 ## When to run it
 
@@ -279,7 +218,7 @@ next      <the exact answer or command for the user> | nothing
 
 - **This audit is itself a prime source of drift.**
   You are editing the files that govern every future session, on the strength of your own reading of them.
-  Edit surgically, one conflict per change, and let the user confirm each by its number in `go`.
+  Edit surgically, one conflict per change, and let the user confirm each.
 - **A skill body and a skill description behave differently.**
   Descriptions sit in context every session, so two descriptions claiming the same trigger phrase collide on every prompt.
   Bodies load on demand and two of them rarely meet, so a conflict between two skill bodies is real but rare — rank it accordingly.

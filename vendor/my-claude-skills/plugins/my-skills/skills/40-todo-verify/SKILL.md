@@ -41,7 +41,7 @@ Do not crawl sibling repos — but a note may name a fix that landed in another 
 Read every note in the folder.
 For each, extract:
 
-- **The claim of closure**, in any of the shapes these notes take: `status: completed` (or `rejected`) in the frontmatter; prose like "Fixed in `9a81318`", "Closed in nu-cybergraph `6d9cac7`", "~~withdrawn~~"; a "Fixed in this session" section in an index note.
+- **The claim of closure**, in any of the shapes these notes take: `status: completed` (or `rejected`) in the frontmatter; prose like "Fixed in `9a81318`", "Closed in other-repo `6d9cac7`", "~~withdrawn~~"; a "Fixed in this session" section in an index note.
 - **The original problem** and, if the note has one, its reproduction command.
 - **The repo the SHA belongs to** — notes cross-reference sibling repos.
 
@@ -79,7 +79,7 @@ Use `git worktree add` into the scratchpad, or copy the tree.
   Say which of these it is and name the one thing that would settle it.
 
 State the counts.
-If a claimed-fixed item lands in STILL BROKEN, that is the headline of the report: it is a `reopened` row, right after the counts.
+If a claimed-fixed item lands in STILL BROKEN, that is the headline of the report — say it first.
 
 ## Step 4 — Archive, do not delete
 
@@ -102,68 +102,32 @@ Do not rewrite their reasoning; it is the user's record, not a draft.
 
 Leave the folder as the repo keeps it.
 A published repo keeps `todo/` uncommitted, so commit nothing; a repo that is never published tracks it like any other file, so the moves and the appended lines are committed with the rest.
-Two signs mark such a repo: `mono` in the path, and the repo's own root `CLAUDE.md` saying it is internal, personal, or never sent upstream — the `CLAUDE.md` decides, and the monorepo is only its commonest case.
+Two signs mark such a repo: `mono` in the path (the monorepo of the skill's author; outside his workspace only the `CLAUDE.md` sign applies), and the repo's own root `CLAUDE.md` saying it is internal, personal, or never sent upstream — the `CLAUDE.md` decides, and the monorepo is only its commonest case.
 
-## Replies
+## Report format
 
-The user reads the report as he reads the output of a shell command:
-he looks for the same element in the same place every time.
-So the report has a fixed shape.
-
-This skill runs in a fork.
-Its last message is the report, and nothing else: the session that started the fork shows the rows to the user as they came, without a retelling in prose.
-
-- The reply is a column of rows and nothing else: no heading, no paragraph before it, no question after it.
-- The rows are one `text` block, and each line of it is one row, `│ <label> │ <value>`, with the labels padded to one width.
-  The shared labels carry an emoji before the word: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of one skill has none.
-  A value of several lines, such as the output of a repro, goes on the next lines, each with both `│` and spaces in the label cell.
-  The skeleton below shows the rows as plain text; the reply adds the borders, the padding and the emoji.
-- The labels, their order and the fixed values are always in English.
-  The free text of a value is in the language of the session; a quoted claim keeps its own language.
-- A row prints only when it has something to say.
-  A check that found nothing gets no row: no "no claimed-fixed item turned out broken", no empty list.
-- One item is one row.
-  Several items of one verdict are several rows with the same label, the item that costs the user most first: a defect that bites now before a cosmetic one.
-- The rows `reopened`, `broken` and `unverifiable` carry a number, counted across the three labels, and the number stays the same in every later reply, so the user can name an item by it.
-- A commit that this run made is named by its `Change-Id` trailer when the repo stamps one, by its short sha otherwise.
-- `warn` is a fact that changes what the user does or expects.
-  A check that passed is never a `warn`.
-- An `ASSUMED:` list for an unchecked claim goes after the rows: it is the one other text.
-- The last row is `next`: the exact answer or command for the user, or `nothing`.
-
-```text
-verify        <repo>/todo · <N> notes · <M> items · reopened <n> · broken <n> · unverifiable <n> · fixed <n>
-reopened      <n>. <finding> — <note file> · claimed: "<the closure claim, verbatim>" · repro: <command> → <the line that shows it still happens>
-broken        <n>. <finding> — <note file> · not claimed closed, not re-tested
-unverifiable  <n>. <finding> — <note file> · why: no repro | sha <x> not found | blocked: <network, Docker, host-only> | a decision, not a defect · settles it: <the one thing>
-fixed         <finding> — <sha> · <command> → <the line that proves it> · moved to todo/verified/ | struck in <index note> · test: <the test that catches a regression> | no regression test · ran in a scratchpad copy
-new           <a problem the run met that is not a note's> · <where it shows>
-state         nothing committed: todo/ is untracked | committed <Change-Id | short sha> · <what was moved, struck or appended>
-warn          <a fact that changes what the user does or expects>
-next          <the exact answer or command for the user> | nothing
 ```
+## todo-verify — <repo>/todo (N notes, M items)
 
-The rows and their steps:
+### STILL BROKEN (n)
+1. <finding> — <note file>
+   claimed: <the closure claim, verbatim>
+   repro:   <command> → <the line that shows it still happens>
 
-- `verify`: the counts of step 3, counted by item, not by note.
-  STILL BROKEN splits into `reopened` and `broken`, so the four counts add up to M.
-- `reopened`: an item claimed closed that still reproduces — the headline of the report, so its rows come right after `verify`.
-- `broken`: the rest of STILL BROKEN, which is the items never claimed closed.
-- `unverifiable`: says which of the reasons it is, and the one thing that would settle it.
-- `fixed`: the SHA, the exact command and the line that proves it; `test:` names the test of step 2.3, and `no regression test` says it found none.
-  Any row whose repro was destructive ends with `ran in a scratchpad copy`.
-  The SHA here is the one the note claims, as step 2.1 checked it.
-- `new`: the first edge case below, a fix that is now wrong for a different reason.
-- `state`: step 4, what happened to the folder.
-- `next`: the action the report leaves to the user, such as the host command for a blocked check.
+### UNVERIFIABLE (n)
+1. <finding> — <note file>
+   why: <no repro | sha <x> not found | blocked: no network>
+   would settle it: <the one thing>
 
-`verify`, `state` and `next` always print, and `next` is the last row.
+### CONFIRMED FIXED (n) → moved to todo/verified/
+1. <finding> — <sha>, <command> → <the line that proves it>
+```
 
 ## Edge cases
 
 - **The note describes a fix that is now wrong for a different reason.**
   That is a new problem, not this note's.
-  Report it as a `new` row and leave the old note alone; write a new note only if the user asks for one.
+  Report it in the run's output and leave the old note alone; write a new note only if the user asks for one.
 - **The repro is destructive** (writes into the user's store, mutates a graph).
   Run it in a copy under the scratchpad, and say that is where it ran.
 - **Two notes describe the same defect.**

@@ -1,8 +1,8 @@
 ---
 name: 40-skill-authoring
 description: >
-  Conventions for writing or revising a Claude Code skill so that its replies read
-  like shell output — the same rows in the same place on every run — and so that it
+  Conventions for writing or revising a Claude Code skill so that the replies of a
+  command skill read like shell output — the same rows in the same place on every run — and so that it
   works for a reader who has none of the author's setup. Use this skill when the user
   asks to "write a skill", "make a skill for cozy", "add a Replies section", "make the
   skill output deterministic", "the skill answers differently every time", "смастери
@@ -15,62 +15,21 @@ A skill is read twice: by the agent that runs it, and by the user who reads what
 The stock `skill-creator` covers the first reader.
 This skill covers the second one, and a few rules that keep a public skill honest for a stranger.
 
-## Two kinds of skill
+## Three kinds of skill
 
 - **A reference skill** guides how the agent works and prints nothing of its own: a style guide, a command reference.
   It gets no `## Replies` section.
-- **A procedure skill** shows the user a plan, a stop, a report or a handoff.
-  It gets a `## Replies` section, and its steps point at it ("report in the shape of *Replies*").
+- **An analysis skill** reads, judges and reports findings: an audit, a review, a history search.
+  It gets no `## Replies` section: its report is structured Markdown, with headings, lists and code blocks where the findings need them.
+- **A command skill** is one the user runs again and again to do the same job: land a branch, export, cut a release.
+  It shows a plan, a stop, a report or a handoff, so it gets a `## Replies` section, and its steps point at it ("report in the shape of *Replies*").
 
-A skill that mostly guides but ends each run with a report is a procedure skill for that report.
+Why: the user reads the output of a command skill as he reads the output of a shell command, and looks for the same row in the same place on every run.
+A finding of an analysis has a shape of its own — a quote, a diff, an argument — and a table cell breaks it.
 
-## Replies
-
-The user reads a skill reply as he reads the output of a shell command: he looks for the same element in the same place every time.
-So the reply is a column of rows, and nothing else.
-
-- The rows are one `text` block, and each line of it is one row, `│ <label> │ <value>`, `│ land │ branch → main`, with the labels padded to one width.
-  The shared labels carry an emoji before the word: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of one skill has none.
-  Each of these emoji is one codepoint that a terminal draws two columns wide; one with the selector `U+FE0F`, such as `⚠️`, has no fixed width.
-  A value of several lines, such as a commit message or the output of a command, goes on the next lines, each with both `│` and spaces in the label cell.
-- The skill names its labels and their order.
-  Its skeletons show the rows as plain text; the reply adds the borders, the padding and the emoji.
-  Labels and fixed values are in English; the free text of a value is in the language of the session.
-- A row prints only when it has a finding.
-  A check that found nothing gets no row.
-  The exception: a skill whose job is to show an absence ("no session discussed it") gives that absence a row, because there it is the finding.
-- Several findings of one kind are several rows with the same label, the most expensive for the user first, unless the skill names its own order, such as commit order.
-  Where the rows must fit a limit, the rest of one label folds into one row that counts them and names where the full list is.
-- Findings that the user answers one by one carry a number that stays the same in every later reply; `go` names the numbers it acts on.
-- A `warn` row holds a fact that changes what the user does or expects; a check that passed is never a `warn`.
-- A reply that waits for confirmation ends with `│ 🟢 go │ <what go does>`.
-  Every choice that `go` makes is a `pick` row above it: `│ 🔀 pick │ <question> · default: <choice> · else: <the other choices>`.
-  A choice that still waits is a full `pick` row in every reply until it is answered, never "items 2 and 3 are still open".
-- A question that the skill asks with no default ("ask the user") is an `open` row: `go` never answers it, so a row never turns an ask into a default.
-  A reply where only `open` rows wait ends with `next`: the answer it waits for.
-- A reply that waits for nothing ends with `│ 👉 next │ <the exact command or answer for the user>`, or `nothing`.
-- A commit is named by its `Change-Id` where the repo has one, by sha otherwise.
-
-A stop has one shape:
-
-```text
-stop      <step, or the name of the hook>: <the cause in one line>
-state     nothing changed | <what changed, and what keeps the old state>
-proof     <one line, or the output of a command on the next lines>
-pick      <question> · default: <choice> · else: <the other choices>
-open      <a question with no default>
-go        <what go does: the defaults above>
-next      <the exact action for the user>
-```
-
-`stop`, `state` and one of `go` and `next` always print.
-`go` is there only when the agent can go on with a default; when only the user can act, `next` ends the reply.
-
-Reuse the labels other skills use for the same meaning: `go`, `pick`, `next`, `warn`, `stop`, `state`, `proof`, `open`, `done`.
-A new label is for a new meaning only.
-
-A skill that runs in a fork (`context: fork`) returns its rows as its last message.
-Say in the body that the caller shows them as they came; the caller tends to retell them as prose.
+The format of the rows is in the skill `40-cozy-output-formatting`.
+The `## Replies` section of a command skill names only its own rows and their order.
+It also tells the agent to load that skill with the Skill tool before the first reply.
 
 ## Where the labels come from
 
@@ -87,9 +46,10 @@ A skill with no runs takes its rows from its own steps: one row per decision a s
 
 A skill in a published plugin is read by people who have none of the author's setup.
 
-- It carries its own copy of the rules above, shortened to what it needs; a pointer to a private instruction file leads nowhere.
+- It carries its own copy of the rules of `40-cozy-output-formatting`, shortened to what it needs; a pointer to a private instruction file leads nowhere.
 - No machine paths, no names of an environment, no claims about "this machine".
   A setup-specific hint is one short aside: "in cozy, …; elsewhere, …".
+  The rule is for the body: a name can carry the main reader of the skill, as `40-cozy-output-formatting` does.
 - A number goes stale: write the command that produces it, or date it and name its source.
 - The `description` drives triggering.
   Write it in the third person, quote the phrases the user really says, in each language they say them in.

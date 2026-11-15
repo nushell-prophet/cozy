@@ -80,7 +80,7 @@ parked    <path of the note> · <commit> · on <branch>
 
 4. **Body:** `# <title>`, then what a reader needs to act without this session:
    - what was found, and how it showed: the command and its real output, in `# =>` lines;
-   - where: a change-id link (`cozy git link <file>`) or a path with a quote, never a bare sha;
+   - where: a change-id link (`cozy git link <file>`, in cozy) or a path with a quote, never a bare sha;
    - the words of the user about it, verbatim;
    - why it waits, and the first step when someone picks it up.
 

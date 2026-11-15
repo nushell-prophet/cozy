@@ -1,7 +1,7 @@
 ---
 name: 40-land-branch
 description: Land a finished branch on the trunk as a coherent commit — fold the rollback commits into the work they correct, carry the branch's reasoning into the message, archive the old history in a tag, keep `todo/` and `gi-canvas/` off the trunk, then merge. Use when the user says "land the branch", "land this", "merge to main", "finish this branch", or "squash and merge".
-argument-hint: [--grouped] [--no-confirm]
+argument-hint: [--grouped] [--no-confirm] [--quick]
 allowed-tools: Bash(git *), Read, Write, Edit
 ---
 
@@ -47,11 +47,35 @@ A conflict in the rebase of step 13 stops the landing after step 9 too:
 the agent does not resolve it,
 and the archive tag holds the old tip.
 
+`--quick` lands a minimal change in one pass:
+one or two commits that make one chapter.
+It is `--no-confirm` without the advisor call of step 8:
+every other rule for `--no-confirm` holds for it, its stops included,
+and `--quick` together with `--no-confirm` is `--quick`.
+The flag also covers an advisor call that another instruction asks for before a report:
+the agent makes no advisor call in a quick landing.
+Why: the user reads the diff of such a change faster than a plan,
+and the advisor call and the wait cost more than the change itself.
+The flag removes the ceremony, not the checks:
+the message of step 6, the scans of steps 7a and 7c, the archive tag and the rebase of step 5 run as written.
+
+`--quick` takes a branch only when all of these are true.
+The agent checks the first two after step 4, from the snapshot:
+
+- `[<trunk>] commits base..HEAD` lists one or two commits, corrections included;
+- `--grouped` was not passed;
+- at step 8, the commits make one chapter.
+
+A branch that fails one of them is a stop (see *Replies*), never a silent full landing:
+the `stop` row is `quick: <the condition>`, `state` is `nothing changed`,
+and `next` is `/40-land-branch` without the flag.
+Why: the full landing is the ceremony that the user wanted to avoid, so the user starts it.
+
 Two things stay off-limits even here: **never push**, and never run this on the trunk itself.
 
 ## Repo snapshot
 
-The block below runs once, before any of this reaches Claude — steps 1, 3, 4 and 5 start with the answer already in hand instead of each costing its own tool call and turn.
+The block below runs once, before any of this reaches Claude — steps 1, 3, 4, 5, 7a and 7c start with the answer already in hand instead of each costing its own tool call and turn.
 It looks for a local `main` and a local `master` and reports what it found: one name, both, or none.
 
 ```!
@@ -70,6 +94,29 @@ for trunk in $candidates; do
   echo "[$trunk] trunk-moved: $([ "$(git rev-parse "$trunk")" = "$base" ] && echo no || echo yes)"
   echo "[$trunk] commits base..HEAD:"
   git log --oneline "$base"..HEAD 2>/dev/null
+  echo "[$trunk] cited-hashes:"
+  git diff --no-relative "$base"..HEAD | grep '^+' | grep -v '^+++' | grep -oE '\b[0-9a-f]{7,64}\b' | sort -u |
+  while read -r h; do
+    [ "$(git cat-file -t "$h" 2>/dev/null)" = commit ] || continue
+    git merge-base --is-ancestor "$h" HEAD 2>/dev/null || continue
+    git merge-base --is-ancestor "$h" "$base" 2>/dev/null && continue
+    echo "$h"
+  done
+  echo "[$trunk] cited-ids:"
+  ids=$(git log --format='%(trailers:key=Change-Id,valueonly)' "$base"..HEAD)
+  git diff --no-relative "$base"..HEAD | grep '^+' | grep -v '^+++' | grep -oE '\b[k-z]{8}\b|\b[k-z]{32}\b' | sort -u |
+  while read -r id; do
+    echo "$ids" | grep -q "^$id" && echo "$id"
+  done
+  echo "[$trunk] contrast-lines:"
+  git diff --no-relative --unified=0 "$base"..HEAD | awk '
+    /^\+\+\+ b\// { f = substr(\$0, 7); next }
+    /^\+/ && !/^\+\+\+/ {
+      line = substr(\$0, 2)
+      if (tolower(line) ~ /instead of|no longer|previously|used to|formerly|rather than|unlike the|not as a/ &&
+          tolower(line) !~ /(^|[^a-z])(is|are|was|were|be|been|being) used to/)
+        print f ": " line
+    }'
 done
 ```
 
@@ -97,7 +144,7 @@ So the plan of step 8, the report of step 14 and every stop have a fixed shape.
 - The last row of a plan is `│ 🟢 go │ land as shown`, word for word.
   Every choice that `go` makes is a `pick` row above it, with its default.
 
-A stop — a guard of steps 1 and 2, a branch of only working material at step 11, a conflict, a hook that blocks a command, a decision that `--no-confirm` leaves to the user (see *Authorization*) — has this shape:
+A stop — a guard of steps 1 and 2, a branch of only working material at step 11, a conflict, a hook that blocks a command, a decision that `--no-confirm` leaves to the user, a branch that `--quick` does not take (see *Authorization*) — has this shape:
 
 ```text
 stop      <step number, or the name of the hook>: <the cause in one line>
@@ -232,10 +279,13 @@ Nothing is changed until the user confirms.
    7a. **Find the branch's own commits cited inside the tree.**
    A changelog line, a design doc, a code comment may quote a commit hash.
    The landing rewrites those commits, so each such hash keeps resolving — the archive tag holds the object — while no longer being an ancestor of the trunk, which is what a reader following it, and any doc check, actually tests.
-   Find them on the added lines of the branch's own diff:
+   The snapshot's `[<trunk>] cited-hashes` and `[<trunk>] cited-ids` hold the result of the two loops below for `merge-base..HEAD`.
+   Run a loop by hand only on another input: the real base of step 5a, the message of step 12.
+   `--no-relative` is there because a `diff.relative` setting hides every change outside the current subdirectory.
+   The first loop reads the added lines of the branch's own diff:
 
    ```sh
-   git diff <base>..HEAD | grep '^+' | grep -v '^+++' | grep -oE '\b[0-9a-f]{7,40}\b' | sort -u |
+   git diff --no-relative <base>..HEAD | grep '^+' | grep -v '^+++' | grep -oE '\b[0-9a-f]{7,64}\b' | sort -u |
    while read -r h; do
      [ "$(git cat-file -t "$h" 2>/dev/null)" = commit ] || continue
      git merge-base --is-ancestor "$h" HEAD 2>/dev/null || continue
@@ -249,20 +299,17 @@ Nothing is changed until the user confirms.
    Only added lines are scanned — a line already on the trunk cannot cite a commit this branch made.
    `git grep -n <hash>` then names the file and line citing each hit, which is what step 8 has to show.
 
-   A repo that stamps `Change-Id` trailers cites commits by the short id as well, so the same scan runs a second time for ids — 8 or 32 letters `k` to `z`, resolved through the trailer before the ancestor tests, because English words match that alphabet too (`tomorrow` does):
+   A repo that stamps `Change-Id` trailers cites commits by the short id as well, so the same scan runs a second time for ids — 8 or 32 letters `k` to `z`, matched against the ids of the commits in `<base>..HEAD`, because English words match that alphabet too (`tomorrow` does):
 
    ```sh
-   git diff <base>..HEAD | grep '^+' | grep -v '^+++' | grep -oE '\b[k-z]{8}\b|\b[k-z]{32}\b' | sort -u |
+   ids=$(git log --format='%(trailers:key=Change-Id,valueonly)' <base>..HEAD)
+   git diff --no-relative <base>..HEAD | grep '^+' | grep -v '^+++' | grep -oE '\b[k-z]{8}\b|\b[k-z]{32}\b' | sort -u |
    while read -r id; do
-     for h in $(git log --all --format=%H --grep="^Change-Id: $id"); do
-       git merge-base --is-ancestor "$h" HEAD 2>/dev/null || continue
-       git merge-base --is-ancestor "$h" <base> 2>/dev/null && continue
-       echo "$id $h"
-     done
+     echo "$ids" | grep -q "^$id" && echo "$id"
    done
    ```
 
-   A word that resolves to nothing is not an id and falls out by itself; an id that resolves to a commit this landing rewrites is settled at step 11a exactly like a hash.
+   A word that matches no id falls out by itself; an id of a commit this landing rewrites is settled at step 11a exactly like a hash.
 
    7c. **Find prose that explains the change instead of the result.**
    A comment or a `.md` line written during the branch tends to define the new design by contrasting it with the one it replaces — "not as a pile of timestamped files", "instead of writing a flat copy", "`restore` used to overwrite it whole".
@@ -271,10 +318,11 @@ Nothing is changed until the user confirms.
    The rule is `CLAUDE.md`'s **The reader never saw the previous version**, together with the bullet under it on `# Not <alternative> because:` — a live alternative, never the implementation this change retired — both are stated there, and this step is only where they get enforced.
 
    Scan the added lines for contrast framing.
+   The snapshot's `[<trunk>] contrast-lines` holds the result of the scan below for `merge-base..HEAD`; run it by hand only with the real base of step 5a.
    Same input as 7a, a different test:
 
    ```sh
-   git diff --unified=0 <base>..HEAD | awk '
+   git diff --no-relative --unified=0 <base>..HEAD | awk '
      /^\+\+\+ b\// { f = substr(\$0, 7); next }
      /^\+/ && !/^\+\+\+/ {
        line = substr(\$0, 2)
@@ -298,6 +346,7 @@ Nothing is changed until the user confirms.
 8. **Judgement, then STOP.**
    First call the advisor, when the tool is available, on the branch and the plan below, and address what it finds; the plan or the report says what it changed.
    Why: the user asked for "advisor, then land" by hand again and again.
+   `--quick` skips this call (see *Authorization*).
    Two calls to make first:
    - Already one clean commit whose body passes step 6's outside-reader test?
      Then there is nothing to rewrite — skip straight to the merge (step 13).
@@ -354,7 +403,7 @@ Nothing is changed until the user confirms.
 
    `land`, `commit`, `merge`, `delete` and `go` always print.
 
-   **Wait for confirmation**, unless `--no-confirm` was passed (see *Authorization*).
+   **Wait for confirmation**, unless `--no-confirm` or `--quick` was passed (see *Authorization*).
 
 ## Landing
 
@@ -465,6 +514,7 @@ Nothing is changed until the user confirms.
 
     `landed`, `branch` and `next` always print, and `next` is the last row.
     After `--no-confirm` the report opens with the rows of the plan from `commit` to `warn`, because the user saw no plan.
+    After `--quick` it opens with the same rows without `advisor`.
     Do not push.
 
 ## Landing as more than one commit
@@ -474,5 +524,5 @@ Read it at step 8, once the chapter count comes out above one — or straight aw
 
 ## Related
 
-- `/git-intent-squash-archive` — the same shape, but inside the gi loop: it squashes and archives a canvas branch and stops there, without merging.
+- `/gi:git-intent-squash-archive` — a skill of the gi plugin of claude-nu, not of this repo; it exists only where that plugin is loaded. The same shape, but inside the gi loop: it squashes and archives a canvas branch and stops there, without merging.
   Reach for it when the branch is gi working material; reach for `land-branch` for ordinary development.
