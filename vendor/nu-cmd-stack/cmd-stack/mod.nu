@@ -51,12 +51,27 @@ export def --env init [
 # it, and it is not loaded. An agent writes stack files into the stacks folder,
 # `$env.CMD_STACK_DIR` or `~/.local/share/nushell/cmd-stacks`, and each show of
 # their commands is reported for `cmd-stack runs`.
+#
+# The first command goes into the command line of the next prompt, and that
+# show is reported like one from `ctrl+alt+k`.
 @category history
 @example "load a demo script as a stack" { cmd-stack load demo.nu }
+@example "load it and leave the command line empty" { cmd-stack load demo.nu --no-show }
+@example "load the newest stack of the stacks folder" { cmd-stack load --last-stack }
 export def --env load [
-    stack: string@"nu-complete cmd-stack stacks" # a name in the stacks folder, or a path to a file
+    stack?: string@"nu-complete cmd-stack stacks" # a name in the stacks folder, or a path to a file
+    --no-show # don't put the first command into the command line
+    --last-stack # load the newest file of the stacks folder, the first one that completion lists
 ]: nothing -> nothing {
-    let file = stack-path $stack
+    let file = if $last_stack == ($stack != null) {
+        error make {msg: 'give a stack or `--last-stack`: one of them, not both'}
+    } else if $last_stack {
+        stack-files
+        | get --optional 0.name
+        | if $in == null { error make {msg: $'no stacks in (stacks-dir)'} } else { }
+    } else {
+        stack-path $stack
+    }
 
     $env.cmd-stack = {
         index: -1
@@ -65,7 +80,13 @@ export def --env load [
     }
 
     print $'(stack-length) items loaded from ($file).'
-    print 'use `ctrl+alt+k` for the first one.'
+
+    if $no_show {
+        print 'use `ctrl+alt+k` for the first one.'
+    } else {
+        cmd-cycle 1
+        print 'the first one is in the command line; use `ctrl+alt+k` for the next.'
+    }
 }
 
 # Push commands to the end of cmd-stack
@@ -125,13 +146,7 @@ export def runs [
 }
 
 def "nu-complete cmd-stack stacks" []: nothing -> record {
-    let dir = stacks-dir
-
-    if not ($dir | path exists) { return {completions: []} }
-
-    let completions = ls $dir
-        | where type == file and ($it.name | str ends-with '.nu')
-        | sort-by modified --reverse
+    let completions = stack-files
         | each {|f|
             let blocks = stack-blocks $f.name
             let about = $blocks
@@ -158,6 +173,17 @@ def "nu-complete cmd-stack stacks" []: nothing -> record {
 
 def stacks-dir []: nothing -> path {
     $env.CMD_STACK_DIR? | default $default_dir | path expand
+}
+
+# The stack files of the stacks folder, newest first
+def stack-files []: nothing -> table {
+    let dir = stacks-dir
+
+    if not ($dir | path exists) { return [] }
+
+    ls $dir
+    | where type == file and ($it.name | str ends-with '.nu')
+    | sort-by modified --reverse
 }
 
 # The log of the shows of loaded commands, one JSON object per line.
