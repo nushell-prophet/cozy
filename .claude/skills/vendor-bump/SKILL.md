@@ -9,6 +9,11 @@ description: >
 
 # Vendor bump
 
+This skill is written for the monorepo of its author:
+`mono.yml` at the repo root, one worktree per project in `wtr/`, and `/mono-land`.
+If `mono.yml` and `wtr/` are not found, tell the user so,
+and run only the steps that do not need the monorepo.
+
 Refresh the cozy `vendor/` tree and produce one atomic commit per upstream repo whose files changed.
 The user has repeatedly asked for this split-by-repo grouping ("commit by groups"); never combine multiple repos into one commit.
 

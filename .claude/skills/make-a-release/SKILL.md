@@ -8,6 +8,11 @@ description: >
 
 # Make a Release
 
+This skill is written for the monorepo of its author:
+`mono.yml` at the repo root, one worktree per project in `wtr/`, and `/mono-land`.
+If `mono.yml` and `wtr/` are not found, tell the user so,
+and run only the steps that do not need the monorepo.
+
 Full release procedure for the cozy project.
 
 ## Replies
