@@ -7,10 +7,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-15
+
+### Added
+
+- nu-goodies: `nibble` renders a table for a human and an agent at once: quantities right-aligned, decimal points lined up, a large table cut at a character budget. (b7911c4)
+- claude-nu: `gi new` and `gi open` take `--model`, with model names as completions; `gi open --manager` lets the agent hand the code to a subagent and check the result. (3197cd1)
+- nu-cmd-stack: `cmd-stack load` puts the first command in the command line (`--no-show` keeps it empty), and `--last-stack` loads the newest stack. (89b4526)
+- Skills: new `40-recall-add`, `40-change-id` and `40-cozy-output-formatting`; only command skills reply in rows, other replies are Markdown. (fc267a9)
+
 ### Changed
 
-- Claude Code asks you to confirm `brew install`, `cargo install` and other install commands even under `--dangerously-skip-permissions`, and the global instructions tell agents to ask before they install software. The list is `permissions.ask` in `~/.claude/settings.json`.
-- `git diff` and `git show` print in the prompt of `less` how far down the diff you are, in percent.
+- Claude Code asks you to confirm `brew install`, `cargo install` and other install commands even under `--dangerously-skip-permissions`, and the global instructions tell agents to ask before they install software. The list is `permissions.ask` in `~/.claude/settings.json`. (e769d4f)
+- `git diff` and `git show` print in the prompt of `less` how far down the diff you are, in percent. (cd64708)
+- Helix: the system clipboard is the default yank register, and `gw` jump labels start on the home row. (d96d9e7)
+- The global instructions are shorter, and the rules that contradicted each other are merged; reference detail moved into skills. (d585958)
 
 ## [0.6.0] - 2026-11-12
 
@@ -879,7 +890,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - OSC 52 clipboard shim for sandbox-to-host copy. (2f44e98)
 - Supports `arm64` and `amd64` architectures via Docker sandbox.
 
-[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.6.0...HEAD
+[Unreleased]: https://github.com/nushell-prophet/cozy/compare/0.7.0...HEAD
+[0.7.0]: https://github.com/nushell-prophet/cozy/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/nushell-prophet/cozy/compare/0.5.2...0.6.0
 [0.5.2]: https://github.com/nushell-prophet/cozy/compare/0.5.1...0.5.2
 [0.5.1]: https://github.com/nushell-prophet/cozy/compare/0.5.0...0.5.1
