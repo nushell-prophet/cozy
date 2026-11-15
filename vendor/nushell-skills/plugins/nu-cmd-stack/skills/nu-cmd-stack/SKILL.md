@@ -10,11 +10,15 @@ A command copied from the chat breaks on wrapped lines and indents,
 and `!` in Claude Code runs bash, not Nushell.
 So write the commands to a stack file:
 the user loads it with `cmd-stack load <Tab>` when ready,
-and runs the commands one by one with `ctrl+alt+k` and Enter.
+or the newest one with `cmd-stack load --last-stack`.
+The load puts the first command into the command line,
+and the user runs it with Enter and gets each next one with `ctrl+alt+k`.
 
 Use it where the user has [nu-cmd-stack](https://github.com/nushell-prophet/nu-cmd-stack) with `cmd-stack load`;
 cozy loads it in every interactive nu out of the box, from `~/repos/nu-cmd-stack/cmd-stack`.
-A command for another machine — for example, the host of a container — goes as a code block.
+A command for another machine — for example, the host of a container — does not go in a stack file: the folder of the stacks and the history that `cmd-stack runs` reads are on this machine.
+Write it as a [dotnu](https://github.com/nushell-prophet/dotnu) embeds script in a folder that both machines see; in cozy, that is the workspace.
+The user runs `dotnu embeds-update <file>` there, and the output lands in the file as `# =>` lines for you to read.
 
 ## Replies
 
@@ -92,6 +96,8 @@ When the user says the commands ran:
 ```bash
 nu --commands 'use ~/repos/nu-cmd-stack/cmd-stack; cmd-stack runs 20261104-1530-check-the-branch | to nuon --pretty'
 ```
+
+`~/repos/nu-cmd-stack/cmd-stack` is the path in cozy; elsewhere, use the `cmd-stack/` directory of the user's clone of nu-cmd-stack.
 
 - There is one row for each command that a shell showed; `index` counts the commands, not the description.
 - `ran` is the history row that the shell ran after it showed the command.

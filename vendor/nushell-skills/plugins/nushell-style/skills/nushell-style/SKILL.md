@@ -43,7 +43,29 @@ The Bash tool escapes `!` → `\!`, breaking `!=` and `!~` in `nu -c`.
 Use a heredoc or temp file instead.
 See `references/testing.md` for workarounds.
 
+## Agent Tip: `o+e>|` Is Not a Pipe in Bash
+
+In Bash, `o+e>| cmd` is not a pipe — `>|` writes a file named `cmd`.
+That redirect syntax is Nushell-only.
+
+## Agent Tip: `else` Sits on the Line of the Closing Brace
+
+`else` has to sit on the same line as the closing brace: `} else {`, `} else if $x { … }`.
+A line that *starts* with `else` gives ``Command `else` not found``.
+The bodies may span as many lines as you want — only the position of `else` matters.
+
+## Agent Tip: Parentheses in `where` Turn a Column Name into a Command
+
+`where (a == 1 and b == 2)` fails with ``Command `a` not found``.
+Without the parens the same line works: `where a == 1 and b == 2`.
+For anything more complex use a closure: `where {|r| $r.a == 1 and $r.b > 2 }`.
+
 ## Agent Tip: Literal `(` in Interpolated Strings
+
+The usual shape of this error is a remark in parentheses inside a `print $"…"`: `print $"rows (was 635 before): ($n)"` tries to run `was` as a command.
+In the session transcripts of the maintainer it is the most repeated Nushell error of agents, and it is always the same shape: an explanation in words, in brackets, inside the string.
+Move the note out of the string.
+If it must stay, escape both parens — `\(was 635 before\)`.
 
 `\(` is an escape **only** in double-quoted interpolation `$"..."`.
 In `$'...'` the backslash is literal and `(` still starts a subexpression — parens cannot be escaped there at all.
@@ -306,7 +328,7 @@ The test is whether a reader must stop and follow each stage separately, not how
 
 `|` is the **only** operator that continues a line by itself.
 `++`, `+`, `and`, `or` and the rest are a parse error when the expression spans lines — leading gives ``Command `++` not found``, trailing gives `Incomplete math expression`.
-Wrap the whole expression in `( … )`, or rewrite it as a pipeline:
+Wrap the whole expression in `( … )` — inside parens both positions work — or rewrite it as a pipeline:
 
 ```nushell
 # Fails to parse
@@ -331,6 +353,10 @@ When body starts with pipeline command (`each`, `where`, `select`), input flows 
 Use empty `{ }` for the branch that should pass through unchanged:
 - `| if $cond { transform } else { }` — transform when true, pass through when false
 - `| if $cond { } else { transform }` — pass through when true, transform when false
+
+In a pipeline, an empty branch block `{}` = `{$in}` — it passes the input through, not null (`"abc" | if false { "x" } else { } | debug` → `abc`).
+Don't flag `else { }` as a bug: it's an intentional identity branch.
+A **missing** else branch is the opposite — it effectively passes nothing (`"abc" | if false { "x" } | describe` → `nothing`).
 
 ### Stateful Transforms
 Use `scan` for sequences with state: `use std/iter scan`
@@ -373,6 +399,8 @@ Each of these calls `def "main test"`:
 - `use toolkit.nu; toolkit main test` — `main` stays; `export` needed: yes
 - `use toolkit.nu *; main test` — bare names; `export` needed: yes
 
+After a plain `use toolkit.nu`, the name is `toolkit main test` — not `toolkit test`, and never a bare `main test`.
+
 **⚠ Common agent mistake** — using `use` (module mode) but calling with script-mode syntax:
 
 ```nushell
@@ -389,6 +417,7 @@ toolkit main test         # ✓
 ```
 
 When in doubt, prefer script mode (`nu script.nu subcommand`) — it's simpler and avoids the `main` path issue.
+When unsure about the names, look instead of guessing: `scope commands | where name =~ toolkit | get name`.
 
 → See [Nushell Scripts docs](https://www.nushell.sh/book/scripts.html#subcommands)
 

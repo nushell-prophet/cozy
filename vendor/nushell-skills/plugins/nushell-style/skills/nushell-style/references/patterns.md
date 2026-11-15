@@ -800,6 +800,11 @@ Error: nu::parser::extra_positional
 ```
 
 The error names `helper.nu`, a file that is correct and that you did not change, so bisecting it finds nothing.
+An imported body holding `$rows | update file { cwd-relative }` resolves `update` to the custom command and reads the closure as its string argument.
+The text of the error depends on the signature of the shadowing command, and no variant names `update`.
+With no parameter in the position of the closure it is `extra positional argument`, as above; with a string parameter there it is `Parse mismatch: expected non-block value: string` (both run on 0.116.2).
+`expected string, found closure` is a third text of the same failure (not rerun on 0.116.2).
+Wholesale and named-list imports behave the same, and a `_`-prefixed internal module is not exempt.
 
 **The fix is the `%` sigil, written wherever the builtin is called.**
 `%name` resolves to the builtin regardless of what is shadowing it:
@@ -826,6 +831,7 @@ Two limits:
 
 **On `alias "core length" = length`:** `std/assert` uses that instead, and it works, but it is not the modern answer — those aliases date to 2023-05-27 (`3005fe10e`), while `%` arrived in 0.112, and `nu-std` first used `%` in 0.117, for `%metadata` in `std/util`, after a user's alias of `metadata` broke it (source-checked, #19224).
 Prefer `%`; it needs no declaration, survives being copied into another file, and says at the call site which command is meant.
+Or move the shared code into a module that shadows nothing, which is what to do when several builtins are involved.
 
 ### Const for Static Data
 

@@ -25,11 +25,12 @@ claude-nu projects | claude-nu messages 'dropped --rename' --context 1 --include
 ## The user's prompts in a gi canvas
 
 A gi canvas session keeps the prompts in two places: the commits of the canvas, and the transcript.
-A commit by `<the user's name> (verbatim via Claude)`, with `+claude@` in the address, is a chat prompt that an agent carried into the canvas verbatim (from 2026-11-05).
+Where the gi plugin of claude-nu is used (its Canvas style makes these commits), a commit by `<the user's name> (verbatim via Claude)`, with `+claude@` in the address, is a chat prompt that an agent carried into the canvas verbatim (from 2026-11-05).
 
 ```nu
 # The user's commits to one canvas, once each, in order (6 s in a large repo). --all, because a
-# landed branch keeps them only in an archive tag; the Change-Id joins the copies a rebase leaves.
+# landed branch keeps them only in an archive tag; the Change-Id, where a commit-msg hook stamps
+# one, joins the copies a rebase leaves, and the sha stands in where there is none.
 # Drop the --author filter to see the agent's answers between them.
 git log --all $"--author=^(git config user.name)" --format='%aI%x09%h%x09%an%x09%(trailers:key=Change-Id,valueonly,separator=)%x09%s' -- todo/plan.md
 | lines | split column (char tab) date sha author id subject

@@ -1187,6 +1187,13 @@ const this_file = path self
 const this_dir = path self .
 ```
 
+`path self` runs only at parse time, so its result has to land in a `const`.
+Called inside a `def` body it fails with `this command can only run during parse-time`, and the help line — "try assigning this command's output to a const variable" — is the actual fix, not a hint.
+Put it at the top of the file: `const SCRIPT_DIR = path self | path dirname`.
+It also takes a path argument resolved against the script's own directory, which is how a script points at a neighbour without a hardcoded absolute path: `const SIBLING = path self ../CLAUDE.md`.
+Both forms work in a `const`, neither works in a command body.
+It needs a real file too, so `nu --commands 'path self'` fails — test it in a script, not with `-c`.
+
 ### Background jobs (v0.103, `--auto-kill` v0.117)
 
 ```nushell

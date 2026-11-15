@@ -67,6 +67,14 @@ let x = 42
 $x  # → 42
 ```
 
+**An edited module can stay stale** — the persistent state includes the loaded modules.
+When you edit a module, the old definition can keep being served, and `use module.nu` in the same command line does *not* reliably re-read the file — tested by bare name, by absolute directory and by direct path to `mod.nu`, all serving the stale copy.
+`use` is a parse-time keyword: the whole block is parsed before any of it runs, so `save` then `use` in one block cannot work either.
+The rule behind which edits get picked up is not established.
+Nothing fails loudly — a stale `toolkit/container.nu` once recreated the egress proxy of a cozy sandbox from the previous image digest and printed its usual green success.
+The reliable answer is a fresh process: run the file as a script (`nu toolkit.nu <subcommand>`), or a one-shot `nu --commands '…'` from the shell.
+The same staleness applies to a long-lived interactive REPL, not just this MCP server.
+
 **Structured output** — native Nushell commands return NUON, not text.
 No need to pipe to `to json`.
 Since 0.114 the evaluation result is emitted as NUON directly (previously it was wrapped as an escaped string inside the response — 0.114 also uses raw strings `r#'...'#` to cut escaping), and success/error responses are additionally exposed as MCP `structuredContent` JSON for clients that support structured tool output.

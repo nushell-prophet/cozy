@@ -12,9 +12,9 @@ Do not parse the transcripts by hand; when claude-nu cannot answer, `claude-nu r
 
 ## Load it
 
-In a cozy sandbox it is autoloaded for interactive nu, including the nushell MCP `evaluate` tool.
-From the Bash tool, `nu --commands` skips autoload: `nu --config ~/.config/nushell/autoload/modules-core.nu --commands '...'`, or put `use ~/repos/claude-nu/claude-nu` at the top of a script file (a bare `use claude-nu` is not found: `~/repos` is not in `NU_LIB_DIRS`) and run `nu file.nu` — nu inside bash quotes is painful.
-Elsewhere: clone [claude-nu](https://github.com/nushell-prophet/claude-nu), then `use /path/to/claude-nu/claude-nu`.
+Clone [claude-nu](https://github.com/nushell-prophet/claude-nu), then `use /path/to/claude-nu/claude-nu`.
+A one-shot `nu --commands` from the Bash tool loads no config, so put that `use` at the top of a script file and run `nu file.nu` — nu inside bash quotes is painful.
+In cozy, it is autoloaded for interactive nu, including the nushell MCP `evaluate` tool; from Bash, `nu --config ~/.config/nushell/autoload/modules-core.nu --commands '...'` loads it, and the clone is `~/repos/claude-nu/claude-nu` (a bare `use claude-nu` is not found: `~/repos` is not in `NU_LIB_DIRS`).
 End every pipeline you are going to read with `| to nuon`.
 
 ## The one rule: scope is to the left of the pipe
