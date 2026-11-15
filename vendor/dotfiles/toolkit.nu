@@ -10,9 +10,6 @@
 #   pull-from-machine        - Copy configs from machine into repo (module names + --docker supported)
 #   push-to-machine          - Copy configs from repo to machine; name the modules or pass --all (--dry-run for preview)
 #   fill-candidates          - Find new config files to potentially track
-#   cleanup-paths-not-in-csv - List repo files not tracked in CSV
-
-const excluded_locals = [**/.git/** **/.jj/** toolkit.nu macos-fresh/* paths-default.csv paths-docker.csv README.md .gitignore CLAUDE.md .DS_Store .claude/settings.local.json paths-local.csv]
 
 # Base-relative: glob --exclude matches them against each scanned parent dir.
 const excluded_scan_globs = [.git/**]
@@ -95,6 +92,8 @@ def source-is-repo []: nothing -> bool {
     if $top.exit_code != 0 { return false }
     let root = $top.stdout | str trim
     let here = pwd | path expand | path relative-to $root
+    # Why mono.yml: in the author's monorepo this repo is a subdirectory that `mono.yml`
+    # names; in a standalone clone `$here` is the root, and the first test answers.
     let mono_yml = $root | path join mono.yml
 
     $here == '' or (($mono_yml | path exists) and $here in (open $mono_yml | get subdir))
@@ -413,24 +412,4 @@ export def fill-candidates []: nothing -> nothing {
     | sort-by full-path
     | default '' status
     | save -f paths-local.csv
-}
-
-# List repo files not tracked in any paths-*.csv, optionally delete them
-export def cleanup-paths-not-in-csv [
-    --delete # git rm orphan files instead of just listing them
-]: nothing -> list<string> {
-    let exist_paths = glob **/* --exclude $excluded_locals --no-dir
-
-    let paths_in_csv = glob paths-*.csv
-        | each { open-configs $in | get path-in-repo }
-        | flatten
-        | uniq
-
-    let orphans = $exist_paths | path relative-to (pwd) | where $it not-in $paths_in_csv
-
-    if $delete and ($orphans | is-not-empty) {
-        $orphans | each { ^git rm $in }
-    } else {
-        $orphans
-    }
 }

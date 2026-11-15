@@ -35,3 +35,11 @@ inherits = "ayu_evolve"
 # stay readable; the scopes come from runtime/queries/markdown.inline/highlights.scm.
 "markup.critic.new" = "green"
 "markup.critic.old" = { fg = "gray", modifiers = ["italic"] }
+
+# Why: the `gw` labels take the two colours of the quick select labels of wezterm, olive and
+# black (wezterm-gui/src/overlay/quickselect.rs, and ANSI olive in term/src/color.rs),
+# with the pair inverted into a plate. wezterm fades the rest of the pane and labels a few
+# long segments; helix keeps the text coloured and labels every word, so a bright letter
+# alone is lost among them.
+# Hex values, not palette names: ayu redefines `yellow` and `black`.
+"ui.virtual.jump-label" = { fg = "#000000", bg = "#cdcd55", modifiers = ["bold"] }

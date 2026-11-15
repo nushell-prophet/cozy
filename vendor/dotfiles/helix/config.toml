@@ -6,7 +6,15 @@ auto-save = false
 bufferline = "multiple"
 cursorcolumn = true
 cursorline = true
+# Why: `y`, `d`, `c`, `p`, `P` and `R` then all use the system clipboard with their stock commands,
+# so each selection of a multicursor yank keeps its own text, and `"b p` reads the register it names.
+# Not a clipboard command on each key (`paste_clipboard_after`, `yank_to_clipboard`) because:
+# such a command ignores a selected register.
+default-yank-register = "+"
 insert-final-newline = true
+# Why: the words nearest to the cursor get the first letters of the alphabet, so the
+# home row goes first: the labels typed most often are the easiest to reach.
+jump-label-alphabet = "asdfghjklqwertyuiopzxcvbnm"
 line-number = "relative"
 mouse = false
 preview-completion-insert = true
@@ -43,20 +51,19 @@ center = []
 right = ["selections", "primary-selection-length", "position", "position-percentage", "spacer", "diagnostics", "workspace-diagnostics", "version-control"]
 
 [keys.normal]
-# Use system clipboard
-y = ["yank_main_selection_to_clipboard", "yank"]
-p = "paste_clipboard_after"
-P = "paste_clipboard_before"
-d = ["yank_main_selection_to_clipboard", "delete_selection"]
 X = ["extend_line_up", "extend_to_line_bounds"]
-C-j = ["extend_to_line_bounds", "delete_selection", "paste_after"]
-C-k = ["extend_to_line_bounds", "delete_selection", "move_line_up", "paste_before"]
+# move the selected lines down or up.
+# Why a macro that selects the `"` register first: the move cuts and pastes the lines, and with the
+# default register it would write the system clipboard on each press. A command sequence cannot
+# select a register, so the macro selects it and then runs the sequence, which sits under `F20`.
+C-j = '@""<F20>j'
+C-k = '@""<F20>k'
 C-right = "move_next_word_start"
 C-left = "move_prev_word_end"
 tab = "move_parent_node_end"
 S-tab = "move_parent_node_start"
 
-# reload the file, take the `✅` of a finished agent turn off the pane title, remember the
+# reload the file, take the `✅` or `⚠` of a finished agent turn off the pane title, remember the
 # text just read as the base of the next `\ k` or `\ l` merge (`nu-hx merge-save`), and say in
 # the status line what changed on disk since the last gi key or `C-r` (`nu-hx reload-note`).
 # Why base-note here: a reload is the one sync with the disk that no gi key makes.
@@ -66,6 +73,10 @@ S-tab = "move_parent_node_start"
 # Not `:sh` because: it sets `Command run` in a job callback after the whole key, over the
 # error of `:reload`. The cost of `%sh{}`: it blocks Helix while hx-nu starts.
 'C-r' = [":echo %sh{nu-hx reload-note r#'%{buffer_name}'#}", ":reload"]
+
+[keys.normal.F20]
+j = ["extend_to_line_bounds", "delete_selection", "paste_after"]
+k = ["extend_to_line_bounds", "delete_selection", "move_line_up", "paste_before"]
 
 [keys.insert]
 C-right = "move_next_word_start"
@@ -81,14 +92,13 @@ home = "no_op"
 end = "no_op"
 
 [keys.select]
-y = ["yank_main_selection_to_clipboard", "yank"]
-p = "paste_clipboard_after"
-P = "paste_clipboard_before"
-d = ["yank_main_selection_to_clipboard", "delete_selection"]
 tab = "extend_parent_node_end"
 S-tab = "extend_parent_node_start"
 
 [keys.normal."+"]
+# Some keys here call tools from outside this repo: `+ e` needs dotnu, and `+ t` needs the
+# `cozy git link` command of cozy. The commit keys (`+ g`, `+ G`, and both under `+ +`) need
+# zellij: `nu-hx commit` opens the editor of git with `zellij run`. Without them, only those keys fail.
 # Helper bodies live in nu-hx.nu (hx-nu loads it for every shell call). Bindings use
 # the :pipe family because only it sends the selection on stdin; a selection pasted
 # into the command as %{selection} breaks on unlucky content (e.g. a stray '#).
@@ -132,15 +142,17 @@ f = ":pipe nu-hx flatten" # flatten-to-nuon
 # Why :pipe-to and --block-until-exit: :reload re-reads the gutter's base (HEAD), so it must
 # run after the commit; :sh is async in Helix and `zellij run` returns at once by default.
 # keep_primary_selection: :pipe-to runs once per selection, which would commit twice.
+# `nu-hx keep` and `report` show a refusal before git starts, such as a file that git ignores.
 g = [
   ":update",
   ":new",
   ":buffer-close!",
   "keep_primary_selection",
   ''':pipe-to #commit the file→
-nu-hx commit --add r#'%{buffer_name}'#
+nu-hx keep r#'%{buffer_name}'# { nu-hx commit --add r#'%{buffer_name}'# }
 ''',
   ":reload",
+  ":sh nu-hx report r#'%{buffer_name}'#",
 ]
 
 # commit in a Zellij pane that takes this pane's place until git exits: git opens its own
@@ -223,9 +235,10 @@ g = [
   ":buffer-close!",
   "keep_primary_selection",
   ''':pipe-to #commit the file, line diff→
-nu-hx commit --add --line-diff r#'%{buffer_name}'#
+nu-hx keep r#'%{buffer_name}'# { nu-hx commit --add --line-diff r#'%{buffer_name}'# }
 ''',
   ":reload",
+  ":sh nu-hx report r#'%{buffer_name}'#",
 ]
 
 G = [
@@ -252,9 +265,10 @@ nu-hx commit --line-diff r#'%{buffer_name}'#
 # Why 3h after <esc>: `c … <esc>` leaves the cursor on the char after the typed text,
 # and 3h walks back over the closing `<<}`.
 # Why <gt> and <lt>: a bare > or < starts Helix key notation and fails to parse.
+# Why `""` before `c`: the cut span goes through the `"` register, not the system clipboard.
 # Why no spaces inside the tags: in CriticMarkup they become part of the text on accept.
 # With no selection it wraps the one char under the cursor: select the span first.
-i = '@c{==<C-r>"==}{<gt><gt><lt><lt>}<esc>3hi' # comment on the selection (CriticMarkup)
+i = '@""c{==<C-r>"==}{<gt><gt><lt><lt>}<esc>3hi' # comment on the selection (CriticMarkup)
 
 # settle the CriticMarkup substitution around the cursor: `a` keeps the new text, `r` the old one.
 # Why only a substitution: the other tags are quick to edit with standard helix keys.
@@ -272,6 +286,8 @@ r = '@ma{vgl<esc>:pipe nu-hx critic-drop-comment<ret><A-;>;ma{:pipe nu-hx critic
 
 [keys.normal."\\"]
 # the gi canvas keys: commit a canvas, hand it to Claude, find the agent's markers.
+# They are the editor half of the gi protocol of claude-nu. `\ l` also needs zellij, to find the
+# Claude pane of the tab, and `\ p` needs nu-cybergraph-git in the repo of the buffer.
 # Not a submenu of `+` because: a submenu costs one more key on every canvas action.
 
 # quick commit for a gi canvas: commit this file alone with a message that counts the markers
@@ -279,6 +295,8 @@ r = '@ma{vgl<esc>:pipe nu-hx critic-drop-comment<ret><A-;>;ma{:pipe nu-hx critic
 # no editor. `+ g` stays for commits with a written message.
 # Why no message to write: in a canvas the instructions live in the text; `\ l` then hands
 # the batch to Claude.
+# The commit also puts the file into the queue of the Claude pane of this tab (`nu-hx.nu`,
+# `queue-add`), so a `\ l` in any buffer sends it; `+ g` does the same.
 # The whole buffer goes to nu-hx on stdin (`select_all`), and `merge-save` writes it merged
 # with what the agent wrote to the file meanwhile; `:reload` then shows the merge, and the
 # gutter's base (HEAD) after the commit. `save_selection` and `jump_backward` keep the
@@ -298,9 +316,11 @@ nu-hx key r#'%{buffer_name}'# { nu-hx quick-commit r#'%{buffer_name}'# }
   ":sh nu-hx report r#'%{buffer_name}'#",
 ]
 
-# let Claude know: type `!git log -p` of this file's commits that Claude was not sent yet
-# into the Claude pane of this Zellij tab, with Enter. Unsaved or uncommitted edits are
-# committed first, as `\ k` does, so one key delivers an edit; `\ k` stays for batches.
+# let Claude know: type `!git show` of the commits that Claude was not sent yet into the
+# Claude pane of this Zellij tab, with Enter: the commits of this file, and of every file
+# that `\ k` or `+ g` committed in this tab since the last send. Unsaved or uncommitted edits
+# of this file are committed first, as `\ k` does, so one key delivers an edit; `\ k` stays
+# for batches.
 # While Claude works, `\ k` alone is enough: the gi Stop hook (claude-nu `register.ts`) hands
 # the commits over at the turn end, through `nu-hx tell-claude-at-stop`.
 # The buffer reaches nu-hx and comes back as `\ k` does, for the same reasons.

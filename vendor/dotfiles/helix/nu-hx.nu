@@ -324,20 +324,23 @@ def cybergraph-text [lines: list<string>]: nothing -> string {
     $body | each { str substring --grapheme-clusters $indent.. } | str join "\n" | $"($in)\n"
 }
 
+# The full CIDs of short CIDs, looked up in the store of the cybergraph: null for a short CID that
+# names no particle there; several particles that start with one short CID are an error.
+# Why `particle-expand` of the module: the store keeps each particle in the shard of its CID,
+# and the module holds the one rule for the shard.
+def cybergraph-expand [ctx: record shorts: list<string>]: nothing -> list<oneof<string, nothing>> {
+    cybergraph-run $ctx [
+        $"use ($ctx.module | path join _particle.nu | to nuon) particle-expand"
+        $"($shorts | to nuon) | each {|s| particle-expand ($ctx.root | path join cybergraph | to nuon) $s --optional } | to nuon"
+    ] | from nuon
+}
+
 # The full CID of a particle from its short form, looked up in the store of the cybergraph.
 def cybergraph-full-cid [ctx: record short: string]: nothing -> string {
-    let found = ls ($ctx.root | path join cybergraph particles)
-    | get name
-    | path basename
-    | where $it starts-with $short
-    | each { str replace --regex '\..*$' '' }
-    | uniq
+    let found = cybergraph-expand $ctx [$short] | first
+    if $found == null { error make --unspanned {msg: $"no particle ($short) in the cybergraph of ($ctx.root)"} }
 
-    match ($found | length) {
-        1 => $found.0
-        0 => (error make --unspanned {msg: $"no particle ($short) in the cybergraph of ($ctx.root)"})
-        _ => (error make --unspanned {msg: $"several particles start with ($short): ($found | str join ', ')"})
-    }
+    $found
 }
 
 # Refuse a line marker inside a multi-line string of a .nu file: `# <Qm…>` there is text of the
@@ -462,14 +465,15 @@ export def particles-check [
             $"($texts | to nuon) | each { into binary | cid-v0 } | to nuon"
         ] | from nuon
     }
-    let store = ls ($ctx.root | path join cybergraph particles) | get name | path basename
+    let shorts = $items | get short | uniq
+    let stored = if ($shorts | is-empty) { [] } else { $shorts | zip (cybergraph-expand $ctx $shorts) | where $it.1 != null | each { $in.0 } }
     let hashed = $items | where text != null | zip $cids | each {|p|
         $p.0 | update status (if ($p.1 | str starts-with $p.0.short) { 'ok' } else { 'changed' })
     }
 
     $hashed ++ ($items | where text == null)
     | sort-by from
-    | each {|i| $i | reject text | insert stored ($store | any {|f| $f starts-with $i.short }) }
+    | each {|i| $i | reject text | insert stored ($i.short in $stored) }
 }
 
 # Commit in a Zellij pane that takes this pane's place until git exits (the `+ g` / `+ G`
@@ -498,8 +502,12 @@ export def commit [
 
     if ($file | path type) != 'file' { error make {msg: $"not a file on disk: ($file)"} }
     let dir = $file | path dirname
+    let before = head-of $dir
 
-    if $add { ^git -C $dir add $file }
+    if $add {
+        refuse-ignored (^git -C $dir rev-parse --show-toplevel) $file
+        ^git -C $dir add $file
+    }
 
     let template = if $line_diff { null } else { mktemp --tmpdir commit-template.XXXXXX }
     if $template != null {
@@ -525,6 +533,8 @@ export def commit [
 
     ^zellij run --in-place --close-on-exit --block-until-exit --name commit --cwd $dir -- hx-nu --commands $"try { ($git_commit) } catch { null | input 'press Enter' }" | ignore
     if $template != null { rm $template }
+    # Why only when HEAD moved: the user may leave the editor with no commit.
+    if (head-of $dir) != $before { queue-add $file $before }
 }
 
 # The base of the three-way merge in `merge-save`: the text of the file as Helix read it
@@ -564,7 +574,7 @@ def base-text [file: path disk: string]: nothing -> string {
 }
 
 # The `C-r` binding, run by `:echo %sh{…}` just before `:reload`: remember the file on disk as
-# the base, take the `✅ ` off the pane title, and print what changed on disk since the last
+# the base, take the `✅ ` or `⚠ ` off the pane title, and print what changed on disk since the last
 # gi key or `C-r`, the base of `merge-save` (`base-text`):
 # `reloaded: +2 -2 lines, the first change at line 10`.
 # Not a file on disk: an empty line, and the error of `:reload` takes the status line.
@@ -651,7 +661,8 @@ const TRAILING_SPACES = '(?m)[ \t]+$'
 # change of ours, and where the agent changed the same line, the merge makes a conflict
 # that `:w` never makes. The agent's lines are formatted too, as on `:w`.
 # Why a topiary failure keeps the text: a file mid-edit, or a merge with `<<<<<<<` blocks,
-# does not parse, and its trailing spaces still go.
+# does not parse, and its trailing spaces still go. A machine without topiary (it comes with
+# cozy) saves the text unformatted too: `try` catches the missing command, which `complete` does not.
 # Why add a final newline where it is missing: `:w` adds one (`insert-final-newline`);
 # `\ k` and `\ l` write past Helix, where that setting does not reach.
 export def format-as-on-save [
@@ -662,9 +673,9 @@ export def format-as-on-save [
     match $extension {
         md => $text
         nu => {
-            let formatted = $text | ^topiary format --language nu | complete
+            let formatted = try { $text | ^topiary format --language nu | complete }
 
-            if $formatted.exit_code == 0 { $formatted.stdout } else { $text }
+            if $formatted.exit_code? == 0 { $formatted.stdout } else { $text }
         }
         _ => { return $text }
     }
@@ -768,6 +779,18 @@ def critic-settled [removed: list<string> added: list<string>]: nothing -> list<
     | compact
 }
 
+# Refuse a file that git ignores, before the `git add` of `\ k` or `+ g`.
+# Why: `git add` refuses it with only an exit code, and the user must see that the file is
+# saved and not committed, and which rule hides it.
+# `check-ignore` exits 0 only for an untracked file that a rule ignores; a tracked file passes.
+def refuse-ignored [root: path file: path]: nothing -> nothing {
+    let ignored = ^git -C $root check-ignore --verbose -- $file | complete
+    if $ignored.exit_code == 0 {
+        let rule = $ignored.stdout | split row (char tab) | first
+        error make {msg: $"($file | path relative-to $root) is saved, not committed: git ignores it \(($rule)\)"}
+    }
+}
+
 # Commit only this file, as it is on disk, with the `quick-commit-message` (the `\ k`
 # binding, after `nu-hx key` wrote the buffer): the step that hands a batch of canvas
 # instructions to `\ l`, without a message to write.
@@ -782,11 +805,76 @@ export def quick-commit [file: path]: any -> nothing {
     if (open --raw $file | lines | any { $in starts-with '<<<<<<< ' }) {
         error make {msg: $"($file | path basename) still has <<<<<<< blocks: resolve them, then `\\ k`"}
     }
+    refuse-ignored $root $file
     ^git -C $root add -- $file
     let diff = ^git -C $root diff --cached -- $file
 
     if ($diff | is-empty) { error make {msg: $"nothing to commit in ($file | path basename)"} }
+    let before = head-of $root
     ^git -C $root commit --quiet --message ($diff | quick-commit-message) -- $file
+    queue-add $file $before
+}
+
+# The queue of a Claude pane: the files the user committed in its tab and Claude was not sent
+# yet, under `~/.cache/gi/unsent/<zellij session>-<pane id of Claude>`, one line with the
+# absolute path per commit. `\ k` and `+ g` add to it, `\ l` and the gi Stop hook send all of
+# it and remove it, and a `Read` of the agent takes its file out (`tell-claude-on-read`).
+# Why a queue per Claude pane, not per file: the user edits several files for one agent, and
+# one `\ l` in any of the buffers has to deliver them all.
+# Why a line per commit: the gi plugin (claude-nu `register.ts`) shows the count of each file
+# in the status line of Claude, and it reads this file with no git and no nu.
+# The path repeats `helix-pane` of `tell-claude`: the plugin finds both by the pane of Claude.
+def queue-path [claude: any]: nothing -> path {
+    $nu.home-dir | path join .cache gi unsent $"($env.ZELLIJ_SESSION_NAME)-($claude)"
+}
+
+# The files of a queue, each once, in the order of their first commit; a file that is gone
+# from the disk is left out.
+def queue-files [queue: path]: nothing -> list<path> {
+    if not ($queue | path exists) { return [] }
+    open --raw $queue | lines | uniq | where ($it | path type) == 'file'
+}
+
+# Add the file to the queue of the Claude pane of this tab, after a commit of the user on top
+# of the commit `before` (empty: the first commit of the repo).
+# Outside zellij, and in a tab with no Claude pane, there is nobody to tell: nothing is kept.
+# Why an error with several Claude panes and none launched for this file: the commit is
+# made, and the user has to know that no pane will be sent it.
+# A file that was never sent gets its text at `before` as the sent one: without it `unsent`
+# starts at the last commit of Claude to the file, or at the first commit of the file, and
+# the first `\ l` would send years of the user's commits to a file Claude never wrote.
+def queue-add [file: path before: string]: nothing -> nothing {
+    if ($env.ZELLIJ_PANE_ID? | is-empty) { return }
+
+    let claudes = ^zellij action list-panes --json --command
+        | from json
+        | claude-panes $file ($env.ZELLIJ_PANE_ID | into int)
+
+    if ($claudes | is-empty) { return }
+    if ($claudes | length) > 1 {
+        error make {msg: $"($file | path basename) is committed, not queued for Claude: ($claudes | length) Claude panes in this tab"}
+    }
+    let file = $file | path expand
+    let root = ^git -C ($file | path dirname) rev-parse --show-toplevel
+    let ref = sent-ref $file
+
+    if $before != '' and (^git -C $root rev-parse --quiet --verify $ref | complete).exit_code != 0 {
+        let text = ^git -C $root rev-parse --quiet --verify $"($before):($file | path relative-to $root)" | complete
+        if $text.exit_code == 0 { ^git -C $root update-ref $ref ($text.stdout | str trim) }
+    }
+    let queue = queue-path $claudes.0.id
+    mkdir ($queue | path dirname)
+    $"($file)\n" | save --append $queue
+}
+
+# The commit a repo stands on; empty in a repo with no commit yet, where git exits non-zero.
+def head-of [dir: path]: nothing -> string {
+    ^git -C $dir rev-parse --quiet --verify HEAD | complete | get stdout | str trim
+}
+
+# The ref that remembers the text of a file as Claude was last sent it (`unsent`).
+def sent-ref [file: path]: nothing -> string {
+    $"refs/gi/sent/($file | path expand | hash sha256 | str substring 0..15)"
 }
 
 # The user's commits to a file that Claude has not been sent, oldest first, and the text of the
@@ -814,7 +902,7 @@ export def quick-commit [file: path]: any -> nothing {
 export def unsent [file: path]: nothing -> record<root: string, base: string, shas: list<string>, ref: string, text: string> {
     let file = $file | path expand
     let root = ^git -C ($file | path dirname) rev-parse --show-toplevel
-    let ref = $"refs/gi/sent/($file | hash sha256 | str substring 0..15)"
+    let ref = sent-ref $file
     let tip = ^git -C $root rev-parse --short=12 HEAD
     let rel = $file | path relative-to $root
     # `complete`, because a missing ref is a normal case and git exits 1 for it, and so is a
@@ -838,28 +926,18 @@ export def unsent [file: path]: nothing -> record<root: string, base: string, sh
     {root: $root base: $base shas: $shas ref: $ref text: (do $blob_at $tip)}
 }
 
-# What `\ l` sends for a file: the `!git show` line of its `unsent` commits, and the text that
-# the ref remembers once it is sent.
-# Why -C and the absolute path: Claude's cwd need not be the one of Helix.
-export def tell-claude-line [file: path]: nothing -> record<line: string, ref: string, text: string> {
-    let file = $file | path expand
-
-    # Why refuse a dirty file: the line shows commits only, so Claude would read an older
-    # text than the one on screen and nothing would say so.
-    if (^git -C ($file | path dirname) status --porcelain -- $file | is-not-empty) {
-        error make {msg: $"($file | path basename) has uncommitted changes: commit them with `\\ k` first"}
-    }
-    let unsent = unsent $file
-
-    # Why refuse an empty range: the line alone starts a Claude turn, here over nothing.
-    if ($unsent.shas | is-empty) {
-        error make {msg: $"no new commits of yours to ($file | path basename) since ($unsent.base)"}
-    }
-    {line: $"!(show-line $unsent $file)" ref: $unsent.ref text: $unsent.text}
+# The `unsent` records of the files that have commits to send, each with its `file`.
+def unsent-of [files: list<path>]: nothing -> table {
+    $files
+    | each {|file| unsent $file | insert file ($file | path expand) }
+    | where ($it.shas | is-not-empty)
 }
 
+# The `git show` line for the `unsent-of` records: one command per repo, joined with `;`.
 # Why `git show <shas>`, not `git log <range>` with the author filter: the filter needs a `!` in
 # the line, and the line runs in Claude's bash mode.
+# Why the commits of all the files in one command, by commit time: the user edits the files
+# in one order, and a later commit wins over an earlier one, whatever file it is in.
 # Why a format of its own: `format.pretty` is made for a human in lazygit, and the user saw an
 # agent cut its needless tokens with a `--format`. The commits are the user's, made a moment
 # ago, so the date and the author tell Claude nothing; the subject of a `gi:` commit is the
@@ -867,13 +945,36 @@ export def tell-claude-line [file: path]: nothing -> record<line: string, ref: s
 # Not `--- %h`, as in that agent command, because: the diff under it has a `--- a/<file>` line.
 # Not a bare format string because: it means `tformat:`, which adds a second blank line before
 # each diff.
-def show-line [unsent: record file: path]: nothing -> string {
-    $"git -C ($unsent.root) show '--format=format:%h %s%n%b%+N' ($unsent.shas | str join ' ') -- ($file)"
+def show-line [unsents: table]: nothing -> string {
+    $unsents
+    | group-by root --to-table
+    | each {|repo|
+        let shas = ^git -C $repo.root show --no-patch --format=%ct%x09%h ...($repo.items.shas | %flatten | uniq)
+            | lines
+            | parse "{time}\t{sha}"
+            | sort-by { $in.time | into int }
+            | get sha
+
+        $"git -C ($repo.root) show '--format=format:%h %s%n%b%+N' ($shas | str join ' ') -- ($repo.items.file | str join ' ')"
+    }
+    | str join '; '
+}
+
+# Remember the `unsent-of` records as sent: each ref takes the text of its file at the tip.
+def mark-sent [unsents: table]: nothing -> nothing {
+    $unsents | each {|u| ^git -C $u.root update-ref $u.ref $u.text } | ignore
+}
+
+# The queue of the Claude pane that this process runs in, for the commands that the gi
+# plugin calls; null outside zellij.
+def own-queue []: nothing -> any {
+    if ($env.ZELLIJ_PANE_ID? | is-empty) or ($env.ZELLIJ_SESSION_NAME? | is-empty) { return null }
+    queue-path $env.ZELLIJ_PANE_ID
 }
 
 # The `\ l` of a turn end, for the Stop hook of the gi plugin (claude-nu `register.ts`): print
-# the `git show` line of the file's `unsent` commits, without the `!`, and remember them as
-# sent; print nothing when there are none.
+# the `git show` line of the `unsent` commits of the canvas and of the queued files, without
+# the `!`, and remember them as sent; print nothing when there are none.
 # Why: the user commits with `\ k` while Claude works, and a `\ l` for each batch is one action
 # too many; the hook hands them over when the turn ends.
 # Why no refusal of a dirty file: at a turn end the uncommitted part is the user's draft or
@@ -881,17 +982,46 @@ def show-line [unsent: record file: path]: nothing -> string {
 # Why remember at once, as `tell-claude` does: the range is fixed when it is handed over, so
 # the next `\ l` does not send the same commits again.
 export def tell-claude-at-stop [file: path]: nothing -> string {
-    let file = $file | path expand
-    let unsent = unsent $file
+    let queue = own-queue
+    let files = if $queue == null { [] } else { queue-files $queue }
+    let unsents = unsent-of ([($file | path expand)] | append $files | uniq)
 
-    if ($unsent.shas | is-empty) { return '' }
-    ^git -C $unsent.root update-ref $unsent.ref $unsent.text
-    show-line $unsent $file
+    if $queue != null { rm --force $queue }
+    if ($unsents | is-empty) { return '' }
+    mark-sent $unsents
+    show-line $unsents
 }
 
-# Take the `✅ ` of the gi Stop hook from the title of this pane (the `C-r` binding): the user has
-# read the answer. `DONE_MARK` in the gi plugin (claude-nu `register.ts`) repeats the prefix.
-# Why only a title with the mark: a name the user gave the pane stays.
+# For the gi plugin, after the agent read `file` with its Read tool: when the file is the
+# canvas or is in the queue, and has `unsent` commits, print them with their diffs, remember
+# them as sent and take the file out of the queue; else print nothing.
+# Why the diffs and not only a mark that the file is read: the Read tool gives the text as it
+# is now, and an instruction is in what changed — a line the user deleted, or one new `!!`
+# among hundreds of lines.
+# Why printed, not a command to run: the agent cannot skip what is already in its context.
+# Why `--no-relative`: with `diff.relative` set, a diff in another folder prints empty.
+export def tell-claude-on-read [file: path --canvas: path]: nothing -> string {
+    let file = $file | path expand
+    let queue = own-queue
+    let queued = if $queue == null { [] } else { queue-files $queue }
+
+    if $file not-in ($queued | append ($canvas | default [] | path expand)) { return '' }
+    let unsents = unsent-of [$file]
+
+    if $queue != null and $file in $queued {
+        let rest = open --raw $queue | lines | where $it != $file
+        if ($rest | is-empty) { rm --force $queue } else { $rest | str join (char newline) | $"($in)\n" | save --force $queue }
+    }
+    if ($unsents | is-empty) { return '' }
+    mark-sent $unsents
+    ^git -C $unsents.0.root show --no-relative --no-color --no-ext-diff '--format=format:%h %s%n%b%+N' ...$unsents.0.shas -- $file
+}
+
+# Take the `✅ ` of the gi Stop hook, or the `⚠ ` of a turn that an API error ended, from the
+# title of this pane (the `C-r` binding): the user has read the answer. `DONE_MARK` and
+# `ERROR_MARK` in the gi plugin (claude-nu `register.ts`) repeat the prefixes.
+# Why only a title with a mark: a name the user gave the pane stays.
+# Why not the `⏳ ` of a turn in work: `\ l` runs this too, and the agent still works then.
 export def done-mark-clear []: any -> nothing {
     let id = $env.ZELLIJ_PANE_ID? | default '' | into string
     if ($id | is-empty) { return }
@@ -902,21 +1032,27 @@ export def done-mark-clear []: any -> nothing {
     | get --optional 0.title
     | default ''
 
-    if ($title | str starts-with '✅ ') {
+    if (['✅ ' '⚠ '] | any {|mark| $title | str starts-with $mark }) {
         ^zellij action undo-rename-pane --pane-id $"terminal_($id)"
     }
 }
 
-# The pane id of the Claude session in the tab of pane `me`, from `zellij action list-panes
-# --json --command`. Among several Claude panes, the one launched for this file wins
-# (`gi open` puts the canvas path in its command line); errors when that leaves 0 or 2+.
-export def tell-claude-pane [file: path me: int]: list<record> -> int {
+# The Claude panes in the tab of pane `me`, from `zellij action list-panes --json --command`.
+# Among several, the ones launched for this file win (`gi open` puts the canvas path in the
+# command line).
+def claude-panes [file: path me: int]: list<record> -> list<record> {
     let panes = $in | where is_plugin == false
     let tab = $panes | where id == $me | get 0.tab_id
     let claudes = $panes
         | where tab_id == $tab and id != $me and ($it.pane_command? | default '' | str contains 'claude')
     let bound = $claudes | where pane_command =~ ($file | path basename)
-    let pick = if ($bound | is-empty) { $claudes } else { $bound }
+
+    if ($bound | is-empty) { $claudes } else { $bound }
+}
+
+# The pane id of the one Claude session of `claude-panes`; errors when there are 0 or 2+.
+export def tell-claude-pane [file: path me: int]: list<record> -> int {
+    let pick = $in | claude-panes $file $me
 
     if ($pick | length) != 1 {
         error make {msg: $"want one Claude pane in this tab, found ($pick | length): ($pick | get title | str join ', ')"}
@@ -924,22 +1060,42 @@ export def tell-claude-pane [file: path me: int]: list<record> -> int {
     $pick.0.id
 }
 
-# Type the `tell-claude-line` and Enter into the Claude pane of this tab (the `\ l` binding),
-# so Claude reads the new commits without a switch to its pane; then remember the text as sent.
+# Type the `!git show` line of the `unsent` commits and Enter into the Claude pane of this tab
+# (the `\ l` binding), so Claude reads the new commits without a switch to its pane; then
+# remember them as sent. The line holds the commits of this file and of every file in the
+# queue of that pane, so one `\ l` in any buffer delivers all that `\ k` and `+ g` committed.
 # A file with uncommitted changes (the buffer, written by `nu-hx key` just before) is
 # committed first, as `\ k` does: one key per delivery.
+# Why `--ignored`: plain `status` prints nothing for an ignored file, and `quick-commit`
+# must run to refuse it.
+# Why refuse a dirty file after that: the line shows commits only, so Claude would read an
+# older text than the one on screen and nothing would say so. Only this file: the buffers of
+# the other files are not in reach, and their commits are what the user chose to hand over.
+# Why refuse an empty send: the line alone starts a Claude turn, here over nothing.
+# Why -C and the absolute paths in the line: Claude's cwd need not be the one of Helix.
 # Why typed into the open pane, not a second `claude --resume`: a second process on the
 # session forks its transcript, and the open pane never sees the turn (tested with -p).
 # Why write-chars, not `zellij action paste`: Claude folds a bracketed paste into a chip.
 export def tell-claude [file: path]: any -> nothing {
+    let file = $file | path expand
     let claude = ^zellij action list-panes --json --command
         | from json
         | tell-claude-pane $file ($env.ZELLIJ_PANE_ID | into int)
     let pane = $"terminal_($claude)"
-    let root = ^git -C ($file | path expand | path dirname) rev-parse --show-toplevel
+    let root = ^git -C ($file | path dirname) rev-parse --show-toplevel
 
-    if (^git -C $root status --porcelain -- ($file | path expand) | is-not-empty) { quick-commit $file }
-    let send = tell-claude-line $file
+    if (^git -C $root status --porcelain --ignored -- $file | is-not-empty) { quick-commit $file }
+    if (^git -C $root status --porcelain -- $file | is-not-empty) {
+        error make {msg: $"($file | path basename) has uncommitted changes: commit them with `\\ k` first"}
+    }
+    let queue = queue-path $claude
+    let files = [$file] | append (queue-files $queue) | uniq
+    let unsents = unsent-of $files
+
+    if ($unsents | is-empty) {
+        rm --force $queue
+        error make {msg: $"no new commits of yours to ($files | path basename | str join ', ')"}
+    }
 
     # Why a file: the Stop hook of the gi plugin (claude-nu `register.ts`, `helixPane`, the same
     # path) has to know which pane to mark, and only this side knows both panes.
@@ -948,9 +1104,10 @@ export def tell-claude [file: path]: any -> nothing {
     $env.ZELLIJ_PANE_ID | into string | save --force ($panes | path join $"($env.ZELLIJ_SESSION_NAME)-($claude)")
     done-mark-clear
 
-    ^zellij action write-chars --pane-id $pane $send.line
+    ^zellij action write-chars --pane-id $pane $"!(show-line $unsents)"
     ^zellij action send-keys --pane-id $pane Enter
-    ^git -C $root update-ref $send.ref $send.text
+    mark-sent $unsents
+    rm --force $queue
 }
 
 # The pane id of the one nu shell in the tab of pane `me`, from `zellij action list-panes

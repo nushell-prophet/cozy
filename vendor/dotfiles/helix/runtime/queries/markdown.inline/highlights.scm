@@ -1,5 +1,5 @@
 ; A whole copy of helix's runtime/queries/markdown.inline/highlights.scm, with the
-; strikethrough pattern changed for CriticMarkup. This file replaces the built-in one, so a later upstream fix to
+; strikethrough pattern changed for CriticMarkup and the stamp tags added at the end. This file replaces the built-in one, so a later upstream fix to
 ; inline highlighting does not reach here: after a helix upgrade, copy the upstream
 ; file again and keep the change.
 ; The copied part matched helix d76affac7 (25.07-990) on 2026-10-30.
@@ -58,3 +58,10 @@
 (image "!" @punctuation.special)
 (inline_link ["[" "]" "(" ")"] @punctuation.bracket)
 (shortcut_link ["[" "]"] @punctuation.bracket)
+
+; Why: the block tags of a particle stamp (`<!-- Qm… -->`, `<!-- /Qm… -->`) stay grey
+; inside an indented canvas block too, which is parsed inline (markdown/injections.scm).
+; Not the upstream html injection because: in a block with several tags it colours
+; only the last one.
+((html_tag) @comment
+  (#match? @comment "^<!-- /?Qm"))

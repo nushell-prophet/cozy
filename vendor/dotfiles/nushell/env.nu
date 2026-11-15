@@ -54,7 +54,7 @@ def create-left-prompt []: nothing -> string {
     # ~/.claude/sessions/<pid>.json, and its `cwd` is the start path.
     # The file outlives a crashed session and the kernel reuses its pid, so on
     # Linux a session counts only while /proc shows that pid, not a zombie, with
-    # the same start time — the check of mono .claude/hooks/worktree-guard.sh.
+    # the same start time — the check of `proc-alive` in claude-nu/live-sessions.nu.
     # macOS has no /proc: there the pid alone must be alive.
     let proc_alive = {|s|
         try { open --raw $'/proc/($s.pid)/stat' } catch { '' }

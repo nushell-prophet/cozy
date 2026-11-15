@@ -1,5 +1,6 @@
 // Zellij configuration — macOS is the source of truth.
 // `cozy swap-zellij-super` rewrites Super→Alt in place for Windows hosts.
+// That command comes with cozy; without cozy, make the same edit by hand.
 //
 // Modifier conventions (keep these for reliable text replacement):
 //   - Title case for all modifiers: Super, Shift, Alt, Ctrl

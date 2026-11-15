@@ -4,7 +4,9 @@
 #   (48;2;R;G;B) but handles 256-palette backgrounds (48;5;N) correctly.
 #   Without these, hunk backgrounds disappear inside lazygit.
 # Docker sandbox has no system clipboard. We use the pbcopy OSC 52 shim
-# installed in the Dockerfile (see cozy/Dockerfile, cozy/pbcopy).
+# installed in the Dockerfile (see cozy/Dockerfile, cozy/docker-files/pbcopy).
+# On macOS pbcopy is a system command. On Linux without cozy, put a pbcopy on PATH
+# (an OSC 52 shim, or a wrapper of `xclip -selection clipboard` / `wl-copy`), or change this line.
 os:
   # Not `printf {{text}}` (the lazygit docs example) because: printf reads that argument as a format.
   #   A copied diff hunk keeps its +/- prefixes, so it starts with '-': printf fails with "invalid option",

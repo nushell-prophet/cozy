@@ -81,6 +81,8 @@ $env.config.max_last_result_size = 10mb
 # Keys collision-checked against 7.8k history entries (never typed as command or argument token) and PATH.
 
 #:nu-show-09
+# `cn`, `cno` and `cnn` need the claude-nu module (github.com/nushell-prophet/claude-nu);
+# without it they expand to a command that is not found.
 $env.config.abbreviations = {
     cs: 'claude --dangerously-skip-permissions'
     cn: 'claude-nu'
