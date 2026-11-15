@@ -1,9 +1,6 @@
 # Sandbox Environment
 
 This file is appended to `~/.claude/CLAUDE.md` by every cozy install path, so check which one you are on before relying on the environment notes below.
-Its neutral rules live in two parallel files: `docker-files/global-claude.md` in the cozy source repo, and the cozy catalog block of `~/.claude/CLAUDE.md` on the running machine.
-An edit to either one goes into the other in the same task: the running machine gets the source file only at the next rebuild.
-Why: the maintainer asked for the second copy by hand again and again.
 The usual one is the `debian:13-slim` image run under Apple `container` (or plain `docker`), rootless and behind an egress allowlist.
 The others are an `sbx` sandbox — Docker's standalone sandbox runtime, on Ubuntu — and a plain host install (macOS or Linux).
 Under Apple `container` and `sbx` the workspace is mounted at its original host path; under `docker compose` it is `/home/agent/workspace`.
@@ -27,7 +24,7 @@ Under Apple `container` and `sbx` the workspace is mounted at its original host 
 Nushell is the primary shell.
 Modules are in `~/repos/`:
 
-- `nu-goodies` — the user's personal nushell commands, gathered over time from many areas; some may be outdated
+- `nu-goodies` — the household tools of the cozy author: nushell commands he gathered over the years for whatever came up; a few may have gathered dust
 - `dotnu` — literate programming for Nushell: executable scripts that embed their own output, plus commands to work with Nushell code
 - `numd` — Nushell-native markdown processor that updates `nu` code blocks
 - `nu-cmd-stack` — command history stacking for interactive use in the REPL, and the way to hand commands to the user (*Commands for the user go in a file*, below)
@@ -105,7 +102,7 @@ The Nushell MCP server is registered in `~/.claude.json`; two caveats about its 
 
 - **The session persists — and re-running `use` may not fix it.** All `evaluate` calls share one long-lived nushell state: variables, `$env`, and loaded modules stay between calls.
   When you edit a module, the old definition can keep being served, `use module.nu` does *not* reliably re-read the file, and nothing fails loudly.
-  **The reliable answer is a fresh process: run the file as a script, `nu toolkit/container.nu restart <name>`, or a one-shot `nu -c '…'` from Bash.** The same staleness applies to a long-lived interactive REPL, not just this MCP server.
+  **The reliable answer is a fresh process: run the file as a script, or a one-shot `nu -c '…'` from Bash.** The same staleness applies to a long-lived interactive REPL, not just this MCP server.
   `references/mcp.md` of the `nushell-style` skill has what was tested.
 - **It skips the login environment.** The MCP `nu` is spawned directly, not from a login shell, so it never sources `/etc/sandbox-persistent.sh` — anything that lives only in that file is absent there.
   Real container ENV (`XDG_*`, `HELIX_RUNTIME`, `LANG`) is inherited fine, so the gap is easy to miss.
@@ -120,7 +117,7 @@ The Nushell MCP server is registered in `~/.claude.json`; two caveats about its 
 - **A commit is named by its `Change-Id` where it has one, by sha otherwise.** Repos here rewrite history often — amend, rebase, squash — and a sha dies with each rewrite, while the `Change-Id: <32 reverse-hex letters>` trailer travels inside the message.
   So a reference to a commit, in a note or a report, is the first 8 letters of the trailer when the commit carries one; `git log -1 --format='%(trailers:key=Change-Id,valueonly)'` reads it, and `git log --all --grep='^Change-Id: <id>'` finds it again.
   A repo without the `commit-msg` hook that stamps the trailer stays on shas, and nothing warns about a missing hook: `ls "$(git rev-parse --git-common-dir)/hooks/commit-msg"` is the check.
-- **A commit names the session that wrote it in a `Session:` trailer.** `git log -1 --format='%(trailers:key=Session,valueonly)' <sha>` names the session of a commit, `git log --all --grep='^Session: <uuid>'` lists the commits of a session, and `git branch --contains <sha>` gives their branches.
+- **A commit names the session that wrote it in a `Session:` trailer** — where the cozy `commit-msg` hook is installed: it stamps `Session:` from `CLAUDE_CODE_SESSION_ID` beside the `Change-Id`. `cozy git install-change-id-hook` installs it in the repo of the current directory (a path argument names another repo); a repo without it gets neither trailer. `git log -1 --format='%(trailers:key=Session,valueonly)' <sha>` names the session of a commit, `git log --all --grep='^Session: <uuid>'` lists the commits of a session, and `git branch --contains <sha>` gives their branches.
   Ask git this before you mine transcripts for which session or which branch did something.
 - **A file in another repo is named by a change-id link: `<repo>@<change-id>:<path in repo>`.** `cozy git link <file>` writes one, and `cozy git resolve <link>` prints the file at that commit.
   So a reference in a todo or a commit body is a change-id link, or a path plus a quote — never a bare sha, which the next rebase orphans.
