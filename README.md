@@ -191,10 +191,11 @@ There are likely more caveats I haven't tested.
 ### nu-goodies
 
 A personal collection of everyday Nushell commands developed over time.
-In the AI context, two commands may be especially useful:
+In the AI context, three commands may be especially useful:
 
 - `example` — appended to a pipeline (`ls | first 3 | example`), it grabs the command text from history and formats command + output as a copyable snippet (wraps output in `# =>` comments and the command in `nu -c '...'`)
 - `copy-out` — grabs commands with their output from Zellij pane scrollback and copies them to the clipboard (output lines are prefixed with `# =>`)
+- `nibble` — appended to a pipeline (`ls | nibble`), it prints a table that a human and an agent can both read: no borders, a type row under the column names, and for each hidden cell the path that fetches it; `--glimpse` turns a wide table on its side
 
 ### nu-kv
 
@@ -231,7 +232,7 @@ Main commands:
 - `claude-nu live-sessions` — the Claude Code sessions running on this machine right now, read from Claude Code's own registry; `session` and `project` pipe on into `messages`
 - `claude-nu export-session` — export session dialogue as markdown; it returns the text, so saving is the shell's job (`| save session.md`)
 - `claude-nu project-move` — retarget Claude's stored state after a project directory moves
-- `claude-nu gi` — status of the git-intent protocol in the current repo; nothing is installed into the repo — `gi open` loads the Canvas style and skills as a plugin for that launch only, `gi new <slug>` makes a canvas named from the slug, switches to a new branch named after the slug (`--current-branch` stays put) and opens it in your editor, `gi import <slug>` turns a session's dialogue into a canvas named the same way, `gi open <doc>` launches a session bound to that canvas, and `gi open --fork <doc>` copies the canvas to the next name in its series (`plan.md` → `plan_1.md`) and opens the copy in a fresh session
+- `claude-nu gi` — status of the git-intent protocol in the current repo; nothing is installed into the repo — `gi open` loads the Canvas style and skills as a plugin for that launch only, `gi new <slug>` makes a canvas named from the slug, switches to a new branch named after the slug (`--current-branch` stays put) and opens it in your editor, `gi import <slug>` turns a session's dialogue into a canvas named the same way, `gi open <doc>` launches a session bound to that canvas, and `gi open --fork <doc>` copies the canvas to the next name in its series (`plan.md` → `plan_1.md`) and opens the copy in a fresh session; `gi new` and `gi open` take `--model`, and `gi open --manager` starts a mode where the agent hands the code to a subagent and checks the result
 - `claude-nu example` — pick one of the module's own example pipelines and paste it into the command line, ready to edit and run
 
 The environment also includes Claude Code skills for building Nushell completions, writing opinionated Nushell code, practicing literate programming with numd and dotnu, inspecting or rewriting the Nushell user REPL command history, handing commands to the user as `cmd-stack` files, and reading Claude Code sessions with claude-nu.
