@@ -130,7 +130,8 @@ export def main [
     }
     # Why git: the apt git the Dockerfile installs for the Homebrew installer is
     # frozen at Debian stable (2.47), too old for `git fast-export
-    # --signed-commits` in mono.nu. Brew git sits earlier on PATH and tracks upstream.
+    # --signed-commits` in mono.nu, the toolkit of the author's monorepo (not part of cozy).
+    # Brew git sits earlier on PATH and tracks upstream.
     ^brew install nushell git fzf lazygit helix zellij broot git-delta visidata bat topiary fd jj git-lfs
     ^brew cleanup --prune=all
 

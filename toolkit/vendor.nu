@@ -4,6 +4,8 @@
 #
 # Default: download tarballs from GitHub (no git clone, no auth needed)
 # --local: copy from mono/<repo> when the mono holds the repo, else from the sibling <repo> next to mono/
+#   The mono is the monorepo of the cozy author. In a standalone clone of cozy, the "mono" below is that
+#   clone, and every repo is read from the sibling clone next to it.
 
 const cozy_root = path self ..
 const vendor_yml = path self vendor.yml

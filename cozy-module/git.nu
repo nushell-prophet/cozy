@@ -4,8 +4,8 @@
 # reference from one repo into another can survive them. The stamping is one tracked shell script,
 # `hooks/commit-msg` beside this file: it fires on host commits too (lazygit on macOS), where `nu`
 # is not on the PATH, so it stays `#!/bin/sh`. Its contract — add an id, never replace one; leave a
-# comment-only message alone — is documented in the "Change-Id" section of the mono-repo-tooling-spec
-# specification. `hooks/applypatch-msg` forwards to it, because `git am` never runs commit-msg;
+# comment-only message alone — is documented in the `cozy git install-change-id-hook` section of
+# README.md; the "Change-Id" section of mono-repo-tooling-spec, in the author's monorepo, is not published. `hooks/applypatch-msg` forwards to it, because `git am` never runs commit-msg;
 # `hooks/prepare-commit-msg` does the same for `git revert`, and names the reverted change by its id.
 # Why here and not in that repo's toolkit: a cross-repo reference needs the id on both sides, and
 # not every repo on the machine lives in the monorepo.
@@ -172,7 +172,7 @@ export def link [
 }
 
 # Print the file a link names, at the commit it names. A change-id resolves by search, since
-# nothing keeps a mapping (see the "Change-Id" section of the mono-repo-tooling-spec); a sha by
+# nothing keeps a mapping (see the `cozy git link` / `cozy git resolve` section of README.md); a sha by
 # lookup. A prefix of either is accepted.
 @category cozy
 export def resolve [

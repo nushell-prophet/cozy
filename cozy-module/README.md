@@ -31,6 +31,7 @@ cozy mount init
 
 Replaces vendored `~/repos/` copies with symlinks to the mounted workspace.
 A repo imported into the mono links to `mono/<name>`, any other to the sibling `<name>`.
+The mono is the monorepo of the cozy author; without it, every repo is a sibling clone.
 Enables edit-and-test without rebuild.
 
 ```nushell

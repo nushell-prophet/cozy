@@ -1,5 +1,7 @@
 # Replace vendored ~/repos/ copies with symlinks to the mounted workspace:
 # to mono/<name> when the mono holds the repo, else to the sibling <name>.
+# The mono is the monorepo of the cozy author; in a workspace without it, every module
+# is a sibling clone, and the sibling branch is the one that runs.
 # Enables edit-and-test without rebuild: changes in the workspace are
 # immediately visible to autoloaded modules.
 #

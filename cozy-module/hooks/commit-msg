@@ -5,7 +5,9 @@
 #
 # The id lives in the message, so amend, rebase and cherry-pick carry it forward by themselves.
 # This hook therefore only ever adds one and never replaces one: replacing would break the single
-# property the trailer exists for. See the "Change-Id" section of the mono-repo-tooling-spec specification.
+# property the trailer exists for. The public contract is the `cozy git install-change-id-hook` section
+# of cozy-module/README.md; the "Change-Id" section of mono-repo-tooling-spec, in the author's
+# monorepo, is not published.
 
 set -e
 msg="$1"
