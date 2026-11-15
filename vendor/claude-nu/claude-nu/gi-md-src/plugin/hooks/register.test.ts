@@ -4,9 +4,10 @@ const FACTS = { model: 'm', promptModel: 'm', surfaces: [], tools: [], outputSty
 
 // The tests stand for the engine: a session in /repo, GI_CANVAS as `gi open`
 // set it or unset, and a prompt of one section of its own.
-function engine(on: Parameters<Parameters<typeof test>[1]>[1], canvas: string | undefined) {
+function engine(on: Parameters<Parameters<typeof test>[1]>[1], canvas: string | undefined, manager?: string) {
+  const env: Record<string, string | undefined> = { GI_CANVAS: canvas, GI_MANAGER: manager }
   on('session.cwd', () => ({ value: '/repo' }))
-  on('env.get', () => ({ value: canvas }))
+  on('env.get', (_, e) => ({ value: env[e.name] }))
   on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'engine', scope: 'shared' }] }))
 }
 
@@ -15,6 +16,14 @@ test('a gi launch names its canvas, relative to the session directory', async ($
   const { sections } = await $.prompt.compose(FACTS)
   expect(sections.map(s => s.id)).toEqual(['intro', 'gi:canvas'])
   expect(sections[1].text).toContain('`gi-canvas/plan.md`')
+})
+
+test('a manager launch adds the rules from the file GI_MANAGER names', async ($, on) => {
+  engine(on, '/repo/gi-canvas/plan.md', '/plugin/manager.md')
+  on('fs.read', (_, e) => ({ value: e.path === '/plugin/manager.md' ? 'the rules\n' : '' }) as never)
+  const { sections } = await $.prompt.compose(FACTS)
+  expect(sections.map(s => s.id)).toEqual(['intro', 'gi:canvas', 'gi:manager'])
+  expect(sections[2].text).toBe('the rules')
 })
 
 test('a session without a canvas gets no line', async ($, on) => {
@@ -318,7 +327,7 @@ function zellij(on: Parameters<Parameters<typeof test>[1]>[1], panes: object[], 
     if (e.argv.includes('list-panes')) {
       return { value: { exitCode: 0, stdout: JSON.stringify(panes), stderr: '' } }
     }
-    if (e.argv[2]?.startsWith('nu-hx tell-claude-at-stop')) {
+    if (e.argv[2]?.startsWith('nu-hx tell-claude-at-stop') || e.argv.includes('--abbrev-ref')) {
       return { value: { exitCode: 0, stdout: '', stderr: '' } }
     }
     runs.push(e.argv)
@@ -341,22 +350,95 @@ test('a blocked turn end leaves no mark, as the turn goes on', async ($, on) => 
   expect(runs).toEqual([])
 })
 
+// The bell goes through `$.ui.notify`, which the user's notification channel writes.
+function bells(on: Parameters<Parameters<typeof test>[1]>[1]) {
+  const rung: string[] = []
+  on('ui.notify', (_, e) => {
+    rung.push(e.text)
+    return { value: { isSent: true, channel: 'terminal_bell' } } as never
+  })
+  return rung
+}
+
+test('a turn end rings the bell with the done mark', async ($, on) => {
+  zellij(on, [])
+  const rung = bells(on)
+  await ends($, 'done')
+  expect(rung).toEqual(['the answer is in the canvas'])
+})
+
+test('gi open --no-bell keeps the mark and rings no bell', async ($, on) => {
+  const runs = zellij(on, [], { ...ZELLIJ_ENV, GI_NO_BELL: '1' })
+  const rung = bells(on)
+  await ends($, 'done')
+  expect(runs).toEqual([['zellij', 'action', 'rename-pane', '--pane-id', 'terminal_2', '✅ plan.md']])
+  expect(rung).toEqual([])
+})
+
+test('a blocked turn end rings no bell', async ($, on) => {
+  zellij(on, [])
+  const rung = bells(on)
+  await ends($, ANSWER)
+  expect(rung).toEqual([])
+})
+
 // What every top-level turn start runs after the mark: the base of the merge
 // that `nu-hx merge-save` makes when the user's buffer and the canvas diverge.
 const SEED = ['hx-nu', '--commands', "nu-hx base-seed r#'/repo/todo/plan.md'#"]
 
-test('the next turn takes the mark away, and seeds the merge base of the canvas', async ($, on) => {
+test('a turn start marks the helix pane as working, and seeds the merge base of the canvas', async ($, on) => {
   const runs = zellij(on, [pane(1, {}), pane(2, { title: '✅ plan.md' })])
   on('turn.start', () => ({ turnId: 't' }) as never)
   await $.turn.start({ text: '', turnId: 't' } as never)
-  expect(runs).toEqual([['zellij', 'action', 'undo-rename-pane', '--pane-id', 'terminal_2'], SEED])
+  expect(runs).toEqual([['zellij', 'action', 'rename-pane', '--pane-id', 'terminal_2', '⏳ plan.md'], SEED])
 })
 
-test('the next turn leaves a name the user gave, and a plugin with the same id', async ($, on) => {
-  const runs = zellij(on, [pane(2, { title: 'mine' }), { id: 2, is_plugin: true, title: '✅ plan.md' }])
-  on('turn.start', () => ({ turnId: 't' }) as never)
-  await $.turn.start({ text: '', turnId: 't' } as never)
-  expect(runs).toEqual([SEED])
+// A turn that ended, as `turn.complete` hands it over.
+const completed = (reason: string, fields: object = {}) => ({ answer: '', durationMs: 1, isAborted: reason === 'aborted', turnId: 't', reason, ...fields }) as never
+
+test('an interrupted turn takes the work mark away', async ($, on) => {
+  const runs = zellij(on, [pane(2, { title: '⏳ plan.md' })])
+  on('turn.complete', () => ({ text: '' }))
+  await $.turn.complete(completed('aborted'))
+  expect(runs).toEqual([['zellij', 'action', 'undo-rename-pane', '--pane-id', 'terminal_2']])
+})
+
+test('an interrupt leaves a name the user gave, and a plugin with the same id', async ($, on) => {
+  const runs = zellij(on, [pane(2, { title: 'mine' }), { id: 2, is_plugin: true, title: '⏳ plan.md' }])
+  on('turn.complete', () => ({ text: '' }))
+  await $.turn.complete(completed('aborted'))
+  expect(runs).toEqual([])
+})
+
+test('a turn that an API error or a refusal ended gets the error mark', async ($, on) => {
+  const runs = zellij(on, [])
+  on('turn.complete', () => ({ text: '' }))
+  await $.turn.complete(completed('error'))
+  await $.turn.complete(completed('refusal', { refusal: { category: null, explanation: null } }))
+  const mark = ['zellij', 'action', 'rename-pane', '--pane-id', 'terminal_2', '⚠ plan.md']
+  expect(runs).toEqual([mark, mark])
+})
+
+test('an answered turn and the end of a subagent leave the mark to the Stop hook', async ($, on) => {
+  const runs = zellij(on, [pane(2, { title: '⏳ plan.md' })])
+  on('turn.complete', () => ({ text: '' }))
+  await $.turn.complete(completed('answer'))
+  await $.turn.complete(completed('error', { agentId: 'a' }))
+  expect(runs).toEqual([])
+})
+
+test('a session that ends in the middle of a turn takes the work mark away, and leaves the done mark', async ($, on) => {
+  const runs = zellij(on, [pane(2, { title: '⏳ plan.md' })])
+  on('session.end', () => ({ sessionId: 's' }))
+  await $.session.end({ reason: 'other', sessionId: 's' } as never)
+  expect(runs).toEqual([['zellij', 'action', 'undo-rename-pane', '--pane-id', 'terminal_2']])
+})
+
+test('a session that ends after the answer keeps the done mark', async ($, on) => {
+  const runs = zellij(on, [pane(2, { title: '✅ plan.md' })])
+  on('session.end', () => ({ sessionId: 's' }))
+  await $.session.end({ reason: 'other', sessionId: 's' } as never)
+  expect(runs).toEqual([])
 })
 
 test('a turn start without a canvas seeds nothing', async ($, on) => {
@@ -452,6 +534,10 @@ function review(on: Parameters<Parameters<typeof test>[1]>[1], log: string, fiel
       }
       return ok(JSON.stringify(fields.refused ?? []))
     }
+    // The look for a rewritten history (`rewrite.ts`) finds no branch here.
+    if (e.argv.includes('--abbrev-ref')) {
+      return ok('')
+    }
     if (e.argv.includes('rev-parse')) {
       heads += 1
       return ok(fields.head ?? (heads % 2 === 1 ? 'a\n' : 'b\n'))
@@ -492,11 +578,19 @@ test('a review reads only the lines of the agent in the canvas and its siblings'
   expect(block).not.toContain('other')
 })
 
-test('a review counts an AA: entry over three lines, without its list lines', async ($, on) => {
-  review(on, commit(AGENT, 'plan.md', ['    AA: one', '    two', '    - an item', '    three', '', '    AA: first', '    second', '    third', '    fourth']))
+test('a review counts an AA: entry over three sentences, without its list items', async ($, on) => {
+  review(on, commit(AGENT, 'plan.md', ['    AA: one,', '    still under `???`', '    still one.', '    - an item.', '    two,', '    still two?', '    three:', '    still three,', '    and its end', '', '    AA: first.', '    second,', '    still second.', '    "third."', '    fourth']))
   const block = await turn($)
-  expect(block).toContain('an `AA:` entry of 4 lines, the cap is 3: "AA: first"')
+  expect(block).toContain('an `AA:` entry of 4 sentences, the cap is 3: "AA: first."')
   expect(block).not.toContain('AA: one')
+})
+
+test('a review names a line of an AA: entry over 100 characters, not a line outside one', async ($, on) => {
+  const wide = 'x'.repeat(101)
+  review(on, commit(AGENT, 'plan.md', [`    AA: ${wide}`, '    a short line', '', `outside ${wide}`]))
+  const block = await turn($)
+  expect(block).toContain('a line of an `AA:` entry of 109 characters, a feed line has at most 100: "AA: x')
+  expect(block).not.toContain('outside')
 })
 
 test('a review counts more than three new ??? in a turn', async ($, on) => {
@@ -614,4 +708,312 @@ test('only the lines that open with the name of a question are findings', async 
 test('a file name with a space is read without the tab git ends it with', async ($, on) => {
   review(on, ['\0' + AGENT, '', 'diff --git a/plan two.md b/plan two.md', '--- a/plan two.md\t', '+++ b/plan two.md\t', '@@ -1,0 +2,1 @@', '+- run `x`'].join('\n'))
   expect(await turn($)).toContain('plan two.md: a list item')
+})
+
+// The engine for the signal of a rewritten history: a repo on `topic` that
+// stands on each of `heads` in turn, one per look; `ancestor` says whether the
+// commit of the look before is under the new one, `gone` and `fresh` are what
+// the two `git log --cherry-pick` calls print, or `failing` their error. A null
+// head is a detached HEAD. The reflog of the branch holds the heads, each step
+// made by `by` (the user, unless given) or given whole as `reflog`, and the
+// user's address in the config is `userEmail`. Each step is a rewrite, except
+// the one between the two commits of `forward`. It returns the git calls.
+function rewrite(on: Parameters<Parameters<typeof test>[1]>[1], heads: (string | null)[], fields: { ancestor?: boolean, gone?: string, fresh?: string, failing?: string, env?: Record<string, string>, by?: string, userEmail?: string, reflog?: string, forward?: [string, string] } = {}) {
+  const env: Record<string, string | undefined> = fields.env ?? CANVAS
+  const calls: string[][] = []
+  const refs: Record<string, string> = {}
+  let look = 0
+  on('classic.Stop', () => ({}))
+  on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
+  on('turn.start', () => ({ turnId: 't' }) as never)
+  on('env.get', (_, e) => ({ value: env[e.name] }))
+  on('process.run', (_, e) => {
+    const ok = (stdout: string, exitCode = 0) => ({ value: { exitCode, stdout, stderr: '' } })
+    if (e.argv[0] !== 'git') {
+      return ok('')
+    }
+    calls.push(e.argv)
+    if (e.argv.includes('--abbrev-ref')) {
+      const head = heads[Math.min(look, heads.length - 1)]
+      look += 1
+      return ok(head === null ? 'abc\nHEAD\n' : `${head}\ntopic\n`)
+    }
+    if (e.argv.includes('merge-base')) {
+      return ok('', fields.ancestor || fields.forward?.every(c => e.argv.includes(c)) ? 0 : 1)
+    }
+    if (e.argv.includes('var')) {
+      return ok(`Agent <${AGENT}> 1 +0000\n`)
+    }
+    if (e.argv.includes('config')) {
+      return ok(`${fields.userEmail ?? 'user@example.com'}\n`)
+    }
+    if (e.argv.includes('--walk-reflogs')) {
+      const steps = [...new Set(heads.filter(h => h !== null))].reverse()
+      return ok(fields.reflog ?? steps.map((h, i) => `${h} ${i === steps.length - 1 ? AGENT : (fields.by ?? 'user@example.com')}`).join('\n'))
+    }
+    const seen = e.argv.find(a => a.startsWith('refs/gi/seen/'))
+    if (seen && e.argv.includes('update-ref')) {
+      refs[seen] = e.argv[e.argv.length - 1]
+      return ok('')
+    }
+    if (seen) {
+      return refs[seen] ? ok(`${refs[seen]}\n`) : ok('', 1)
+    }
+    if (e.argv.includes('--verify')) {
+      return ok('', e.argv.includes('refs/heads/master') ? 0 : 1)
+    }
+    if (fields.failing) {
+      return { value: { exitCode: 128, stdout: '', stderr: `${fields.failing}\n` } }
+    }
+    return ok(e.argv.includes('--left-only') ? (fields.gone ?? '') : (fields.fresh ?? ''))
+  })
+  return calls
+}
+
+const GONE = 'aa6557e t2'
+const FRESH = 'c342a09 t2a\n\ndiff --git a/f.md b/f.md\n+b'
+
+test('a history rewritten between two turns is printed at the turn end', async ($, on) => {
+  const calls = rewrite(on, ['old', 'old', 'new'], { gone: GONE, fresh: FRESH })
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  await ends($, 'done')
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  const block = (await ends($, 'done')).block
+  expect(block).toContain('The history of `topic` was rewritten')
+  expect(block).toContain(`with no commit of the same patch left:\n\n${GONE}`)
+  expect(block).toContain(`The commits that are new:\n\n${FRESH}`)
+  expect(calls.find(c => c.includes('--left-only'))).toEqual(['git', '-C', '/repo/gi-canvas', 'log', '--no-merges', '--format=%h %s', '--cherry-pick', '--left-only', 'old...new'])
+  expect(calls.find(c => c.includes('--right-only'))).toEqual(['git', '-C', '/repo/gi-canvas', 'log', '--reverse', '--no-merges', '--patch', '--no-relative', '--no-color', '--no-ext-diff', '--default-prefix', '--format=%h %s%n%b', '--cherry-pick', '--right-only', 'old...new', '^refs/heads/master'])
+})
+
+test('a typed prompt carries the rewrite to the agent before the turn, and the turn end does not repeat it', async ($, on) => {
+  rewrite(on, ['old', 'new'], { gone: GONE })
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  const entered = await says($, 'next step')
+  expect(entered.context?.[0]).toContain('The history of `topic` was rewritten')
+  expect(entered.context?.[0]).toContain('No commit is new.')
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  expect((await ends($, 'done')).block).toBeUndefined()
+})
+
+test('a history that only grew is no news', async ($, on) => {
+  rewrite(on, ['old', 'new'], { ancestor: true, gone: GONE })
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  expect((await ends($, 'done')).block).toBeUndefined()
+})
+
+test('a rebase that kept every patch is no news', async ($, on) => {
+  rewrite(on, ['old', 'new'])
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  expect((await ends($, 'done')).block).toBeUndefined()
+})
+
+test('a look on a detached HEAD keeps the commit of the branch', async ($, on) => {
+  rewrite(on, ['old', null, 'new'], { gone: GONE })
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  expect((await ends($, 'done')).block).toBeUndefined()
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  expect((await ends($, 'done')).block).toContain('`old`, the commit you last stood on')
+})
+
+test('two rewrites that wait are told as one, from the commit the agent last stood on', async ($, on) => {
+  rewrite(on, ['old', 'new', 'newer'], { gone: GONE })
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  await says($, 'chat: one')
+  await says($, 'chat: two')
+  const context = (await says($, 'next step')).context
+  expect(context?.length).toBe(1)
+  expect(context?.[0]).toContain('`old`, the commit you last stood on')
+})
+
+test('the commit the agent stood on is kept in a ref of the repo, named after the canvas and the branch', async ($, on) => {
+  const calls = rewrite(on, ['old', 'new'], { gone: GONE })
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  expect(calls.find(c => c.includes('update-ref'))).toEqual(['git', '-C', '/repo/gi-canvas', 'update-ref', 'refs/gi/seen/repo-gi-canvas-plan-md/topic', 'old'])
+})
+
+test('a rewrite that git cannot list is still told', async ($, on) => {
+  rewrite(on, ['old', 'new'], { failing: 'fatal: bad revision' })
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  expect((await ends($, 'done')).block).toContain('git could not list what changed (fatal: bad revision)')
+})
+
+test('a Stop rule that fails leaves the rewrite for the next turn end', async ($, on) => {
+  const env: Record<string, string> = { ...CANVAS, GI_HOOK_MAX_LEN: 'x' }
+  rewrite(on, ['old', 'new'], { gone: GONE, env })
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  expect((await ends($, 'done')).block).toContain('the Stop rule failed internally')
+  delete env.GI_HOOK_MAX_LEN
+  expect((await ends($, 'done')).block).toContain('The history of `topic` was rewritten')
+})
+
+test('commits too long to print are named by the command that prints them', async ($, on) => {
+  rewrite(on, ['old', 'new'], { fresh: 'x'.repeat(20001) })
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  const block = (await ends($, 'done')).block
+  expect(block).toContain("run `git -C /repo/gi-canvas log --reverse --no-merges --patch --no-relative --no-color --no-ext-diff --default-prefix '--format=%h %s%n%b' --cherry-pick --right-only old...new '^refs/heads/master'`")
+  expect(block).not.toContain('xxxx')
+})
+
+test('gi open --no-hook gets no signal of a rewrite', async ($, on) => {
+  const calls = rewrite(on, ['old', 'new'], { gone: GONE, env: { ...CANVAS, GI_NO_HOOK: '1' } })
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  expect((await ends($, 'done')).block).toBeUndefined()
+  expect(calls).toEqual([])
+})
+
+test('a chat: aside leaves the rewrite for the next canvas prompt', async ($, on) => {
+  rewrite(on, ['old', 'new'], { gone: GONE })
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  expect((await says($, 'chat: what is this flag?')).context).toBeUndefined()
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  expect((await ends($, ANSWER)).block).toBeUndefined()
+  expect((await says($, 'next step')).context?.[0]).toContain('The history of `topic` was rewritten')
+})
+
+test('a rewrite the agent made itself is no news to it: the reflog names the agent for the step', async ($, on) => {
+  rewrite(on, ['old', 'new'], { gone: GONE, fresh: FRESH, by: AGENT })
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  expect((await ends($, 'done')).block).toBeUndefined()
+})
+
+test('a step of the user that only added a commit does not make the rewrite of the agent his', async ($, on) => {
+  // old -> mid by the agent, a rewrite; mid -> new by the user, forward.
+  rewrite(on, ['old', 'new'], { gone: GONE, forward: ['mid', 'new'], reflog: `new user@example.com\nmid ${AGENT}\nold ${AGENT}` })
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  expect((await ends($, 'done')).block).toBeUndefined()
+})
+
+test('where the agent commits as the user, the rewrite is told as anyone\'s', async ($, on) => {
+  rewrite(on, ['old', 'new'], { gone: GONE, userEmail: AGENT })
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  expect((await ends($, 'done')).block).toContain('by this session or by the user')
+})
+
+test('a reflog without the old commit cannot tell whose rewrite it is', async ($, on) => {
+  rewrite(on, ['old', 'new'], { gone: GONE, reflog: 'new user@example.com' })
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  expect((await ends($, 'done')).block).toContain('by this session or by the user')
+})
+
+// The engine for the queue: this session in pane 1 of zellij session `z`, the
+// queue file as `nu-hx queue-add` wrote it (null: none), a Read tool that
+// answers `text`, and `commits`, what `nu-hx tell-claude-on-read` prints. It
+// returns the status texts set and the hx-nu calls made.
+const QUEUE_ENV = { GI_CANVAS: '/repo/todo/plan.md', HOME: '/h', ZELLIJ_SESSION_NAME: 'z', ZELLIJ_PANE_ID: '1' }
+const QUEUE_FILE = '/h/.cache/gi/unsent/z-1'
+
+function queue(on: Parameters<Parameters<typeof test>[1]>[1], lines: string[] | null, fields: { commits?: string, env?: Record<string, string>, read?: object } = {}) {
+  const env: Record<string, string | undefined> = fields.env ?? QUEUE_ENV
+  const seen = { status: [] as (string | undefined)[], calls: [] as string[] }
+  on('classic.Stop', () => ({}))
+  on('turn.start', () => ({ turnId: 't' }) as never)
+  on('prompt.submit', (_, e) => ({ text: e.text }))
+  on('env.get', (_, e) => ({ value: env[e.name] }))
+  on('ui.status', (_, e) => {
+    seen.status.push(e.text)
+    return { value: undefined } as never
+  })
+  on('fs.read', (_, e) => {
+    if (e.path !== QUEUE_FILE || lines === null) {
+      throw new Error('missing')
+    }
+    return { value: lines.map(l => `${l}\n`).join('') }
+  })
+  on('tool.call', { tool: 'Read' }, () => (fields.read ?? { result: 'the text', text: 'the text' }) as never)
+  on('process.run', (_, e) => {
+    if (e.argv[0] === 'hx-nu' && e.argv[2]?.startsWith('nu-hx tell-claude-on-read')) {
+      seen.calls.push(e.argv[2])
+      return { value: { exitCode: 0, stdout: fields.commits ? `${fields.commits}\n` : '\n', stderr: '' } }
+    }
+    return { value: { exitCode: 0, stdout: '', stderr: '' } }
+  })
+  return seen
+}
+
+const reads = ($: Parameters<Parameters<typeof test>[1]>[0], file_path: string, agentId?: string) =>
+  $.tool.call({ tool: 'Read', file_path, agentId } as never)
+
+test('the status line counts the queued commits of each file, and is set only on a change', async ($, on) => {
+  const seen = queue(on, ['/repo/todo/plan.md', '/repo/src/a.nu', '/repo/todo/plan.md'])
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  await ends($, 'done')
+  expect(seen.status).toEqual(['unsent: plan.md 2, a.nu 1'])
+})
+
+test('an empty queue leaves the status line alone', async ($, on) => {
+  const seen = queue(on, null)
+  await $.turn.start({ text: '', turnId: 't' } as never)
+  expect(seen.status).toEqual([])
+})
+
+test('a read of a queued file carries the unsent commits of the user to the agent', async ($, on) => {
+  const seen = queue(on, ['/repo/src/a.nu'], { commits: 'a1b2c3d gi: edit\n\n+more' })
+  const read = await reads($, '/repo/src/a.nu')
+  expect(read.text).toBe('the text')
+  expect(read.context?.[0]).toContain('these commits were never sent to you')
+  expect(read.context?.[0]).toContain('a1b2c3d gi: edit\n\n+more')
+  expect(seen.calls).toEqual(["nu-hx tell-claude-on-read r#'/repo/src/a.nu'# --canvas r#'/repo/todo/plan.md'#"])
+})
+
+test('a read of the canvas asks for its commits too, with no queue', async ($, on) => {
+  const seen = queue(on, null)
+  expect((await reads($, '/repo/todo/plan.md')).context).toBeUndefined()
+  expect(seen.calls.length).toBe(1)
+})
+
+test('a read of any other file starts no process', async ($, on) => {
+  const seen = queue(on, ['/repo/src/a.nu'], { commits: 'x' })
+  expect((await reads($, '/repo/README.md')).context).toBeUndefined()
+  expect(seen.calls).toEqual([])
+})
+
+test('a read by a subagent leaves the commits to the agent that owns the canvas', async ($, on) => {
+  const seen = queue(on, ['/repo/src/a.nu'], { commits: 'x' })
+  expect((await reads($, '/repo/src/a.nu', 'worker')).context).toBeUndefined()
+  expect(seen.calls).toEqual([])
+})
+
+test('a failed read leaves the commits for the next one', async ($, on) => {
+  const seen = queue(on, ['/repo/src/a.nu'], { commits: 'x', read: { result: undefined, text: 'no such file', isError: true } })
+  await reads($, '/repo/src/a.nu')
+  expect(seen.calls).toEqual([])
+})
+
+test('gi open --no-hook reads with no hand-over', async ($, on) => {
+  const seen = queue(on, ['/repo/src/a.nu'], { commits: 'x', env: { ...QUEUE_ENV, GI_NO_HOOK: '1' } })
+  expect((await reads($, '/repo/src/a.nu')).context).toBeUndefined()
+  expect(seen.calls).toEqual([])
+})
+
+test('a gi session looks at the queue on a timer', async ($, on) => {
+  const seen = queue(on, ['/repo/src/a.nu'])
+  const periods: number[] = []
+  on('session.start', (_, e) => ({ cwd: e.cwd }) as never)
+  on('clock.every', (_, e) => {
+    periods.push(e.ms)
+    return { value: undefined } as never
+  })
+  await $.session.start({ source: 'startup', cwd: '/repo' } as never)
+  expect(periods).toEqual([3000])
+  expect(seen.status).toEqual([])
+})
+
+test('a read in a chat: aside leaves the commits for a canvas turn', async ($, on) => {
+  const seen = queue(on, ['/repo/src/a.nu'], { commits: 'x' })
+  await says($, 'chat: what is in that file?')
+  expect((await reads($, '/repo/src/a.nu')).context).toBeUndefined()
+  expect(seen.calls).toEqual([])
+  await says($, 'next step')
+  expect((await reads($, '/repo/src/a.nu')).context?.[0]).toContain('never sent to you')
 })

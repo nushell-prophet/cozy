@@ -6,6 +6,7 @@
 # Externs do not reject an undeclared flag, so `claude --help` still runs.
 
 use ../claude-nu/sessions.nu [ "nu-complete claude sessions" ]
+use ../claude-nu/models.nu [ "nu-complete claude models" ]
 
 # ===== Static Completions =====
 
@@ -44,17 +45,6 @@ const effort_levels = [
     {value: "high" description: "High effort"}
     {value: "xhigh" description: "Extra-high effort"}
     {value: "max" description: "Maximum effort"}
-]
-
-const models = [
-    {value: "fable" description: "Claude Fable (latest)"}
-    {value: "opus" description: "Claude Opus (latest)"}
-    {value: "sonnet" description: "Claude Sonnet (latest)"}
-    {value: "haiku" description: "Claude Haiku (fastest)"}
-    {value: "claude-fable-5" description: "Claude Fable 5 (specific version)"}
-    {value: "claude-opus-5" description: "Claude Opus 5 (specific version)"}
-    {value: "claude-opus-5[1m]" description: "Claude Opus 5, 1M context"}
-    {value: "claude-sonnet-5" description: "Claude Sonnet 5 (specific version)"}
 ]
 
 const mcp_scopes = [
@@ -141,7 +131,6 @@ def "nu-complete claude output-formats" []: nothing -> record { $output_formats 
 def "nu-complete claude autocompact" []: nothing -> record { $autocompact_sizes | ordered }
 def "nu-complete claude input-formats" []: nothing -> record { $input_formats | ordered }
 def "nu-complete claude effort" []: nothing -> record { $effort_levels | ordered }
-def "nu-complete claude models" []: nothing -> record { $models | ordered }
 
 def "nu-complete claude tools" [token: record]: nothing -> table { $tools | comma-list $token.text }
 def "nu-complete claude setting-sources" [token: record]: nothing -> table { $setting_sources | comma-list $token.text }

@@ -5,36 +5,53 @@ argument-hint: [canvas path] [--last-exchange] [--verbatim] [--no-commit]
 allowed-tools: Bash(nu -c *), Bash(grep *), Bash(git *), Read, Edit
 ---
 
-The user wants a canvas session but is inside a chat session, where typing nushell into Bash is awkward.
+The user wants a canvas session but is inside a chat session,
+where typing nushell into Bash is awkward.
 Run the module command for them and hand back the command to paste into a terminal.
 
-A canvas session cannot be started from within a session: the gi plugin (the Canvas style, the gi skills, and the hooks that name the canvas to the agent, hold the Stop-hook floor and refuse a commit on the trunk) and `$env.GI_CANVAS`, which those hooks read, all arrive with `claude` at launch.
-So this skill always ends the same way — the user runs one command themselves, in their terminal, and that new session is the canvas one.
+A canvas session cannot be started from within a session:
+the gi plugin (the Canvas style, the gi skills, and the hooks that name the canvas to the agent, hold the Stop-hook floor and refuse a commit on the trunk) and `$env.GI_CANVAS`, which those hooks read, all arrive with `claude` at launch.
+So this skill always ends the same way
+— the user runs one command themselves, in their terminal,
+and that new session is the canvas one.
 
 ## How to call the module
 
-`claude-nu` is a nushell module command, not a program on PATH: it is loaded in the user's interactive REPL, and a one-shot `nu -c` does not load it.
+`claude-nu` is a nushell module command, not a program on PATH:
+it is loaded in the user's interactive REPL,
+and a one-shot `nu -c` does not load it.
 So every command **you** run has to import it first:
 
 ```nushell
 nu -c 'use ~/repos/claude-nu/claude-nu/; claude-nu gi | to nuon --pretty'
 ```
 
-End it with `| to nuon --pretty`: a one-shot `nu` renders a list inside a record as `[list 2 items]`, and `canvases` is the list you need.
+End it with `| to nuon --pretty`:
+a one-shot `nu` renders a list inside a record as `[list 2 items]`,
+and `canvases` is the list you need.
 
 That path is the common one, not a guarantee.
-When it is missing, don't guess a second one — read where the REPL itself imports from: `grep -h claude-nu ~/.config/nushell/autoload/*.nu`.
+When it is missing, don't guess a second one
+— read where the REPL itself imports from: `grep -h claude-nu ~/.config/nushell/autoload/*.nu`.
 The `use` line there names the real directory on this machine.
 
-The commands **the user** runs go into their REPL, where the module is already loaded — hand those over bare: `claude-nu gi open <doc>`.
+The commands **the user** runs go into their REPL, where the module is already loaded
+— hand those over bare: `claude-nu gi open <doc>`.
 
 ## Which case
 
 First check you are not already there.
-`gi` on its own reports whether the asking session is bound to a canvas; a non-null `canvas` means this **is** a canvas session — say so and stop with the reply of *What to report*, there is nothing to launch.
-Doing this first matters because the alternative is importing a session that is already a canvas into a second file, which splits one conversation across two documents.
-The same call answers the rest: `canvases` lists the canvases already here, and `folder` names where a new one lands.
-Do not list the canvas folders yourself — a repo rarely has all of them, and `ls` exits non-zero on any missing one, so the call reads as a failure.
+`gi` on its own reports whether the asking session is bound to a canvas;
+a non-null `canvas` means this **is** a canvas session
+— say so and stop with the reply of *What to report*, there is nothing to launch.
+Doing this first matters because the alternative is importing a session that is already a canvas into a second file,
+which splits one conversation across two documents.
+The same call answers the rest:
+`canvases` lists the canvases already here,
+and `folder` names where a new one lands.
+Do not list the canvas folders yourself
+— a repo rarely has all of them,
+and `ls` exits non-zero on any missing one, so the call reads as a failure.
 
 Then read `$ARGUMENTS` and the conversation:
 
@@ -42,7 +59,10 @@ Then read `$ARGUMENTS` and the conversation:
 - **No canvas yet, nothing here worth keeping** → a new canvas.
 - **A canvas path is given, or `canvases` is not empty** → open it.
 
-A canvas keeps one session for life, and `gi open` handles both halves of that: a canvas with no `session:` in its frontmatter gets one minted and written in, one that has it is resumed.
+A canvas keeps one session for life,
+and `gi open` handles both halves of that:
+a canvas with no `session:` in its frontmatter gets one minted and written in,
+one that has it is resumed.
 You do not have to tell them apart.
 
 ## Import this session
@@ -52,21 +72,29 @@ nu -c 'use ~/repos/claude-nu/claude-nu/; claude-nu gi import canvas-naming'     
 nu -c 'use ~/repos/claude-nu/claude-nu/; claude-nu gi import canvas-naming --tools' # ...keeping tool calls, each input rendered whole
 ```
 
-The slug is required: two to four lowercase words, joined by hyphens, that say what this chat is about.
+The slug is required:
+two to four lowercase words, joined by hyphens, that say what this chat is about.
 You have just read the whole conversation, so name it for its subject, not for the session.
 
-Named with no session, `gi import` takes the one it runs inside — which is this one, since you are running it.
-The second positional names another session, and only the user needs that (they get a completer for it in the REPL).
+Named with no session, `gi import` takes the one it runs inside
+— which is this one, since you are running it.
+The second positional names another session,
+and only the user needs that (they get a completer for it in the REPL).
 
-It refuses to overwrite an existing doc — that is deliberate, do not delete the old one to get past it; pick another slug instead.
+It refuses to overwrite an existing doc
+— that is deliberate, do not delete the old one to get past it;
+pick another slug instead.
 
-Nothing has to be in the repo beforehand: the style and the skills ride the launch as a plugin, so there is no seeding step and nothing the import can find missing.
+Nothing has to be in the repo beforehand:
+the style and the skills ride the launch as a plugin,
+so there is no seeding step and nothing the import can find missing.
 
 ### Flags
 
 `$ARGUMENTS` may carry these flags; they apply to the import only.
 
-- `--last-exchange` → pass it to `gi import`: the canvas gets only the user's last question and the answer to it.
+- `--last-exchange` → pass it to `gi import`:
+  the canvas gets only the user's last question and the answer to it.
 - `--no-commit` → do not pass `--commit`.
   Without it, always pass `--commit`: the import is committed by default.
 - `--verbatim` → skip the tidy pass (see *Tidy* below):
@@ -85,13 +113,20 @@ The gi plugin is not loaded in this chat, so `gi:canvas-tidy` cannot be called a
 Read `tidy.md` next to this file and follow it on the imported canvas.
 
 - With commits: the import commit is the pre-tidy version.
-  Scope the clean-tree check of `tidy.md` to the canvas, `git status --porcelain -- <doc>`: other untracked notes in the repo do not touch its history.
+  Scope the clean-tree check of `tidy.md` to the canvas, `git status --porcelain -- <doc>`:
+  other untracked notes in the repo do not touch its history.
   Commit the tidy canvas as a second commit.
 - With `--no-commit`: tidy the untracked file in place and commit nothing.
-  Skip the clean-tree check: the full dialogue stays in the session log, at the `.jsonl` path the import note names.
+  Skip the clean-tree check:
+  the full dialogue stays in the session log, at the `.jsonl` path the import note names.
 
 Then reply as *What to report* says: exit this session and run `claude-nu gi open <doc>`.
-The import wrote this session's id into the canvas, so that reopens **this same session** (same id, full context) with the canvas bound, and the missing tail — the turns after the import, which the session log cannot contain yet — is still in context: it goes into the canvas through the same tidy rules, under the points it answers, not appended as new turns.
+The import wrote this session's id into the canvas,
+so that reopens **this same session** (same id, full context) with the canvas bound,
+and the missing tail
+— the turns after the import, which the session log cannot contain yet —
+is still in context:
+it goes into the canvas through the same tidy rules, under the points it answers, not appended as new turns.
 
 ## A new canvas, or an existing one
 
@@ -109,14 +144,20 @@ For `gi new`, pick the slug as for an import: two to four words on what the canv
 
 ## What to report
 
-Reply in rows, as the user reads the output of a shell command: the same element in the same place every time.
-No explanation of the protocol, no summary of what the canvas is; the style file does that once the session starts.
+Reply in rows, as the user reads the output of a shell command:
+the same element in the same place every time.
+No explanation of the protocol, no summary of what the canvas is;
+the style file does that once the session starts.
 
 - The reply is a column of rows and nothing else.
-- Each row is one Markdown line: the emoji of a shared label, the label in backticks, `│`, then one line of value, as `` 🟢 `go` │ <what go does> ``.
-  The shared labels and their emoji: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of this skill alone has none.
-  The skeletons below show the rows as plain text; the reply adds the emoji, the backticks and the `│`.
-- The labels and the fixed values are in English; the free text of a value is in the language of the session.
+- Each row is one Markdown line:
+  the emoji of a shared label, the label in backticks, `│`, then one line of value, as `` 🟢 `go` │ <what go does> ``.
+  The shared labels and their emoji: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`;
+  a label of this skill alone has none.
+  The skeletons below show the rows as plain text;
+  the reply adds the emoji, the backticks and the `│`.
+- The labels and the fixed values are in English;
+  the free text of a value is in the language of the session.
 - A row prints only when it has something to say.
 
 An import:
@@ -132,11 +173,13 @@ A new or an existing canvas:
 next      claude-nu gi new <slug> | claude-nu gi open <doc> | claude-nu gi open <doc> --fork | claude-nu gi open <doc> --no-hook
 ```
 
-`next` always prints, and it is always the last row: the exact command, bare, as the REPL takes it, after "exit this session, then run:" when the session has to end first.
+`next` always prints, and it is always the last row:
+the exact command, bare, as the REPL takes it, after "exit this session, then run:" when the session has to end first.
 "Exit this session" goes only with an import, which resumes this same session.
 `canvas` names the branch only when the import created it, and no Change-Id with `--no-commit`.
 
-A tidy that stops — the clean-tree check of `tidy.md` — is a stop of this skill; `tidy.md` prints no rows of its own:
+A tidy that stops — the clean-tree check of `tidy.md` — is a stop of this skill;
+`tidy.md` prints no rows of its own:
 
 ```text
 stop      tidy: <the cause in one line>

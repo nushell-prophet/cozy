@@ -15,11 +15,15 @@ type Api = Parameters<Hook<'classic.Stop'>>[0]
 // unlike the floor, whose failure blocks.
 
 // The caps of "Save his reading budget" in the style: change both together.
-const MAX_AA_LINES = 3
+const MAX_AA_SENTENCES = 3
 const MAX_OPEN_QUESTIONS = 3
+const MAX_LINE_WIDTH = 100
 
 const LIST_ITEM = /^\s*([-*]|\d+\.) /
 const MARKER = /^\s*(AA:|\?\?\?|!!!|%%%)/
+// A line that ends a sentence, also before a closing quote, bracket or mark.
+// No backtick among them: a line that ends in the code span `???` ends no sentence.
+const SENTENCE_END = /[.?!]["')*]*$/
 
 export type Added = { file: string; isNew: boolean; lines: string[] }
 
@@ -119,7 +123,7 @@ async function checkFindings($: Api, canvas: string, base: string, email: string
   const added = addedLines(log.stdout, email)
   // The canvas and its siblings: every `<canvas stem>*.md` beside it.
   const family = added.filter(a => a.file.endsWith('.md') && a.file.startsWith(stem) && !a.file.includes('/'))
-  const findings = family.flatMap(a => [...unlinkedItems(a), ...longEntries(a)])
+  const findings = family.flatMap(a => [...unlinkedItems(a), ...longEntries(a), ...wideLines(a)])
   const questions = family.flatMap(a => a.lines).filter(l => /^\s*\?\?\?/.test(l)).length
   if (questions > MAX_OPEN_QUESTIONS) {
     findings.push(`${questions} new \`???\` in one turn; the cap is ${MAX_OPEN_QUESTIONS}, the rest wait`)
@@ -181,30 +185,57 @@ export function unlinkedItems(a: Added) {
     .map(l => `${a.file}: a list item with a code span and no fragment link: "${cut(l)}"`)
 }
 
-// "Save his reading budget": an `AA:` entry is one to three lines; its list
-// lines do not count.
+// "Save his reading budget": an `AA:` entry is one to three sentences; its
+// list items do not count.
+// Why sentences and not lines: the lines of an entry are semantic-feed lines,
+// so a cap in lines is obeyed most cheaply with long lines.
+// A sentence is counted where a line ends it; lines with no such end before the
+// entry closes are one more sentence.
 export function longEntries(a: Added) {
   const findings: string[] = []
   let first: string | undefined
   let count = 0
+  let open = false
   const close = () => {
-    if (first !== undefined && count > MAX_AA_LINES) {
-      findings.push(`${a.file}: an \`AA:\` entry of ${count} lines, the cap is ${MAX_AA_LINES}: "${cut(first)}"`)
+    const sentences = count + (open ? 1 : 0)
+    if (first !== undefined && sentences > MAX_AA_SENTENCES) {
+      findings.push(`${a.file}: an \`AA:\` entry of ${sentences} sentences, the cap is ${MAX_AA_SENTENCES}: "${cut(first)}"`)
     }
     first = undefined
+  }
+  const read = (line: string) => {
+    open = !SENTENCE_END.test(line.trimEnd())
+    count += open ? 0 : 1
   }
   for (const line of a.lines) {
     if (/^\s*AA:/.test(line)) {
       close()
       first = line
-      count = 1
+      count = 0
+      read(line)
     } else if (!line.trim() || MARKER.test(line)) {
       close()
     } else if (first !== undefined && !LIST_ITEM.test(line)) {
-      count += 1
+      read(line)
     }
   }
   close()
+  return findings
+}
+
+// "Save his reading budget": a line of an `AA:` entry is a semantic-feed line
+// of at most 100 characters.
+// Why beside the count of sentences: three long lines hold three sentences and
+// pass that count.
+export function wideLines(a: Added) {
+  const findings: string[] = []
+  let inEntry = false
+  for (const line of a.lines) {
+    inEntry = /^\s*AA:/.test(line) || (inEntry && !!line.trim() && !MARKER.test(line))
+    if (inEntry && line.length > MAX_LINE_WIDTH) {
+      findings.push(`${a.file}: a line of an \`AA:\` entry of ${line.length} characters, a feed line has at most ${MAX_LINE_WIDTH}: "${cut(line)}"`)
+    }
+  }
   return findings
 }
 

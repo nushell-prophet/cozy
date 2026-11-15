@@ -1,5 +1,6 @@
 import type { Hook, Register } from 'claude-code'
 import { headOf, reviewReason } from './review'
+import { lastSeen, remember, rewrittenReason, standsOn } from './rewrite'
 
 type Api = Parameters<Hook<'classic.Stop'>>[0]
 type StopEvent = Parameters<Hook<'classic.Stop'>>[1]
@@ -56,6 +57,16 @@ const CREATE_FLAGS = { switch: ['-c', '--create', '-C', '--force-create'], check
 // Why a mark of its own: a counter of waiting replies may use `💬 ` on this
 // title and clear it at zero, which would take this mark away.
 const DONE_MARK = '✅ '
+// The title prefix while the agent works a turn: the user goes on editing while
+// the first edits of the turn have already arrived, or keeps the canvas pane
+// fullscreen and does not see the Claude pane at all.
+// Why `done-mark-clear` does not know it: `\ l` runs that command too, and a
+// `\ l` during a turn would take the mark away while the work goes on.
+const WORK_MARK = '⏳ '
+// The title prefix of a turn that an API error or a refusal ended: without it
+// the work mark would stay and claim the agent still works. `nu-hx
+// done-mark-clear` repeats it, as for DONE_MARK.
+const ERROR_MARK = '⚠ '
 
 export const register: Register = on => {
   // Whether the prompt that opened the current turn is an aside: a `chat:`
@@ -79,24 +90,68 @@ export const register: Register = on => {
   // The commit the repo stood on when the turn started: the review at the turn
   // end reads the commits made since. Unset without `gi open --review`.
   let turnBase: string | undefined
+  // The status line entry last set, so the timer below sets it only on a change.
+  const shown: Shown = { text: undefined }
 
-  on('prompt.submit', ($, e, next) => {
+  // The queue of unsent files in the status line of Claude: `unsent: plan.md 2,
+  // nu-hx.nu 1`, the commits of each file that `\ k` and `+ g` made in helix and
+  // the agent was not sent yet.
+  // Why a timer: the user commits in helix while the session is idle, and no
+  // event of the session follows a commit; he reads the line before his `\ l`.
+  // Why a file read and no process: `nu-hx` (dotfiles, `queue-add`) writes one
+  // line per commit for this, so a look costs no git and no nu.
+  on('session.start', async ($, e, next) => {
+    if (await $.env.get('GI_CANVAS')) {
+      $.clock.every(STATUS_PERIOD, () => showUnsent($, shown))
+    }
+    return next(e)
+  })
+
+  // The agent reads a file that has commits of the user it was not sent: they
+  // go to it with the result of the read, and the file leaves the queue, so a
+  // later `\ l` or turn end does not send them again.
+  // Why the commits and not only a mark that the file is read: the Read tool
+  // gives the text as it is now, and an instruction is in what changed.
+  // Why the main loop alone: a subagent that reads the canvas would take the
+  // commits with it, and the agent that owns the canvas would never see them.
+  // Why after the read: a read that is refused or fails must not spend them.
+  // Why not in an off-canvas aside: as at the turn end, a `chat:` answer or a
+  // skill's own flow that reads the canvas must not be pushed on into them.
+  on('tool.call', { tool: 'Read' }, async ($, e, next) => {
+    const result = await next(e)
+    if (offCanvas || e.agentId !== undefined || result.deny !== undefined || result.isError) {
+      return result
+    }
+    const news = await unsentOnRead($, e.file_path).catch(() => undefined)
+    await showUnsent($, shown)
+    return news ? { ...result, context: [...(result.context ?? []), news] } : result
+  })
+
+  on('prompt.submit', async ($, e, next) => {
     // An absent origin is the user's own prompt, as the engine's types define it.
     const user = !e.isMeta && (!e.origin || USER_ORIGINS.includes(e.origin.kind))
     const text = e.text.trim().toLowerCase()
     offCanvas = user && (!!e.command || text.startsWith(CHAT_MARKER))
     aside = offCanvas || (user && GO.test(text))
-    return next(e)
+    // Why here too, and not only at the turn end: the agent then reads the
+    // rewrite before it works the prompt, not after.
+    // Why try: the signal is news, and a prompt must not be lost over it.
+    // Why not with an off-canvas aside: the text orders a report in the canvas,
+    // and such a turn writes nothing there; it waits for the next canvas turn.
+    const news = await lookAtHistory($, !offCanvas).catch(() => undefined)
+    return next(news ? { ...e, context: [...(e.context ?? []), news] } : e)
   })
 
   // Why the turn and not `prompt.submit`: the user mostly starts a turn with a
   // `!` command from helix, and the types do not promise that event for it; the
-  // mark must go whatever started the work.
+  // work mark must show whatever started the work.
   on('turn.start', async ($, e, next) => {
     if (e.agentId === undefined) {
-      await clearDoneMark($)
+      await showUnsent($, shown)
+      await setMark($, WORK_MARK)
       await seedBase($)
       turnBase = await reviewBase($)
+      await lookAtHistory($, false).catch(() => undefined)
     }
     return next(e)
   })
@@ -117,7 +172,15 @@ export const register: Register = on => {
     // quotes it: the agent stands there, and the absolute form is noise.
     const doc = shortPath(canvas, await $.session.cwd())
     const text = `This session's canvas is \`${doc}\` — the one file the Canvas output style is about. Read it before your first answer; do not search for it.`
-    return { ...composed, sections: [...composed.sections, { id: 'gi:canvas', text, scope: 'session' }] }
+    const sections = [...composed.sections, { id: 'gi:canvas', text, scope: 'session' as const }]
+    // `gi open --manager`: GI_MANAGER is the path of manager.md, the rules of
+    // the manager mode. Why a section: the style file ships whole and has no
+    // conditions. A subagent gets no section, so the rules bind the manager alone.
+    const manager = await $.env.get('GI_MANAGER')
+    if (manager) {
+      sections.push({ id: 'gi:manager', text: ((await $.fs.read(manager)) as string).trim(), scope: 'session' })
+    }
+    return { ...composed, sections }
   })
 
   // Why at the call: a guard that reads the branch when the turn ends finds the
@@ -143,6 +206,24 @@ export const register: Register = on => {
     next.called ? next(e) : { deny: `gi: the branch guard failed (${next.error?.message ?? next.error?.kind}); check the branch before committing.` },
   )
 
+  // A turn that ends with no Stop: an interrupt or an API error. Where the
+  // answer ends it, the Stop hook below has set the mark, or a blocked Stop
+  // has kept the work mark, and the turn went on.
+  // Why the interrupt takes the mark away: the user stopped the turn himself.
+  on('turn.complete', async ($, e, next) => {
+    if (e.agentId === undefined && e.reason !== 'answer') {
+      await (e.reason === 'aborted' ? clearMark($, [WORK_MARK]) : setMark($, ERROR_MARK))
+    }
+    return next(e)
+  })
+
+  // Why: a session quit in the middle of a turn would leave the work mark until
+  // the next `gi open`.
+  on('session.end', async ($, e, next) => {
+    await clearMark($, [WORK_MARK])
+    return next(e)
+  })
+
   // The floor under the Canvas style: the style rests on prose and the agent
   // drifts back to long chat answers, so a turn may end only on a short chat
   // line. And a turn may not end over the user's canvas commits that the agent
@@ -157,7 +238,7 @@ export const register: Register = on => {
     // Already continuing from a prior block: let the turn end, or a block the
     // agent cannot clear loops forever.
     if (e.stop_hook_active) {
-      await setDoneMark($)
+      await markDone($)
       return next(e)
     }
     const canvas = await $.env.get('GI_CANVAS')
@@ -171,10 +252,18 @@ export const register: Register = on => {
       reasons.push(offCanvas ? undefined : await unsentReason($, e, canvas))
       reasons.push(aside ? undefined : await stopReason($, e, canvas))
       reasons.push(review)
+      // Why not on an off-canvas aside: as for the unsent commits; the news
+      // waits for the next canvas turn.
+      // Why after the rules above: one that throws must not take the news with it.
+      // Why try: the signal is news, and a turn must not fail to end over it.
+      if (!offCanvas) {
+        reasons.unshift(await lookAtHistory($, true).catch(() => undefined))
+      }
     }
+    await showUnsent($, shown)
     const reason = reasons.filter(r => r !== undefined).join('\n\n') || undefined
     if (!reason) {
-      await setDoneMark($)
+      await markDone($)
     }
     const below = await next(e)
     return reason ? { ...below, block: below.block ? `${below.block}\n\n${reason}` : reason } : below
@@ -186,23 +275,64 @@ export const register: Register = on => {
   )
 }
 
-// Show in the zellij title of the helix pane that the agent has finished its turn:
-// helix does not watch the file, and the user should see the answer arrived
-// without leaving the editor. At every turn end, a chat answer too.
+// Look where the repo stands and give the rewrite since the commit the agent
+// last stood on (`rewrite.ts`). The commit is remembered anew when there is no
+// rewrite, and when the rewrite is told now (`tell`); a rewrite that cannot be
+// told — at a turn start, with a `chat:` aside — stays for the next look, which
+// finds it again from the same commit.
+// Why nothing is remembered on a detached HEAD: a rebase that the user paused
+// to split a commit stands there, and the look after it needs the old commit.
+// Why GI_NO_HOOK: `gi open --no-hook` asks for the style alone.
+async function lookAtHistory($: Api, tell: boolean) {
+  const canvas = await $.env.get('GI_CANVAS')
+  if (!canvas || (await $.env.get('GI_NO_HOOK'))) {
+    return undefined
+  }
+  const now = await standsOn($, canvas)
+  if (!now) {
+    return undefined
+  }
+  const reason = await rewrittenReason($, canvas, await lastSeen($, canvas, now), now, PROTECTED_BRANCHES)
+  if (!reason || tell) {
+    await remember($, canvas, now)
+  }
+  return tell ? reason : undefined
+}
+
+// Show in the zellij title of the helix pane what the agent does: `mark` is
+// DONE_MARK, WORK_MARK or ERROR_MARK. helix does not watch the file, and the user should see that
+// the agent works, or that the answer arrived, without leaving the editor.
 // Why try: the title is a hint, and a turn must not stop or fail over it; a
 // failure shows as a title that does not change.
-async function setDoneMark($: Api) {
+async function setMark($: Api, mark: string) {
   try {
     const canvas = await $.env.get('GI_CANVAS')
     const pane = canvas && (await helixPane($))
     if (pane) {
-      await $.process.run(['zellij', 'action', 'rename-pane', '--pane-id', `terminal_${pane}`, `${DONE_MARK}${canvas.split('/').pop()}`])
+      await $.process.run(['zellij', 'action', 'rename-pane', '--pane-id', `terminal_${pane}`, `${mark}${canvas.split('/').pop()}`])
     }
   } catch {}
 }
 
-// Why only a title with the mark: a name the user gave the pane stays.
-async function clearDoneMark($: Api) {
+// The answer arrived: the done mark, and a bell through the user's own
+// notification channel (`preferredNotifChannel`; cozy sets `terminal_bell`).
+// Why a bell of its own: Claude Code rings on its `idle_prompt`, about 60
+// seconds after the answer, and the user waits for the answer in the helix pane.
+// Why with no helix pane too: the bell says that the turn ended, and the
+// mark is only one place that shows it.
+// GI_NO_BELL: `gi open --no-bell` keeps the mark and drops the sound.
+// Why try: as for the mark, a turn must not fail to end over a sound.
+async function markDone($: Api) {
+  await setMark($, DONE_MARK)
+  try {
+    if ((await $.env.get('GI_CANVAS')) && !(await $.env.get('GI_NO_BELL'))) {
+      await $.ui.notify('the answer is in the canvas', { title: 'gi' })
+    }
+  } catch {}
+}
+
+// Why only a title with one of `marks`: a name the user gave the pane stays.
+async function clearMark($: Api, marks: string[]) {
   try {
     const pane = (await $.env.get('GI_CANVAS')) && (await helixPane($))
     if (!pane) {
@@ -210,7 +340,8 @@ async function clearDoneMark($: Api) {
     }
     const { stdout } = await $.process.run(['zellij', 'action', 'list-panes', '--json'])
     const panes = JSON.parse(stdout) as { id: number; is_plugin: boolean; title?: string }[]
-    if (panes.find(p => !p.is_plugin && String(p.id) === pane)?.title?.startsWith(DONE_MARK)) {
+    const title = panes.find(p => !p.is_plugin && String(p.id) === pane)?.title ?? ''
+    if (marks.some(m => title.startsWith(m))) {
       await $.process.run(['zellij', 'action', 'undo-rename-pane', '--pane-id', `terminal_${pane}`])
     }
   } catch {}
@@ -242,6 +373,59 @@ async function reviewBase($: Api) {
   } catch {
     return undefined
   }
+}
+
+type Shown = { text: string | undefined }
+
+// How often the status line looks at the queue, in milliseconds.
+const STATUS_PERIOD = 3000
+
+// The queue of this session's pane as `nu-hx queue-add` (dotfiles) writes it:
+// the absolute path of a file, once per commit. Change that path and this one
+// together. Empty outside zellij and when no commit waits.
+async function queued($: Api) {
+  const home = await $.env.get('HOME')
+  const session = await $.env.get('ZELLIJ_SESSION_NAME')
+  const me = await $.env.get('ZELLIJ_PANE_ID')
+  if (!home || !session || !me) {
+    return []
+  }
+  const text = await $.fs.read(`${home}/.cache/gi/unsent/${session}-${me}`).catch(() => '')
+  return (text as string).split('\n').filter(line => line !== '')
+}
+
+// Why try: the line is a hint, and no turn or timer may fail over it.
+async function showUnsent($: Api, shown: Shown) {
+  try {
+    const counts = new Map<string, number>()
+    for (const path of await queued($)) {
+      const name = path.slice(path.lastIndexOf('/') + 1)
+      counts.set(name, (counts.get(name) ?? 0) + 1)
+    }
+    const text = counts.size ? `unsent: ${[...counts].map(([name, n]) => `${name} ${n}`).join(', ')}` : undefined
+    if (text !== shown.text) {
+      shown.text = text
+      await $.ui.status(text)
+    }
+  } catch {}
+}
+
+// The user's commits to `path` that the agent was never sent, with their
+// diffs, when the file is the canvas or waits in the queue; `nu-hx
+// tell-claude-on-read` (dotfiles) prints them, remembers them as sent and
+// takes the file out of the queue.
+// Why the check here first: every Read of the session comes through, and a nu
+// process for each would slow all of them.
+async function unsentOnRead($: Api, path: string) {
+  const canvas = await $.env.get('GI_CANVAS')
+  if (!canvas || (await $.env.get('GI_NO_HOOK')) || (path !== canvas && !(await queued($)).includes(path))) {
+    return undefined
+  }
+  const run = await $.process.run(['hx-nu', '--commands', `nu-hx tell-claude-on-read r#'${path}'# --canvas r#'${canvas}'#`])
+  const commits = run.exitCode === 0 ? run.stdout.trim() : ''
+  return commits
+    ? `The user committed to this file, and these commits were never sent to you; they now count as sent. Read them as his instructions, oldest first: a later commit wins over an earlier one, as in a long message. What the Read above shows is the text after them.\n\n${commits}`
+    : undefined
 }
 
 // The helix pane that last sent this session a prompt, as `nu-hx tell-claude`
@@ -288,7 +472,7 @@ async function unsentReason($: Api, e: StopEvent, canvas: string) {
   }
   const show = run.stdout.trim()
   return show
-    ? `The user committed to \`${shortPath(canvas, e.cwd)}\`, and these commits were never sent to you: run \`${show}\`. Read them all, oldest first, before you act: a later commit wins over an earlier one, as in a long message. The list can repeat what you already read — a \`git log -p\` the user typed by hand, or a fixup of a sent commit — so skip what you already did; where the intent of a commit is unclear, ask with a \`???\` in the canvas. Work the rest in the canvas as usual.`
+    ? `The user committed to \`${shortPath(canvas, e.cwd)}\` or to other files he edits beside it, and these commits were never sent to you: run \`${show}\`. Read them all, oldest first, before you act: a later commit wins over an earlier one, as in a long message. The list can repeat what you already read — a \`git log -p\` the user typed by hand, or a fixup of a sent commit — so skip what you already did; where the intent of a commit is unclear, ask with a \`???\` in the canvas. Work the rest in the canvas as usual.`
     : undefined
 }
 

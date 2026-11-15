@@ -52,8 +52,8 @@ export def main []: nothing -> table {
 # Whether the process a registry entry names still runs, by Linux /proc.
 # Why the start time: a file outlives a crashed session, and the kernel reuses
 # its pid. Why the state: PID 1 of the container does not reap, so a dead
-# session stays a zombie with its old start time. The same check as the mono's
-# .claude/hooks/worktree-guard.sh. macOS has no /proc: there `main` checks the
+# session stays a zombie with its old start time. The same check as
+# .claude/hooks/worktree-guard.sh in the monorepo of the author. macOS has no /proc: there `main` checks the
 # pid alone.
 export def proc-alive []: record -> bool {
     let s = $in

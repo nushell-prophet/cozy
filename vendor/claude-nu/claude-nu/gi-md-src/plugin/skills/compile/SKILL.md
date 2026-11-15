@@ -15,8 +15,7 @@ and reports what is still open.
 The result is the canvas in its current state,
 plus the diagnostics:
 the conflicts as CriticMarkup at their spots,
-the open items in one `AA:` entry under the H1,
-or in a sibling that the entry names.
+the open items as entries at their spots.
 
 Compile does not execute.
 An open `!!` is work for `gi:git-intent`;
@@ -28,10 +27,7 @@ not to start the work.
 
 - The canvas: `$ARGUMENTS` when it names a path, else `$GI_CANVAS`.
   With neither, stop: the canvas is unknown.
-- Its siblings: each path in `related_files`, and each `<canvas stem>-*.md` beside the canvas,
-  except `<canvas stem>-open.md`:
-  that file is the output of *Open items*,
-  which the run rewrites and does not read as source.
+- Its siblings: each path in `related_files`, and each `<canvas stem>-*.md` beside the canvas.
 - The history: `git log -p -- <canvas> <siblings>`, for the decisions the files no longer show.
 
 Read all of them in full before the first pass.
@@ -108,8 +104,11 @@ Mark each finding that stands, at its spot:
   He applies it himself, as the Canvas style says.
   The reason goes in the commit body, one line per substitution;
   he asks for more when he needs it.
-- When the files do not say which side is right, a question on his words that links the other side: `{==his words==}{>>conflicts with <fragment link><<}`.
-- In an agent line — an `AA:` entry, or a sibling the agent wrote, as `git blame` shows — a direct fix of the line.
+- When the files do not say which side is right, a question on his words that links the other side:
+  `{==his words==}{>>conflicts with <fragment link><<}`.
+- In an agent line
+  — an `AA:` entry, or a sibling the agent wrote, as `git blame` shows —
+  a direct fix of the line.
   A place that the fix names carries its fragment link.
 
 Commit this pass alone, `canvas: compile — mark conflicts`.
@@ -117,29 +116,34 @@ A pass that found nothing makes no commit.
 
 ## Open items
 
-List what is still open in one `AA:` entry under the H1 of the canvas:
-compile is about the whole canvas, not about one point of it.
-The entry is one line, `AA: compile: <N> open`,
-and under it each open item is one list item on one line:
-its fragment link,
-what waits,
-and who acts — he, or the agent after his `go`.
-The gi review of a turn (`gi open --review`) counts only the lines of an entry that are not list items,
-so the entry stays within the cap of the Canvas style however long the list is;
-it flags a list item with a code span and no fragment link.
-Past three items, the list goes to the sibling `<canvas stem>-open.md`, which holds only these one-line items,
-the entry line names it (`AA: compile: <N> open, in <canvas stem>-open.md`),
-and `related_files` in the frontmatter names it too,
-as the Canvas style says for a large answer.
-A compile that finds the entry of an earlier compile rewrites it in place,
-and moves the list between the entry and the sibling as its length says.
-When the list is back in the entry, or nothing is open,
-delete the sibling with `git rm` and its line in `related_files`;
-with nothing open, the entry goes too.
-Count the items in the entry or its sibling,
+Write each open item in the canvas, at the spot it is about,
+as the Canvas style says for any text of the agent:
+he reads the item beside the lines it is about, with no jump to a list or to another file.
+
+- An order or a point that waits for the agent gets one `AA:` entry under it:
+  what waits, and what his `go` starts.
+- A question that only he can answer is a `???` under his point, closed:
+  the choice, the default, and what the default costs.
+- A conflict of pass 3 is already at its spot as CriticMarkup.
+  It gets no second entry;
+  when his `go` needs a default for it, the default is a `???` under that point.
+- An item about the whole canvas, with no spot of its own, goes under the H1.
+
+Under the H1 goes one `AA:` entry of one line, `AA: compile: <N> open`:
+compile is about the whole canvas, so its count stands at the top.
+It holds no list of the items, and no sibling file holds one:
+a list repeats the items in a second place,
+and each line of it costs him a jump to the spot.
+One point of his is one item,
+also when a CriticMarkup span and a `???` both stand at it.
+Count the items in the canvas,
 never from the report of the subagent.
+A compile that finds the count entry of an earlier compile rewrites it in place,
+with the entries at the spots;
+pass 2 folds the ones he settled.
+With nothing open, the count entry goes too.
 Commit this alone, `canvas: compile — open items`.
-A list that did not change makes no commit.
+A canvas where no entry changed makes no commit.
 
 ## Replies
 
@@ -149,32 +153,38 @@ he looks for the same element in the same place every time.
 
 - The reply is a column of rows and nothing else:
   no paragraph before it, no question after it, no blank line between rows.
-- Each row is one Markdown line: the emoji of a shared label, the label in backticks, `│`, then one line of value, as `` 🟢 `go` │ <what go does> ``.
-  The shared labels and their emoji: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of this skill alone has none.
-  The skeletons below show the rows as plain text; the reply adds the emoji, the backticks and the `│`.
+- Each row is one Markdown line:
+  the emoji of a shared label, the label in backticks, `│`, then one line of value, as `` 🟢 `go` │ <what go does> ``.
+  The shared labels and their emoji: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`;
+  a label of this skill alone has none.
+  The skeletons below show the rows as plain text;
+  the reply adds the emoji, the backticks and the `│`.
 - The labels and the fixed values (`yes`, `no`, `nothing`) are in English;
   the free text of a value is in the language of his request.
-- A row prints only when it has something to say: a pass that found nothing gets no row.
+- A row prints only when it has something to say:
+  a pass that found nothing gets no row.
 - At most four rows and 480 bytes:
   in a canvas session the gi Stop hook passes no more, unless he ran the skill as a slash command,
   and the shape is the same either way.
-  The open items are in the `AA:` entry of *Open items* or its sibling, so the rows fit.
+  The open items are in the canvas at their spots, so the rows fit.
 
 ```text
 ready     yes | no · <Change-Id> fold · <Change-Id> conflicts · <Change-Id> open items
-open      <N> items · <fragment link of the AA: entry>
+open      <N> items · <fragment link of the count entry>
 go        <the open work that go starts>
 ```
 
 The first row says whether the canvas is ready, and it always prints;
 a pass that made no commit adds no Change-Id.
 `open` prints when an item is open:
-it counts the items in the `AA:` entry or its sibling, and gives the fragment link of the entry.
+it gives the count and the fragment link of the count entry under the H1.
 The last row is `go` when you can do open work after his go,
 `next <the exact action for him>` when only he can act,
 or `next nothing` when the canvas is ready.
 
-A stop — an unknown canvas, a draft of his in *Clean tree* — has this shape:
+A stop
+— an unknown canvas, a draft of his in *Clean tree* —
+has this shape:
 
 ```text
 stop      <the section>: <the cause in one line>
@@ -185,5 +195,7 @@ next      <the exact action for him>
 ## Related
 
 - `/gi:git-intent` — does the open work that compile lists.
-- `/gi:git-intent-readback` — reads back the answers of the last N commits and stops; compile reads the whole canvas and its siblings.
-- `/gi:canvas-tidy` — the deeper cut of one document, his prose included; compile folds only settled threads and stale agent facts.
+- `/gi:git-intent-readback` — reads back the answers of the last N commits and stops;
+  compile reads the whole canvas and its siblings.
+- `/gi:canvas-tidy` — the deeper cut of one document, his prose included;
+  compile folds only settled threads and stale agent facts.
