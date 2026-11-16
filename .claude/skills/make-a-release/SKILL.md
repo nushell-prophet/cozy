@@ -22,7 +22,7 @@ Before the first reply, load the skill `40-cozy-output-formatting` with the Skil
 This skill adds:
 
 - No row says that a prerequisite holds.
-- A failed prerequisite and a step 6 search that finds no `Mono-Commit` stop in the shape of `40-cozy-output-formatting`; `next` names what must happen first.
+- A failed prerequisite and a step 2 or step 6 search that finds no `Mono-Commit` stop in the shape of `40-cozy-output-formatting`; `next` names what must happen first.
 - The version and the drafts are two `pick` rows, so an answer to one never leaves the other to a guess.
 
 The plan prints after steps 1-3 only when the skill must wait for the user: the user gave no version (step 1), or step 2 drafted new entries.
@@ -38,7 +38,7 @@ tidy      <entry in a few words> → <the cleaned entry>
 skip      <commits or a group of them> · <why they are not user-facing>
 pick      version? · default: X.Y.Z (<the reason for the bump>) · else: <the other bumps>
 pick      the drafts? · default: add all as shown · else: name the ones to drop or change
-go        write CHANGELOG.md, commit release: X.Y.Z, then /mono-land, export and tag
+go        export master, map the shas to the recipient, write CHANGELOG.md, commit release: X.Y.Z, then /mono-land, export and tag
 ```
 
 - `hash`: step 2, an existing entry with a missing or stale hash.
@@ -96,7 +96,18 @@ test -d "$R" || { echo "no cozy-public checkout at $R"; exit 1; }
 - Exported already: `git -C "$R" log --oneline <previous-tag>..<branch>`, with `<branch>` from the `branch` of cozy in `../mono.yml`.
 - Not exported yet: `git log --oneline <mono-sha>..HEAD -- .`, where `<mono-sha>` is the `Mono-Commit` trailer of the recipient's tip, `git -C "$R" log -1 --format='%(trailers:key=Mono-Commit,valueonly)' <branch>`.
 
-Which history the `CHANGELOG.md` hashes cite is not decided yet; `validate-docs` checks them against the recipient.
+The `CHANGELOG.md` hashes are short shas of the recipient:
+a reader on GitHub sees the recipient,
+and `validate-docs` checks them there.
+A commit that is not exported yet has no recipient sha,
+so the plan shows its mono sha,
+and the skill exports `master` before step 4:
+`nu toolkit/mono.nu export cozy` from the mono root.
+Then each mono sha maps to its recipient sha:
+`git -C "$R" log <branch> --format=%h --grep "^Mono-Commit: $(git rev-parse <mono sha>)"`.
+An empty result is a stop (see *Replies*):
+a commit that touches only excluded paths, such as `todo/`, has no recipient commit to cite.
+The export of step 6 then carries the release commit alone.
 
 Cross-reference each commit against the `[Unreleased]` entries in `CHANGELOG.md`.
 
