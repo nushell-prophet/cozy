@@ -45,7 +45,7 @@ next      /mono-land | nothing
 - `sparse`: one row per repo whose body is thin because the upstream history was not available.
 - `warn`: for example an untracked file that the copy left in `vendor/` and that no commit holds.
 - `vendored` and `next` always print.
-  When a commit was made, the last row is `│ 👉 next │ /mono-land`, word for word; when no repo changed, no `commit` row prints and it is `│ 👉 next │ nothing`.
+  When a commit was made, the last row is `👉 next` with the value `/mono-land`, word for word; when no repo changed, no `commit` row prints and the value is `nothing`.
 
 ## Preflight
 
