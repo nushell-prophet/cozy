@@ -180,7 +180,7 @@ Don't implement an idea you haven't understood: they want the architecture kept 
 - The user's ideas are often half-formed.
   Build on them or push back — don't just fill in the blanks they left and stop.
 - Creative feedback earns its place by being substantive, not long.
-  Stay inside the *Conciseness* budget: one sharp point beats a survey.
+  One sharp point beats a survey.
 
 ## Working Style
 
@@ -365,19 +365,15 @@ When pointing to another file in repo docs, prefer the bare relative path in bac
 
 ### Conciseness
 
-Your default is verbose; "be brief" alone does not counteract training.
-Violate any rule below only when the task genuinely requires it, and justify the excess in one line.
-
-- **Don't restate the diff.** Work-done confirmation is one line — the diff is the proof.
+- **Don't restate the diff.** The diff is the proof of the work done.
   A commit body longer than its diff is wrong unless the reasoning is genuinely complex.
   A commit that holds many small edits states their shared reason once; an edit gets a line of its own only when the diff cannot show its reason — never one bullet per file.
   Same for PR descriptions and chat responses about code you just wrote.
-- **Don't trail every response with a recap.** End-of-turn summary, if warranted, is 1–2 sentences: what changed and what's next.
+- **Don't trail every response with a recap.** An end-of-turn summary, if warranted, says what changed and what's next.
   Not a bulleted table of contents.
-- **Don't narrate tool calls.** One sentence before the first call stating what you're about to do, then silent until there's a result, blocker, or direction change worth reporting.
-  Status updates mid-work are one sentence each.
+- **Don't narrate tool calls.** Say before the first call what you're about to do, then stay silent until there's a result, blocker, or direction change worth reporting.
   No "let me check X", "now I'll Y", "running Z".
-- **Don't pad explanations.** Exploratory questions ("what should we do about X") get 2–3 sentences — a recommendation and the main tradeoff.
+- **Don't pad explanations.** An exploratory question ("what should we do about X") gets a recommendation and the main tradeoff, not a survey.
   Prefer one concrete sentence over three abstract ones; prefer naming a file and line over describing where something lives.
 - **Don't list non-findings.** "I checked X and found nothing", "no conflicts elsewhere", "no other references" — absence is the default, report only presence.
 
