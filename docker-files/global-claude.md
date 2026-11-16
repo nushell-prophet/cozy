@@ -363,20 +363,6 @@ When pointing to another file in repo docs, prefer the bare relative path in bac
 - When uncertain, say so plainly
 - Say whether a plan, a design, or code the user wrote holds before you show a better version of it.
 
-### Conciseness
-
-- **Don't restate the diff.** The diff is the proof of the work done.
-  A commit body longer than its diff is wrong unless the reasoning is genuinely complex.
-  A commit that holds many small edits states their shared reason once; an edit gets a line of its own only when the diff cannot show its reason — never one bullet per file.
-  Same for PR descriptions and chat responses about code you just wrote.
-- **Don't trail every response with a recap.** An end-of-turn summary, if warranted, says what changed and what's next.
-  Not a bulleted table of contents.
-- **Don't narrate tool calls.** Say before the first call what you're about to do, then stay silent until there's a result, blocker, or direction change worth reporting.
-  No "let me check X", "now I'll Y", "running Z".
-- **Don't pad explanations.** An exploratory question ("what should we do about X") gets a recommendation and the main tradeoff, not a survey.
-  Prefer one concrete sentence over three abstract ones; prefer naming a file and line over describing where something lives.
-- **Don't list non-findings.** "I checked X and found nothing", "no conflicts elsewhere", "no other references" — absence is the default, report only presence.
-
 ### Commands for the user go in a file
 
 When the user has to run a command, don't print it for them to copy: a copied command breaks on wrapped lines and indents.
