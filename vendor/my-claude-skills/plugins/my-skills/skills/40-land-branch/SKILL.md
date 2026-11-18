@@ -126,22 +126,29 @@ The user reads these replies as he reads the output of a shell command:
 he looks for the same element in the same place every time.
 So the plan of step 8, the report of step 14 and every stop have a fixed shape.
 
-- The reply is a column of rows and nothing else: no paragraph before it, no question after it.
-- The rows are one `text` block, and each line of it is one row, `│ <label> │ <value>`, `│ land │ branch → main`, with the labels padded to one width.
+- The reply is a list of rows and nothing else: no paragraph before it, no question after it.
+- The rows are one `text` block.
+  A row is a label on a line of its own,
+  and its value on the next line, with four spaces before it;
+  no empty line stands between the rows.
   The shared labels carry an emoji before the word: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of one skill has none.
-  A value of several lines, such as a commit message or the output of a command, goes on the next lines, each with both `│` and spaces in the label cell.
-  The skeletons below show the rows as plain text; the reply adds the borders, the padding and the emoji.
+  A value of several lines, such as a commit message or the output of a command, keeps its line breaks,
+  with the same four spaces before each line;
+  an empty line inside the value stays empty.
+  The skeletons below show a row as one line, the label and then the value;
+  the reply puts the value under the label and adds the emoji.
   The labels, their order and the fixed values (`land as shown`, `nothing changed`, `none`) are always in English.
   The free text of a value is in the language of the session.
 - A row prints only when it has something to say.
   A check that found nothing gets no row: no "no hits", no "nothing to re-base".
   The rows that always print are named under each shape.
-- Several findings of one kind are several rows with the same label.
+- Several findings of one kind are several rows with the same label:
+  each finding repeats the label line.
 - `warn` is the one row with no step behind it: a fact that changes what the user does or expects.
   A check that passed is never a `warn`.
 - A commit message is always in full, never a path to a file.
 - An `ASSUMED:` list, which the global rules ask for an unchecked claim, goes after the rows: it is the one other text.
-- The last row of a plan is `│ 🟢 go │ land as shown`, word for word.
+- The last row of a plan is `🟢 go` with the value `land as shown`, word for word.
   Every choice that `go` makes is a `pick` row above it, with its default.
 
 A stop — a guard of steps 1 and 2, a branch of only working material at step 11, a conflict, a hook that blocks a command, a decision that `--no-confirm` leaves to the user, a branch that `--quick` does not take (see *Authorization*) — has this shape:

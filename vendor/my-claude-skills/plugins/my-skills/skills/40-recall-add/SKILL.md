@@ -19,18 +19,20 @@ So the report of step 5 is one `added` row:
 added     <the record as written> · <commit>
 ```
 
-- The row is one line of a `text` block, `│ added │ <value>`, as Nushell prints a table.
+- The row is a `text` block of two lines:
+  the label `added` on a line of its own,
+  and the value on the next line, with four spaces before it.
   The label is in English;
   the record is in the language of the list.
-- When step 3 changed an old record, the row is `│ changed │ <the record as written> · <commit>`.
+- When step 3 changed an old record, the label is `changed`, and the value has the same form.
 - `<commit>` is the `Change-Id` trailer of the commit when the repo stamps one,
   its short sha otherwise.
 - When the skill runs inside another task,
   this row goes into the reply of that task,
   and that reply ends as its own rules say.
-  When the record is the whole reply, `│ 👉 next │ nothing` follows the row.
+  When the record is the whole reply, the row `👉 next` with the value `nothing` follows it.
 - A question of step 1 or step 2 is a stop, and the reply ends there,
-  in the same `│` rows, with `🛑`, `📦`, `❓` and `👉` before the shared labels:
+  in rows of the same form, with `🛑`, `📦`, `❓` and `👉` before the shared labels:
 
   ```text
   stop      2: no instruction names the recall list

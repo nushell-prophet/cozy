@@ -25,7 +25,7 @@ This skill covers the second one, and a few rules that keep a public skill hones
   It shows a plan, a stop, a report or a handoff, so it gets a `## Replies` section, and its steps point at it ("report in the shape of *Replies*").
 
 Why: the user reads the output of a command skill as he reads the output of a shell command, and looks for the same row in the same place on every run.
-A finding of an analysis has a shape of its own — a quote, a diff, an argument — and a table cell breaks it.
+A finding of an analysis has a shape of its own — a quote, a diff, an argument — and the short value of a row breaks it.
 
 The format of the rows is in the skill `40-cozy-output-formatting`.
 The `## Replies` section of a command skill names only its own rows and their order.
