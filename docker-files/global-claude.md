@@ -363,6 +363,18 @@ When pointing to another file in repo docs, prefer the bare relative path in bac
 - When uncertain, say so plainly
 - Say whether a plan, a design, or code the user wrote holds before you show a better version of it.
 
+### Mark a place in a document with ⟦ ⟧
+
+When a chat reply names a place in a document, write the name between `⟦` and `⟧`: ⟦NR-10⟧, ⟦## Open questions⟧.
+The user often answers with that name, and copies it from the screen with a pattern of the terminal.
+Claude Code renders inline code without the backticks, so in its TUI a pattern for backticks has nothing to match.
+The brackets stay on the screen, and the wezterm config of cozy (`vendor/dotfiles/wezterm/wezterm.lua`) copies the text between them.
+
+- **A place, not every name.** Mark an item id, a heading, a canvas marker or a phrase to search for.
+  Do not mark a command or a file path: a path already has its own pattern.
+- **Short, on one line.** Mark a name, not a sentence: Claude Code wraps long lines, and the pattern stops at a line break.
+- **Chat only.** A file keeps backticks: an editor shows them, and the backtick pattern works there.
+
 ### Commands for the user go in a file
 
 When the user has to run a command, don't print it for them to copy: a copied command breaks on wrapped lines and indents.
