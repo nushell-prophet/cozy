@@ -25,10 +25,15 @@ The user runs `dotnu embeds-update <file>` there, and the output lands in the fi
 The user reads the handoff and the outcome as he reads the output of a shell command:
 he looks for the same element in the same place every time.
 
-- The part of the reply that this skill writes is a column of rows.
-  The rows are one `text` block, and each line of it is one row, `│ <label> │ <value>`, `│ 👉 next │ cmd-stack load 20261104-1530-check-the-branch`, with the labels padded to one width.
+- The part of the reply that this skill writes is a list of rows.
+  The rows are one `text` block.
+  A row is a label on a line of its own,
+  and its value on the next line, with four spaces before it:
+  `👉 next`, and under it `cmd-stack load 20261104-1530-check-the-branch`.
+  No empty line stands between the rows.
   The shared labels carry an emoji before the word: `🛑 stop`, `📦 state`, `🔎 proof`, `🔀 pick`, `❓ open`, `🟡 warn`, `🟢 go`, `👉 next`, `✅ done`; a label of one skill has none.
-  The skeletons below show the rows as plain text; the reply adds the borders, the padding and the emoji.
+  The skeletons below show a row as one line, the label and then the value;
+  the reply puts the value under the label and adds the emoji.
   The labels are in English; the free text of a value is in the language of the session.
 - A row prints only when it has a finding.
   A check that passed gets no row: a file that parses is the normal case.
