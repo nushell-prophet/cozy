@@ -409,7 +409,7 @@ export def cybergraph-block [
     let text_file = mktemp --tmpdir cybergraph-particle.XXXXXX
     cybergraph-text $sel | save --force $text_file
     let repo = $ctx.root | to nuon
-    let cid = cybergraph-run $ctx [$"nu-cybergraph-git particle add ($text_file | to nuon) --repo ($repo)"]
+    let cid = cybergraph-run $ctx [$"nu-cybergraph-git particle add ($text_file | to nuon) --dir ($repo)"]
     rm $text_file
     let short = $cid | str substring 0..<$SHORT_CID
     if $found == $short { return }
@@ -426,7 +426,7 @@ export def cybergraph-block [
     let where = $"($ctx.abs | path relative-to $ctx.root):($s)(if $last == $s { '' } else { $'-($last)' })"
     let message = if $found == null { $"cybergraph: particle ($short) of ($where)" } else {
         let old = cybergraph-full-cid $ctx $found
-        cybergraph-run $ctx [$"convention update-particle ($old) ($cid) --keyless-signer ($ctx.signer | to nuon) --repo ($repo) | ignore"] | ignore
+        cybergraph-run $ctx [$"convention update-particle ($old) ($cid) --keyless-signer ($ctx.signer | to nuon) --dir ($repo) | ignore"] | ignore
         $"cybergraph: particle ($short) replaces ($found) of ($where)"
     }
     ($all | first ($s - 1)) ++ $marked ++ ($all | skip $e) | to text | save --force $ctx.abs

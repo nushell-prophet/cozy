@@ -58,9 +58,7 @@ $env.config.completions.case_sensitive = false
 $env.config.completions.persistent_menus = true
 
 # Cursor Shape Configuration
-# Why inherit: the terminal's default cursor applies (in wezterm, the blinking
-# block of its config), the same cursor as in a Claude Code pane.
-$env.config.cursor_shape.emacs = "inherit"
+$env.config.cursor_shape.emacs = "Line"
 $env.config.cursor_shape.vi_insert = "Block"
 $env.config.cursor_shape.vi_normal = "Underscore"
 
@@ -81,13 +79,12 @@ $env.config.max_last_result_size = 10mb
 # Keys collision-checked against 7.8k history entries (never typed as command or argument token) and PATH.
 
 #:nu-show-09
-# `cn`, `cno` and `cnn` need the claude-nu module (github.com/nushell-prophet/claude-nu);
+# `cn` and `cno` need the claude-nu module (github.com/nushell-prophet/claude-nu);
 # without it they expand to a command that is not found.
 $env.config.abbreviations = {
     cs: 'claude --dangerously-skip-permissions'
     cn: 'claude-nu'
     cno: 'claude-nu gi open --dangerously-skip-permissions'
-    cnn: 'claude-nu gi new --dangerously-skip-permissions'
     gd: 'git diff'
     gp: 'git pull'
     gs: 'git status'

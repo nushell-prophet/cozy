@@ -128,24 +128,6 @@ if local_settings.background then
   }
 end
 
--- Cursor: a blinking block that fades out and back in.
--- Why: the user wants the cursor easier to find, and chose a pretty fade over
--- the cheaper hard on/off blink (both ease functions set to 'Constant').
--- Each phase lasts cursor_blink_rate ms; ease_in shapes the fade out,
--- ease_out the return.
-config.default_cursor_style = 'BlinkingBlock'
-config.cursor_blink_rate = 700
--- Why Linear: wezterm evaluates the ease as a 1D cubic whose first control
--- value is where the phase starts, so 'Linear' {0, 0, 1, 1} is the smooth
--- S-curve 3x²-2x³, while 'Ease', 'EaseIn' and 'EaseInOut' jump to 0.25-0.42
--- at the start of each phase (config/src/bell.rs in the wezterm source).
-config.cursor_blink_ease_in = 'Linear'
-config.cursor_blink_ease_out = 'Linear'
-config.colors = config.colors or {}
-config.colors.cursor_bg = '#ffb86c'
-config.colors.cursor_border = '#ffb86c'
-config.colors.cursor_fg = local_settings.background or '#000000'
-
 -- Window settings
 config.initial_cols = local_settings.initial_cols
 config.initial_rows = local_settings.initial_rows
@@ -375,6 +357,14 @@ local quick_select_patterns = {
   -- Cost: the span starts left of its content, so a hash or range inside it
   -- gets no label of its own -- only the whole span.
   "`([^`\\n]{2,200}?)`",
+
+  -- Anchor marker: copies the text between ⟦ and ⟧. Agents wrap in it a place
+  -- in a document that their chat reply names (⟦NR-10⟧, a heading, a phrase).
+  -- Why not the backtick rule above: Claude Code renders inline code without
+  -- the backticks, so in its TUI that rule finds nothing to match.
+  -- Why ⟦ ⟧: one cell wide, and rare in terminal output, so the rule gives
+  -- few false labels. One line only, like the backtick rule.
+  "⟦([^⟧\\n]{1,120})⟧",
 
   -- Bare file names: README.md, toolkit.nu, Cargo.lock.
   -- Why a fixed list of extensions: any extension would also match field
