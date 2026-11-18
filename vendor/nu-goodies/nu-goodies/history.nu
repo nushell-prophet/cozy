@@ -319,7 +319,9 @@ export def --env 'z' [
 }
 
 # Generate completions for z command from history
-export def 'completions-cwds' []: nothing -> record {
+export def 'completions-cwds' [
+    token: record # The word under the cursor, as nushell hands it to a completer
+]: nothing -> record {
     if ($nu.history-path | str ends-with 'txt') { return {completions: [] options: {}} }
 
     let termsize = term size | get columns | $in - 5
@@ -388,16 +390,28 @@ export def 'completions-cwds' []: nothing -> record {
         }
     let hint_width = $described.description | each { str length --grapheme-clusters } | append 0 | math max
 
+    # Why: nushell hands over the word with its opening quote, and a path in the menu has none
+    let query = $token.text | str replace --all --regex r#'^[`"']|[`"']$'# ''
+
+    # Why: Tab narrows the menu by the fzf rules that Enter uses in `select-dir`, so `foo$` anchors the end of a path in both
+    # Why the shown path: the workspace root is in every value, and its letters match a fuzzy query by chance
+    # Why --no-sort: the menu keeps the order of the history, the latest directory first
+    let matched = $described.display_override
+        | to text
+        | fzf --no-sort --ignore-case $'--filter=($query)'
+        | lines
+
     let variants = $described
         # Why: the menu gives the hint only the width left after the longest shown path, so one long path cuts every hint
         | where ($it.display_override | str length --grapheme-clusters) + $hint_width < $termsize
+        | where display_override in $matched
         # Why: nushell inserts a completion value as is, and a backtick string keeps a path with spaces one word
         | update value { if $in has ' ' { $'`($in)`' } else { } }
 
     {
         options: {
-            case_sensitive: false
-            completion_algorithm: fuzzy
+            # Why: fzf has filtered the list above, and nushell has no algorithm with anchors
+            filter: false
             sort: false
         }
         completions: $variants
