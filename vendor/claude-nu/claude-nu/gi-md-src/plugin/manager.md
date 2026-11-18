@@ -32,3 +32,5 @@ check the result yourself against the user's first request:
 read the diff and run the tests.
 Its report is a claim, not a proof.
 After the check, update the canvas and the CLAUDE.md of the project.
+In the canvas, the unit is the point that a result answers, not the run of the subagent:
+split its report over those points, as *Save his reading budget, not yours* in the style says.

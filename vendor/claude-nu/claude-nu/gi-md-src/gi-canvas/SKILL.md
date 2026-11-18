@@ -130,17 +130,17 @@ it goes into the canvas through the same tidy rules, under the points it answers
 
 ## A new canvas, or an existing one
 
-`gi new` and `gi open` launch Claude Code themselves, so the user runs them — not you.
+`gi open` launches Claude Code itself, so the user runs it — not you.
 Hand over one of these, as is:
 
 ```nushell
-claude-nu gi new <slug>            # <folder>/<date>-<slug>.md, opened in $EDITOR for the task, then launch; switches to a new branch named after the slug first
-claude-nu gi open <doc>            # an existing canvas; resumed if it holds a session
+claude-nu gi open <slug>           # a new canvas: <folder>/<date>-<slug>.md, opened in $EDITOR for the task, then launch; switches to a new branch named after the slug first. A slug that has a canvas opens it
+claude-nu gi open <doc>            # an existing canvas, by its path; resumed if it holds a session
 claude-nu gi open <doc> --fork     # a copy, <doc>_1.md, on a session of its own
 claude-nu gi open <doc> --no-hook  # no Stop-hook floor; the commit guard stays
 ```
 
-For `gi new`, pick the slug as for an import: two to four words on what the canvas is for.
+For a new canvas, pick the slug as for an import: two to four words on what the canvas is for.
 
 ## What to report
 
@@ -170,7 +170,7 @@ next      exit this session, then run: claude-nu gi open <doc>
 A new or an existing canvas:
 
 ```text
-next      claude-nu gi new <slug> | claude-nu gi open <doc> | claude-nu gi open <doc> --fork | claude-nu gi open <doc> --no-hook
+next      claude-nu gi open <slug> | claude-nu gi open <doc> | claude-nu gi open <doc> --fork | claude-nu gi open <doc> --no-hook
 ```
 
 `next` always prints, and it is always the last row:

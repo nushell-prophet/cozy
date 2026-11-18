@@ -1,6 +1,6 @@
 # The model names `claude --model` takes, as a completion menu.
-# Why a file of its own in the module and not in completions/claude.nu: `gi new`
-# and `gi open` complete their --model from it too, and the module does not
+# Why a file of its own in the module and not in completions/claude.nu: `gi open`
+# completes its --model from it too, and the module does not
 # import from the completions.
 
 const models = [

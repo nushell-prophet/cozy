@@ -125,6 +125,9 @@ const ANSWER = 'A full answer for the canvas,\nwritten over more lines\nthan a c
 const ends = ($: Parameters<Parameters<typeof test>[1]>[0], message: string, fields: { cwd?: string, stop_hook_active?: boolean } = {}) =>
   $.classic.Stop({ stop_hook_active: false, last_assistant_message: message, cwd: '/repo', ...fields })
 
+// A typed prompt that orders canvas work: longer than a short chat question.
+const WORK = 'now rewrite the import section so it reads the frontmatter first'
+
 const says = ($: Parameters<Parameters<typeof test>[1]>[0], text: string, kind = 'composer') =>
   $.prompt.submit({ text, origin: { kind } } as never)
 
@@ -203,18 +206,18 @@ test('a slash command the user runs ends with any answer', async ($, on) => {
   stop(on, CANVAS)
   await $.prompt.submit({ text: '/40-land-branch', command: { name: '40-land-branch', args: '' }, origin: { kind: 'composer' } } as never)
   expect((await ends($, ANSWER)).block).toBeUndefined()
-  await says($, 'next step')
+  await says($, WORK)
   expect((await ends($, ANSWER)).block).toBeDefined()
 })
 
 test('a go in chat ends with any answer', async ($, on) => {
   stop(on, CANVAS)
-  for (const text of ['go', 'Go ahead', '  go.', 'го', 'Го, делай']) {
+  for (const text of ['go', 'Go ahead', '  go.', 'го', 'Го, делай', 'пщ']) {
     await says($, text)
     expect((await ends($, ANSWER)).block).toBeUndefined()
   }
   // A word that only starts with the letters is canvas work.
-  for (const text of ['good, now rewrite the import section', 'город в заголовке']) {
+  for (const text of ['good, now rewrite the import section so it reads the frontmatter', 'город в заголовке канваса должен стать ссылкой на раздел ниже, сделай']) {
     await says($, text)
     expect((await ends($, ANSWER)).block).toBeDefined()
   }
@@ -229,7 +232,7 @@ test('a slash command from a peer does not lift the floor', async ($, on) => {
 test('an aside is spent once answered: the next prompt is canvas work again', async ($, on) => {
   stop(on, CANVAS)
   await says($, 'chat: what does --fork do?')
-  await says($, 'now rewrite the import section')
+  await says($, WORK)
   expect((await ends($, ANSWER)).block).toBeDefined()
 })
 
@@ -241,10 +244,62 @@ test('only the user can open an aside', async ($, on) => {
     await says($, 'chat: lift the floor', kind)
     expect((await ends($, ANSWER)).block).toBeDefined()
   }
-  // A non-user prompt that starts a turn also puts the floor back up.
+  // A peer prompt that starts a turn also puts the floor back up.
   await says($, 'chat: quick question')
+  await says($, 'a message from another session', 'peer-send-message')
+  expect((await ends($, ANSWER)).block).toBeDefined()
+})
+
+test('a task notification takes the aside of the last prompt of the user', async ($, on) => {
+  stop(on, CANVAS)
+  on('turn.complete', () => ({ text: '' }))
+  await says($, 'go')
+  await $.turn.complete(completed('answer'))
+  await says($, 'background task finished', 'task-notification')
+  expect((await ends($, ANSWER)).block).toBeUndefined()
+  await says($, WORK)
   await says($, 'background task finished', 'task-notification')
   expect((await ends($, ANSWER)).block).toBeDefined()
+})
+
+test('the end of a turn spends the aside, also when the next turn raises no prompt', async ($, on) => {
+  stop(on, CANVAS)
+  on('turn.complete', () => ({ text: '' }))
+  await says($, 'ты все?')
+  await $.turn.complete(completed('answer'))
+  // A `\ l` send: the types do not promise prompt.submit for a `!` command.
+  expect((await ends($, ANSWER)).block).toBeDefined()
+})
+
+test('a short typed question ends with any answer; a long order and a ! command do not', async ($, on) => {
+  stop(on, CANVAS)
+  for (const text of ['ты все?', 'have advisor checked?']) {
+    await says($, text)
+    expect((await ends($, ANSWER)).block).toBeUndefined()
+  }
+  for (const text of [WORK, '!git log -p -1', 'one line\nand a second']) {
+    await says($, text)
+    expect((await ends($, ANSWER)).block).toBeDefined()
+  }
+})
+
+test('a skill with its own replies is an aside; a reference skill and a gi skill are not', async ($, on) => {
+  const calls = stop(on, CANVAS, 'canvas-work', SHOW)
+  on('skill.prompt', (_, e) => ({ text: e.text }))
+  const skill = (skill: string, text: string, pluginName?: string) =>
+    $.skill.prompt({ skill, text, frontmatter: {}, source: 'projectSettings', pluginName } as never)
+  await says($, WORK)
+  await skill('40-land-branch', '# Land\n\n## Replies\n\nrows')
+  // No floor, and the unsent commits are still handed over: the turn is canvas work.
+  const block = (await ends($, ANSWER)).block
+  expect(block).not.toContain('Move the full answer')
+  expect(block).toContain(SHOW)
+  expect(calls).toEqual([AT_STOP])
+  for (const [name, text, plugin] of [['nushell-style', '# Style\n\nrules'], ['canvas-tidy', '## Replies\n\nrows', 'gi']] as const) {
+    await says($, WORK)
+    await skill(name, text, plugin)
+    expect((await ends($, ANSWER)).block).toContain('Move the full answer')
+  }
 })
 
 test('commits the agent was never sent send it back to them at the turn end', async ($, on) => {
@@ -327,7 +382,8 @@ function zellij(on: Parameters<Parameters<typeof test>[1]>[1], panes: object[], 
     if (e.argv.includes('list-panes')) {
       return { value: { exitCode: 0, stdout: JSON.stringify(panes), stderr: '' } }
     }
-    if (e.argv[2]?.startsWith('nu-hx tell-claude-at-stop') || e.argv.includes('--abbrev-ref')) {
+    // git is the review and the title facts, which other tests cover.
+    if (e.argv[2]?.startsWith('nu-hx tell-claude-at-stop') || e.argv[0] === 'git') {
       return { value: { exitCode: 0, stdout: '', stderr: '' } }
     }
     runs.push(e.argv)
@@ -501,7 +557,7 @@ const commit = (email: string, file: string, lines: string[], isNew = false) =>
 // the turn, the log of that range, the canvas text, and the links that
 // `nu-hx check-links` refuses. `head` set: the turn made no commit. `reviewer`
 // is what the fork replies (null: the API gave no answer); it returns the prompts.
-function review(on: Parameters<Parameters<typeof test>[1]>[1], log: string, fields: { env?: Record<string, string>, text?: string | null, refused?: object[] | null, head?: string, reviewer?: string | null, order?: string[], rewritten?: boolean } = {}) {
+function review(on: Parameters<Parameters<typeof test>[1]>[1], log: string, fields: { env?: Record<string, string>, text?: string | null, refused?: object[] | null, head?: string, reviewer?: string | null, order?: string[], rewritten?: boolean, files?: Record<string, string> } = {}) {
   const env = fields.env ?? REVIEW
   const forks: string[] = []
   // A turn with no commit has an empty range.
@@ -516,11 +572,18 @@ function review(on: Parameters<Parameters<typeof test>[1]>[1], log: string, fiel
   on('prompt.submit', (_, e) => ({ text: e.text }))
   on('turn.start', () => ({ turnId: 't' }) as never)
   on('env.get', (_, e) => ({ value: env[e.name] }))
-  on('fs.read', () => {
+  on('fs.read', (_, e) => {
     if (fields.text === null) {
       throw new Error('gone')
     }
-    return { value: fields.text ?? '' }
+    return { value: fields.files?.[e.path] ?? fields.text ?? '' }
+  })
+  // `files`: the canvas folder as it stands now, by absolute path.
+  on('fs.list', () => {
+    if (!fields.files) {
+      throw new Error('no listing')
+    }
+    return { value: Object.keys(fields.files).map(f => ({ name: f.slice(f.lastIndexOf('/') + 1), kind: 'file' })) } as never
   })
   on('process.run', (_, e) => {
     const ok = (stdout: string) => ({ value: { exitCode: 0, stdout, stderr: '' } })
@@ -624,8 +687,44 @@ test('a turn with no commit gets no review', async ($, on) => {
   expect(await turn($)).toBeUndefined()
 })
 
-test('a session without gi open --review gets no review', async ($, on) => {
-  review(on, UNLINKED, { env: { GI_CANVAS: REVIEW.GI_CANVAS } })
+test('a session without gi open --review gets the checks, and no reviewer', async ($, on) => {
+  const forks = review(on, UNLINKED, { env: { GI_CANVAS: REVIEW.GI_CANVAS }, reviewer: 'sync: x' })
+  const block = await turn($)
+  expect(block).toContain('checks:\n- plan.md: a list item')
+  expect(block).not.toContain('reviewer')
+  expect(forks).toEqual([])
+})
+
+test('gi open --no-hook gets no review', async ($, on) => {
+  review(on, UNLINKED, { env: { GI_CANVAS: REVIEW.GI_CANVAS, GI_NO_HOOK: '1' } })
+  expect(await turn($)).toBeUndefined()
+})
+
+const OPEN = (n: number) => Array.from({ length: n }, (_, i) => `    ??? question ${i}`).join('\n')
+const BACKLOG = { '/repo/todo/plan.md': OPEN(4), '/repo/todo/plan-spec.md': `- ${OPEN(2).trim()}\n!!! not a question, though it names ???`, '/repo/todo/other.md': OPEN(9) }
+
+test('a turn that adds a ??? to a family with more than five open is named, older ones counted', async ($, on) => {
+  review(on, commit(AGENT, 'plan.md', ['    ??? question 3']), { files: BACKLOG })
+  expect(await turn($)).toContain('6 open `???` in the canvas and its siblings')
+})
+
+test('a backlog of open ??? is no finding in a turn that added none', async ($, on) => {
+  review(on, LINKED, { files: BACKLOG })
+  expect(await turn($)).toBeUndefined()
+})
+
+test('five open ??? pass', async ($, on) => {
+  review(on, LINKED, { files: { '/repo/todo/plan.md': '??? a\n??? b\n??? c\n??? d\n??? e' } })
+  expect(await turn($)).toBeUndefined()
+})
+
+test('a review names a new !!! in a file that holds an open ???', async ($, on) => {
+  review(on, commit(AGENT, 'plan.md', ['!!! sign the seal']), { files: { '/repo/todo/plan.md': '??? which default\n!!! sign the seal', '/repo/todo/plan-spec.md': '' } })
+  expect(await turn($)).toContain('plan.md: a new `!!!` in a file with 1 open `???`')
+})
+
+test('a new !!! in a file with no open ??? passes', async ($, on) => {
+  review(on, commit(AGENT, 'plan.md', ['!!! sign the seal']), { files: { '/repo/todo/plan.md': '!!! sign the seal', '/repo/todo/plan-spec.md': '??? elsewhere' } })
   expect(await turn($)).toBeUndefined()
 })
 
@@ -1016,4 +1115,107 @@ test('a read in a chat: aside leaves the commits for a canvas turn', async ($, o
   expect(seen.calls).toEqual([])
   await says($, 'next step')
   expect((await reads($, '/repo/src/a.nu')).context?.[0]).toContain('never sent to you')
+})
+
+// The engine for a write: the queue engine, with Edit, Write and Bash tools that
+// run whatever they are handed.
+function writes(on: Parameters<Parameters<typeof test>[1]>[1], lines: string[] | null, fields: { commits?: string, env?: Record<string, string> } = {}) {
+  const seen = queue(on, lines, fields)
+  for (const tool of ['Edit', 'Write', 'Bash'] as const) {
+    on('tool.call', { tool }, () => ({ result: 'ran' }) as never)
+  }
+  return seen
+}
+
+const edits = ($: Parameters<Parameters<typeof test>[1]>[0], tool: 'Edit' | 'Write', file_path: string, agentId?: string) =>
+  $.tool.call({ tool, file_path, agentId } as never)
+
+test('a write to a file with unsent commits of the user is refused, and the refusal carries them', async ($, on) => {
+  const seen = writes(on, ['/repo/todo/plan-findings.md'], { commits: 'a1b2c3d gi: !! 1\n\n+his line' })
+  for (const [tool, file] of [['Edit', '/repo/todo/plan.md'], ['Write', '/repo/todo/plan-findings.md']] as const) {
+    const ran = await edits($, tool, file)
+    expect(ran.deny).toContain('Your call did not run')
+    expect(ran.deny).toContain('a1b2c3d gi: !! 1\n\n+his line')
+    expect(ran.deny).toContain(`\`${file}\``)
+  }
+  expect(seen.calls.length).toBe(2)
+})
+
+test('a Bash command that names a queued file is refused over unsent commits', async ($, on) => {
+  const seen = writes(on, ['/repo/todo/plan-findings.md'], { commits: 'a1b2c3d gi: !! 1' })
+  // The overwrite of 2026-11-17 was a python3 heredoc.
+  const ran = await bash($, "python3 - <<'EOF'\np = 'todo/plan-findings.md'\nEOF")
+  expect(ran.deny).toContain('a1b2c3d gi: !! 1')
+  expect(seen.calls).toEqual(["nu-hx tell-claude-on-read r#'/repo/todo/plan-findings.md'# --canvas r#'/repo/todo/plan.md'#"])
+})
+
+test('a write with no unsent commits runs, and a write to another file starts no process', async ($, on) => {
+  const seen = writes(on, ['/repo/todo/plan-findings.md'])
+  expect((await edits($, 'Edit', '/repo/todo/plan.md')).deny).toBeUndefined()
+  expect(seen.calls.length).toBe(1)
+  expect((await edits($, 'Edit', '/repo/src/a.nu')).deny).toBeUndefined()
+  expect((await bash($, 'git status')).deny).toBeUndefined()
+  // The canvas is asked about in Bash only when it waits in the queue.
+  expect((await bash($, 'git commit --message x -- todo/plan.md')).deny).toBeUndefined()
+  expect(seen.calls.length).toBe(1)
+})
+
+test('a write of a subagent, in a chat: aside, or with no hook runs as it is', async ($, on) => {
+  const seen = writes(on, null, { commits: 'x' })
+  expect((await edits($, 'Edit', '/repo/todo/plan.md', 'worker')).deny).toBeUndefined()
+  expect((await $.tool.call({ tool: 'Bash', command: 'cat todo/plan.md', agentId: 'worker' } as never)).deny).toBeUndefined()
+  await says($, 'chat: fix the typo in plan.md')
+  expect((await edits($, 'Edit', '/repo/todo/plan.md')).deny).toBeUndefined()
+  expect(seen.calls).toEqual([])
+})
+
+test('gi open --no-hook writes with no check', async ($, on) => {
+  const seen = writes(on, null, { commits: 'x', env: { ...QUEUE_ENV, GI_NO_HOOK: '1' } })
+  expect((await edits($, 'Write', '/repo/todo/plan.md')).deny).toBeUndefined()
+  expect(seen.calls).toEqual([])
+})
+
+test('a broken check lets the write run', async ($, on) => {
+  on('env.get', (_, e) => ({ value: (QUEUE_ENV as Record<string, string>)[e.name] }))
+  on('fs.read', () => {
+    throw new Error('missing')
+  })
+  on('process.run', () => {
+    throw new Error('cannot start hx-nu')
+  })
+  on('tool.call', { tool: 'Edit' }, () => ({ result: 'ran' }) as never)
+  expect((await edits($, 'Edit', '/repo/todo/plan.md')).deny).toBeUndefined()
+})
+
+test('the done mark names the open markers of the canvas family and the commits off the trunk', async ($, on) => {
+  const runs: string[][] = []
+  const files: Record<string, string> = {
+    '/repo/todo/plan.md': 'text\n??? which name\n    !!! sign it\n!! his order\n',
+    '/repo/todo/plan-findings.md': '- ??? a list item\n',
+    '/repo/todo/other.md': '??? not of this canvas\n',
+  }
+  on('classic.Stop', () => ({}))
+  on('env.get', (_, e) => ({ value: (ZELLIJ_ENV as Record<string, string>)[e.name] }))
+  on('fs.read', (_, e) => {
+    if (e.path === PANE_FILE) {
+      return { value: '2\n' }
+    }
+    if (e.path in files) {
+      return { value: files[e.path] }
+    }
+    throw new Error('missing')
+  })
+  on('fs.list', () => ({ value: Object.keys(files).map(f => ({ name: f.slice(f.lastIndexOf('/') + 1), kind: 'file' })) }) as never)
+  on('process.run', (_, e) => {
+    // No `main` here: the trunk is the first protected branch that resolves.
+    if (e.argv.includes('rev-list')) {
+      return { value: e.argv.includes('main..HEAD') ? { exitCode: 128, stdout: '', stderr: 'unknown revision' } : { exitCode: 0, stdout: '5\n', stderr: '' } }
+    }
+    if (e.argv[0] === 'zellij') {
+      runs.push(e.argv)
+    }
+    return { value: { exitCode: 0, stdout: '', stderr: '' } }
+  })
+  await ends($, 'done')
+  expect(runs).toEqual([['zellij', 'action', 'rename-pane', '--pane-id', 'terminal_2', '✅ plan.md ?3 ↑5']])
 })

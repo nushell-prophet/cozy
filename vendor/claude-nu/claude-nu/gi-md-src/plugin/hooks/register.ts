@@ -1,5 +1,5 @@
 import type { Hook, Register } from 'claude-code'
-import { headOf, reviewReason } from './review'
+import { familyFiles, headOf, OPEN_MARKER, reviewReason } from './review'
 import { lastSeen, remember, rewrittenReason, standsOn } from './rewrite'
 
 type Api = Parameters<Hook<'classic.Stop'>>[0]
@@ -32,7 +32,22 @@ const CHAT_MARKER = 'chat:'
 // Why `го` too: the user has typed it for `go`; neither one carries a language.
 // Not `\b` because: JavaScript reads it as an ASCII word edge even with the `u`
 // flag, so `го ` would not match and `год` would.
-const GO = /^(go|го)(?![\p{L}\p{N}_])/u
+// Why `пщ`: it is `go` typed on the Russian layout, and he sends it as `go`
+// (de28c1fe, 2026-11-14).
+const GO = /^(go|го|пщ)(?![\p{L}\p{N}_])/u
+
+// A typed prompt of one line up to this many characters is a short chat question
+// ("ты все?", "have advisor checked?"), and its answer may stay in the chat.
+// Why: the floor blocked such answers and moved them where he did not ask for
+// them (round 2 of the canvas usage review, 2026-11-17).
+// Not a `!` command because: the `\ l` send and a typed `git log -p` hand over
+// canvas work, which the floor holds to the canvas.
+const SHORT_PROMPT = 60
+
+// The heading of a skill whose replies to the chat the skill itself formats
+// (the `40-cozy-output-formatting` convention): `/40-land-branch` shows its plan
+// and its report there. A reference skill (`nushell-style`) has no such section.
+const REPLIES = /^## Replies\s*$/m
 
 // The prompt sources that are the user's own words. Why the user's alone: a
 // marker the agent or another session could write would lift the floor that
@@ -69,14 +84,18 @@ const WORK_MARK = '⏳ '
 const ERROR_MARK = '⚠ '
 
 export const register: Register = on => {
-  // Whether the prompt that opened the current turn is an aside: a `chat:`
-  // message, a `go`, or a slash command the user ran. Every prompt resets it, so an
-  // aside is spent once answered, and a notification or a peer message starting
-  // a turn puts the floor back up.
+  // Whether the current turn is an aside: its prompt is a `chat:` message, a
+  // `go`, a short typed question or a slash command the user ran, or the agent
+  // ran a skill with its own replies (`skill.prompt` below). Every prompt sets it
+  // anew, a task notification to the value of the user's last prompt, a peer
+  // message to false; the end of a turn clears it, so an aside is spent once
+  // answered.
   // Why a slash command: a skill the user runs carries its own instructions for
   // the chat (`/40-land-branch` shows its plan there and waits), and the floor
-  // pushed that answer into the canvas. A skill the agent calls through the Skill
-  // tool raises no `prompt.submit`, so it never lifts the floor.
+  // pushed that answer into the canvas.
+  // Why the turn end clears it: the types do not promise `prompt.submit` for a
+  // `!` command, the `\ l` send, so a short question before it must not leave
+  // the floor down for the turns of the key.
   // Why state here and not the transcript at Stop: `prompt.submit` hands over
   // the text as typed, so nothing parses the session file at every turn end.
   // A reload of the mod clears it: the floor is then up for one turn, and the
@@ -87,8 +106,10 @@ export const register: Register = on => {
   // one: a `chat:` answer writes nothing to the canvas, and a skill that shows a
   // plan and waits must not be pushed on into other work.
   let offCanvas = false
+  // The two flags as the user's last prompt set them, for a task notification.
+  let lastUser = { aside: false, offCanvas: false }
   // The commit the repo stood on when the turn started: the review at the turn
-  // end reads the commits made since. Unset without `gi open --review`.
+  // end reads the commits made since. Unset with `gi open --no-hook`.
   let turnBase: string | undefined
   // The status line entry last set, so the timer below sets it only on a change.
   const shown: Shown = { text: undefined }
@@ -122,17 +143,79 @@ export const register: Register = on => {
     if (offCanvas || e.agentId !== undefined || result.deny !== undefined || result.isError) {
       return result
     }
-    const news = await unsentOnRead($, e.file_path).catch(() => undefined)
+    const commits = await unsentCommits($, e.file_path).catch(() => undefined)
     await showUnsent($, shown)
-    return news ? { ...result, context: [...(result.context ?? []), news] } : result
+    return commits
+      ? { ...result, context: [...(result.context ?? []), `The user committed to this file, and these commits were never sent to you; they now count as sent. Read them as his instructions, oldest first: a later commit wins over an earlier one, as in a long message. What the Read above shows is the text after them.\n\n${commits}`] }
+      : result
+  })
+
+  // A write of the agent to a file that has commits of the user it was not sent
+  // is refused, and the refusal carries them, as a Read would.
+  // Why: the agent wrote a block from the text it read before his commit and
+  // put back the line he had replaced (omxzvrxr, 2026-11-17), and
+  // the turn end told it of his commit only after the overwrite.
+  // Why Bash too: that write was a `python3` heredoc, which the Edit and Write
+  // tools never see. A command that names a queued file asks; a command that
+  // names it and does not write it pays one refused call and gets his commits,
+  // which it had to read anyway.
+  // Why only a queued file for Bash: `\ k` and `+ g` queue the canvas too, and
+  // `nu-hx unsent` costs about 0.4 s on a canvas of the mono (2026-11-17), which
+  // every commit and `git show` of the agent that names the canvas would pay.
+  // A limit: `\ l` marks its commits as sent at the keypress, and its line can
+  // wait in the queue of Claude while a turn runs; a stale write passes then.
+  // Why fail open: the guard is advice about a race, and a broken one must not
+  // stop every write of the session; the turn end still hands the commits over.
+  on('tool.call', { tool: ['Edit', 'Write'] }, async ($, e, next) => {
+    const deny = offCanvas || e.agentId !== undefined ? undefined : await staleWrite($, [e.file_path]).catch(() => undefined)
+    if (deny) {
+      await showUnsent($, shown)
+    }
+    return deny ? { deny } : next(e)
+  })
+  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+    const deny = offCanvas || e.agentId !== undefined ? undefined : await staleWrite($, await named($, e.command)).catch(() => undefined)
+    if (deny) {
+      await showUnsent($, shown)
+    }
+    return deny ? { deny } : next(e)
+  })
+
+  // A skill with its own chat replies, run by the agent: the floor stays down
+  // for its replies. He orders a landing in words ("заленди"), the agent calls
+  // the landing skill through the Skill tool, and the floor blocked each of its
+  // replies (2026-11-17).
+  // Not off the canvas, as his slash command is, because: the agent may run such
+  // a skill in the middle of canvas work (one that records a mistake he marks in
+  // a canvas line), and that turn keeps the review and the hand-over of his
+  // commits. The cost: a commit he makes during a landing is handed over at its stop.
+  // Why not a gi skill: the style says its pointer is the rows of its replies,
+  // within the floor.
+  on('skill.prompt', async ($, e, next) => {
+    if (e.pluginName !== 'gi' && REPLIES.test(e.text)) {
+      aside = true
+    }
+    return next(e)
   })
 
   on('prompt.submit', async ($, e, next) => {
     // An absent origin is the user's own prompt, as the engine's types define it.
     const user = !e.isMeta && (!e.origin || USER_ORIGINS.includes(e.origin.kind))
     const text = e.text.trim().toLowerCase()
-    offCanvas = user && (!!e.command || text.startsWith(CHAT_MARKER))
-    aside = offCanvas || (user && GO.test(text))
+    // A task notification (a background agent finished) goes on the work the
+    // user's last prompt started, so it takes that prompt's aside.
+    // Why: in the round-2 review, 19 floor blocks followed a notification
+    // (counted by the review agent, 2026-11-17).
+    if (e.origin?.kind === 'task-notification') {
+      ;({ aside, offCanvas } = lastUser)
+    } else {
+      offCanvas = user && (!!e.command || text.startsWith(CHAT_MARKER))
+      const short = !text.includes('\n') && !text.startsWith('!') && text.length <= SHORT_PROMPT
+      aside = offCanvas || (user && (GO.test(text) || short))
+      if (user) {
+        lastUser = { aside, offCanvas }
+      }
+    }
     // Why here too, and not only at the turn end: the agent then reads the
     // rewrite before it works the prompt, not after.
     // Why try: the signal is news, and a prompt must not be lost over it.
@@ -211,8 +294,12 @@ export const register: Register = on => {
   // has kept the work mark, and the turn went on.
   // Why the interrupt takes the mark away: the user stopped the turn himself.
   on('turn.complete', async ($, e, next) => {
-    if (e.agentId === undefined && e.reason !== 'answer') {
-      await (e.reason === 'aborted' ? clearMark($, [WORK_MARK]) : setMark($, ERROR_MARK))
+    if (e.agentId === undefined) {
+      aside = false
+      offCanvas = false
+      if (e.reason !== 'answer') {
+        await (e.reason === 'aborted' ? clearMark($, [WORK_MARK]) : setMark($, ERROR_MARK))
+      }
     }
     return next(e)
   })
@@ -248,7 +335,7 @@ export const register: Register = on => {
       // are not canvas work, as for the unsent commits below.
       // Why before them: the reviewer takes seconds, and `unsentReason` marks the
       // commits as sent; an interrupt during the wait would lose them.
-      const review = offCanvas || !(await $.env.get('GI_REVIEW')) ? undefined : await reviewReason($, canvas, turnBase, e.last_assistant_message)
+      const review = offCanvas ? undefined : await reviewReason($, canvas, turnBase, e.last_assistant_message, !!(await $.env.get('GI_REVIEW')))
       reasons.push(offCanvas ? undefined : await unsentReason($, e, canvas))
       reasons.push(aside ? undefined : await stopReason($, e, canvas))
       reasons.push(review)
@@ -304,14 +391,53 @@ async function lookAtHistory($: Api, tell: boolean) {
 // the agent works, or that the answer arrived, without leaving the editor.
 // Why try: the title is a hint, and a turn must not stop or fail over it; a
 // failure shows as a title that does not change.
-async function setMark($: Api, mark: string) {
+async function setMark($: Api, mark: string, facts: (canvas: string) => Promise<string> = async () => '') {
   try {
     const canvas = await $.env.get('GI_CANVAS')
     const pane = canvas && (await helixPane($))
     if (pane) {
-      await $.process.run(['zellij', 'action', 'rename-pane', '--pane-id', `terminal_${pane}`, `${mark}${canvas.split('/').pop()}`])
+      await $.process.run(['zellij', 'action', 'rename-pane', '--pane-id', `terminal_${pane}`, `${mark}${canvas.split('/').pop()}${await facts(canvas)}`])
     }
   } catch {}
+}
+
+// What the done mark adds after the name: `✅ plan.md ?2 ↑5`, the open `???`
+// and `!!!` of the canvas and its `<stem>*.md` siblings, and the commits of the
+// branch that the trunk does not hold; each is left out at zero.
+// Why: he asked in chat "мы залендили ветку?", "ты все?", "в canvas чего
+// осталось?" (42 state questions in round 2 of the canvas usage review), and
+// the title of the helix pane is where his eye is.
+// After a landing that fast-forwards the trunk to the branch, `↑` is gone; a
+// squash merge that leaves the branch behind keeps the count.
+// A count that fails, or a repo with no protected branch, also leaves `↑` out.
+// Why each fact fails alone: a title with one fact is still a hint.
+async function doneFacts($: Api, canvas: string) {
+  const open = await openMarkers($, canvas).catch(() => 0)
+  const ahead = await aheadOfTrunk($, canvas).catch(() => 0)
+  const facts = [open ? `?${open}` : '', ahead ? `↑${ahead}` : ''].filter(f => f)
+  return facts.length ? ` ${facts.join(' ')}` : ''
+}
+
+// The marker lines of the agent that wait for the user (`OPEN_MARKER`), wider
+// than the `rg` of the style, which reads column 0 only.
+async function openMarkers($: Api, canvas: string) {
+  let count = 0
+  for (const path of await familyFiles($, canvas)) {
+    count += ((await $.fs.read(path)) as string).split('\n').filter(l => OPEN_MARKER.test(l)).length
+  }
+  return count
+}
+
+// The commits of HEAD that the first protected branch the repo has does not hold.
+async function aheadOfTrunk($: Api, canvas: string) {
+  const dir = canvas.slice(0, canvas.lastIndexOf('/'))
+  for (const trunk of PROTECTED_BRANCHES) {
+    const run = await $.process.run(['git', '-C', dir, 'rev-list', '--count', `${trunk}..HEAD`])
+    if (run.exitCode === 0) {
+      return Number(run.stdout.trim()) || 0
+    }
+  }
+  return 0
 }
 
 // The answer arrived: the done mark, and a bell through the user's own
@@ -323,7 +449,7 @@ async function setMark($: Api, mark: string) {
 // GI_NO_BELL: `gi open --no-bell` keeps the mark and drops the sound.
 // Why try: as for the mark, a turn must not fail to end over a sound.
 async function markDone($: Api) {
-  await setMark($, DONE_MARK)
+  await setMark($, DONE_MARK, canvas => doneFacts($, canvas))
   try {
     if ((await $.env.get('GI_CANVAS')) && !(await $.env.get('GI_NO_BELL'))) {
       await $.ui.notify('the answer is in the canvas', { title: 'gi' })
@@ -369,7 +495,7 @@ async function seedBase($: Api) {
 async function reviewBase($: Api) {
   try {
     const canvas = await $.env.get('GI_CANVAS')
-    return canvas && (await $.env.get('GI_REVIEW')) ? await headOf($, canvas) : undefined
+    return canvas && !(await $.env.get('GI_NO_HOOK')) ? await headOf($, canvas) : undefined
   } catch {
     return undefined
   }
@@ -414,18 +540,34 @@ async function showUnsent($: Api, shown: Shown) {
 // diffs, when the file is the canvas or waits in the queue; `nu-hx
 // tell-claude-on-read` (dotfiles) prints them, remembers them as sent and
 // takes the file out of the queue.
-// Why the check here first: every Read of the session comes through, and a nu
-// process for each would slow all of them.
-async function unsentOnRead($: Api, path: string) {
+// Why the check here first: every Read and write of the session comes through,
+// and a nu process for each would slow all of them.
+async function unsentCommits($: Api, path: string) {
   const canvas = await $.env.get('GI_CANVAS')
   if (!canvas || (await $.env.get('GI_NO_HOOK')) || (path !== canvas && !(await queued($)).includes(path))) {
     return undefined
   }
   const run = await $.process.run(['hx-nu', '--commands', `nu-hx tell-claude-on-read r#'${path}'# --canvas r#'${canvas}'#`])
-  const commits = run.exitCode === 0 ? run.stdout.trim() : ''
-  return commits
-    ? `The user committed to this file, and these commits were never sent to you; they now count as sent. Read them as his instructions, oldest first: a later commit wins over an earlier one, as in a long message. What the Read above shows is the text after them.\n\n${commits}`
-    : undefined
+  return (run.exitCode === 0 ? run.stdout.trim() : '') || undefined
+}
+
+// The queued files whose name a Bash command holds. A file is named by its
+// base name, which a relative path and an absolute one both end in.
+async function named($: Api, command: string) {
+  const files = [...new Set(await queued($))]
+  return files.filter(f => command.includes(f.slice(f.lastIndexOf('/') + 1)))
+}
+
+// The refusal of a write to `paths`, with the user's commits it was never
+// sent; undefined when none waits.
+async function staleWrite($: Api, paths: string[]) {
+  for (const path of paths) {
+    const commits = await unsentCommits($, path)
+    if (commits) {
+      return `The user committed to \`${path}\` since you last read it, and these commits were never sent to you; they now count as sent. Your call did not run. Read them as his instructions, oldest first: a later commit wins over an earlier one. Then read the file again and redo the call on its text as it is now, which holds them.\n\n${commits}`
+    }
+  }
+  return undefined
 }
 
 // The helix pane that last sent this session a prompt, as `nu-hx tell-claude`

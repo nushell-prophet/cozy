@@ -86,7 +86,7 @@ its pointer is the rows of its *Replies* section, within the chat floor.
 Write the full answer in the document,
 even when the question arrived over chat and you weren't asked to answer there.
 A prompt he types in the chat instead of the document is still canvas work,
-unless it opens with `chat:`, runs a slash command, is a `go` or `го`, or is a `!` command with its output (a `\ l` send, a pasted `git diff`):
+unless it opens with `chat:`, runs a slash command, is a `go`, `го` or `пщ`, or is a `!` command with its output (a `\ l` send, a pasted `git diff`):
 carry it into the document as his point, at the spot it is about, verbatim
 — his words, his language, his line breaks; only the indent of the thread is yours —
 and commit that alone, before the grammar pass of the turn;
@@ -137,6 +137,19 @@ A new line under a paragraph is the easy edit for you,
 and it costs him a jump and a guess at what it refers to.
 A remark about specific words is attached to those words;
 a remark about a whole point is a `???` under it.
+An entry is a patch to the line it answers, not a message in a log.
+The tail of the last thread is the cheapest spot for each next entry,
+and the column that grows there mixes the topics of the task.
+So put each `AA:` and each `???` under the line of his that it is about,
+in the canvas or in a sibling file, such as a step of the plan;
+a question about the next step goes under the line that asks for that step.
+Two or more entries of yours under one point, with no line of his between,
+are the signal to check them:
+an entry on the same matter is rewritten in place,
+and an entry about another line of his goes under that line.
+Only an item with no such line goes to the top of the working area.
+Why: he reads an answer beside its point,
+and he collapses a thread only when it holds its own entries alone.
 
 ### The user's text is his
 
@@ -194,6 +207,16 @@ To keep these copies in sync is your main job on each change.
 When he changes one place, his newest statement wins:
 bring every other copy to it, his lines included.
 The sync touches the canvas and its siblings, not code.
+He reads the canvas from the top down, and often not to the end.
+In one pass he often stops at one point that lines below refer to,
+and he orders a change of that point before he reads those lines.
+Then carry the change down:
+bring each line below that refers to the point to the new state.
+The indent of his order limits what the order itself changes, as *Channels* says;
+the sync follows the point into every thread that refers to it.
+He did not read those lines, so his silence about them is no decision:
+do not wait for a second order to change them,
+and do not keep a line because he left it as it was.
 Make the sync a commit of its own, apart from the grammar fix and the answer,
 and name the places it touched under `Propagation`.
 He reverts that commit when he does not like it;
@@ -259,6 +282,9 @@ and write to files only what the skill itself does.
 It covers the skill's own flow:
 when the skill shows a plan and waits, his confirmation (`go`) runs it under the same rules.
 After the skill ends, his next plain message is canvas work again.
+A skill with its own `## Replies` that you run for his order in words ("заленди") answers in the chat as the skill says;
+the rest of that turn stays canvas work.
+A gi skill does not, as *Git carries everything* says.
 
 ### Commit atomically and right away
 
@@ -388,7 +414,7 @@ in a canvas, his older "сверни ветку" and "сократи ветку"
 Don't silently do what you disagree with or what is ambiguous
 — place a `???`, closed:
 the choice, your default, and one line on what the default costs.
-`go` (or `го`) accepts every default and the decisions taken so far,
+`go` (or `го`, `пщ`) accepts every default and the decisions taken so far,
 so an unanswered `???` never blocks;
 it means the same in the chat and in the canvas,
 and where each answer goes is decided by context, as in any turn.

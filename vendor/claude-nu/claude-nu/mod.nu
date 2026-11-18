@@ -13,7 +13,7 @@
 #   export-session  # Render a session's dialogue to markdown
 #   live-sessions   # List the Claude Code sessions running on this machine, from Claude Code's own registry
 #   project-move    # Retarget Claude's stored state from a project's old path to its new one
-#   gi              # gi protocol: status on its own; gi new makes a canvas and opens it, gi import turns a session into a canvas, gi open launches a session bound to one, gi install-skill installs the gi-canvas skill
+#   gi              # gi protocol: status on its own; gi open launches a session bound to a canvas, named by its path or by a slug, and makes the canvas of a new slug, gi import turns a session into a canvas, gi install-skill installs the gi-canvas skill
 #   example         # Pick a pipeline from the module's own `@example` blocks and paste it into your command line
 #
 # Usage:
@@ -28,7 +28,7 @@
 export use sessions.nu [
     projects messages tool-calls slash-commands records main export-session
 ]
-export use gi.nu [ main "gi new" "gi import" "gi open" "gi install-skill" ]
+export use gi.nu [ main "gi import" "gi open" "gi install-skill" ]
 # `main` imports under the module's own name — this is `claude-nu project-move`.
 export use project-move.nu [ main ]
 export use example.nu [ main ]

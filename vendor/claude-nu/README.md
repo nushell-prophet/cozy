@@ -663,12 +663,12 @@ rather than being skipped in silence.
 The gi protocol
 — where all "what/why" lives in git (the diff and commit body)
 and the chat carries almost nothing.
-It comes in three verbs.
-`new` **names a canvas** from a slug and opens it.
-`import` **writes a canvas** from a session's dialogue.
+It comes in two verbs.
 `open` **launches** a session bound to one canvas,
-creating the canvas if it does not exist yet
+named by its path or by a slug,
+and makes the canvas of a slug that has none yet
 — that launch is the only thing that turns gi on.
+`import` **writes a canvas** from a session's dialogue.
 
 gi is the workflow of its author, with his personal preferences:
 for example, the agent corrects the English of the user in the canvas.
@@ -681,10 +681,11 @@ so it carries its own flags and its own `help claude-nu gi <verb>`,
 and `claude-nu gi <TAB>` completes them.
 
 ```nushell no-run
-claude-nu gi new plan          # gi-canvas/<date>-plan.md (todo/ when only that exists), the editor to write the task in, then a session bound to it
-claude-nu gi new plan --folder notes # ...in another folder
-claude-nu gi new plan --no-editor # ...written straight, no editor
-claude-nu gi new plan --no-claude-launch # ...and nothing launched: the path comes back instead
+claude-nu gi open plan         # a slug: the canvas gi-canvas/<date>-plan.md of any day (todo/ when only that exists), and when there is none, a new one for today — a branch named plan, the editor to write the task in, then a session bound to it
+claude-nu gi open plan --folder notes # ...in another folder
+claude-nu gi open plan --current-branch # ...a new canvas on the branch you are on
+claude-nu gi open plan --no-editor # ...a new canvas written straight, no editor
+claude-nu gi open plan --no-claude-launch # ...and nothing launched: the path comes back instead
 claude-nu gi import plan       # a canvas from the dialogue of the session this runs inside (gi-canvas/<date>-plan.md)
 claude-nu gi import plan <TAB> # ...or of any session: the picker shows age, size, summary
 claude-nu gi import plan --folder notes # ...in another folder
@@ -698,7 +699,7 @@ claude-nu gi open gi-canvas/plan.md --create # ...created from the template if n
 claude-nu gi open gi-canvas/plan.md --no-hook # style only, without the Stop-hook floor; the commit guard stays
 claude-nu gi open gi-canvas/plan.md --no-bell # ...with the done mark in the helix pane title but no bell at a turn end
 claude-nu gi open gi-canvas/plan.md --manager # ...in manager mode, for a bigger task: the agent owns the canvas and the task, hands the code to a subagent with a brief, and checks the result against the request
-claude-nu gi open gi-canvas/plan.md --review # ...with a review of each turn at its end: checks over the lines the agent added, and one reviewer over the session
+claude-nu gi open gi-canvas/plan.md --review # ...with a reviewer over the session at each turn end, beside the checks over the lines the agent added, which run with no flag
 claude-nu gi open gi-canvas/plan.md --new-session # start over on it: mint a fresh id, overwrite the recorded one
 claude-nu gi open gi-canvas/plan.md --fork # ...or keep it as it is and open a copy (gi-canvas/plan_1.md) on a session of its own
 claude-nu gi open gi-canvas/plan.md --execute # start on a first prompt, `@<canvas> go`: the session works the canvas without waiting
@@ -886,33 +887,42 @@ and must not be handed to a different canvas later.
 and cannot be combined with `--new-session`
 — both mint an id, but on different files.
 
-**Starting a canvas from a slug.**
-`gi new <slug>` is the naming half of `gi open`:
-the canvas is `<folder>/<date>-<slug>.md` (`--folder`; by default `gi-canvas/` when the directory has one, else `todo/` when it has that, else a new `gi-canvas/`
-— the same folder `gi open` and `gi import` pick when given no path),
-it starts with the todo frontmatter
+**A canvas named by a slug.**
+The argument of `gi open` is a path or a slug, and its shape says which:
+an argument with a `/` or with the extension `.md` or `.nu` is a path, and so is the name of a file that exists;
+any other word is a slug.
+A slug names the canvas `<folder>/<date>-<slug>.md` (`--folder`; by default `gi-canvas/` when the directory has one, else `todo/` when it has that, else a new `gi-canvas/`
+— the same folder a bare `gi open` and `gi import` pick).
+The day in the name is not compared,
+so `gi open plan` opens the canvas that an earlier day made;
+two canvases of one slug are an error that lists them.
+The match is the whole slug: `plan` does not open `<date>-plan-b.md`.
+When the folder has no canvas of that slug, `gi open` makes today's.
+The new canvas starts with the todo frontmatter
 — `status`, `updated` and `agents-mode`, the creation date being in the file name already
-— and the same header a canvas gets from `gi open`,
-and the command ends in that launch.
+— and the same header a canvas gets from `--create`,
+and the command ends in the launch.
 It first switches to a new branch named after the slug, made from the current one,
 so the canvas and its commits start on a branch of their own;
 `--current-branch` stays where it is,
 and so does a run on a branch already named after the slug.
-It then puts the file in front of you, in `$env.EDITOR`, to write the task in:
+Another branch of that name is an error that names it:
+a canvas made on that branch is not in the folder of the current one,
+so `git switch <slug>` is the usual answer.
+A new canvas takes no `--fork`, `--new-session` or `--execute`:
+the first two act on a canvas that records a session,
+and the first prompt of `--execute` orders work on a task that is not written yet.
+A mistyped slug makes a canvas and a branch;
+a mistyped path is an error.
+For a new canvas, `gi open` then puts the file in front of you, in `$env.EDITOR`, to write the task in:
 inside zellij in a pane of its own,
 so the document stays in view while the session runs beside it;
 outside zellij in the terminal you are in,
 and the launch follows when the editor exits
 — with no `$env.EDITOR` set that is an error naming `--no-editor`, never a guess at which editor you have.
 `--no-editor` skips that,
-`--no-claude-launch` skips the launch and hands back the path instead,
-and the flags `gi open` defines
-— `--no-hook`, `--no-bell`, `--review`, `--manager`, `--dangerously-skip-permissions`, anything else straight to `claude`
-— work here too.
-`--fork`, `--new-session` and `--execute` are the three it does not take:
-the first two act on a canvas that exists and already records a session,
-and `--execute` orders the session to work on the task a canvas holds,
-with no instruction for one that holds only its topic.
+and `--no-claude-launch` skips the launch and hands back the path instead
+— for a canvas that exists too, which makes it the way to ask for the path of a slug.
 The same slug on the same day is an error naming the canvas already there, not a second file
 — a slug is typed on purpose,
 unlike zellij's `cmd+e` note,
@@ -935,7 +945,7 @@ and drops tool calls and thinking behind a note pointing at the raw `.jsonl`
 Importing the live session, the turn that runs the import is never in it:
 Claude Code writes the session log as the turn runs,
 so the last exchange is still missing.
-The doc is named like a `gi new` canvas, from the day and a slug you give (`gi-canvas/<date>-<slug>.md`, `--folder` moves it),
+The doc is named like the canvas of a new slug, from the day and a slug you give (`gi-canvas/<date>-<slug>.md`, `--folder` moves it),
 and is never overwritten
 — delete it or pick another slug to re-import.
 It lands in the working tree untracked;
@@ -1000,7 +1010,7 @@ A switch could only ever mean the live session,
 so an older chat could not be imported from the REPL at all,
 and there would be nothing for a completer to complete.
 
-Canvases come from `gi new` or `gi open` (bare, or `--create`),
+Canvases come from `gi open` (a new slug, bare, or `--create`),
 which create one from the template and bind a session to it in the same breath,
 or from `gi import`,
 which writes one from a dialogue

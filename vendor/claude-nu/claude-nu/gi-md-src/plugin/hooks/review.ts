@@ -2,10 +2,16 @@ import type { Hook } from 'claude-code'
 
 type Api = Parameters<Hook<'classic.Stop'>>[0]
 
-// The review of a turn at its end, on with `gi open --review` (GI_REVIEW), in
-// two halves. The first: the rules of the Canvas style that a command can
-// check, run over the lines the agent's commits of this turn added to the
-// canvas and its sibling files. The second is the reviewer below.
+// The review of a turn at its end, in two halves. The first, at every turn end
+// of a canvas session: the rules of the Canvas style that a command can check,
+// run over the lines the agent's commits of this turn added to the canvas and
+// its sibling files. The second, only with `gi open --review` (GI_REVIEW): the
+// reviewer below.
+// Why the checks with no flag: `--review` was on in 1 of 64 `gi open` launches
+// (round 2 of the canvas usage review, 2026-11-17), so the caps they check went
+// unchecked, while the flag exists for the reviewer, a model call with no
+// timeout that "must not stretch a turn without end"; the checks are a git log
+// and regexes.
 // Why: a rule in prose is loaded and still not followed, and a check that the
 // agent has to remember to run is one more such rule.
 // Why only the lines of this turn: a finding the agent answered must not come
@@ -15,11 +21,20 @@ type Api = Parameters<Hook<'classic.Stop'>>[0]
 // unlike the floor, whose failure blocks.
 
 // The caps of "Save his reading budget" in the style: change both together.
+// MAX_TOTAL_QUESTIONS has no line there: it is a check of this file alone.
 const MAX_AA_SENTENCES = 3
 const MAX_OPEN_QUESTIONS = 3
+// The open `???` of the canvas family that one reading of his may hold.
+// Why: past it he stops deciding ("друг, это overflow для меня. Никаких решений
+// принимать не буду" over 42 open `???`, 2026-10-31), and the cap per turn does
+// not see a backlog that grows over many turns.
+const MAX_TOTAL_QUESTIONS = 5
 const MAX_LINE_WIDTH = 100
 
 const LIST_ITEM = /^\s*([-*]|\d+\.) /
+// A marker line of the agent that waits for the user: `???` or `!!!` at any
+// indent, also as a list item. The helix title of the gi hooks counts these too.
+export const OPEN_MARKER = /^\s*(- )?(\?\?\?|!!!)/
 const MARKER = /^\s*(AA:|\?\?\?|!!!|%%%)/
 // A line that ends a sentence, also before a closing quote, bracket or mark.
 // No backtick among them: a line that ends in the code span `???` ends no sentence.
@@ -58,7 +73,7 @@ If every answer is no, reply with the two letters OK and nothing else. Otherwise
 
 // The findings of the checks and of the reviewer as one block of advice;
 // undefined when the turn made no commit, when nothing is found, and on any failure.
-export async function reviewReason($: Api, canvas: string, base: string | undefined, answer: string | undefined) {
+export async function reviewReason($: Api, canvas: string, base: string | undefined, answer: string | undefined, withReviewer: boolean) {
   try {
     const email = base && (await agentCommitted($, canvas, base))
     if (!base || !email) {
@@ -67,11 +82,11 @@ export async function reviewReason($: Api, canvas: string, base: string | undefi
     // Each half fails alone: a reviewer the API refused leaves the checks standing.
     const [checks, reviewer] = await Promise.all([
       checkFindings($, canvas, base, email).catch(() => [] as string[]),
-      reviewerFindings($, answer).catch(() => undefined),
+      withReviewer ? reviewerFindings($, answer).catch(() => undefined) : undefined,
     ])
     const parts = [checks.length ? `checks:\n${checks.map(f => `- ${f}`).join('\n')}` : undefined, reviewer ? `reviewer:\n${reviewer}` : undefined].filter(p => p !== undefined)
     return parts.length
-      ? `gi review — advice on this turn, not an order: the checks read only the lines the turn added, and the reviewer has no tools. Check each line: fix what is right, in the canvas as usual; where a finding is wrong, change nothing and say so in your one chat line.\n\n${parts.join('\n\n')}`
+      ? `gi review — advice on this turn, not an order: the checks read the lines the turn added and the open markers of the canvas${withReviewer ? ', and the reviewer has no tools' : ''}. Check each line: fix what is right, in the canvas as usual; where a finding is wrong, change nothing and say so in your one chat line.\n\n${parts.join('\n\n')}`
       : undefined
   } catch {
     return undefined
@@ -131,11 +146,45 @@ async function checkFindings($: Api, canvas: string, base: string, email: string
   for (const a of family) {
     findings.push(...(await refusedLinks($, `${dir}/${a.file}`, a)))
   }
+  findings.push(...(await openFindings($, canvas, family).catch(() => [] as string[])))
   const text = (await $.fs.read(canvas)) as string
   for (const a of added) {
     if (a.isNew && a.file !== name && !text.includes(a.file)) {
       findings.push(`${a.file}: a new file beside the canvas that the canvas does not name in \`related_files\``)
     }
+  }
+  return findings
+}
+
+// The `<stem>*.md` files beside the canvas, the canvas among them, as paths.
+export async function familyFiles($: Api, canvas: string) {
+  const dir = dirOf(canvas)
+  const stem = canvas.slice(dir.length + 1).replace(/\.[^.]+$/, '')
+  return (await $.fs.list(dir)).filter(f => f.kind === 'file' && f.name.startsWith(stem) && f.name.endsWith('.md')).map(f => `${dir}/${f.name}`)
+}
+
+// The open markers of the canvas family as they stand now: too many open `???`
+// in all, when the turn added one, and a `!!!` the turn added to a file that
+// holds an open `???`.
+// Why only a turn that added a `???`: the agent cannot close one that waits for
+// him, so a finding at every turn end would only cost turns.
+// Why the second: a `!!!` sign step stood beside two open `???` defaults, he
+// signed it, a default was wrong, and it took a revert and a second signature
+// (unvuwwxv, nsmnmwly, pssnmmnq).
+async function openFindings($: Api, canvas: string, family: Added[]) {
+  const findings: string[] = []
+  const marker = (line: string) => OPEN_MARKER.exec(line)?.[2]
+  let total = 0
+  for (const path of await familyFiles($, canvas)) {
+    const name = path.slice(path.lastIndexOf('/') + 1)
+    const questions = ((await $.fs.read(path)) as string).split('\n').filter(l => marker(l) === '???').length
+    total += questions
+    if (questions && family.some(a => a.file === name && a.lines.some(l => marker(l) === '!!!'))) {
+      findings.push(`${name}: a new \`!!!\` in a file with ${questions} open \`???\`: he may act on the step before the question is settled; settle the \`???\` first, or name in the step the default it takes`)
+    }
+  }
+  if (total > MAX_TOTAL_QUESTIONS && family.some(a => a.lines.some(l => marker(l) === '???'))) {
+    findings.push(`${total} open \`???\` in the canvas and its siblings, more than the ${MAX_TOTAL_QUESTIONS} he decides in one reading: settle or drop the ones you can before you add one`)
   }
   return findings
 }

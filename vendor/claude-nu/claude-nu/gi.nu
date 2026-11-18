@@ -1,22 +1,23 @@
 # gi — the gi protocol: carried by a plugin, activated per session at launch.
 #
 # The gi protocol moves all "what/why" into git: the diff and the commit body
-# carry the record, the chat carries almost nothing. Three commands do the work,
+# carry the record, the chat carries almost nothing. Two commands do the work,
 # and the split between them is the whole design:
 #
-#   gi new             names a canvas from a slug — `gi-canvas/<date>-<slug>.md` —
-#                      writes the frontmatter and the header into it, opens it
-#                      for the task to be written in (a zellij pane of its own,
-#                      so the document stays in view), and ends in `gi open`.
-#                      The naming is all it adds; everything after it is the
-#                      launch below.
 #   gi import          writes one canvas, from a session's dialogue — the one it
 #                      runs inside, or any session named on the line — and names
-#                      it from a slug, as `gi new` does. The only
+#                      it from a slug, as `gi open` names a new one. The only
 #                      verb that can capture the session running it, since it
 #                      launches nothing: `open` cannot be reached from the
 #                      session being imported.
-#   gi open            launches Claude Code bound to one canvas. `--plugin-dir`
+#   gi open            launches Claude Code bound to one canvas, named by its
+#                      path or by a slug. A slug names `<date>-<slug>.md` in
+#                      the canvas folder, whatever the day in the name: the
+#                      canvas that is there is opened, and when none is, gi
+#                      makes it — a branch named after the slug, the
+#                      frontmatter and the header, the editor for the task to
+#                      be written in (a zellij pane of its own, so the
+#                      document stays in view) — and then launches. `--plugin-dir`
 #                      hands `claude` the gi plugin — the Canvas output style
 #                      and the skills that work a canvas, and the hooks module
 #                      that names the canvas to the agent, refuses a commit
@@ -40,7 +41,7 @@
 #                      conversation can be carried on in a fresh context while
 #                      the conversation that planned it stays readable.
 #
-# Bare `gi` is a fourth name and does no work: it reports which canvas the
+# Bare `gi` is a third name and does no work: it reports which canvas the
 # asking session is bound to, and the canvases where you stand.
 #
 # Why a plugin and not files copied into each repo:
@@ -142,15 +143,25 @@ def gi-branch [dir: path]: nothing -> oneof<string, nothing> {
 # Start a fresh canvas on a branch of its own: switch to a new branch named
 # `name`, made from the current one. Why: a new canvas is the moment new work
 # starts, and its commits belong together on one branch — whatever branch the
-# user stands on, not only the trunk. `--current-branch` on `gi new` is the
+# user stands on, not only the trunk. `--current-branch` on `gi open` is the
 # opt-out. Outside a repo there is no branch to make.
 # Already on a branch named `name`: the user made the task branch first, so the
-# canvas belongs on it. Any other existing branch of that name fails here, with
-# git's own message.
+# canvas belongs on it.
+# Why another existing branch of that name is an error of gi's own and not
+# git's: a canvas made by a slug lives on the branch of that slug, so from any
+# other branch its file is not there, and the slug reads as a new canvas. The
+# likely intent is to open that canvas, and git's "already exists" does not say
+# where it is.
 def gi-branch-off [dir: path name: string]: nothing -> nothing {
     let repo = ^git -C $dir rev-parse --is-inside-work-tree | complete
 
     if $repo.exit_code != 0 or (gi-branch $dir) == $name { return }
+    if (^git -C $dir show-ref --verify --quiet $"refs/heads/($name)" | complete).exit_code == 0 {
+        error make --unspanned {
+            msg: $"no canvas for ($name) here, and the branch ($name) already exists"
+            help: $"a canvas made on that branch is there: git switch ($name) — or make this one where you stand: gi open ($name) --current-branch"
+        }
+    }
     ^git -C $dir switch --create $name
 }
 
@@ -310,7 +321,7 @@ export def gi-missing-canvas-help [dir: path doc: path]: nothing -> string {
     [
         $lead
         $"create it: claude-nu gi open ($doc) --create"
-        "name a new canvas from a slug: claude-nu gi new <slug>"
+        "name a new canvas from a slug: claude-nu gi open <slug>"
     ]
     | compact
     | str join "\n"
@@ -450,7 +461,7 @@ def gi-session-key [session: string]: nothing -> string {
 
 # Where the gi protocol comes from, the canvas this session is bound to, and
 # the canvases already where you stand.
-# The verbs: `gi new`, `gi import`, `gi open`; `gi install-skill`
+# The verbs: `gi open`, `gi import`; `gi install-skill`
 # installs the skill that starts a canvas from a plain chat.
 @category claude-nu
 export def main []: nothing -> record {
@@ -472,13 +483,13 @@ export def gi-new-name [slug: string date: string]: nothing -> string {
 }
 
 # The canvas a slug names, in both forms of gi-doc-path: the folder the user
-# gave or the default one, then the name. One rule for `gi new` and `gi import`,
+# gave or the default one, then the name. One rule for `gi open` and `gi import`,
 # so the two cannot name the same slug differently.
 def gi-slug-doc [dir: path slug: string date: string folder?: path]: nothing -> record {
     gi-doc-path $dir ($folder | default (gi-canvas-folder $dir) | path join (gi-new-name $slug $date))
 }
 
-# The starting content of a canvas `gi new` writes: the todo frontmatter the
+# The starting content of a canvas made from a slug: the todo frontmatter the
 # user's own notes carry, then the header every other new canvas gets, with the
 # slug as its H1 in place of the template's.
 # The same frontmatter is written by `create-todo` in zellij/todo-nu/todo.nu of the dotfiles repo
@@ -513,7 +524,7 @@ def gi-editor []: nothing -> string {
     if ($env.EDITOR? | is-empty) {
         error make --unspanned {
             msg: "no editor: $env.EDITOR is unset"
-            help: "set $env.EDITOR, or write the canvas without opening it: gi new <slug> --no-editor"
+            help: "set $env.EDITOR, or write the canvas without opening it: gi open <slug> --no-editor"
         }
     }
     $env.EDITOR
@@ -547,100 +558,88 @@ def gi-edit [doc: path editor: string]: nothing -> nothing {
     }
 }
 
-# Why a verb of its own and not `gi open <path>` with the path typed out: the
-# date prefix and the frontmatter were done by hand or by zellij's `cmd+e`,
-# which names a file after the day alone — so the slug arrived by renaming the
-# file in the editor afterwards, and the path was then typed a second time for
-# `gi open`. Naming the canvas is the only thing that ever varied.
-# Why `--fork`, `--new-session` and `--create` are not among the flags it
-# borrows: the first two act on a canvas that exists and already records a
-# session, and this one is made here — which is all `--create` would ask for.
-# Not `--execute` because: its first prompt, `@<canvas> go`, orders the session
-# to work on the task the canvas holds, and nothing tells the session what to
-# do with a canvas that holds only its topic.
+# What the argument of `gi open` names. Exported for tests.
+# - default: no argument, so today's canvas.
+# - path: a canvas path, opened as typed.
+# - found: a slug whose canvas is there; `doc` is its path.
+# - new: a slug with no canvas yet.
+# An argument with a `/` or a canvas extension is a path, and so is the name of
+# a file that exists; any other word is a slug.
+# Why the shape decides and not "a file that exists, else a slug": a mistyped
+# path would then read as a slug and make a canvas and a branch, where a path
+# that names nothing has to be an error.
+# Why the day in the name is not compared: a canvas is opened again on later
+# days, under the slug it was made with.
+# Why one folder and not every folder that holds canvases: a slug then names
+# the same file for the search and for the canvas it makes.
+export def gi-open-target [dir: path doc?: path folder?: path]: nothing -> record {
+    if ($doc | is-empty) { return {kind: default} }
+    let named = gi-doc-path $dir $doc | get abs
 
-# Create a canvas and open a session bound to it: `<folder>/<date>-<slug>.md`,
-# the editor for writing the task in, then the launch. It first switches to a
-# new branch named after the slug, made from the current one; --current-branch
-# stays where it is.
-@category claude-nu
-export def --wrapped "gi new" [
-    slug: string # What the canvas is about; the file is <date>-<slug>.md
-    --folder: path # Where the canvas lands, relative to where you are (default: gi-canvas/ if present, else todo/ if present, else gi-canvas/, created)
-    --current-branch # Stay on the current branch instead of switching to a new one named after the slug
-    --no-editor # Write the canvas without opening it for editing
-    --no-claude-launch # Write the canvas and hand back its path; launch nothing
-    --no-hook # Launch with the Canvas style but without the Stop-hook floor (the commit guard stays)
-    --review # Review each turn at its end: checks over the lines the agent added, and one reviewer over the session; findings come back to the agent as advice
-    --no-bell # Ring no bell when a turn ends with the done mark
-    --manager # Manager mode: the agent owns the canvas and the task, hands the code to a subagent with a brief, and checks the result against the request
-    --dangerously-skip-permissions # Pass claude's flag of the same name through
-    --model: string@"nu-complete claude models" # The model for the session, passed through to claude's --model
-    ...rest: string # Any other flags go straight to `claude`
-]: nothing -> oneof<path, nothing> {
-    # Same rule as `gi open`'s canvas argument: under --wrapped an undeclared
-    # flag typed before the positional becomes the positional, so a typo would
-    # otherwise create `todo/<date>---modle.md` instead of reaching the
-    # pass-through below.
-    if ($slug | str starts-with "-") {
-        error make {
-            msg: $"($slug) is not a slug"
-            label: {text: "flags go after the slug: gi new <slug> <flags>" span: (metadata $slug).span}
+    if ($doc | str contains "/") or $doc =~ '\.(md|nu)$' or ($named | path type) in [file symlink] {
+        return {kind: path doc: $doc}
+    }
+    let folder = $folder | default (gi-canvas-folder $dir)
+    let folder_abs = $dir | path join $folder
+    let found = if ($folder_abs | path exists) {
+        ls $folder_abs
+        | where type == file
+        | get name
+        | path basename
+        | where $it =~ '^\d{8}-' and ($it | str substring 9..) == $"($doc).md"
+        | each {|name| $folder | path join $name }
+    } else { [] }
+
+    match ($found | length) {
+        0 => {kind: new}
+        1 => {kind: found doc: $found.0}
+        _ => {
+            error make --unspanned {
+                msg: $"($doc) names several canvases: ($found | str join ', ')"
+                help: "name one by its path: claude-nu gi open <path>"
+            }
         }
     }
-    let extra = if $dangerously_skip_permissions { ["--dangerously-skip-permissions"] } else { [] }
-        | if $model != null { append ["--model" $model] } else { }
-        | append $rest
-    # Before the canvas is written, not when it is opened: see gi-editor.
-    let editor = if $no_editor { null } else { gi-editor }
-    let dir = gi-run-dir
-    # Read once: a run that crosses midnight between the two uses would name the
-    # file for one day and stamp `updated:` with the next.
-    let today = date now | format date '%J'
-    let paths_doc = gi-slug-doc $dir $slug $today $folder
-
-    # The same slug on the same day names the canvas that is already there, and
-    # that is nearly always the one meant. Not todo.nu's `-1` suffix because:
-    # that rule exists for a name with nothing in it but the date, where a
-    # second note the same day is ordinary; a slug is typed on purpose.
-    if ($paths_doc.abs | path exists) {
-        error make --unspanned {
-            msg: $"canvas already exists: ($paths_doc.rel)"
-            help: $"open it instead: claude-nu gi open ($paths_doc.rel) — or pick another slug"
-        }
-    }
-    # Before the canvas is written: a switch that fails leaves nothing behind.
-    if not $current_branch { gi-branch-off $dir $slug }
-    mkdir ($paths_doc.abs | path dirname)
-    gi-new-text $slug $today | save --raw $paths_doc.abs
-    if $editor != null { gi-edit $paths_doc.abs $editor }
-    if $no_claude_launch {
-        # The one case with something to hand back: the canvas is unbound and
-        # nothing was launched, so the path is what the caller does the next
-        # thing with. A launch returns nothing — `claude` has the terminal.
-        return $paths_doc.rel
-    }
-    gi-launch --doc $paths_doc.abs --hook=(not $no_hook) --review=$review --no-bell=$no_bell --manager=$manager --extra $extra
 }
 
+# Why one verb takes a path and a slug: the user names a canvas by what it is
+# about, and whether that canvas is there already is the file system's to say.
+# Not a verb of its own for a new canvas because: the user would have to know
+# whether the canvas exists before naming it, and a wrong answer is a refusal.
+# Why `--fork`, `--new-session` and `--execute` are refused for a slug with no
+# canvas: the first two act on a canvas that exists and already records a
+# session. The first prompt of `--execute`, `@<canvas> go`, orders the session
+# to work on the task the canvas holds, and nothing tells the session what to
+# do with a canvas that holds only its topic.
+# Why `--current-branch` and `--no-editor` are not refused for a canvas that
+# exists: each one declines a step, and that step runs only for a new canvas.
+
 # Open a canvas: launch a session bound to it, continuing the session it
-# already records when it has one. A named canvas must exist; --create makes it
-# from the template, and so does a bare `gi open` for today's canvas.
+# already records when it has one. The canvas is named by its path, or by a
+# slug: the slug opens `<folder>/<date>-<slug>.md` of any day, and makes
+# today's when there is none — a new branch named after the slug, the canvas,
+# the editor for writing the task in, then the launch. A named path must exist;
+# --create makes it from the template, and so does a bare `gi open` for today's
+# canvas.
 @category claude-nu
 export def --wrapped "gi open" [
-    doc?: path@"nu-complete gi canvases" # The canvas, relative to where you are (default: <canvas folder>/<date>-canvas.md, the folder as for gi new); with --fork, the canvas to fork FROM
+    doc?: path@"nu-complete gi canvases" # The canvas: a path relative to where you are, or a slug for <folder>/<date>-<slug>.md (default: <canvas folder>/<date>-canvas.md); with --fork, the canvas to fork FROM
+    --folder: path # Where the canvas of a slug is, relative to where you are (default: gi-canvas/ if present, else todo/ if present, else gi-canvas/, created)
+    --current-branch # For a new canvas: stay on the current branch instead of switching to a new one named after the slug
+    --no-editor # For a new canvas: write it without opening it for editing
+    --no-claude-launch # Hand back the path of the canvas; launch nothing
     --no-hook # Launch with the Canvas style but without the Stop-hook floor (the commit guard stays)
-    --review # Review each turn at its end: checks over the lines the agent added, and one reviewer over the session; findings come back to the agent as advice
+    --review # Add a reviewer over the session at each turn end to the checks that always run; findings come back to the agent as advice
     --no-bell # Ring no bell when a turn ends with the done mark
     --manager # Manager mode: the agent owns the canvas and the task, hands the code to a subagent with a brief, and checks the result against the request
     --new-session # Start a fresh session on this canvas, overwriting the id it records
     --fork # Copy the named canvas to its next `_n` sibling and open that, on a session of its own
-    --create # Create the named canvas from the template when it does not exist
+    --create # Create the canvas at the named path from the template when it does not exist; a slug needs none, since it makes its canvas
     --execute # Start the session on a first prompt, `@<canvas> go`, so it works on the canvas without waiting
     --dangerously-skip-permissions # Pass claude's flag of the same name through
     --model: string@"nu-complete claude models" # The model for the session, passed through to claude's --model
     ...rest: string # Any other flags go straight to `claude`
-]: nothing -> nothing {
+]: nothing -> oneof<path, nothing> {
     # --fork is the one case where the positional names a source rather than the
     # file being opened, so there is nothing to copy when it is omitted.
     if $fork and ($doc | is-empty) {
@@ -675,26 +674,71 @@ export def --wrapped "gi open" [
         | append $rest
 
     # The other half of the same parsing rule: an undeclared flag typed before
-    # the doc lands in the doc. A canvas path never starts with a dash, so say
-    # so here — otherwise a typo silently creates a canvas named `--modle`, and
-    # the pass-through rule below never sees the flag it was meant to catch.
+    # the doc lands in the doc. Neither a canvas path nor a slug starts with a
+    # dash, so say so here — otherwise a typo silently creates a canvas named
+    # `<date>---modle.md`, and the pass-through rule below never sees the flag
+    # it was meant to catch.
     if ($doc | default "" | str starts-with "-") {
         error make {
-            msg: $"($doc) is not a canvas path"
+            msg: $"($doc) is not a canvas path or a slug"
             label: {text: "flags for `claude` go after the canvas: gi open <doc> <flags>" span: (metadata $doc).span}
         }
+    }
+    let dir = gi-run-dir
+    let target = gi-open-target $dir $doc $folder
+
+    if $folder != null and $target.kind in [default path] {
+        error make {
+            msg: "--folder needs a slug"
+            label: {text: "the folder a slug is looked for and made in; a path names its own" span: (metadata $folder).span}
+        }
+    }
+    # Why: the template of --create and of a bare `gi open`, the copy of --fork
+    # and the new id of --new-session are all written by the launch.
+    if $no_claude_launch and ($fork or $new_session or $execute or $create or $target.kind == default) {
+        error make {
+            msg: "--no-claude-launch launches nothing"
+            label: {text: "--fork, --new-session, --execute, --create and a bare `gi open` act through the launch" span: (metadata $no_claude_launch).span}
+        }
+    }
+    if $target.kind == new {
+        if $fork or $new_session or $execute {
+            error make --unspanned {
+                msg: $"no canvas for ($doc) yet"
+                help: $"--fork, --new-session and --execute need a canvas that exists; make it first: claude-nu gi open ($doc)"
+            }
+        }
+        # Before the canvas is written, not when it is opened: see gi-editor.
+        let editor = if $no_editor { null } else { gi-editor }
+        # Read once: a run that crosses midnight between the two uses would name
+        # the file for one day and stamp `updated:` with the next.
+        let today = date now | format date '%J'
+        let paths_doc = gi-slug-doc $dir $doc $today $folder
+
+        # Before the canvas is written: a switch that fails leaves nothing behind.
+        if not $current_branch { gi-branch-off $dir $doc }
+        mkdir ($paths_doc.abs | path dirname)
+        gi-new-text $doc $today | save --raw $paths_doc.abs
+        if $editor != null { gi-edit $paths_doc.abs $editor }
+        # The one case with something to hand back: nothing was launched, so the
+        # path is what the caller does the next thing with. A launch returns
+        # nothing — `claude` has the terminal.
+        if $no_claude_launch { return $paths_doc.rel }
+        gi-launch --doc $paths_doc.abs --hook=(not $no_hook) --review=$review --no-bell=$no_bell --manager=$manager --extra $extra
+        return
     }
     # Why: a typo in a named path (`plna.md`) silently made and bound a stray
     # canvas. A bare `gi open` names today's canvas itself, so it cannot be
     # mistyped; --fork has its own refusal for a missing source.
-    if not $create and not $fork and ($doc | is-not-empty) and not (gi-doc-path (gi-run-dir) $doc | get abs | path exists) {
+    if not $create and not $fork and $target.kind == path and not (gi-doc-path $dir $doc | get abs | path exists) {
         error make {
             msg: $"no canvas at ($doc)"
             label: {text: "this file does not exist" span: (metadata $doc).span}
-            help: (gi-missing-canvas-help (gi-run-dir) $doc)
+            help: (gi-missing-canvas-help $dir $doc)
         }
     }
-    gi-launch --doc $doc --hook=(not $no_hook) --review=$review --no-bell=$no_bell --manager=$manager --new-session=$new_session --fork=$fork --execute=$execute --extra $extra
+    if $no_claude_launch { return (gi-doc-path $dir $target.doc | get rel) }
+    gi-launch --doc $target.doc? --hook=(not $no_hook) --review=$review --no-bell=$no_bell --manager=$manager --new-session=$new_session --fork=$fork --execute=$execute --extra $extra
 }
 
 # Why the session is a parameter and not "the session I run inside": a switch
@@ -706,9 +750,9 @@ export def --wrapped "gi open" [
 # session, so `gi open <doc>` resumes it instead of minting a new one.
 @category claude-nu
 export def "gi import" [
-    slug: string # What the canvas is about; the file is <date>-<slug>.md, as gi new names one
+    slug: string # What the canvas is about; the file is <date>-<slug>.md, as gi open names a new one
     session?: string@"nu-complete claude sessions" # Session UUID, /rename name, or .jsonl path (default: the session this runs inside)
-    --folder: path # Where the canvas lands, relative to where you are (default: as for gi new)
+    --folder: path # Where the canvas lands, relative to where you are (default: as for gi open)
     --tools # Keep tool calls instead of dropping them: each input in full, each result as a char count
     --last-exchange # Keep only the last finished exchange: the user's last prompt and the reply to it
     --commit # Commit the imported doc
@@ -733,7 +777,7 @@ export def "gi import" [
     # read the whole chat, so it can name it in a few words.
     # Not a whole-path option beside it because: every other way to name the
     # canvas is one more variant for an agent to pick wrong; only the folder
-    # moves, as in gi new.
+    # moves, as for a new slug in gi open.
     # Why the slug comes before the session: the in-session call names a slug
     # but no session, and a positional cannot be skipped.
     let paths_doc = gi-slug-doc $dir $slug (date now | format date '%J') $folder
@@ -1034,7 +1078,7 @@ export def gi-launch-args [sid: string doc: string --resume --execute ...extra: 
 # `--settings` carries the Canvas style for this process only, and
 # $env.GI_CANVAS names the canvas to the plugin's hooks module; $env.GI_NO_HOOK
 # (--no-hook) tells its Stop hook to stand down, and $env.GI_REVIEW (--review)
-# turns on its review of each turn (hooks/review.ts); $env.GI_NO_BELL (--no-bell)
+# adds the reviewer to its review of each turn (hooks/review.ts); $env.GI_NO_BELL (--no-bell)
 # silences the bell at a turn end; $env.GI_MANAGER (--manager)
 # names the file with the manager's rules, which its `prompt.compose` hook adds
 # to the system prompt.
@@ -1056,7 +1100,7 @@ export def gi-launch-env [doc: path --hook --review --no-bell --manager]: nothin
 def gi-launch [
     --doc: path # The canvas; created from the template when new
     --hook # Keep the Stop-hook floor up in the session
-    --review # Turn on the review at each turn end
+    --review # Add the reviewer to the review at each turn end
     --no-bell # Ring no bell at a turn end
     --manager # Add the manager's rules to the system prompt
     --new-session # Mint a fresh session id, overwriting the one the canvas records
