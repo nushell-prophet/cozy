@@ -1,5 +1,3 @@
-use str.nu [ "str c" "str repeat" ]
-
 # Print a string colorfully with bells and whistles
 @category strings
 export def main [
@@ -69,7 +67,7 @@ export def 'newlineit' [
     before: int
     after: int
 ]: string -> string {
-    $"((char nl) | str repeat $before)($in)((char nl) | str repeat $after)"
+    $"('' | fill --character (char nl) --width $before)($in)('' | fill --character (char nl) --width $after)"
 }
 
 # Wrap text with decorative frame lines above and below
@@ -80,11 +78,11 @@ export def 'frameit' [
 ]: string -> string {
     let input = $in
 
-    $frame
-    | str repeat $width_safe
-    | str substring --grapheme-clusters 1..$width_safe # in case that frame has more than 1 chars
-    | str c (ansi $frame_color) $in (ansi reset)
-    | $in + "\n" + $input + "\n" + $in
+    # Why the cut: a frame of several characters overshoots the width
+    let line = 0..<$width_safe | each { $frame } | str join | str substring --grapheme-clusters 0..<$width_safe
+    let line = $"(ansi $frame_color)($line)(ansi reset)"
+
+    $"($line)\n($input)\n($line)"
 }
 
 # Apply color and highlight *emphasized* text
@@ -93,7 +91,7 @@ export def 'colorit' [
     color: string
 ]: string -> string {
     str replace --regex --all '\*([^*]+?)\*' $'(ansi reset)(ansi $highlight_color)$1(ansi reset)(ansi $color)'
-    | str c (ansi $color) $in (ansi reset)
+    | $"(ansi $color)($in)(ansi reset)"
 }
 
 # Align each line of text within specified width
@@ -110,7 +108,7 @@ export def 'alignit' [
 export def 'indentit' [
     indent: int
 ]: string -> string {
-    str replace --all --regex --multiline '^' (char sp | str repeat $indent)
+    str replace --all --regex --multiline '^' ('' | fill --width $indent)
 }
 
 export def 'completions-colors' []: nothing -> list<record<value: string, style: string>> {

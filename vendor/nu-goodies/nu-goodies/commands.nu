@@ -31,11 +31,7 @@ export def 'bar' [
 ]: nothing -> string {
     let blocks = [null "▏" "▎" "▍" "▌" "▋" "▊" "▉" "█"]
     let full_bar = $blocks | last
-    let whole_part = ($percentage * $width) // 1
-        | into int
-        | seq 1 $in
-        | each { $full_bar }
-        | str join
+    let whole_part = '' | fill --character $full_bar --width (($percentage * $width) // 1 | into int)
 
     let fraction = $blocks
         | get (
@@ -176,49 +172,29 @@ export def 'example' [
     }
 }
 
-# Fill missing columns for each row
+# Format `debug profile` output as a tree of source fragments with duration bars
 #
-# This is how empty columns are represented
-# > [{a: 1} {b: 2}] | to nuon
-# [{a: 1}, {b: 2}]
-@example fill-missing-columns { [{a: 1} {b: 2}] | fill non-exist | to nuon } --result '[{a: 1, b: ""}, {b: 2, a: ""}]'
-@category filters
-export def 'fill non-exist' [
-    value_to_replace: any = ''
-]: table -> table {
-    let table = $in
-
-    $table | default $value_to_replace ...($table | columns)
-}
-
-# use normalize.nu
-# use bar.nu
-
-# Format `debug profile` output
+# The `source` column holds only the first line of a block;
+# pass `--spans` to `debug profile` for the whole block.
 #
-# > debug profile {pin-text cyber} --max-depth 7 --spans | format profile | null
+# > debug profile {pin-text cyber} --max-depth 7 | format profile
 @category development
 export def 'format profile' []: table -> table {
-    skip
-    | update depth { $in - 1 }
-    | normalize duration_ms
-    | update duration_ms_norm { bar $in --width 16 }
-    | if 'span' not-in ($in | columns) {
-        error make --unspanned {msg: 'use debug profile --spans'}
-    } else { }
-    | insert fullspan {|i|
-        view span $i.span.start $i.span.end
-        | str replace --all --regex '(^|\n)\s+' ''
-        | str substring 0..((term size).columns - 40 - ($i.depth * 2))
-    }
-    | insert hier {|i|
-        seq 1 $i.depth
-        | each { '│ ' }
-        | str join
-        | $in + "├─" + ($i.fullspan)
+    let rows = $in | skip
+    let max_duration = $rows.duration_ms | math max
+
+    $rows
+    | insert duration_ms_norm {|row| bar ($row.duration_ms / $max_duration) --width 16 }
+    | insert hier {|row|
+        let depth = $row.depth - 1
+        let source = if 'span' in ($row | columns) { view span $row.span.start $row.span.end } else { $row.source }
+            | str replace --all --regex '(^|\n)\s+' ''
+            | str substring 0..((term size).columns - 40 - $depth * 2)
+
+        (0..<$depth | each { '│ ' } | str join) + '├─' + $source
     }
     | sort-by id
-    | reject span source fullspan parent_id id depth
+    | reject --optional span source parent_id id depth
 }
 
 # Show git commit dates for files, excluding bulk-change commits
@@ -269,40 +245,6 @@ export def ls-git-modified-date [
     # logical path, the same one `pwd` and `find-root` report, so a symlinked cwd still matches.
     | if ($path | path expand --no-symlink | path join '' | str starts-with ($cwd | path join '')) { update name { path relative-to $cwd } } else { }
     | sort-by commit-ts --reverse
-}
-
-# Hard-link an input table to temp directory (useful for previewing files from large directories in external programs)
-#
-# > ls | where modified > (date now | $in - 20min) | ln-for-preview
-@category filesystem
-export def --env ln-for-preview [
-    --first: int = 500
-]: [list -> nothing table -> nothing] {
-    let input = $in
-    let temp_path = [
-        $nu.temp-dir
-        'hard_links'
-        (date now | format date "%Y%m%d_%H%M%S")
-    ]
-        | path join
-
-    mkdir $temp_path
-
-    $input
-    | first $first
-    | if ($in | describe | $in =~ '^table') {
-        if ($in | columns | 'name' in $in) {
-            where type == file
-            | get name
-            | each { ln $in $temp_path }
-        } else {
-            error make {msg: 'no name column in input table'}
-        }
-    } else if ($in | describe | $in =~ '^list') {
-        each { ln $in $temp_path }
-    }
-
-    cd $temp_path
 }
 
 #dotnu-vars-end
@@ -359,159 +301,6 @@ export def --env md [
     cd $dir
 }
 
-# Toggle suffix `_back` for a file
-@category filesystem
-export def 'mv1' [
-    file: path
-]: nothing -> nothing {
-    if ($file | str ends-with '_back') {
-        mv $file $"($file | str replace --regex '_back$' '')"
-    } else {
-        mv $file $'($file)_back'
-    }
-}
-
-# Backup dotfiles and config directories to their git repos
-@category development
-export def 'mygit log' []: nothing -> nothing {
-    $nu.home-dir
-    | path join '.*'
-    | glob $in --depth 1 --no-dir --exclude ['.CFUserTextEncoding']
-    # Why dot_home_dir: the author keeps the dotfiles of his home in that folder, a git repo;
-    # elsewhere, create it first or change the path.
-    | cp --update ...$in '~/.config/dot_home_dir'
-
-    nu ~/.config/nushell/toolkit.nu history backup
-}
-
-# history-backup moved to ~/.config/nushell/toolkit.nu
-
-# Normalize values in given columns
-#
-# > [[a b]; [1 2] [3 4] [a null]] | normalize a b
-# ╭─a─┬─b─┬a_norm┬b_norm╮
-# │ 1 │ 2 │ 0.33 │ 0.50 │
-# │ 3 │ 4 │    1 │    1 │
-# │ a │   │ a    │      │
-# ╰───┴───┴──────┴──────╯
-@category filters
-export def 'normalize' [
-    ...column_names: string
-    --suffix: string = '_norm'
-]: table -> table {
-    mut table = $in
-    let allowed_types = ['int' 'float' 'filesize']
-
-    for column in $column_names {
-        let max_value = $table
-            | get $column
-            | where ($it | describe | $in in $allowed_types)
-            | math max
-
-        $table = $table
-            | upsert $'($column)($suffix)' {|i|
-                $i
-                | get $column
-                | if ($in | describe | $in in $allowed_types) {
-                    $in / $max_value
-                } else { }
-            }
-    }
-
-    $table
-}
-
-# Install nushell or polars from the HEAD or the specified PR
-@category development
-export def 'nu-test install' [
-    --nushell # Update nushell only
-    --polars # Update polars plugin only
-    --nushell-repo-path: path = '~/git/nushell/'
-    --cargo-test-path: path = '~/.cargo_test/'
-    --plugin-config: path = '~/.test_config/nushell/polars_test.msgpackz'
-    --pr: string # A PR to checkout like ayax79:polars_pivot
-]: nothing -> nothing {
-    cd $nushell_repo_path
-
-    git checkout main
-    git pull
-
-    if $pr != null {
-        gh co $pr
-    }
-
-    mkdir $cargo_test_path
-    $env.CARGO_HOME = $cargo_test_path
-
-    # I install polars first to add it later to already updated nushell
-    if $polars or not $nushell {
-        cargo install --path ([$nushell_repo_path crates nu_plugin_polars] | path join)
-
-        plugin add ([$cargo_test_path bin nu_plugin_polars] | path join) --plugin-config $plugin_config
-        print 'test plugin updated' ''
-    }
-
-    if $nushell or not $polars {
-        cargo install --path $nushell_repo_path
-        print 'test nushell updated' ''
-    }
-
-    commandline edit --replace $'^($cargo_test_path | path join bin nu) --plugin-config ($plugin_config)'
-}
-
-# Launch the test-installed Nushell binary
-@category development
-export def 'nu-test launch' [
-    --no-plugin
-]: nothing -> nothing {
-    let exec = '~/.cargo_test/' | path join bin nu
-    let params = [
-        "--execute"
-        "$env.PATH = ($env.PATH | prepend '~/.cargo_test/bin/')"
-    ]
-        | if $no_plugin { } else {
-            prepend ['--plugin-config' '~/.test_config/nushell/polars_test.msgpackz']
-        }
-
-    ^$exec ...$params
-}
-
-const nightly_path = '~/temp/nu-nightly' | path expand
-
-# Download and extract latest Nushell nightly build
-export def --env download-nushell-nightly [
-    --arch (-a): string = 'aarch64-apple-darwin' # Architecture as specified in nushell/nightly repo
-    --ext (-e): string = '.tar.gz' # Extension, including the leading dot (e.g. '.tar.gz')
-    --destination-dir (-d): directory = $nightly_path # Destination directory in which to save the download
-]: nothing -> nothing {
-    let most_recent_nightly = (http get https://api.github.com/repos/nushell/nightly/releases | get 0)
-    let nightly_name = ($most_recent_nightly.name | str replace --regex '^Nu-nightly-' '')
-    let asset = http get $most_recent_nightly.assets_url
-        | where name =~ $arch
-        | where name =~ $'($ext)$'
-        | get 0
-
-    let filename = (
-        $asset.name
-        | str replace --regex $ext $'-($nightly_name)($ext)'
-        | str replace --regex '^nu-' 'nu-nightly-'
-    )
-
-    let destination_file = ($destination_dir | path join $filename)
-
-    print $"Downloading to:(char lf)($destination_file)"
-
-    http get $asset.browser_download_url | save $destination_file
-    tar --directory $nightly_path --extract --gzip --file $destination_file
-}
-
-# Launch the most recent downloaded nightly Nushell
-export def 'launch-downloaded' []: nothing -> nothing {
-    let path = glob ($nightly_path | path join *darwin *nu) | sort | last
-
-    commandline edit --replace $path
-}
-
 # use number-format.nu
 
 # Format number column in a table using number-format
@@ -519,7 +308,7 @@ export def 'launch-downloaded' []: nothing -> nothing {
 # > [[a]; [123456.678] [2345.8900]] | number-col-format a --denom wt --decimals 2 --significant-digits 3
 # ╭──────a───────╮
 # │ 123_000.00wt │
-# │   2_340.00wt │
+# │   2_350.00wt │
 # ╰──────────────╯
 @category conversions
 export def 'number-col-format' [
@@ -527,7 +316,7 @@ export def 'number-col-format' [
     --thousands-delim (-t): string = '_' # Thousands delimiter: number-format 1000 -t ': 1'000
     --decimals (-d): int = 0 # Number of digits after decimal delimiter: number-format 1000.1234 -d 2: 1000.12
     --denom (-D): string = '' # Denom `--denom "Wt": number-format 1000 --denom 'Wt': 1000Wt
-    --significant-digits: int = 0 # The number of first digits to display, others will become 0
+    --significant-digits: int = 0 # Round to this number of significant digits; 0 keeps the number as is
 ]: table -> table {
     let input = $in
 
@@ -539,32 +328,28 @@ export def 'number-col-format' [
         }
     }
 
-    let thousands_delim_length = $thousands_delim | str length --grapheme-clusters
-
-    let integers = $input
+    let formatted = $input
         | get $column_name
-        | math max
-        | into string
-        | split row '.'
-        | get 0
-        | str length
-        | if $thousands_delim_length > 0 {
-            $in + (($in - 1) / 3 | math floor) * $thousands_delim_length
-        } else { }
-        | append (
-            $column_name | str length
-            | $in - $decimals - $thousands_delim_length - ($denom | str length --grapheme-clusters)
-        )
+        | each {
+            (
+                number-format --denom $denom --decimals $decimals
+                --thousands-delim $thousands_delim --significant-digits $significant_digits
+            )
+        }
+
+    # Why the header: a table left-aligns strings, so a cell narrower than the header breaks the right edge
+    let width = $formatted
+        | ansi strip
+        | append $column_name
+        | str length --grapheme-clusters
         | math max
 
-    $input
-    | upsert $column_name {
-        (
-            number-format --denom $denom --decimals $decimals
-            --thousands-delim $thousands_delim --integers $integers
-            --significant-digits $significant_digits
-        )
+    # Not `fill --alignment right` because: fill counts the empty color pair of an empty `--denom` as one column
+    let padded = $formatted | each {|cell|
+        ('' | fill --width ($width - ($cell | ansi strip | str length --grapheme-clusters))) + $cell
     }
+
+    $input | merge ($padded | wrap $column_name)
 }
 
 # use significant-digits.nu
@@ -579,43 +364,28 @@ export def 'number-format' [
     num?: number # Number to format
     --thousands-delim (-t): string = '_' # Thousands delimiter
     --integers (-i): int = 0 # Length of padding whole-part digits
-    --significant-digits: int = 0 # The number of first digits to display, others will become 0
+    --significant-digits: int = 0 # Round to this number of significant digits; 0 keeps the number as is
     --decimals (-d): int = 0 # Number of digits after decimal delimiter
     --denom (-D): string = '' # Denom
     --color: string@completions-colors = 'green'
 ]: [int -> string float -> string nothing -> string] {
     let in_num = $in
 
-    let formatted = $num
+    let parts = $num
         | default $in_num
         | if $significant_digits == 0 { } else {
             significant-digits $significant_digits
         }
-        | if $decimals > 0 {
-            into string --decimals $decimals
-        } else {
-            into string
-        }
+        | into string --decimals $decimals
         | split row '.'
 
-    let whole_part = $formatted.0
-        | split chars
-        | reverse
-        | window 3 --stride 3 --remainder
-        | each { reverse | str join }
-        | reverse
-        | str join $thousands_delim
-        | if $integers == 0 { } else {
-            fill --width $integers --character ' ' --alignment r
-        }
+    let whole_part = $parts.0
+        | str replace --all --regex --no-expand '\B(?=(\d{3})+$)' $thousands_delim
+        | fill --width $integers --alignment right
 
-    let dec_part = if $decimals == 0 {
-        ''
-    } else {
-        '.' + ($formatted | get 1? | default '0')
-    }
+    let number = [$whole_part ...($parts | skip 1)] | str join '.'
 
-    $"(ansi $color)($whole_part)($dec_part)(ansi reset)(ansi green_bold)($denom)(ansi reset)"
+    $"(ansi $color)($number)(ansi reset)(ansi green_bold)($denom)(ansi reset)"
 }
 
 # Generate 14 lines of spaces (placeholder grid)
@@ -628,22 +398,6 @@ export def line [
     symbol: string
 ]: nothing -> string {
     1..61 | each { $symbol } | str join
-}
-
-# An alternative to `inspect` that doesn't break debugging output
-@category viewers
-export def 'print-and-pass' [
-    callback?: closure
-]: any -> any {
-    let input = $in
-
-    if $callback == null {
-        print $input
-    } else {
-        print (do $callback $input)
-    }
-
-    $input
 }
 
 # https://discord.com/channels/601130461678272522/615253963645911060/1182672999921504336
@@ -663,18 +417,7 @@ export def 'select-i' []: table -> nothing {
     | commandline edit --replace $in
 }
 
-# The same version as https://github.com/nushell/nu_scripts/blob/significant-digits/stdlib-candidate/std-rfc/math/mod.nu
-
-# Replace all insignificant digits with 0
-#
-# | Significant Digits | Maximum Relative Error |
-# |--------------------|------------------------|
-# | 1                  | 50%                    |
-# | 2                  | 5%                     |
-# | 3                  | 0.5%                   |
-# | 4                  | 0.05%                  |
-# | 5                  | 0.005%                 |
-# | 6                  | 0.0005%                |
+# Round a number to n significant digits
 #
 # > 0.0000012346789 | significant-digits 2
 # 0.0000012
@@ -683,7 +426,7 @@ export def 'select-i' []: table -> nothing {
 # 1.23
 #
 # > 123456789.89 | significant-digits 5
-# 123450000
+# 123460000
 #
 # > 1sec / 3 | significant-digits
 # 333ms
@@ -692,51 +435,30 @@ export def 'significant-digits' [
 ]: [int -> int float -> float duration -> duration] {
     let input = $in
     let type = $input | describe
+    let num = if $type == 'duration' { $input | into int } else { $input }
 
-    let num = match $type {
-        'duration' => { $input | into int }
-        _ => { $input }
+    # Why the guard: `math log` of 0 fails
+    let precision = if $num == 0 { 0 } else {
+        $n - 1 - ($num | math abs | math log 10 | math floor)
     }
 
-    let insignif_position = $num
-        | if $in == 0 {
-            0 # it's impoosbile to calculate `math log` from 0, thus 0 errors here
-        } else {
-            math abs
-            | math log 10
-            | math floor
-            | $n - 1 - $in
-        }
+    # Not `math round --precision` for a negative precision because: it scales by a float and
+    # leaves noise, `3456789 | math round --precision -5` gives 3499999.9999999995 (0.116.2).
+    # An integer factor keeps the result exact.
+    let res = if $precision >= 0 {
+        $num | math round --precision $precision
+    } else {
+        let factor = 10 ** (0 - $precision)
 
-    # See the note below the code for an explanation of the construct used.
-    let scaling_factor = 10 ** ($insignif_position | math abs)
-
-    let res = $num
-        | if $insignif_position > 0 {
-            $in * $scaling_factor
-        } else {
-            $in / $scaling_factor
-        }
-        | math floor
-        | if $insignif_position <= 0 {
-            $in * $scaling_factor
-        } else {
-            $in / $scaling_factor
-        }
+        ($num / $factor | math round) * $factor
+    }
 
     match $type {
         'duration' => { $res | into duration }
         'int' => { $res | into int }
-        _ => { $res }
+        _ => { $res | into float }
     }
 }
-
-# I started with `10.0 ** $insignif_position`, but it was sometimes producing
-# not rounded digits in `$num / $scaling_factor` if `$insignif_position` was negative
-# like with
-# > 3456789 | math round --precision -5
-# 3499999.9999999995
-# so I use what I have now.
 
 # Quick tar archiver: pack paths into a timestamped .tar.gz backup
 #
@@ -780,51 +502,6 @@ export def --env 'tt' []: nothing -> oneof<table, nothing> {
         print 'No toolkit.nu in the current folder. Here are the first 3 files:'
         ls | first 3
     }
-}
-
-# Test helper for cd command
-export def --env 'testcd' [destination: path]: nothing -> nothing { cd $destination }
-
-# author @CabalCrow
-# https://discord.com/channels/601130461678272522/615253963645911060/1247651613531705436
-
-# <() from bash.
-#
-# The closure parameter is used, or the string stdin. Can take both applying
-# the stdin first. If no stdin is used closure takes no argument & the output is
-# used as the file content. If there is stdin closure takes the file name as an
-# argument & operates on it.
-@category filesystem
-export def 'to-temp-file' [
-    content?: any # Commands used to generate the content of the file.
-]: [any -> path nothing -> path] {
-    let content = if $content == null { } else { $content }
-    let output_file = $nu.temp-dir
-        | path join $'(date now | into int).yaml'
-
-    $content | save $output_file
-
-    $output_file
-}
-
-# Transcribe audio file to text using whisper.cpp
-@category platform
-export def 'transcribe' [file: path]: nothing -> nothing {
-    let file = $file
-        | if $in =~ '\.wav$' { } else {
-            let f = $in + '.wav';
-
-            ffmpeg -i $file -ar 16000 $f;
-            $f
-        }
-
-    # Why these paths: the author builds whisper.cpp in ~/git/whisper.cpp with the base.en model.
-    # Elsewhere, point them at your own build and model.
-    (
-        ^~/git/whisper.cpp/build/bin/whisper-cli --file $file
-        --model ~/git/whisper.cpp/models/ggml-base.en.bin
-        --output-txt $'($file).txt' --output-srt $'($file).srt' --no-prints
-    )
 }
 
 # riggrep to output table to capture paths via "[^\\s│]+:\\d+:\\d+" in wezterm

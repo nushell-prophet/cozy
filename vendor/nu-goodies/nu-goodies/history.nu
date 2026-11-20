@@ -152,8 +152,8 @@ export def 'hist-to-script' [
         | drop 1
 
     let buffer = $hist
-        | if $up > 1 {
-            last ($up + 1)
+        | if $up > 0 {
+            last $up
         } else if $all { } else {
             where {|i|
                 $i =~ '(^(let|def|export) )|#|\b(save|source|mkdir|polars to-csv|polars to-avro|polars to-jsonl|polars to-arrow|polars to-parquet)\b'
