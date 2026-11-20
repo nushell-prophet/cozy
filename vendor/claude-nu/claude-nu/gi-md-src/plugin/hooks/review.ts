@@ -66,7 +66,7 @@ Review only the turn that is ending now, from the user's last prompt to the answ
 sync: did the turn change a fact — in the canvas, in a sibling file, or by an edit of the user — and leave an older copy of it in the canvas or its sibling files, as far as this conversation shows their text?
 command: did the turn do something other than what the user's words asked — it acted on a question, edited on a "check" or a "review", wrote code on a "reprocess", went past what a "go" covered, or the reverse of one of these?
 not-requested: did the agent fill a gap with a choice of its own and not name it in a \`Not requested:\` line?
-place: did the agent append an answer where an \`AA:\` entry had to be rewritten in place, or put a remark away from the words it is about?
+place: did the agent append an answer where an \`AA:\` entry under the same point had to be rewritten in place, or put an answer or a remark away from the line or words it is about?
 carry: did the user type canvas work in the chat — not a \`chat:\` aside, a slash command, a \`go\` or a \`!\` command — that the agent did not carry into the canvas in his words?
 
 If every answer is no, reply with the two letters OK and nothing else. Otherwise write one line per finding, at most five lines: \`<question>: <what is wrong, and where — the file and the words>\`. Report only what you can point at in this conversation; when you are not sure, leave it out. Leave out a finding that was raised earlier in this conversation and answered.`

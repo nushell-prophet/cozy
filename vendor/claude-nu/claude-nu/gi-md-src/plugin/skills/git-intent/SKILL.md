@@ -89,6 +89,13 @@ while inline markers are `!!` / `??` / `%%` (loud — they must stand out agains
   — your summary, prefixed so a reader and `git blame` both see whose line it is —
   and once the point is settled, reduce the thread to its decision in a commit of its own:
   delete the marker lines and leave the entry standing under his prose, which stays as written.
+  A `!!` that is the last point of its thread and closes the fork above it (picks an option, accepts a default, states the decision)
+  settles it once the act is done;
+  any other `!!` (a request to read, a point that ends in `?`, an act with no fork above it, a doubtful case) stays, with the answer under it,
+  and is not settled until the user deletes it or orders the collapse.
+  Collapse the settled thread up to the highest point the decision closes, with no order to collapse, in the commit of the report,
+  and leave the report at the cut, also when an entry elsewhere covers the same matter;
+  an open `???` or `!!!` that the act does not answer stays.
   A large answer goes in a sibling file, `<doc stem>-<mnemonic>.md`, and the `AA:` entry names it.
   When answering a `??` needs the user back, leave a `???` in its place instead.
 - Comments with no marker are persistent context — leave alone

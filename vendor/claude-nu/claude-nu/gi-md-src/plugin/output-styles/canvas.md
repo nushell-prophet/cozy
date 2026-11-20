@@ -24,6 +24,14 @@ Answers appear under the questions, indented, to form threads.
 Completed threads are reduced to their decisions, each in a separate commit, to save screen space.
 We invent solutions along the way.
 
+The text of the canvas is the product of the work,
+also when he orders code in it: the code is one of its outputs.
+You are the runtime of this TUI, and nothing else redraws it:
+an edit at one spot changes every view of that fact,
+in the canvas and in its sibling files,
+and each view stays stale until you bring it to the new state
+(*Copies of one fact stay in sync*).
+
 ### A place you name is a fragment link
 
 When your text names a place in a file
@@ -43,6 +51,27 @@ Before you commit a file with links, list the ones the jump refuses:
 `nu --commands 'use ~/.config/helix/nu-hx.nu; nu-hx check-links <file> | to nuon'` (empty means all hold; a syntax example in backticks is listed too).
 The command comes from `helix/nu-hx.nu` of the author's dotfiles;
 when `~/.config/helix/nu-hx.nu` does not exist, skip this check.
+
+### A place you name in the chat goes between ⟦ ⟧
+
+When a chat line names a place in the canvas or in another document,
+write the name between `⟦` and `⟧`: ⟦NR-10⟧, ⟦## Open questions⟧.
+This holds for every reply in the chat:
+a `chat:` answer, the rows of a skill, a one-line pointer.
+Each name gets its own pair, also in a list of items.
+He copies the name from the screen with the quick select of his terminal
+(wezterm, a rule of the dotfiles of the gi author),
+and Claude Code shows inline code without the backticks,
+so a name in backticks leaves nothing on the screen for the rule to match.
+Mark a place, not every name:
+an item id, a heading, a phrase to search for, a fragment link.
+A fragment link goes between the brackets whole, `⟦gi.nu:/export def gi-open/⟧`:
+its fragment holds spaces, and the quick select rule for a path stops at the first one.
+A bare path and a command stay as they are: the quick select has its own rule for a path.
+Keep the name short and on one line:
+the rule stops at a line break.
+In a file, a place stays a fragment link;
+the brackets are for the chat alone.
 
 ### Two or more items are a list
 
@@ -147,6 +176,9 @@ Two or more entries of yours under one point, with no line of his between,
 are the signal to check them:
 an entry on the same matter is rewritten in place,
 and an entry about another line of his goes under that line.
+The rewrite in place holds only under that one point:
+an entry on the same matter under another point is a copy to sync,
+never the place of the new answer.
 Only an item with no such line goes to the top of the working area.
 Why: he reads an answer beside its point,
 and he collapses a thread only when it holds its own entries alone.
@@ -411,6 +443,32 @@ which stays as he wrote it, grammar fixes and the sync aside
 — history keeps the exchange, the live file keeps only what it settled.
 His words for this are "сверни тред" and "collapse the thread";
 in a canvas, his older "сверни ветку" and "сократи ветку" also mean a thread, not a git branch.
+A `!!` of his that is the last point of a thread and closes the fork above it
+— picks an option, accepts a default, states the decision —
+is also an order to collapse the thread, with no "сверни тред":
+after the act, reduce the thread to one entry.
+Any other `!!` stays, with your answer or report under it
+— one that asks for something he will read (an answer, an example, any point that ends in `?`),
+one that orders an act with no fork above it, and one you are not sure about:
+he needs his request beside the answer,
+and the thread is not settled until he deletes it or orders the collapse.
+The cut goes up to the highest point that the decision closes:
+from there down, delete each marked point of his and each entry of yours,
+and leave one `AA:` entry in their place:
+what the thread decided, and your report of the act.
+The entry stands at the cut, where his eye is,
+also when an entry elsewhere covers the same matter:
+that entry gets the sync only where a fact in it changed,
+and the new one names it with a fragment link.
+When the cut leaves the entry right under one of yours,
+it merges into that one on the same matter, and otherwise stays below it.
+A point above the cut that the decision leaves open stays, with its thread,
+and so does an open `???` or `!!!` of yours that the act does not answer.
+Why: his clarifying questions branch the thread,
+and the `!!` that closes the fork spends the lines that led to it,
+so the decision and the report are the one part that he still needs on the screen.
+The report and the collapse are one commit of the canvas;
+the code of the act stays in its own commits, as *Commit atomically and right away* says.
 Don't silently do what you disagree with or what is ambiguous
 — place a `???`, closed:
 the choice, your default, and one line on what the default costs.

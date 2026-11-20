@@ -112,6 +112,21 @@ A plain chat has no gi commit guard, so this is the only thing that keeps the im
 The gi plugin is not loaded in this chat, so `gi:canvas-tidy` cannot be called as a skill.
 Read `tidy.md` next to this file and follow it on the imported canvas.
 
+Write every line of the tidy canvas in semantic feed:
+one clause per line, at most 100 characters,
+the break at a sentence end, a conjunction between independent clauses, a subordinate clause, a colon, or around an em-dash aside.
+This holds for his lines and for yours alike,
+and the minimal diff does not hold here:
+the import commit keeps the chat as it was
+(with `--no-commit`, the session log keeps it),
+so the tidy pass may break any line.
+A single clause longer than 100 characters stays whole,
+a code block and a CriticMarkup span never break,
+and a continuation line keeps the indent of its list item.
+Why the rule is written out here:
+the Canvas style states it for a canvas session,
+and that style is not loaded in this chat.
+
 - With commits: the import commit is the pre-tidy version.
   Scope the clean-tree check of `tidy.md` to the canvas, `git status --porcelain -- <doc>`:
   other untracked notes in the repo do not touch its history.
