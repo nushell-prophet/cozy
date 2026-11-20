@@ -16,6 +16,9 @@ os:
 # Why: q in the log view (X below) returns to lazygit at once, not after a "Press enter" pause.
 #   The key is global, so leaving an editor started from lazygit has no pause either.
 promptToReturnFromSubprocess: false
+gui:
+  # Why: the staging view opens with the cursor on one line, not on a whole hunk; `a` toggles hunk mode.
+  useHunkModeInDiffView: false
 git:
   autoFetch: false
   diffRenderers:
@@ -32,22 +35,24 @@ customCommands:
     command: 'lazygit --use-config-file "$HOME/.config/lazygit/config.yml,$HOME/.config/lazygit/log-view.yml" --screen-mode normal log'
     output: terminal
     description: 'Log view: commits at full height, diff on the right'
+  # Why SelectedPath: SelectedFile is always the selection of the files panel, also when commitFiles
+  #   is focused; SelectedPath is the commit file's path there, the working-tree path otherwise.
   - key: 'E'
-    context: 'files'
-    command: 'zellij edit {{.SelectedFile.Name}}'
-    description: 'Edit file in Zellij'
-  - key: 'E'
-    context: 'commitFiles'
-    command: 'zellij edit {{.SelectedFile.Name}}'
+    context: 'files, commitFiles'
+    command: 'zellij edit {{.SelectedPath | quote}}'
     description: 'Edit file in Zellij'
   # Copy an agent-ready pointer to the clipboard (pbcopy = OSC 52 -> host).
   # Why: hand an agent a precise file reference, like the helix selected-text command.
-  # Working-tree file -> absolute path. The agent opens it directly, no git needed.
+  # Selected file (working tree or a commit's file list) -> absolute path of the file on disk,
+  #   as `+ Y` in helix. The agent opens it directly, no git needed.
   # Not <branch>:<path> because: a branch tip moves (unstable link), and git already
   #   reads <branch>:<path> as the *committed* blob, not the file on disk you're pointing at.
+  # Why the error on a missing file: a commit file can be gone from the worktree, and a path
+  #   to nothing reaches the agent as a valid pointer.
+  # The copy runs inside nu: a failed command piped into pbcopy would send an empty clipboard and exit 0.
   - key: '<c-y>'
-    context: 'files'
-    command: 'p=$(realpath -- {{.SelectedFile.Name | quote}}); printf %s "$p" | pbcopy; echo "copied: $p"'
+    context: 'files, commitFiles'
+    command: 'P={{.SelectedPath | quote}} nu --no-config-file --commands ''let r = $env.P | path expand; if not ($r | path exists) { error make --unspanned {msg: $"no file on disk: ($r)"} }; $r | ^pbcopy; print $"copied: ($r)"'''
     description: 'Copy absolute path to clipboard'
     output: log
   # Selected file (working tree or a commit's file list) -> path relative to the dir lazygit was launched from.
@@ -56,18 +61,30 @@ customCommands:
   # LG_START_DIR is set by the zellij Super Alt l launcher (sh -c):
   #   lazygit chdirs to the repo root and the shell resets $PWD, so the launch dir is gone here.
   # Why nushell: it is on every machine this config reaches; macOS realpath has no --relative-to.
-  # Not `path relative-to` because: it fails unless the file is inside the base dir, so it never yields ../
-  #   The shared leading segments are counted instead; each leftover base segment becomes a ..
+  # `path relative-to --walk-up` is the call of the helix `+ y` (copy the cwd-relative path).
+  # Not `path expand --no-symlink`, as helix has, because: LG_START_DIR is the logical $PWD
+  #   (~/repos/<name> is a symlink into the mono), and lazygit runs in the physical repo path,
+  #   so only resolved paths share a prefix.
   # Unset LG_START_DIR fails loudly on its own (Cannot find column 'LG_START_DIR').
   - key: '<c-o>'
     context: 'files, commitFiles'
-    command: 'P={{.SelectedPath | quote}} nu --no-config-file --commands ''let f = $env.P | path expand | path split; let b = $env.LG_START_DIR | path expand | path split; let n = $f | zip $b | take while { $in.0 == $in.1 } | length; let r = [...($b | skip $n | each { ".." }) ...($f | skip $n)] | path join; $r | ^pbcopy; print $"copied: ($r)"'''
+    command: 'P={{.SelectedPath | quote}} nu --no-config-file --commands ''let r = $env.P | path expand | path relative-to ($env.LG_START_DIR | path expand) --walk-up; $r | ^pbcopy; print $"copied: ($r)"'''
     description: 'Copy cwd-relative path to clipboard'
     output: log
-  # File at a specific commit -> <full-hash>:<repo-relative-path>. This is literal git
-  #   syntax (git show <hash>:<path>); the hash is immutable, so the link is stable.
-  - key: '<c-y>'
+  # File at a specific commit -> change-id link <repo>@<change-id>:<repo-relative-path>,
+  #   the format of `cozy git link` and of the helix `+ t` tag; `cozy git resolve` prints the file.
+  # Why the Change-Id and not the sha: a rebase gives the commit a new sha, and the Change-Id
+  #   trailer travels in the message, so the link survives a history rewrite.
+  # Why only commitFiles: the files panel lists only changed files, and a link names committed content.
+  # Not a call of `cozy git link` because: it links the last commit that touched the file in the
+  #   worktree, not the selected one, and the cozy module is absent on a host; this inline copy
+  #   keeps its rules: repo = the main checkout, the sha when the commit has no Change-Id,
+  #   an error on two ids.
+  # The copy runs inside nu: a failed nu piped into pbcopy would send an empty clipboard and exit 0.
+  # Why ctrl+t: the same letter as `+ t` in helix. It shadows the built-in `git difftool` of this
+  #   panel only; in the other panels ctrl+t stays difftool.
+  - key: '<c-t>'
     context: 'commitFiles'
-    command: 'ref=$(printf "%s:%s" {{.SelectedCommit.Hash | quote}} {{.SelectedCommitFilePath | quote}}); printf %s "$ref" | pbcopy; echo "copied: $ref"'
-    description: 'Copy <hash>:<path> to clipboard'
+    command: 'H={{.SelectedCommit.Hash | quote}} P={{.SelectedCommitFilePath | quote}} nu --no-config-file --commands ''let loc = ^git rev-parse --path-format=absolute --git-common-dir --git-dir --show-toplevel | lines; let repo = if $loc.1 == $loc.0 { $loc.2 } else if ($loc.0 | path basename) == ".git" { $loc.0 | path dirname } else { $loc.0 }; let ids = ^git log --max-count 1 "--format=%(trailers:key=Change-Id,valueonly)" $env.H | lines | compact --empty; let rev = match ($ids | length) { 0 => $env.H, 1 => $ids.0, _ => { error make --unspanned {msg: $"commit ($env.H) carries ($ids | length) Change-Id trailers"} } }; let r = $"($repo)@($rev):($env.P)"; $r | ^pbcopy; print $"copied: ($r)"'''
+    description: 'Copy change-id link <repo>@<change-id>:<path> to clipboard'
     output: log

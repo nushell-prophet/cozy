@@ -366,6 +366,14 @@ local quick_select_patterns = {
   -- few false labels. One line only, like the backtick rule.
   "⟦([^⟧\\n]{1,120})⟧",
 
+  -- Markdown heading of level 2 to 6, with its #s: a canvas in helix names a
+  -- section this way, and a fragment link takes the line as it is.
+  -- Why not level 1: a single # starts a comment in nushell, bash and toml.
+  -- Why │ is excluded: it is the border of a zellij pane beside helix.
+  -- Cost: the whole line is one label, so a path or a code span inside a
+  -- heading gets no label of its own.
+  "(?<!#)#{2,6} [^\\s│](?:[^\\n│]*[^\\s│])?",
+
   -- Bare file names: README.md, toolkit.nu, Cargo.lock.
   -- Why a fixed list of extensions: any extension would also match field
   -- access (config.keys, wezterm.action) and bare domains (github.com).
