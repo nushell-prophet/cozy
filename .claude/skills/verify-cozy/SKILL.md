@@ -56,7 +56,7 @@ next      <the exact command or answer for the user> | nothing
 ```
 
 - `blocked`: the target asked for could not run here; it takes the place of `target` and `result`.
-- `fail`: one row per `pass: false` row of the table; the two `egress:` rows on the `docker` target get `cause: by design, a bare docker run has no cage`.
+- `fail`: one row per `pass: false` row of the table; the `egress:` rows on the `docker` target get `cause: by design, a bare docker run has no cage`.
 - `rerun`: the re-run of *When to escalate*.
 - `target` and `result` print when the run happened; `next` always prints.
 
@@ -76,9 +76,9 @@ docker run --rm cozy:verify \
 - Layer cache: editing `cozy-module/` re-runs only the bootstrap layer (~30–60s); editing base deps re-runs brew (minutes).
 - Build egress: the sandbox VM blocks `:80`, allows `:443`.
   The Dockerfile already uses https apt sources, so builds work in restricted networks.
-- **The two `egress:` rows fail on this target, by design.**
+- **The `egress:` rows fail on this target, by design.**
   A bare `docker run` has no allowlist in front of it — the cage comes from `compose.yaml`, not the image.
-  Expect 2 failures here and read the other 61; to see all 63 pass, bring the container up with `docker compose up -d` and verify through `docker compose exec cozy`.
+  Expect those failures here and read the rest; to see every row pass, bring the container up with `docker compose up -d` and verify through `docker compose exec cozy`.
 - **Boundary:** this validates the shared install logic, NOT sbx-specific wiring (the kit spec, sbx's git-config rewrites, the microVM).
   It is a fast pre-check — the final smoke test is the Apple `container` path, the one in daily use (target `container <name>` below).
   Add an `sbx run` only when the change touches the kit or other sbx wiring.
@@ -93,7 +93,7 @@ Run the `check:` line that `up` prints:
 container exec <name> nu --commands 'overlay use ~/repos/cozy/cozy-module/ as cozy --prefix; cozy verify'
 ```
 
-The cage is in front here, so this is the target where the two `egress:` rows are meant to pass.
+The cage is in front here, so this is the target where the `egress:` rows are meant to pass.
 A rebuilt image reaches only a new container: `up` refuses an existing name, so `container stop <name>; container delete <name>` first.
 
 ### `<sandbox-name>` — verify a running sbx sandbox

@@ -199,6 +199,17 @@ export def ensure-network []: nothing -> nothing {
 # success without looking at its own result is the gap being closed.
 const direct_probe = 'https://1.1.1.1'
 
+# The UDP half, which the proxy never sees and which QUIC and other peer-to-peer
+# programs use to step around it. Same script as cozy-module/verify.nu's
+# `egress: no direct udp` row, and the reasons for its shape are written there:
+# a DNS query to 1.1.1.1 in pure bash, one token per outcome. `silent` and
+# `no-route` pass, `reply` is an open cage, anything else is an unproven one.
+const udp_probe = 'exec 4<>/dev/udp/127.0.0.1/9 || { echo unsupported; exit; }
+exec 3<>/dev/udp/1.1.1.1/53 2>/dev/null || { echo no-route; exit; }
+q="\x12\x34\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00\x07example\x03com\x00\x00\x01\x00\x01"
+printf "$q" >&3 2>/dev/null; printf "$q" >&3 2>/dev/null
+if read -r -t 3 -N 1 -u 3 _; then echo reply; elif (( $? > 128 )); then echo silent; else echo read-error; fi'
+
 # Everything here waits on the same thing: a container VM that is still booting
 # after `run -d` or `start` has returned. Three call sites hand-rolled the same
 # `mut` + `for 1..15` + `sleep 1sec` shape, and each of them also slept once more
@@ -240,28 +251,54 @@ export def assert-caged [name: string]: nothing -> nothing {
     # whole point is that "we could not check" must not read as "it is fine".
     if $code == '000' {
         print $"  (ansi green)Cage:(ansi reset) ($name) cannot reach ($direct_probe) with the proxy bypassed"
+        assert-caged-udp $name
         return
     }
 
-    # Past this point the container is running and is not a proven cage, so stop it
-    # before raising. Raising alone left it up with whatever route the probe just
-    # found, for as long as the human takes to read the message — the leak the
-    # error is about, still open. Stopped, not deleted: `container logs` and
-    # `inspect` still work, and the messages below already say to delete.
-    #
-    # Not container-cli because: a failed stop must not replace the diagnosis
-    # with its own error. Report what happened and let the real cause through.
-    let stopped = ^container stop $name | complete
-    let cleanup = if $stopped.exit_code == 0 {
-        $" ($name) has been stopped."
-    } else {
-        $" ($name) could NOT be stopped and is still running: ($stopped.stderr | str trim)"
-    }
+    let cleanup = stop-uncaged $name
 
     if ($code =~ '^\d{3}$') {
         error make {msg: $"($name) reached ($direct_probe) directly \(HTTP ($code)) — the cage is open and traffic bypasses the allowlist. ($caged_network) was almost certainly created without --internal.($cleanup)" help: $"rebuild both: `container delete ($name)`, `container network delete ($caged_network)`, then re-run `up`"}
     } else {
         error make {msg: $"could not probe the cage from ($name): curl gave no status \(exit ($probe.exit_code))(if ($probe.stderr | is-not-empty) { $', stderr: ' + ($probe.stderr | str trim) }).($cleanup)"}
+    }
+}
+
+# Past a failed probe the container is running and is not a proven cage, so it
+# is stopped before raising. Raising alone left it up with whatever route the
+# probe just found, for as long as the human takes to read the message — the
+# leak the error is about, still open. Stopped, not deleted: `container logs`
+# and `inspect` still work, and the messages already say to delete.
+#
+# Not container-cli because: a failed stop must not replace the diagnosis with
+# its own error. Returns what happened, for the message that carries the cause.
+export def stop-uncaged [name: string]: nothing -> string {
+    let stopped = ^container stop $name | complete
+
+    if $stopped.exit_code == 0 {
+        $" ($name) has been stopped."
+    } else {
+        $" ($name) could NOT be stopped and is still running: ($stopped.stderr | str trim)"
+    }
+}
+
+# Run only after the TCP probe passed, so the container has finished booting and
+# an empty answer is an unproven cage, not a VM that is still starting.
+export def assert-caged-udp [name: string]: nothing -> nothing {
+    let probe = ^container exec $name bash -c $udp_probe | complete
+    let token = $probe.stdout | str trim
+
+    if $token in [silent no-route] {
+        print $"  (ansi green)Cage:(ansi reset) ($name) gets no udp answer from 1.1.1.1 either \(($token))"
+        return
+    }
+
+    let cleanup = stop-uncaged $name
+
+    if $token == 'reply' {
+        error make {msg: $"($name) got a udp answer from 1.1.1.1 directly — the cage is open for QUIC and other p2p traffic, which the proxy never sees.($cleanup)" help: $"rebuild both: `container delete ($name)`, `container network delete ($caged_network)`, then re-run `up`"}
+    } else {
+        error make {msg: $"could not probe udp from ($name): bash gave '($token)' \(exit ($probe.exit_code))(if ($probe.stderr | is-not-empty) { $', stderr: ' + ($probe.stderr | str trim) }).($cleanup)"}
     }
 }
 

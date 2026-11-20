@@ -31,7 +31,7 @@ Everything below holds for both unless it names one.
 A firewall is runtime state.
 Anything baked into the image is out of the human's hands once the image is built; anything the agent can reach at runtime is not human-only.
 So the [`../Dockerfile`](../Dockerfile) carries **no proxy address at all** — the image stays runnable standalone with `docker run`, and the cage is something the human puts around it.
-A bare `docker run` therefore has no cage, and `cozy verify` fails its two `egress:` rows rather than passing quietly.
+A bare `docker run` therefore has no cage, and `cozy verify` fails its `egress:` rows rather than passing quietly.
 
 ## Why two containers instead of iptables
 
@@ -174,8 +174,21 @@ Twice, by two different callers, with the same probe.
 At **launch**, `assert-caged` in [`../toolkit/container.nu`](../toolkit/container.nu) runs it from inside the freshly started container on every `up` and `restart`: a builder that reports success without looking at its own result is the gap being closed, since an existing network is only a name and nothing observable proves it was created with `--internal`.
 A real HTTP status means the cage is open; *no* status counts as failure too, because "we could not check" must not read as "it is fine".
 Either way the container is stopped before the error is raised — leaving it up would keep the leak open for as long as the human takes to read the message.
+After the TCP probe passes,
+the same check repeats over UDP,
+which the proxy never carries:
+QUIC and other peer-to-peer programs (iroh, for example) use it to step around an HTTP proxy.
 
-Then **on demand**, two rows in [`../cozy-module/verify.nu`](../cozy-module/verify.nu), both shaped by false passes found in review.
+Then **on demand**, three rows in [`../cozy-module/verify.nu`](../cozy-module/verify.nu).
+The first and the third are shaped by false passes found in review.
 `egress: no direct route` probes an IP literal with the proxy bypassed and requires the attempt to fail — this is what `internal: true` actually provides, and unlike reading `*_PROXY` it cannot be faked by an env var on a normal bridge network.
+`egress: no direct udp` sends a DNS query to `1.1.1.1` twice and requires silence or no route:
+a public resolver always answers,
+so a reply means UDP leaves unfiltered.
+The probe is pure bash (`/dev/udp` and `read -t`),
+so a missing tool cannot turn into a false "silent",
+and each outcome prints its own token:
+anything other than `silent`, `no-route` or `reply` is an unproven cage and fails.
+The launch check and this row run the same script, copied in `verify.nu`, `container.nu` and `container.zsh`.
 `egress: default deny` sends a canary over **plain http**, where a real refusal is a 403 block page; over https every flavour of no-network (dead proxy, unresolvable name, timeout) also yields `000`, so a broken cage would have scored the strongest pass.
 It is pointed at the proxy with `-x` rather than through the environment, because curl honours only the lowercase `http_proxy` for http URLs while sbx sets just the uppercase one.

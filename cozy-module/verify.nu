@@ -57,6 +57,29 @@ const egress_canary = 'http://example.com'
 # detail below says "no answer" and not "unreachable".
 const egress_direct_probe = 'https://1.1.1.1'
 
+# The same question for UDP, which curl cannot ask and which peer-to-peer
+# programs (QUIC, hole punching, STUN) use to step around an HTTP proxy. A DNS
+# query to the IP literal, because a public resolver always answers — silence
+# then means the datagram never got out, or its reply never got back.
+#
+# Pure bash: `/dev/udp` and `read -t` are builtins, so no python or coreutils
+# can be missing and turn into a false "silent". One token per outcome:
+#   silent / no-route — the cage holds (no-route: no default route at all, as
+#                       under compose's `internal: true`)
+#   reply             — UDP leaves unfiltered
+#   anything else     — not checked: `unsupported` is a bash built without net
+#                       redirections; `read-error` is an ICMP error that came
+#                       back, as a path that rejects rather than drops gives
+# The loopback socket first, so a bash without `/dev/udp` cannot reach the
+# no-route branch. Sent twice, so one lost datagram is not a pass.
+# No single quotes inside: toolkit/container.zsh carries this same text in a
+# single-quoted string. Same script as toolkit/container.nu and container.zsh.
+const egress_udp_probe = 'exec 4<>/dev/udp/127.0.0.1/9 || { echo unsupported; exit; }
+exec 3<>/dev/udp/1.1.1.1/53 2>/dev/null || { echo no-route; exit; }
+q="\x12\x34\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00\x07example\x03com\x00\x00\x01\x00\x01"
+printf "$q" >&3 2>/dev/null; printf "$q" >&3 2>/dev/null
+if read -r -t 3 -N 1 -u 3 _; then echo reply; elif (( $? > 128 )); then echo silent; else echo read-error; fi'
+
 # A passing check row.
 export def ok [label: string detail?: string]: nothing -> record {
     {label: $label pass: true detail: ($detail | default "")}
@@ -392,7 +415,8 @@ export def http-code [run: closure cmd: string]: nothing -> oneof<string, nothin
 #
 #   - the cage: no way out except the proxy. Probed directly with the proxy
 #     bypassed, so `docker run -e HTTPS_PROXY=... ` on a normal bridge network
-#     can't dress an uncaged container up as a caged one.
+#     can't dress an uncaged container up as a caged one. Over TCP and over UDP,
+#     because the proxy carries only TCP: UDP has to be shut by the cage itself.
 #   - the policy: the proxy defaults to deny. Probed over plain http so that a
 #     refusal (403 block page) stays distinguishable from a proxy that is simply
 #     down (no status). A broken firewall must fail, never pass.
@@ -402,6 +426,14 @@ export def check-egress-cage [run: closure]: nothing -> list {
         null => (fail 'egress: no direct route' 'could not probe — no usable curl')
         '000' => (ok 'egress: no direct route' $"($egress_direct_probe) gave no answer without the proxy")
         _ => (fail 'egress: no direct route' $"($egress_direct_probe) answered ($direct) with the proxy bypassed — traffic can leave unfiltered")
+    }
+
+    let udp = (do $run [bash -c $egress_udp_probe]).stdout | str trim
+    let udp_route = match $udp {
+        'silent' => (ok 'egress: no direct udp' 'udp/53 to 1.1.1.1 gave no answer')
+        'no-route' => (ok 'egress: no direct udp' 'no route for udp to 1.1.1.1')
+        'reply' => (fail 'egress: no direct udp' 'udp/53 to 1.1.1.1 answered — QUIC and other p2p traffic can leave past the proxy')
+        _ => (fail 'egress: no direct udp' $"could not probe — bash gave '($udp)'")
     }
 
     # Pointed at the proxy with --proxy rather than left to the environment: curl
@@ -425,7 +457,7 @@ export def check-egress-cage [run: closure]: nothing -> list {
         }
     }
 
-    [$route $deny]
+    [$route $udp_route $deny]
 }
 
 # Run every check with the given transport; one row per check.

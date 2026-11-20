@@ -42,6 +42,14 @@ typeset -r POLICY_CONF=/etc/squid/policy/squid.conf
 # An IP literal, so no DNS is involved and --no-dns cannot be mistaken for
 # isolation. Same probe as cozy verify's `egress: no direct route` row.
 typeset -r DIRECT_PROBE=https://1.1.1.1
+# The UDP half, which the proxy never sees. Same script as container.nu's
+# `udp_probe` and cozy verify's `egress: no direct udp` row; the reasons are
+# there. `silent` and `no-route` pass, `reply` is an open cage.
+typeset -r UDP_PROBE='exec 4<>/dev/udp/127.0.0.1/9 || { echo unsupported; exit; }
+exec 3<>/dev/udp/1.1.1.1/53 2>/dev/null || { echo no-route; exit; }
+q="\x12\x34\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00\x07example\x03com\x00\x00\x01\x00\x01"
+printf "$q" >&3 2>/dev/null; printf "$q" >&3 2>/dev/null
+if read -r -t 3 -N 1 -u 3 _; then echo reply; elif (( $? > 128 )); then echo silent; else echo read-error; fi'
 
 typeset -r DEFAULT_IMAGE=cozy:latest
 typeset -r DEFAULT_MEMORY=8g
@@ -190,19 +198,11 @@ assert_caged() {
     # read as "it is fine".
     if [[ $PROBE_CODE == 000 ]]; then
         say 'Cage:' "$name cannot reach $DIRECT_PROBE with the proxy bypassed"
+        assert_caged_udp $name
         return
     fi
 
-    # Past here the container is running and is not a proven cage, so stop it
-    # before raising — otherwise the leak the error is about stays open for as
-    # long as the human takes to read the message. Stopped, not deleted:
-    # `container logs` and `inspect` still work.
-    local cleanup
-    if command container stop $name >/dev/null 2>&1; then
-        cleanup=" $name has been stopped."
-    else
-        cleanup=" $name could NOT be stopped and is still running."
-    fi
+    local cleanup=$(stop_uncaged $name)
 
     if [[ $PROBE_CODE == [0-9][0-9][0-9] ]]; then
         die \
@@ -211,6 +211,39 @@ assert_caged() {
   \`container delete $name\`, \`container network delete $CAGED_NETWORK\`, then re-run \`up\`.$cleanup"
     fi
     die "could not probe the cage from $name: curl gave no status (exit $PROBE_RC)${err:+, stderr: $err}.$cleanup"
+}
+
+# Past a failed probe the container is running and is not a proven cage, so
+# stop it before raising — otherwise the leak the error is about stays open for
+# as long as the human takes to read the message. Stopped, not deleted:
+# `container logs` and `inspect` still work. Prints the sentence for the error.
+stop_uncaged() {
+    if command container stop $1 >/dev/null 2>&1; then
+        print -r -- " $1 has been stopped."
+    else
+        print -r -- " $1 could NOT be stopped and is still running."
+    fi
+}
+
+# Run only after the TCP probe passed: the container has booted by then, so an
+# empty answer is an unproven cage, not a VM that is still starting.
+assert_caged_udp() {
+    local name=$1 token rc=0
+    token=$(command container exec $name bash -c $UDP_PROBE 2>$CLI_ERR) || rc=$?
+    if [[ $token == (silent|no-route) ]]; then
+        say 'Cage:' "$name gets no udp answer from 1.1.1.1 either ($token)"
+        return
+    fi
+
+    local err=$(<$CLI_ERR)
+    local cleanup=$(stop_uncaged $name)
+    if [[ $token == reply ]]; then
+        die \
+"$name got a udp answer from 1.1.1.1 directly — the cage is open for QUIC and other p2p
+  traffic, which the proxy never sees: \`container delete $name\`,
+  \`container network delete $CAGED_NETWORK\`, then re-run \`up\`.$cleanup"
+    fi
+    die "could not probe udp from $name: bash gave '$token' (exit $rc)${err:+, stderr: $err}.$cleanup"
 }
 
 # Recreated rather than started when it is not running: `run` is where the mount

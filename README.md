@@ -312,7 +312,7 @@ Nothing is decrypted.
 Squid refuses the `CONNECT` before TLS begins, so a blocked request never leaves the client — headers and tokens included.
 Allowed domains are tunneled end-to-end and keep the origin's own certificate, so no proxy CA is installed anywhere.
 `cozy verify` covers both halves: its `tls:` row completes a handshake with `api.anthropic.com` and reports the certificate issuer it got — proof that an allowlisted host is really reachable, and on runtimes that do install a proxy CA (sbx) an assertion that the issuer is not that CA.
-Its two `egress:` rows require a canary domain to be refused with a real block page, and no route out to exist beside the proxy.
+Its `egress:` rows require a canary domain to be refused with a real block page, and no route out to exist beside the proxy, over TCP or UDP.
 A bare `docker run` of the image has no cage, and fails those rows rather than passing quietly.
 
 #### Apple `container`
@@ -385,7 +385,7 @@ A host-only network has no resolver, so the container runs with `--no-dns` and r
 And `container` has no static-IP flag, so the proxy's address is read back after it starts — the container reaches it by the name `cozy-egress`, which `up` and `restart` pin to the current address in its `/etc/hosts`.
 
 `container run` on its own sets none of this up: no allowlist, and no `WORKSPACE_DIR` (which only `sbx` injects), so `cozy sandbox-state` and `cozy dev-link` fail.
-Such a container fails `cozy verify`'s two `egress:` rows, which is the intended signal — there is no cage in front of it.
+Such a container fails `cozy verify`'s `egress:` rows, which is the intended signal — there is no cage in front of it.
 Pass `-e WORKSPACE_DIR=<mounted path>` if you deliberately want an uncaged one.
 
 To change what is reachable, edit `~/.config/cozy/firewall/allowed-domains.txt` and run `nu toolkit/container.nu reload-egress <name>` — the container's name is all it needs.
